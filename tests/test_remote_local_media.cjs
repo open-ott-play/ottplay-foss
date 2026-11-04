@@ -415,6 +415,7 @@ function pluginFixture(options = {}) {
             },
         },
     }).installLocalMedia;
+    if (options.host) Object.assign(w, options.host);
     const api = install(w);
     return {
         api,
@@ -1374,11 +1375,62 @@ test("missing native folder reports source_unavailable without changing current 
     }
 });
 
+test("native source deadline remains busy without connecting, scanning or activating", async () => {
+    for (const op of ["play", "shuffle", "connect"]) {
+        for (const selector of ["/media/Movies", "Movies", source.id]) {
+            const f = pluginFixture({
+                invoke(name) {
+                    if (name === "local_media_sources")
+                        return Promise.reject("operation_in_progress");
+                },
+            });
+            await tick();
+            const driver = f.w.__ottActiveProviderDriver;
+            const channelLoad = f.w.__ottCommandChannelLoad;
+            const saved = [...f.data];
+            const initialCalls = f.calls.length;
+            const result = await new Promise((resolve) =>
+                execute(f.w, request(op, { source: selector }), resolve)
+            );
+            assert.deepEqual(clone(result), {
+                data: {
+                    error: "operation_in_progress",
+                    op,
+                    runtime: "page-123",
+                    state: "error",
+                    version: 1,
+                },
+                status: "rejected",
+            });
+            assert.equal(f.w.__ottActiveProviderDriver, driver);
+            assert.equal(f.w.__ottCommandChannelLoad, channelLoad);
+            assert.deepEqual([...f.data], saved);
+            assert.equal(f.w.ottpStorage.localPlayback.active(), false);
+            assert.equal(f.w.__ottLocalMediaRequestActive, false);
+            assert.equal(f.reads, 0);
+            assert.deepEqual(
+                f.calls.slice(initialCalls).map(([name]) => name),
+                ["local_media_sources"]
+            );
+            const lookup = f.calls.at(-1)[1];
+            assert.equal(
+                selector.startsWith("/") ? lookup.path : lookup.selection,
+                selector
+            );
+        }
+    }
+});
+
 test("native source errors without the exact fixed code remain generic and private", async () => {
     for (const error of [
         "Local sources unavailable; select an accessible absolute directory",
         "source_unavailable: private diagnostic context",
         new Error("source_unavailable"),
+        "operation_in_progress: private diagnostic context",
+        " operation_in_progress",
+        "operation_in_progress ",
+        "Operation_in_progress",
+        new Error("operation_in_progress"),
     ]) {
         const f = pluginFixture({
             invoke(name) {
@@ -2082,4 +2134,85 @@ test("invalid Local schema remains synchronous and never downloads the runner", 
     });
     assert.equal(replies, 1);
     assert.equal(f.w.__ottLocalMediaRequestActive, undefined);
+});
+
+test("progressive capability follows the implemented backend and settled native probe", async () => {
+    for (const marker of ["__TAURI__", "__TAURI_INTERNALS__"]) {
+        const f = pluginFixture({
+            host: { __TAURI__: undefined, [marker]: {} },
+        });
+        assert.equal(
+            f.api.remoteProgressive(),
+            false,
+            "no promise before native capability resolution"
+        );
+        await tick();
+        const before = f.calls.length;
+        assert.equal(f.api.remoteProgressive(), true);
+        assert.equal(f.api.remoteCapabilities().version, 1);
+        assert.equal(
+            f.calls.length,
+            before,
+            "capability read starts no native work"
+        );
+        assert.equal(f.reads, 0);
+    }
+    for (const capability of [
+        {},
+        { absolutePaths: true, version: 1 },
+        { sourcePaths: true, version: 1 },
+        { absolutePaths: false, sourcePaths: true, version: 1 },
+        { absolutePaths: true, sourcePaths: true, version: 2 },
+        { absolutePaths: "true", sourcePaths: true, version: 1 },
+        null,
+        "reject",
+    ]) {
+        const f = pluginFixture({
+            invoke(name) {
+                if (name === "local_media_capabilities")
+                    return capability === "reject"
+                        ? Promise.reject(Error("unavailable"))
+                        : capability;
+            },
+        });
+        await tick();
+        assert.equal(f.api.remoteProgressive(), false);
+        assert.equal(
+            f.api.remoteCapabilities().version,
+            1,
+            "ordinary Local remains available"
+        );
+        assert.equal(f.reads, 0);
+    }
+    for (const platform of [
+        "browser",
+        "server",
+        "capacitor",
+        "capacitor-server",
+    ]) {
+        const server = platform.includes("server");
+        const f = pluginFixture({
+            data: new Map(
+                server
+                    ? [["localMediaEndpoint", "http://local.example/catalog"]]
+                    : []
+            ),
+            host: {
+                __TAURI__: undefined,
+                indexedDB: {},
+                ...(platform.startsWith("capacitor")
+                    ? { Capacitor: { isNativePlatform: () => true } }
+                    : {}),
+            },
+        });
+        await tick();
+        assert.equal(f.api.remoteCapabilities().version, 1, platform);
+        assert.equal(f.api.remoteProgressive(), false, platform);
+        assert.equal(
+            f.calls.length,
+            0,
+            "non-Tauri capability inspection invokes no native probe"
+        );
+        assert.equal(f.reads, 0);
+    }
 });

@@ -18,6 +18,7 @@ import re
 import shlex
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tarfile
@@ -35,6 +36,8 @@ DEVICE_ID_COMMAND = '/usr/bin/luna-send-pub -n 1 luna://com.webos.service.sm/dev
 STATE_ROOTS = ("ottplay-profile.json", "ottplay-control.json", "ott-state")
 STATE_LIMIT = 32 * 1024 * 1024
 OUTPUT_LIMIT = 64 * 1024 * 1024
+CAPTURE_PROTOCOL = "novacom-framed-v1"
+IDENTITY_DIAGNOSTIC_REASONS = frozenset(('authentication_required', 'developer_mode_expired_or_disabled', 'key_server_unavailable', 'device_unavailable', 'ares_command_failed', 'ares_execution_unavailable', 'ares_output_limit', 'private_state_timeout', 'incomplete_remote_output', 'invalid_remote_output', 'invalid_json', 'duplicate_json_key', 'json_limit', 'invalid_cli_output', 'device_identity_unavailable', 'invalid_utf8', 'invalid_identity_value'))
 VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 RELEASE_BINDINGS = (
@@ -109,6 +112,13 @@ def load_module(filename):
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def require_capture_protocol(snapshot):
+    check(
+        isinstance(snapshot, dict) and snapshot.get("capture_protocol") == CAPTURE_PROTOCOL,
+        "snapshot_capture_unverified",
+    )
 
 
 def require_device_binding(identity):
@@ -189,17 +199,6 @@ def parse_installed(text):
             check(app.get("type") == "native", "not_native_installation")
             app["folderPath"] = APP_DIR
     return apps
-
-
-def parse_running(text):
-    result = set()
-    for line in cli_lines(text):
-        match = re.fullmatch(
-            r"([A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9._-]+)(?: - display [0-9]+)?", line
-        )
-        check(match is not None, "invalid_running_inventory")
-        result.add(match[1])
-    return result
 
 
 def parse_system_info(text):
@@ -389,10 +388,19 @@ def official_release(tag, directory):
             destination = directory / name
             check(not destination.is_symlink(), "unsafe_release_file")
             if not destination.exists():
+                assets = release.get("assets")
+                check(isinstance(assets, list), "invalid_release_assets")
+                matches = [asset for asset in assets if isinstance(asset, dict) and asset.get("name") == name]
+                check(len(matches) == 1, "missing_or_duplicate_release_asset")
+                expected = matches[0].get("digest", "")
+                check(isinstance(expected, str) and re.fullmatch(r"sha256:[0-9a-f]{64}", expected),
+                      "missing_official_asset_digest")
                 publisher.fetch_public_asset(
                     f"https://github.com/{REPOSITORY}/releases/download/{tag}/{name}",
                     destination,
                     128 * 1024 * 1024 if suffix == ".ipk" else 8 * 1024 * 1024,
+                    expected_sha256=expected.removeprefix("sha256:"),
+                    expected_size=matches[0].get("size"),
                 )
         result = verify_release_files(directory, tag, release, ref)
         check(
@@ -448,7 +456,8 @@ def command_error(raw):
     return "ares_command_failed"
 
 
-def run_command(command, *, operation, timeout=30, data=None, private_input=False):
+def run_command(command, *, operation, timeout=30, data=None, private_input=False, keep_stdin_open=False):
+    check(type(keep_stdin_open) is bool and not (keep_stdin_open and (data is not None or private_input)), "invalid_held_input")
     environment = {**os.environ, "DEBUG": "", "NODE_DEBUG": ""}
     with (
         tempfile.TemporaryFile() as output,
@@ -475,9 +484,9 @@ def run_command(command, *, operation, timeout=30, data=None, private_input=Fals
         try:
             process = subprocess.Popen(
                 command,
-                stdin=source
-                if data is not None and not private_input
-                else subprocess.DEVNULL,
+                stdin=subprocess.PIPE if keep_stdin_open else (
+                    source if data is not None and not private_input else subprocess.DEVNULL
+                ),
                 stdout=output,
                 stderr=errors,
                 env=environment,
@@ -496,12 +505,16 @@ def run_command(command, *, operation, timeout=30, data=None, private_input=Fals
         except OSError:
             raise UpdateError("ares_execution_unavailable") from None
         finally:
-            if process is not None and process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                process.wait()
+            try:
+                if process is not None and process.poll() is None:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait()
+            finally:
+                if process is not None and process.stdin is not None:
+                    process.stdin.close()
         check(
             os.fstat(output.fileno()).st_size <= OUTPUT_LIMIT
             and os.fstat(errors.fileno()).st_size <= 1024 * 1024,
@@ -577,6 +590,13 @@ def state_archive(data):
                 "directory": member.isdir(),
             }
             content[name] = raw
+        # tarfile's streaming reader accepts EOF between complete members. That
+        # is not a complete snapshot: require tar's two end blocks and padding.
+        padding = data[archive.offset:]
+        check(
+            len(data) % 512 == 0 and len(padding) >= 1024 and not any(padding),
+            "private_state_truncated",
+        )
     return rows, content
 
 
@@ -604,7 +624,8 @@ class Ares:
                 "unsupported_ares_version",
             )
 
-    def command(self, tool, *arguments, operation="preflight", timeout=30, data=None):
+    def command(self, tool, *arguments, operation="preflight", timeout=30, data=None, keep_stdin_open=False):
+        check(not keep_stdin_open or (tool == "ares-novacom" and data is None), "invalid_held_input")
         if data is not None:
             check(tool == "ares-novacom", "unsupported_private_transfer")
             return self.runner(
@@ -625,7 +646,8 @@ class Ares:
             check(executable is not None, "ares_not_installed")
             command = [executable]
         return self.runner(
-            [*command, *arguments], operation=operation, timeout=timeout, data=data
+            [*command, *arguments], operation=operation, timeout=timeout, data=data,
+            **({"keep_stdin_open": True} if keep_stdin_open else {}),
         )
 
     def private_input_command(self):
@@ -669,7 +691,7 @@ class Ares:
         try:
             response = json_bytes(
                 "\n".join(
-                    cli_lines(self.remote(DEVICE_ID_COMMAND).decode("utf-8"))
+                    cli_lines(self.remote(DEVICE_ID_COMMAND, keep_stdin_open=True).decode("utf-8"))
                 ).encode()
             )
             check(
@@ -698,8 +720,19 @@ class Ares:
             device_hash = digest(
                 b"ottplay-lgudid-v1\0" + str(device_id).encode("ascii")
             )
-        except (UpdateError, ValueError, UnicodeError):
-            raise UpdateError("device_identity_unavailable") from None
+        except (UpdateError, ValueError, UnicodeError) as error:
+            # Preserve only a static diagnostic cause; public behavior stays unchanged.
+            unavailable = UpdateError("device_identity_unavailable")
+            if isinstance(error, UpdateError):
+                cause, kind = error.code, "UPDATE_ERROR"
+            elif isinstance(error, UnicodeError):
+                cause, kind = "invalid_utf8", "UNICODE_ERROR"
+            else:
+                cause, kind = "invalid_identity_value", "VALUE_ERROR"
+            if type(cause) is str and cause in IDENTITY_DIAGNOSTIC_REASONS:
+                unavailable.diagnostic_reason = cause
+                unavailable.diagnostic_error_class = kind
+            raise unavailable from None
         # The read-only device ID binds recovery to the TV; this is not SSH peer attestation.
         bound = {
             "alias": self.alias,
@@ -723,12 +756,97 @@ class Ares:
         return next((row for row in apps if row["id"] == APP_ID), None)
 
     def running(self):
-        return parse_running(self.device("ares-launch", "--running").decode("utf-8"))
-
-    def remote(self, command, *, data=None):
-        return self.device(
-            "ares-novacom", "--run", command, operation="private_state", data=data
+        # Match the pinned CLI's public-bus/display-0 selection, but require
+        # complete typed responses instead of interpreting missing stdout as [].
+        command = "/usr/bin/luna-send-pub -n 1 "
+        params = " '{\"subscribe\":false}'"
+        sessions = json_bytes(self.remote(
+            command + "luna://com.webos.service.sessionmanager/getSessionList" + params,
+            keep_stdin_open=True,
+        ))
+        check(
+            isinstance(sessions, dict) and type(sessions.get("returnValue")) is bool,
+            "invalid_running_sessions",
         )
+        if sessions["returnValue"]:
+            rows = sessions.get("sessionList")
+            check(isinstance(rows, list) and 0 < len(rows) <= 256, "invalid_running_sessions")
+            selected = []
+            for row in rows:
+                check(isinstance(row, dict), "invalid_running_sessions")
+                device = row.get("deviceSetInfo")
+                check(
+                    isinstance(device, dict)
+                    and type(device.get("displayId")) is int
+                    and device["displayId"] >= 0,
+                    "invalid_running_sessions",
+                )
+                if device["displayId"] == 0:
+                    selected.append(row.get("sessionId"))
+            check(len(selected) == 1, "invalid_running_sessions")
+            session_id = selected[0]
+            check(
+                (type(session_id) is int and 0 <= session_id <= 2**53 - 1)
+                or (isinstance(session_id, str)
+                    and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", session_id)),
+                "invalid_running_sessions",
+            )
+            # The SDK omits -c for numeric zero, but includes it for string "0".
+            if session_id:
+                command += "-c " + shlex.quote(str(session_id)) + " "
+        response = json_bytes(self.remote(
+            command + "luna://com.webos.applicationManager/dev/running" + params,
+            keep_stdin_open=True,
+        ))
+        check(
+            isinstance(response, dict) and response.get("returnValue") is True
+            and isinstance(response.get("running"), list) and len(response["running"]) <= 4096,
+            "invalid_running_inventory",
+        )
+        result = set()
+        for row in response["running"]:
+            check(isinstance(row, dict), "invalid_running_inventory")
+            app_id = row.get("id")
+            check(
+                isinstance(app_id, str) and len(app_id) <= 256
+                and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9._-]+", app_id),
+                "invalid_running_inventory",
+            )
+            result.add(app_id)
+        return result
+
+    def remote(self, command, *, data=None, keep_stdin_open=False):
+        # SDK 3.2.6 can report SSH exit before draining stdout. A fresh trailing
+        # frame proves ordered-stream completion; it is not peer authentication.
+        check(isinstance(command, str) and "\0" not in command, "invalid_remote_command")
+        token = "OTT_NATIVE_STREAM_" + uuid.uuid4().hex
+        begin, end = token + "_BEGIN\n", "\n" + token + "_END:"
+        wrapped = (
+            "printf '%s' " + shlex.quote(begin) + "; (\n" + command
+            + "\n); ott_status=$?; printf '%s%s\\n' " + shlex.quote(end)
+            + ' "$ott_status"; exit "$ott_status"'
+        )
+        check(len(wrapped.encode("utf-8")) <= 1024 * 1024, "remote_command_limit")
+        raw = self.device(
+            "ares-novacom", "--run", wrapped, operation="private_state", data=data,
+            **({"keep_stdin_open": True} if keep_stdin_open else {}),
+        )
+        check(isinstance(raw, bytes) and len(raw) <= OUTPUT_LIMIT, "invalid_remote_output")
+        prefix, separator, framed = raw.partition(begin.encode("ascii"))
+        try:
+            valid_prefix = not list(cli_lines(prefix.decode("utf-8")))
+        except UnicodeError:
+            valid_prefix = False
+        check(
+            separator and valid_prefix and raw.count(begin.encode("ascii")) == 1,
+            "incomplete_remote_output",
+        )
+        payload, separator, status = framed.rpartition(end.encode("ascii"))
+        check(
+            separator and status == b"0\n" and framed.count(end.encode("ascii")) == 1,
+            "incomplete_remote_output",
+        )
+        return payload
 
     def native_process(self):
         command = 'for p in /proc/[0-9]*; do [ -d "$p" ] || continue; '
@@ -751,6 +869,15 @@ class Ares:
             "invalid_process_readback",
         )
         return bool(lines)
+
+    def require_payload_hashing(self):
+        # Exercise the same remote utility before closing or replacing the app.
+        try:
+            output = self.remote("command -v sha256sum >/dev/null || exit 79; printf '' | sha256sum")
+            lines = list(cli_lines(output.decode("utf-8")))
+        except (UpdateError, UnicodeError):
+            raise UpdateError("payload_hashing_unavailable") from None
+        check(lines == [digest(b"") + "  -"], "payload_hashing_unavailable")
 
     def payload_matches(self, payload):
         check(
@@ -875,6 +1002,7 @@ class Ares:
             )
         write_private(directory / "state.tar", archive)
         snapshot = {
+            "capture_protocol": CAPTURE_PROTOCOL,
             "path": str(directory / "state.tar"),
             "sha256": digest(archive),
             "files": before,
@@ -885,6 +1013,7 @@ class Ares:
         return snapshot
 
     def restore(self, snapshot):
+        require_capture_protocol(snapshot)
         path = Path(snapshot["path"])
         check(
             not path.is_symlink() and path.stat().st_size <= STATE_LIMIT,
@@ -896,85 +1025,71 @@ class Ares:
         check(expected == snapshot["files"], "private_snapshot_manifest_mismatch")
         current, _, _ = self.capture()
         for name in expected.keys() & current.keys():
-            check(
-                expected[name] == current[name], "private_state_changed_after_install"
-            )
+            check(expected[name] == current[name], "private_state_changed_after_install")
         missing = {name: row for name, row in expected.items() if name not in current}
         if missing:
             ownership = list(cli_lines(self.remote("id -u; id -g").decode("utf-8")))
             check(
-                len(ownership) == 2
-                and all(re.fullmatch(r"[0-9]+", value) for value in ownership),
+                len(ownership) == 2 and all(re.fullmatch(r"[0-9]+", value) for value in ownership),
                 "private_owner_unavailable",
             )
             uid, gid = map(int, ownership)
             check(
-                all(
-                    row["uid"] == uid and row["gid"] == gid for row in missing.values()
-                ),
+                all(row["uid"] == uid and row["gid"] == gid for row in missing.values()),
                 "private_owner_not_restorable",
             )
-        for name in sorted(
-            expected, key=lambda value: (len(PurePosixPath(value).parts), value)
-        ):
-            if name in current:
-                continue
-            row = expected[name]
-            target = APP_DIR + "/" + name
-            parent = str(PurePosixPath(target).parent)
-            command = (
-                "test -d "
-                + shlex.quote(parent)
-                + " && test ! -L "
-                + shlex.quote(parent)
-                + " || exit 74; "
-            )
-            if row["directory"]:
-                command += "if test -g " + shlex.quote(parent) + "; then "
-                command += (
-                    "group=$(stat -c '%g' " + shlex.quote(parent) + ") || exit 75; "
+        # Archives exclude special mode bits and require the process uid/gid.
+        # Keep new directories private and writable until their children exist.
+        created_directories = []
+        try:
+            for name in sorted(expected, key=lambda value: (len(PurePosixPath(value).parts), value)):
+                if name in current:
+                    continue
+                row = expected[name]
+                target = APP_DIR + "/" + name
+                parent = str(PurePosixPath(target).parent)
+                command = "test -d " + shlex.quote(parent) + " && test ! -L " + shlex.quote(parent) + " || exit 74; "
+                if row["directory"]:
+                    command += "if test -g " + shlex.quote(parent) + "; then "
+                    command += "group=$(stat -c '%g' " + shlex.quote(parent) + ") || exit 75; "
+                    command += '[ "$group" = ' + shlex.quote(str(row["gid"])) + " ] || exit 75; fi; "
+                    command += "umask 077; mkdir -m 700 " + shlex.quote(target)
+                else:
+                    # Publish only complete verified bytes. A failed transfer must
+                    # never leave a truncated destination that blocks reconciliation.
+                    # Keep any SIGKILL orphan outside the managed state roots.
+                    # A cross-filesystem destination fails safely at publication.
+                    command += (
+                        "umask 077; tmp=$(mktemp " + shlex.quote(APP_DIR + "/.ott-restore.XXXXXX") + ") || exit 75; "
+                    )
+                    command += "trap 'rm -f -- \"$tmp\"' 0; trap 'exit 76' 1 2 15; "
+                    command += 'cat > "$tmp" || exit 75; actual=$(sha256sum < "$tmp") || exit 75; '
+                    command += '[ "${actual%% *}" = ' + shlex.quote(row["sha256"]) + " ] || exit 75; "
+                    command += "owner=$(stat -c '%u:%g' \"$tmp\") || exit 75; "
+                    command += (
+                        '[ "$owner" = ' + shlex.quote(str(row["uid"]) + ":" + str(row["gid"])) + " ] || exit 75; "
+                    )
+                    command += "chmod " + oct(row["mode"])[2:] + ' "$tmp" || exit 75; '
+                    # -T rejects a racing directory; no -f means an existing file,
+                    # including a symlink, can never be replaced.
+                    command += 'ln -T "$tmp" ' + shlex.quote(target) + " || exit 75"
+                self.remote(command, data=None if row["directory"] else content[name])
+                if row["directory"]:
+                    created_directories.append((name, row))
+        finally:
+            # Keep ancestors traversable until every restored descendant has its
+            # original mode. Never chmod a pre-existing directory or a symlink.
+            for name, row in reversed(created_directories):
+                target = APP_DIR + "/" + name
+                guards = []
+                relative = PurePosixPath(name)
+                for ancestor in (relative, *relative.parents):
+                    path = APP_DIR if str(ancestor) == "." else APP_DIR + "/" + str(ancestor)
+                    quoted = shlex.quote(path)
+                    guards.append("test -d " + quoted + " && test ! -L " + quoted)
+                self.remote(
+                    " && ".join(guards) + " || exit 74; chmod " + oct(row["mode"])[2:] + " " + shlex.quote(target)
                 )
-                command += (
-                    '[ "$group" = '
-                    + shlex.quote(str(row["gid"]))
-                    + " ] || exit 75; fi; "
-                )
-                command += (
-                    "umask 077; mkdir -m "
-                    + oct(row["mode"])[2:]
-                    + " "
-                    + shlex.quote(target)
-                )
-            else:
-                # Publish only complete verified bytes. A failed transfer must
-                # never leave a truncated destination that blocks reconciliation.
-                # Keep any SIGKILL orphan outside the managed state roots.
-                # A cross-filesystem destination fails safely at publication.
-                command += (
-                    "umask 077; tmp=$(mktemp "
-                    + shlex.quote(APP_DIR + "/.ott-restore.XXXXXX")
-                    + ") || exit 75; "
-                )
-                command += "trap 'rm -f -- \"$tmp\"' 0; trap 'exit 76' 1 2 15; "
-                command += (
-                    'cat > "$tmp" || exit 75; actual=$(sha256sum < "$tmp") || exit 75; '
-                )
-                command += (
-                    '[ "${actual%% *}" = '
-                    + shlex.quote(row["sha256"])
-                    + " ] || exit 75; "
-                )
-                command += "owner=$(stat -c '%u:%g' \"$tmp\") || exit 75; "
-                command += (
-                    '[ "$owner" = '
-                    + shlex.quote(str(row["uid"]) + ":" + str(row["gid"]))
-                    + " ] || exit 75; "
-                )
-                command += "chmod " + oct(row["mode"])[2:] + ' "$tmp" || exit 75; '
-                # -T rejects a racing directory; no -f means an existing file,
-                # including a symlink, can never be replaced.
-                command += 'ln -T "$tmp" ' + shlex.quote(target) + " || exit 75"
-            self.remote(command, data=None if row["directory"] else content[name])
         restored, _, _ = self.capture()
         check(
             all(restored.get(name) == row for name, row in expected.items()),
@@ -1038,6 +1153,7 @@ def reconcile_device(ares, release, state_dir, *, attempts=3, poll_interval=1):
         receipt.get("application_id") == APP_ID and receipt.get("snapshot"),
         "recovery_snapshot_unavailable",
     )
+    require_capture_protocol(receipt["snapshot"])
     require_device_binding(receipt.get("device"))
     check(ares.identity() == receipt.get("device"), "device_identity_changed")
     current = ares.installed()
@@ -1053,6 +1169,7 @@ def reconcile_device(ares, release, state_dir, *, attempts=3, poll_interval=1):
     path = directory / "snapshot/manifest.json"
     check(path.is_file() and not path.is_symlink(), "recovery_snapshot_unavailable")
     snapshot = json_bytes(path.read_bytes())
+    require_capture_protocol(snapshot)
     check(
         snapshot.get("path") == str(directory / "snapshot/state.tar")
         and snapshot.get("sha256") == receipt["snapshot"]["sha256"],
@@ -1192,6 +1309,7 @@ def _update_device(
             before["version"] == previous.get("previous_version"),
             "preinstall_target_changed",
         )
+    ares.require_payload_hashing()
     receipt.update(device=identity, previous_version=before["version"])
     active = APP_ID in ares.running()
     process = ares.native_process()
@@ -1246,7 +1364,9 @@ def _update_device(
         )
         check(ares.identity() == identity, "device_identity_changed")
         snapshot = ares.snapshot(directory / "snapshot")
+        require_capture_protocol(snapshot)
         receipt["snapshot"] = {
+            "capture_protocol": snapshot["capture_protocol"],
             "sha256": snapshot["sha256"],
             "entries": len(snapshot["files"]),
         }
@@ -1372,6 +1492,50 @@ def update_lock(directory):
                 msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
 
 
+def check_other_update_journals(state_dir):
+    """Keep an earlier tag recoverable while holding the device-scoped lock."""
+    directory = Path(state_dir)
+    remaining = 8 * 1024 * 1024
+    with os.scandir(directory.parent) as entries:
+        for count, entry in enumerate(entries, 1):
+            check(count <= 1024, "update_journal_limit")
+            if entry.name == directory.name:
+                continue
+            check(not entry.is_symlink(), "unsafe_private_journal")
+            if not entry.is_dir(follow_symlinks=False):
+                continue
+            journal = Path(entry.path) / "update.json"
+            check(not journal.is_symlink(), "unsafe_private_journal")
+            try:
+                flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+                fd = os.open(journal, flags)
+            except FileNotFoundError:
+                continue
+            except OSError:
+                raise UpdateError("unsafe_private_journal") from None
+            with os.fdopen(fd, "rb") as stream:
+                info = os.fstat(stream.fileno())
+                check(stat.S_ISREG(info.st_mode) and info.st_size <= remaining
+                      and (not hasattr(os, "getuid") or info.st_uid == os.getuid()),
+                      "unsafe_private_journal")
+                raw = stream.read(remaining + 1)
+            remaining -= len(raw)
+            check(remaining >= 0, "update_journal_limit")
+            previous = json_bytes(raw)
+            check(isinstance(previous, dict) and previous.get("schema") == 1
+                  and previous.get("application_id") == APP_ID
+                  and previous.get("tag") == entry.name
+                  and type(previous.get("install_started")) is bool,
+                  "invalid_update_journal")
+            check(tag_version(previous["tag"]) == previous.get("version"), "invalid_update_journal")
+            require_device_binding(previous.get("device"))
+            settled = (previous.get("outcome") == "complete" and previous["install_started"] is True) or (
+                previous.get("outcome") == "already-current" and previous["install_started"] is False
+            )
+            preinstall = previous["install_started"] is False and previous.get("outcome") in {"closing", "needs-review"}
+            check(settled or preinstall, "pending_update")
+
+
 def update_device(
     ares,
     release,
@@ -1393,6 +1557,8 @@ def update_device(
     }
     if apply or reconcile:
         with update_lock(Path(state_dir).parent):
+            if apply:
+                check_other_update_journals(state_dir)
             return _update_device(ares, release, **options)
     return _update_device(ares, release, **options)
 

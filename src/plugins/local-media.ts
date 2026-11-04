@@ -224,6 +224,16 @@ export function installLocalMedia(w: any): any {
         if (!url) compatibilityEpoch++;
         localCall(compatibility, localText4, [url], 1);
     }
+    function warmDiagnostics(url: string, current?: () => boolean): void {
+        // Playback owns this warmup. Passive status requests must never load it.
+        if (
+            !w.__ottLocalSourceDiagnostics &&
+            playbackItem(url) &&
+            !localCall(w.__ottStandby, "blocked", [], 1) &&
+            (!current || current())
+        )
+            loadLocalFeature(localText1).catch(function () {});
+    }
     function preparePlayback(url: string, current?: () => boolean): any {
         if (!compatibility && w.__ottLocalCompatibilityFactory)
             loadLocalFeature(localText1).catch(function () {});
@@ -238,15 +248,7 @@ export function installLocalMedia(w: any): any {
                 )
             );
         if (!compatibilityPlayback(url)) {
-            // Warm the existing Local feature during playback, never from status.
-            // A missing/slow diagnostic asset must not delay direct playback.
-            if (
-                !w.__ottLocalSourceDiagnostics &&
-                playbackItem(url) &&
-                !localCall(w.__ottStandby, "blocked", [], 1) &&
-                (!current || current())
-            )
-                loadLocalFeature(localText1).catch(function () {});
+            warmDiagnostics(url, current);
             return Promise.resolve(url);
         }
         if (
@@ -1536,6 +1538,10 @@ export function installLocalMedia(w: any): any {
             };
             return pending;
         },
+        remoteProgressive: function () {
+            // Only this backend consumes firstPlayable during remote selection.
+            return isTauri() && nativeSourcePaths;
+        },
         remoteSources: function (
             includePaths = false,
             path?: string,
@@ -1629,6 +1635,7 @@ export function installLocalMedia(w: any): any {
             return selected;
         },
         title: title,
+        warmDiagnostics: warmDiagnostics,
     };
     w.__ottLocalMedia = api;
     if (isTauri())

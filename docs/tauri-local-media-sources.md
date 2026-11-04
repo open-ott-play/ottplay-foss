@@ -40,8 +40,14 @@ Folder playback can start with the first playable portion of the selected
 source, while discovery continues in the background. `local shuffle Movies`
 shuffles the available portion and later discoveries extend the channel list;
 an update does not restart the playing file. Starting before discovery finishes
-cannot choose uniformly from files that have not yet been found. A saved file
-still takes priority on restart when it is available.
+cannot choose uniformly from files that have not yet been found. Each explicit
+remote `local play` or `local shuffle` starts its chosen file at position zero,
+including repeated commands for the same folder or file. An old saved-profile
+cursor or bookmark does not override that choice. Normal startup of an active
+saved Local profile may resume its saved file and position; a stream restart
+within a temporary session may reuse that session's own bookmark. See
+[one-off Local playback commands](local-media-session.md) for the boundary
+between temporary playback and saved-profile restoration.
 
 An accepted response is not proof of decoded video or a completed scan. Its
 count describes the currently accepted portion when discovery is still active.
@@ -133,6 +139,30 @@ An unavailable or unmounted root remains visible with `available: false` and a
 source scan error; other available sources can still play. If a readable root
 cannot be traversed completely, its source error also sets the global
 `scanError`, preventing library-wide operations from accepting a partial scan.
+
+Source availability checks have a shared 15-second budget. A bulk listing can
+keep healthy sources visible alongside `available: false` for a source whose
+admitted filesystem check timed out. If waiting for capacity or reading source
+metadata exceeds the budget, the whole lookup returns `operation_in_progress`.
+An `available: false` row can also mean that access failed; it does not prove
+that the folder disappeared.
+For an exact path or a uniquely selected source, an unfinished check returns
+`operation_in_progress`; it does not connect a replacement source or start
+playback. An operating-system read already in progress can remain pending until
+the filesystem returns, even after the command reports its deadline.
+
+For a slow or newly mounted network drive, inspect the source before sending
+another playback command. Replace `NAME` with your configured player alias:
+
+```sh
+ott -t 25 NAME local sources
+ott -t 25 NAME local sources --path /Volumes/Media/Movies/
+```
+
+Check that the original volume is mounted and that macOS permits this specific
+OttPlay instance to read network volumes. Successful access from a terminal does
+not establish access for every app instance. The CLI does not retry playback
+automatically, and a successful source check alone does not confirm video decoding.
 
 Native app data also contains rebuildable, per-source metadata indexes. A
 missing or malformed index is rebuilt from local metadata JSON without opening
