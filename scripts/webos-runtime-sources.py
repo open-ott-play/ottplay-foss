@@ -8,11 +8,14 @@ import gzip
 import hashlib
 import io
 import json
+import os
 import re
 import subprocess
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
+
+import tomllib
 
 HERE = Path(__file__).resolve().parent
 MANIFEST = HERE / "webos-runtime-sources.json"
@@ -502,6 +505,7 @@ class PrimarySourceCoverage:
         if manifest.get("snapshot_sha256") != snapshot or observed != snapshot:
             fail("Primary source snapshot mismatch")
         self.files = actual
+        self.build_environment = manifest.get("build_environment", {})
         rows = manifest.get("dependencies", [])
         self.dependencies = {row["id"]: row for row in rows}
         if len(rows) != len(self.dependencies):
@@ -568,6 +572,56 @@ class PrimarySourceCoverage:
             self.dependency(identity, recipe)
         self.covered[name] = sorted(owners)
 
+    def native_rust_runtime(self, paths):
+        """Bind the storage linker’s external builtins to its bundled Rust source.
+
+        Collection runs on the build host. The pure classifier and offline
+        artifact verifier never acquire or query a host Rust toolchain.
+        """
+        if any(not re.fullmatch(r"libcompiler_builtins-[0-9a-f]{16}\.rlib", path.name) for path in paths):
+            fail("Unclassified external Rust archive")
+        self.dependency("rust-runtime", "Makefile")
+        pin_path = "rust-modules/rust-toolchain.toml"
+        self.recipe(pin_path)
+        pin = tomllib.loads((self.source / pin_path).read_text())["toolchain"]["channel"]
+        identity = self.build_environment.get("rustc", "").strip()
+        commits = re.findall(r"^commit-hash: ([0-9a-f]{40})$", identity, re.MULTILINE)
+        if (not isinstance(pin, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", pin)
+                or re.findall(r"^release: (.+)$", identity, re.MULTILINE) != [pin]
+                or len(commits) != 1 or self.dependencies["rust-runtime"].get("version") != commits[0]
+                or self.build_environment.get("rust_target") != "armv7-unknown-linux-gnueabi"):
+            fail("Native Rust toolchain/source identity mismatch")
+        env = dict(os.environ, RUSTUP_AUTO_INSTALL="0")
+        try:
+            observed = subprocess.check_output(["rustc", "+" + pin, "-Vv"], text=True, env=env, timeout=15).strip()
+            if observed != identity:
+                fail("Native Rust compiler differs from bundled source identity")
+            value = subprocess.check_output(["rustc", "+" + pin, "--print", "sysroot"],
+                                            text=True, env=env, timeout=15).strip()
+        except subprocess.TimeoutExpired:
+            fail("Native Rust toolchain probe timed out")
+        if not Path(value).is_absolute() or "\n" in value:
+            fail("Invalid native Rust sysroot")
+        root = Path(value).resolve(strict=True)
+        libdir = root / "lib/rustlib/armv7-unknown-linux-gnueabi/lib"
+        archives = []
+        for path in sorted(paths):
+            if path.parent != libdir:
+                fail("External Rust archive is outside the pinned sysroot target")
+            regular(path)
+            before = path.stat()
+            checksum = digest(path)
+            after = path.stat()
+            if ((before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
+                    != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)):
+                fail("Native Rust archive changed during collection")
+            archives.append({"path": str(path), "sha256": checksum, "bytes": after.st_size,
+                             "validation": "collection-time"})
+        # No historical link-time hash is invented: legacy native link receipts
+        # bind map/trace/ELF bytes, but not each prebuilt Rust archive's bytes.
+        return {"source": "rust-runtime", "source_commit": commits[0], "rustc": identity,
+                "sysroot": str(root), "archives": archives}
+
 
 def runtime_inputs(text, source, sdk, *, allowed_archives=(), archive_root=None, source_coverage=None):
     rows = set()
@@ -588,7 +642,7 @@ def runtime_inputs(text, source, sdk, *, allowed_archives=(), archive_root=None,
         except ValueError:
             fail("Runtime input is outside the recorded SDK: " + path)
 
-    archive_members = set(re.findall(r"([^\s()]+\.a)\(([^\s()]+)\)", text))
+    archive_members = set(re.findall(r"([^\s()]+\.(?:a|rlib))\(([^\s()]+)\)", text))
     # A loaded archive with no extracted members still needs a classified owner.
     named = {name for name, _ in archive_members}
     archive_members.update(
@@ -596,7 +650,7 @@ def runtime_inputs(text, source, sdk, *, allowed_archives=(), archive_root=None,
         for name in observed_archive_names(
             text, (line for line in text.splitlines() if not line.strip().startswith("LOAD "))
         )
-        if name.endswith(".a") and name not in named
+        if name.endswith((".a", ".rlib")) and name not in named
     )
     for archive, member in sorted(archive_members):
         base = PurePosixPath(archive).name
@@ -756,6 +810,27 @@ def link_evidence(elfs, source, sdk, companion=None, source_coverage=None):
                     )
                 )
                 record["link_receipt_sha256"] = digest(Path(str(base) + ".link.json"))
+            else:
+                external_rlibs = set()
+                for archive in archive_names:
+                    path = Path(archive)
+                    original = path if path.is_absolute() else archive_root / path
+                    path = original.resolve()
+                    if path.suffix == ".rlib" and (
+                        (Path(archive).is_absolute() and archive != str(path))
+                        or any(part.is_symlink() for part in (original, *original.parents))
+                    ):
+                        fail("Noncanonical or symlink native Rust archive path")
+                    if (path.suffix == ".rlib" and not path.is_relative_to(source.resolve())
+                            and not path.is_relative_to(sdk.resolve())):
+                        external_rlibs.add(path)
+                if external_rlibs:
+                    if source_coverage is None:
+                        fail("External Rust archives have no bundled source evidence")
+                    binding = source_coverage.native_rust_runtime(external_rlibs)
+                    record["native_rust_runtime"] = binding
+                    allowed_archives.update(row["path"] for row in binding["archives"])
+                    replacements.append((binding["sysroot"], "/build/native-rust"))
             replacements.append((str(Path.home()), "/home/build"))
             replacements.sort(key=lambda row: len(row[0]), reverse=True)
             path = Path(directory) / name

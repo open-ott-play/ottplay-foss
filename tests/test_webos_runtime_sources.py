@@ -26,11 +26,13 @@ def write_tar(path, files, mode="w:gz"):
             archive.addfile(member, io.BytesIO(data))
 
 
-def write_primary(path, files=None, dependencies=()):
+def write_primary(path, files=None, dependencies=(), build_environment=None):
     files = {} if files is None else files
     rows = {name: {"sha256": hashlib.sha256(data).hexdigest(), "mode": 0o644} for name, data in files.items()}
     snapshot = hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     manifest = {"schema": 1, "files": rows, "snapshot_sha256": snapshot, "dependencies": list(dependencies)}
+    if build_environment is not None:
+        manifest["build_environment"] = build_environment
     write_tar(path, {**files, "SOURCE-MANIFEST.json": runtime.canonical(manifest)})
     return snapshot
 
@@ -1125,6 +1127,206 @@ class PrimaryArchiveCoverageTests(unittest.TestCase):
             b"/build/ottplay-native/vendor/sentry-native-build/" + name.encode(),
             files["evidence/sentry-crash.link.map"],
         )
+
+
+class RlibCoverageTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.source, self.sdk = self.root / "source", self.root / "sdk"
+        self.source.mkdir()
+        self.sdk.mkdir()
+        self.files, self.dependencies = primary_inputs(self.source)
+        self.pin = "1.99.1"
+        self.commit = "a" * 40
+        self.identity = ("rustc 1.99.1 (aaaaaaaaa 2026-09-01)\n"
+                         "binary: rustc\ncommit-hash: " + self.commit + "\n"
+                         "host: aarch64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.0\n")
+        self.environment = {"rustc": self.identity, "rust_target": "armv7-unknown-linux-gnueabi"}
+        self.pin_name = "rust-modules/rust-toolchain.toml"
+        self.files[self.pin_name] = b'[toolchain]\nchannel = "1.99.1"\n'
+        (self.source / self.pin_name).write_bytes(self.files[self.pin_name])
+        next(row for row in self.dependencies if row["id"] == "rust-runtime")["version"] = self.commit
+        self.sysroot = self.root / "rust"
+        self.builtins = self.sysroot / "lib/rustlib/armv7-unknown-linux-gnueabi/lib/libcompiler_builtins-0123456789abcdef.rlib"
+        self.builtins.parent.mkdir(parents=True)
+        self.builtins.write_bytes(b"fixture prebuilt compiler builtins")
+        self.probes = []
+
+    def coverage(self):
+        path = self.root / "primary.tar.gz"
+        snapshot = write_primary(path, self.files, self.dependencies, self.environment)
+        return runtime.PrimarySourceCoverage(path, snapshot, self.source)
+
+    def probe(self, args, **kwargs):
+        if args[0] != "rustc":
+            return ""  # The tests exercise the real linker-evidence path; ELF inspection is mocked.
+        self.probes.append((args, kwargs))
+        self.assertEqual(args[1], "+" + self.pin)
+        self.assertEqual(kwargs["env"]["RUSTUP_AUTO_INSTALL"], "0")
+        self.assertGreater(kwargs["timeout"], 0)
+        self.assertLessEqual(kwargs["timeout"], 15)
+        if args[2:] == ["-Vv"]:
+            return self.identity
+        self.assertEqual(args[2:], ["--print", "sysroot"])
+        return str(self.sysroot) + "\n"
+
+    def link(self, path, coverage):
+        binary = b"\x7fELFfixture"
+        link_map = ("LOAD " + str(path) + "\n" + str(path) + "(member.o)\n").encode()
+        trace = (str(path) + "\n").encode()
+        base = self.source / "pkg/link-evidence/stable/plxnative-storage"
+        base.parent.mkdir(parents=True, exist_ok=True)
+        record = {"archive_excluded": True, "elf_sha256": hashlib.sha256(binary).hexdigest(),
+                  "map_sha256": hashlib.sha256(link_map).hexdigest(),
+                  "trace_sha256": hashlib.sha256(trace).hexdigest()}
+        for suffix, data in ((".link.map", link_map), (".link.trace", trace),
+                             (".link.json", runtime.canonical(record))):
+            Path(str(base) + suffix).write_bytes(data)
+        with patch.object(runtime.subprocess, "check_output", side_effect=self.probe):
+            return runtime.link_evidence({"plxnative-storage": binary}, self.source, self.sdk,
+                                         source_coverage=coverage)
+
+    def test_native_rlib_all_linker_forms_require_source_owner(self):
+        path = self.source / "custom/libunknown.rlib"
+        path.parent.mkdir()
+        path.write_bytes(b"unclassified archive")
+        forms = ["LOAD custom/libunknown.rlib\n", "custom/libunknown.rlib\n",
+                 "custom/libunknown.rlib(member.o)\n", str(path) + "(member.o)\n",
+                 "(" + str(path) + ")member.o\n"]
+        for text in forms:
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, "Unclassified static source archive"):
+                runtime.runtime_inputs(text, self.source, self.sdk, source_coverage=self.coverage())
+
+    def test_sdk_and_unbound_external_rlibs_are_not_silently_ignored(self):
+        for path, expected in ((self.sdk / "libunknown.rlib", "Unclassified static SDK archive"),
+                               (self.root / "external/libunknown.rlib", "Unclassified static archive"),
+                               (self.builtins, "Unclassified static archive")):
+            for text in ("LOAD " + str(path) + "\n", str(path) + "(member.o)\n"):
+                with self.subTest(path=str(path), text=text), self.assertRaisesRegex(ValueError, expected):
+                    runtime.runtime_inputs(text, self.source, self.sdk)
+        with self.assertRaisesRegex(ValueError, "Unclassified static SDK archive"):
+            runtime.runtime_inputs("LOAD " + str(self.sdk / "libunknown.rlib"), self.source, self.sdk,
+                                   allowed_archives={str(self.sdk / "libunknown.rlib")})
+
+    def test_companion_rlibs_use_exact_inventory_without_rust_probes(self):
+        (self.root / "companion").mkdir()
+        f = CompanionFixture(self.root / "companion")
+        f.ephemeral.unlink()
+        roots, allowed = runtime.companion_archives(f.record, f.link_map, f.trace, f.source, f.sdk)
+        with patch.object(runtime.subprocess, "check_output", side_effect=AssertionError("no probe in classifier")):
+            rows = runtime.runtime_inputs((f.link_map + f.trace).decode(), f.source, f.sdk,
+                                          allowed_archives=allowed, archive_root=roots["build_root"])
+        self.assertEqual({row["source"] for row in rows}, {"gcc-runtime", "glibc-runtime"})
+        coverage = runtime.PrimarySourceCoverage(f.root / "primary.tar.gz",
+                                                f.metadata["corresponding_source"]["snapshot_sha256"], f.source)
+        path = f.persistent.with_name("libunrecorded.rlib")
+        with self.assertRaisesRegex(ValueError, "Unclassified static archive"):
+            runtime.runtime_inputs("LOAD " + str(path), f.source, f.sdk, allowed_archives=allowed)
+        # A real byte-bound companion inventory cannot bypass native-source ownership.
+        path = f.source / "custom/libunknown.rlib"
+        path.parent.mkdir()
+        path.write_bytes(b"native unknown")
+        f.link_map += ("LOAD " + str(path) + "\n").encode()
+        f.trace += (str(path) + "\n").encode()
+        f.record["archive_inputs"].append({"path": str(path), "sha256": runtime.digest(path),
+                                           "bytes": path.stat().st_size, "observed_at_link": True,
+                                           "validation": "link_time_and_current"})
+        _, allowed = runtime.companion_archives(f.record, f.link_map, f.trace, f.source, f.sdk)
+        self.assertIn(str(path), allowed)
+        with self.assertRaisesRegex(ValueError, "Unclassified static source archive"):
+            runtime.runtime_inputs((f.link_map + f.trace).decode(), f.source, f.sdk,
+                                   allowed_archives=allowed, source_coverage=coverage)
+
+    def test_collector_binds_prebuilt_builtins_to_exact_bundled_toolchain(self):
+        result, _, _ = self.link(self.builtins, self.coverage())
+        entry = result["plxnative-storage"]
+        self.assertIn("native_rust_runtime", entry)
+        binding = entry["native_rust_runtime"]
+        self.assertEqual(binding["source"], "rust-runtime")
+        self.assertEqual(binding["source_commit"], self.commit)
+        self.assertEqual(binding["rustc"], self.identity.strip())
+        self.assertEqual(binding["archives"], [{"path": "/build/native-rust/" + self.builtins.relative_to(self.sysroot).as_posix(),
+                                               "sha256": runtime.digest(self.builtins), "bytes": self.builtins.stat().st_size,
+                                               "validation": "collection-time"}])
+        self.assertEqual(len(self.probes), 2)
+
+    def test_collector_rejects_changed_toolchain_source_pin_and_unknown_rlib(self):
+        for case in ("compiler", "source-commit", "pin", "missing-source", "wrong-target", "unknown-name", "wrong-root"):
+            with self.subTest(case=case):
+                original_identity = self.identity
+                original_files = dict(self.files)
+                original_dependencies = json.loads(json.dumps(self.dependencies))
+                original_environment = dict(self.environment)
+                path = self.builtins
+                if case == "compiler":
+                    self.identity = self.identity.replace("LLVM version: 23.1.0", "LLVM version: altered")
+                elif case == "source-commit":
+                    next(row for row in self.dependencies if row["id"] == "rust-runtime")["version"] = "b" * 40
+                elif case == "pin":
+                    (self.source / self.pin_name).write_bytes(b'[toolchain]\nchannel = "other"\n')
+                elif case == "missing-source":
+                    self.files.pop(next(row for row in self.dependencies if row["id"] == "rust-runtime")["sources"][0]["path"])
+                elif case == "wrong-target":
+                    self.environment["rust_target"] = "aarch64-unknown-linux-gnu"
+                else:
+                    path = self.builtins.with_name("libunknown.rlib") if case == "unknown-name" else self.root / self.builtins.name
+                    path.write_bytes(b"unclassified archive")
+                try:
+                    with self.assertRaisesRegex(ValueError, "[Rr]ust|[Aa]rchive|[Rr]ecipe|[Ss]ource|[Tt]oolchain"):
+                        self.link(path, self.coverage())
+                finally:
+                    self.identity, self.files = original_identity, original_files
+                    self.dependencies, self.environment = original_dependencies, original_environment
+                    (self.source / self.pin_name).write_bytes(self.files[self.pin_name])
+
+    def test_real_collector_cannot_publish_pass_for_native_rlib(self):
+        (self.root / "companion").mkdir()
+        f = CompanionFixture(self.root / "companion")
+        f.args.companion_bundle = f.args.companion_sources = None
+        f.metadata.pop("companion")
+        f.args.metadata.write_bytes(runtime.canonical(f.metadata))
+        link_map = b"LOAD custom/libunknown.rlib\ncustom/libunknown.rlib(member.o)\n"
+        trace = b"custom/libunknown.rlib\n"
+        base = f.source / "pkg/link-evidence/stable/player"
+        base.parent.mkdir(parents=True)
+        record = {"archive_excluded": True, "elf_sha256": hashlib.sha256(f.binary).hexdigest(),
+                  "map_sha256": hashlib.sha256(link_map).hexdigest(), "trace_sha256": hashlib.sha256(trace).hexdigest()}
+        for suffix, data in ((".link.map", link_map), (".link.trace", trace), (".link.json", runtime.canonical(record))):
+            Path(str(base) + suffix).write_bytes(data)
+        with (patch.object(runtime, "MANIFEST", f.spec),
+              patch.object(runtime, "package_elfs", return_value={"player": f.binary}),
+              patch.object(runtime.subprocess, "check_output", return_value=""),
+              patch.object(runtime, "attest_sdk", return_value={}),
+              self.assertRaisesRegex(ValueError, "Unclassified static source archive")):
+            runtime.collect(f.args)
+        self.assertFalse((f.root / "native-source-set.json").exists())
+
+    def test_failed_or_timed_out_rust_probe_cannot_authorize_archive(self):
+        def unavailable(args, **kwargs):
+            if args[0] == "rustc":
+                raise runtime.subprocess.TimeoutExpired(args, kwargs["timeout"])
+            return ""
+
+        original = self.probe
+        self.probe = unavailable
+        try:
+            with self.assertRaisesRegex(ValueError, "Rust toolchain probe timed out"):
+                self.link(self.builtins, self.coverage())
+        finally:
+            self.probe = original
+
+    def test_native_rust_alias_cannot_leak_an_unbound_path_into_public_evidence(self):
+        leaf = self.root / "private-alias" / self.builtins.name
+        leaf.parent.mkdir()
+        leaf.symlink_to(self.builtins)
+        directory = self.root / "private-directory-alias"
+        directory.symlink_to(self.builtins.parent, target_is_directory=True)
+        lexical = self.root / "private-segment" / ".." / self.builtins.relative_to(self.root)
+        for alias in (leaf, directory / self.builtins.name, lexical):
+            with self.subTest(alias=str(alias)), self.assertRaisesRegex(ValueError, "archive path"):
+                self.link(alias, self.coverage())
 
 
 if __name__ == "__main__":
