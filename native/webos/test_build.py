@@ -795,6 +795,50 @@ class NativeCompanionBuildTests(unittest.TestCase):
         self.assertEqual(run_build.call_args.args[0].rust_opt_level, 's')
 
 
+class NativeControlDiscoveryConfigTests(unittest.TestCase):
+    """Exercise the shared validator and real direct-Make stamp entry point."""
+
+    URL = "https://catalog.example.invalid/local/control-discovery.json"
+    DIGEST = "a" * 64
+
+    def test_discovery_profile_rejects_one_missing_input_including_empty(self):
+        profile = build.control_discovery_config.profile
+        for pair in ((None, None), ("", "")):
+            with self.subTest(pair=pair):
+                self.assertEqual(profile(*pair), {"configured": False, "fingerprint": "none"})
+        self.assertTrue(profile(self.URL, self.DIGEST)["configured"])
+        for pair in (("", None), (None, ""), (self.URL, None), (None, self.DIGEST)):
+            with self.subTest(pair=pair), self.assertRaisesRegex(ValueError, "requires both"):
+                profile(*pair)
+
+    def test_discovery_stamp_rejects_partial_environment_without_stdout(self):
+        module = build.control_discovery_config
+        helper = build.HERE / "control_discovery_config.py"
+        configured = module.profile(self.URL, self.DIGEST)["fingerprint"]
+        cases = [(None, None, "none"), ("", "", "none"),
+                 (self.URL, self.DIGEST, configured), ("", None, None),
+                 (None, "", None), (self.URL, None, None), (None, self.DIGEST, None)]
+        for url, digest, expected in cases:
+            with self.subTest(url=url, digest=digest):
+                env = dict(build.os.environ)
+                for name, value in ((module.URL_ENV, url), (module.SHA256_ENV, digest)):
+                    env.pop(name, None)
+                    if value is not None:
+                        env[name] = value
+                result = subprocess.run(
+                    [build.sys.executable, "-B", str(helper), "stamp"],
+                    env=env, capture_output=True, text=True, timeout=5,
+                )
+                if expected is None:
+                    self.assertEqual(result.returncode, 1)
+                    self.assertEqual(result.stdout, "")
+                    self.assertEqual(result.stderr, "Invalid control discovery build inputs\n")
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected + "\n")
+                    self.assertEqual(result.stderr, "")
+
+
 class NativeControlDiscoveryBuildTests(NativeCompanionBuildTests):
     """All external commands are intercepted by the existing build fixture."""
 

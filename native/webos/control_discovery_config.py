@@ -12,6 +12,8 @@ SHA256_ENV = "PLX_CONTROL_DISCOVERY_SHA256"
 
 
 def profile(url=None, digest=None):
+    if (url is None) != (digest is None):
+        raise ValueError("Control discovery requires both catalog URL and SHA-256")
     if url in (None, "") and digest in (None, ""):
         return {"configured": False, "fingerprint": "none"}
     if not isinstance(url, str) or not isinstance(digest, str):

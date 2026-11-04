@@ -182,6 +182,123 @@ jobs:
           # Run both canonical branches: all Cargo gates and Python/C/harness checks.
           make check 2>&1 | tee "$RUNNER_TEMP/native-host-verification/check.log"
           make check-nodef 2>&1 | tee "$RUNNER_TEMP/native-host-verification/nodef.log"
+      - name: Export actual Native settings schema
+        timeout-minutes: 5
+        working-directory: build/native-webos/source
+        shell: bash
+        env:
+          CARGO_INCREMENTAL: "0"
+          PLX_CARGO_SEED: "off"
+          HOST_THREADS: "0"
+          RELEASE: ""
+          PLX_TEST_JOBS: "1"
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+
+          source = Path.cwd()
+          evidence = Path(os.environ["RUNNER_TEMP"]) / "native-host-verification"
+          test = "app::ott_runtime::tests::settings_schema_contract::every_schema_page_obeys_controller_v1"
+          prepared_path = source.parent / "prepared.json"
+          prepared = json.loads(prepared_path.read_text())
+          files = (
+              "Makefile", "rust-modules/Cargo.lock", "rust-modules/rust-toolchain.toml",
+              "tools/cargo-test-parallel.py", "rust-modules/src/app/ott_runtime_tests.rs",
+              "rust-modules/src/app/ott_runtime_tests/settings_schema_contract.rs",
+              "rust-modules/src/app/ott_settings.rs", "rust-modules/src/app/ott_settings_classic.rs",
+          )
+
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          def source_pin():
+              tree = subprocess.check_output(["git", "write-tree"], text=True).strip()
+              subprocess.check_output(["git", "diff", "--exit-code", "--quiet"])
+              if tree != prepared["tree"]:
+                  raise RuntimeError("Schema export requires the prepared source tree")
+              return {"tree": tree, "prepared_sha256": digest(prepared_path),
+                      "files": {name: digest(source / name) for name in files}}
+
+          before = source_pin()
+          if not (source / "rust-modules/target").is_dir():
+              raise RuntimeError("The canonical host target must already exist")
+          environment = dict(os.environ)
+          # Exactly the Make-derived compile-time PLX settings used by the host unit gate.
+          canonical = subprocess.check_output(["make", "-s", "print-cargo-env"], text=True)
+          for name in list(environment):
+              if name.startswith("PLX_"):
+                  del environment[name]
+          for line in canonical.splitlines():
+              name, separator, value = line.partition("=")
+              if not separator or not name.startswith("PLX_"):
+                  raise RuntimeError("Invalid canonical Cargo environment")
+              environment[name] = value
+          if environment.get("HOST_THREADS") != "0":
+              raise RuntimeError("Schema export requires the canonical non-threaded host compiler")
+          environment.pop("RUST_MIN_STACK", None)
+          environment["PATH"] = str(Path.home() / ".cargo/bin") + os.pathsep + environment["PATH"]
+          environment.update(CARGO_INCREMENTAL="0", CARGO_BUILD_JOBS="1", PLX_TEST_JOBS="1")
+          toolchain = subprocess.check_output(["make", "-s", "print-rust-toolchain"], text=True).strip()
+          if not re.fullmatch(r"[A-Za-z0-9_.-]+", toolchain):
+              raise RuntimeError("Invalid pinned native toolchain")
+          command = [sys.executable, "../tools/cargo-test-parallel.py", "--jobs", "1", "--require-match",
+                     "--filter", test, "--", "cargo", "+" + toolchain, "test", "--locked", "--offline",
+                     "--jobs", "1", "--target-dir", "target", "--lib", "-p", "plxnative-modules",
+                     "--features", "hostsim", "--", "--exact", "--nocapture", "--test-threads=1"]
+          binding = {"status": "STARTED", "test": test, "source": before, "command": command,
+                     "outer_commit": subprocess.check_output(
+                         ["git", "-C", os.environ["GITHUB_WORKSPACE"], "rev-parse", "HEAD"], text=True).strip(),
+                     "github_sha": os.environ["GITHUB_SHA"], "toolchain": toolchain,
+                     "prepared": prepared, "controller_validation": "separate; no live Controller executed"}
+          binding_path = evidence / "schema-binding.json"
+          binding_path.write_text(json.dumps(binding, indent=2) + "\n")
+          log = evidence / "schema-contract.log"
+          with tempfile.TemporaryDirectory(prefix="native-schema-", dir=os.environ["RUNNER_TEMP"]) as runtime:
+              environment["PLXNATIVE_RUNTIME_DIR"] = runtime
+              with log.open("wb") as output:
+                  result = subprocess.run(command, cwd=source / "rust-modules", env=environment,
+                                          stdout=output, stderr=subprocess.STDOUT, check=False)
+          raw = log.read_text()
+          print(raw, end="")
+          result.check_returncode()
+          if source_pin() != before:
+              raise RuntimeError("Source changed during the schema export")
+          summaries = re.findall(r"^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; (\d+) measured; (\d+) filtered out;", raw, re.M)
+          if len(summaries) != 1 or summaries[0][:5] != ("ok", "1", "0", "0", "0"):
+              raise RuntimeError("Schema export requires exactly one passing, nonignored test")
+          if len(re.findall(r"^running 1 test$", raw, re.M)) != 1 or raw.count("test " + test + " ...") != 1:
+              raise RuntimeError("Missing exact schema test execution")
+          pages = [json.loads(line.split("SETTINGS_SCHEMA_V1 ", 1)[1])
+                   for line in raw.splitlines() if "SETTINGS_SCHEMA_V1 " in line]
+          if len(pages) != 2 or any(set(page) != {"request", "data"} for page in pages):
+              raise RuntimeError("Expected two actual default schema pages")
+          first, second = pages
+          if (first["request"] != {"op": "schema", "runtime": "fixture"}
+                  or second["request"] != {"op": "schema", "runtime": "fixture", "cursor": first["data"]["next_cursor"]}
+                  or not isinstance(first["data"]["next_cursor"], str)
+                  or second["data"]["next_cursor"] is not None
+                  or first["data"]["context"] != second["data"]["context"]
+                  or [len(page["data"]["settings"]) for page in pages] != [20, 15]):
+              raise RuntimeError("Invalid actual schema page chain")
+          ids = [row["id"] for page in pages for row in page["data"]["settings"]]
+          if len(ids) != len(set(ids)) or len(ids) != 35:
+              raise RuntimeError("Schema export omitted or repeated descriptors")
+          pages_path = evidence / "schema-pages.json"
+          pages_path.write_text(json.dumps(pages, ensure_ascii=False, indent=2) + "\n")
+          binding.update(status="PASS", raw_exit=result.returncode, summary=summaries[0],
+                         descriptor_count=len(ids), page_count=len(pages),
+                         log_sha256=digest(log), pages_sha256=digest(pages_path))
+          binding_path.write_text(json.dumps(binding, indent=2) + "\n")
+          print("Actual Native schema export: 1 passed; 0 failed; 0 ignored; 35 descriptors; 2 pages")
+          PY
       - name: Build the native Linux renderer
         timeout-minutes: 30
         working-directory: build/native-webos/source

@@ -44310,7 +44310,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..52b2f74b3e464a6bbbdb802e980b9e44
  pub(super) fn desktop_key(app: &mut App) -> bool {
      desktop_input::ingest(app)
 diff --git a/rust-modules/src/app/ott_runtime_tests.rs b/rust-modules/src/app/ott_runtime_tests.rs
-index 0ce913a3706c9571255a584dd11cfec15d117673..9f86ec28496d83e7f0e30c57eaf9e71602e4a40c 100644
+index 0ce913a3706c9571255a584dd11cfec15d117673..ef653de61e73cb4cf93e914eb6aa3855c9bd2fb4 100644
 --- a/rust-modules/src/app/ott_runtime_tests.rs
 +++ b/rust-modules/src/app/ott_runtime_tests.rs
 @@ -8,6 +8,9 @@ mod favorites_items_capability;
@@ -44350,7 +44350,7 @@ index 0ce913a3706c9571255a584dd11cfec15d117673..9f86ec28496d83e7f0e30c57eaf9e716
  #[path = "ott_runtime_tests/local_scan_completion.rs"]
  mod local_scan_completion;
  
-@@ -433,3 +442,29 @@ mod favorites_recovery;
+@@ -433,3 +442,32 @@ mod favorites_recovery;
  
  #[path = "ott_runtime_tests/continuity_diagnostics.rs"]
  mod continuity_diagnostics_runtime;
@@ -44380,6 +44380,9 @@ index 0ce913a3706c9571255a584dd11cfec15d117673..9f86ec28496d83e7f0e30c57eaf9e716
 +
 +#[path = "ott_runtime_tests/classic_settings.rs"]
 +mod classic_settings;
++
++#[path = "ott_runtime_tests/settings_schema_contract.rs"]
++mod settings_schema_contract;
 diff --git a/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs b/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs
 index 2dd650a1f9db16cff7ea63223b2cdb95ede6914e..2c6c6b9c89faef86a15898f4ac18ff1a9752cfdd 100644
 --- a/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs
@@ -51457,6 +51460,199 @@ index 8293634573abf72a1b249c5e67aa5bb5ddd37ffd..a306dea8a9cb08a8e1967de02e9d3ebd
      runtime_tick(&mut app);
      assert_eq!(ids(&app), ["one", "four"]);
      assert_eq!(app.ott.as_ref().unwrap().view().rows[1].title, "4  Neue Straße");
+diff --git a/rust-modules/src/app/ott_runtime_tests/settings_schema_contract.rs b/rust-modules/src/app/ott_runtime_tests/settings_schema_contract.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..9b1ed19c988508bdc220c3f29c7b8622460a63c7
+--- /dev/null
++++ b/rust-modules/src/app/ott_runtime_tests/settings_schema_contract.rs
+@@ -0,0 +1,187 @@
++//! Receiver-contract regression through the real settings command, without IO.
++//! Vocabulary/bounds mirror Controller v1 (requests_player_settings.go and
++//! cli/player_settings.py). The exported default pages also let that unchanged
++//! receiver validate actual Native JSON instead of a hand-authored substitute.
++use super::*;
++use std::collections::BTreeSet;
++
++fn keys(value: &Value, required: &[&str], optional: &[&str]) -> bool {
++    value.as_object().is_some_and(|object| required.iter().all(|key| object.contains_key(*key))
++        && object.keys().all(|key| required.contains(&key.as_str()) || optional.contains(&key.as_str())))
++}
++
++fn text(value: &Value, maximum: usize) -> bool {
++    value.as_str().is_some_and(|value| value.len() <= maximum
++        && value.chars().all(|ch| ch >= ' ' && ch != '\u{7f}'))
++}
++
++fn token(value: &Value) -> bool {
++    value.as_str().is_some_and(|value| (1..=128).contains(&value.len())
++        && value.bytes().all(|b| b.is_ascii_alphanumeric() || b"_.:-".contains(&b)))
++}
++
++fn integer(value: &Value) -> bool {
++    value.as_i64().is_some_and(|value| (-9_007_199_254_740_991..=9_007_199_254_740_991).contains(&value))
++}
++
++fn typed(value: &Value, kind: &str) -> bool {
++    match kind {
++        "integer" => integer(value),
++        "string" => text(value, 4096),
++        "string_array" => value.as_array().is_some_and(|values| values.len() <= 64
++            && values.iter().all(|value| text(value, 4096))),
++        _ => false,
++    }
++}
++
++fn descriptor_valid(row: &Value) -> bool {
++    if !keys(row, &["id", "type", "scope", "sensitive", "access", "constraints", "apply"],
++        &["default_value", "choices", "description", "unit"])
++        || !row["id"].as_str().is_some_and(|id| (1..=64).contains(&id.len())
++            && id.as_bytes()[0].is_ascii_alphabetic()
++            && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
++        || !matches!(row["type"].as_str(), Some("integer" | "string" | "string_array"))
++        || !matches!(row["scope"].as_str(), Some("application" | "provider"))
++        || !row["sensitive"].is_boolean()
++        || !matches!(row["apply"].as_str(), Some("immediate" | "next_stream" | "manual" | "after_ack")) {
++        return false;
++    }
++    let kind = row["type"].as_str().unwrap();
++    let access = &row["access"];
++    if !keys(access, &["read", "write"], &["reason"])
++        || !access["read"].is_boolean() || !access["write"].is_boolean()
++        || access.get("reason").is_some_and(|reason| !matches!(reason.as_str(), Some(
++            "invalid_request" | "atomic_patch_required" | "unknown_setting" | "invalid_value"
++            | "runtime_changed" | "source_changed" | "revision_conflict" | "policy_restricted"
++            | "local_only" | "unsupported" | "storage_failed" | "effect_failed"
++            | "device_forced_auto" | "lifecycle_required" | "local_action_required"))) {
++        return false;
++    }
++    let constraints = &row["constraints"];
++    if !keys(constraints, &[], &["minimum", "maximum", "values", "max_utf8_bytes", "max_items"]) {
++        return false;
++    }
++    for key in ["minimum", "maximum"] {
++        if constraints.get(key).is_some_and(|value| kind != "integer" || !integer(value)) {
++            return false;
++        }
++    }
++    if let (Some(minimum), Some(maximum)) = (constraints["minimum"].as_i64(), constraints["maximum"].as_i64()) {
++        if minimum > maximum { return false; }
++    }
++    for (key, maximum) in [("max_utf8_bytes", 4096), ("max_items", 64)] {
++        if constraints.get(key).is_some_and(|value| !value.as_u64().is_some_and(|n| n <= maximum)) {
++            return false;
++        }
++    }
++    if constraints.get("values").is_some_and(|values| !values.as_array().is_some_and(|values|
++        values.len() <= 256 && values.iter().all(|value| !value.is_array() && typed(value, kind))))
++        || row.get("default_value").is_some_and(|value| row["sensitive"] == true || !typed(value, kind))
++        || row.get("description").is_some_and(|value| !text(value, 512))
++        || row.get("unit").is_some_and(|value| !matches!(value.as_str(), Some("seconds" | "percent"))) {
++        return false;
++    }
++    if let Some(choices) = row.get("choices") {
++        let Some(choices) = choices.as_array().filter(|choices| choices.len() <= 256) else { return false; };
++        let mut seen = BTreeSet::new();
++        for choice in choices {
++            if !keys(choice, &["value", "label", "aliases"], &[])
++                || !typed(&choice["value"], kind) || !text(&choice["label"], 160) {
++                return false;
++            }
++            let Some(aliases) = choice["aliases"].as_array().filter(|aliases| aliases.len() <= 16) else { return false; };
++            for alias in aliases {
++                let Some(alias) = alias.as_str() else { return false; };
++                if !(1..=64).contains(&alias.len())
++                    || !alias.bytes().all(|b| b.is_ascii_alphanumeric() || b"_.+-".contains(&b))
++                    || !seen.insert(alias.to_ascii_lowercase()) {
++                    return false;
++                }
++            }
++        }
++    }
++    true
++}
++
++fn page_valid(data: &Value, request: &Value) -> bool {
++    let context = &data["context"];
++    let provider_valid = context["provider"].is_null() || context["provider"].as_str().is_some_and(|id|
++        (1..=32).contains(&id.len()) && (id.as_bytes()[0].is_ascii_lowercase() || id.as_bytes()[0].is_ascii_digit())
++        && id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"_./-".contains(&b))
++        && !id.contains("..") && !id.contains("//") && !id.ends_with('/'));
++    if !keys(data, &["version", "op", "runtime", "context", "settings", "next_cursor"], &[])
++        || data["version"].as_u64() != Some(1) || data["op"] != "schema" || data["runtime"] != request["runtime"]
++        || serde_json::to_vec(data).unwrap().len() > 65_536
++        || !keys(context, &["token", "provider", "profile"], &[]) || !token(&context["token"]) || !provider_valid
++        || !(context["profile"].is_null() || context["profile"].as_u64().is_some_and(|n| (1..=15).contains(&n))) {
++        return false;
++    }
++    let Some(rows) = data["settings"].as_array() else { return false; };
++    let mut ids = BTreeSet::new();
++    rows.len() <= request["limit"].as_u64().unwrap_or(20) as usize
++        && rows.iter().all(|row| descriptor_valid(row) && ids.insert(row["id"].as_str().unwrap()))
++        && (data["next_cursor"].is_null() || (!rows.is_empty() && token(&data["next_cursor"])))
++}
++
++#[test]
++fn every_schema_page_obeys_controller_v1() {
++    let _serial = plx_base::testlock::serial();
++    let mut app = Box::new(ready_app_fixture());
++    let mut runtime = app.ott.take().unwrap();
++    let mut failures = BTreeSet::new();
++    let mut expected = Vec::new();
++    // Default pagination plus every accepted explicit page size. No providers,
++    // protected state, sockets, rendering, or media workers are started here.
++    for requested_limit in std::iter::once(None).chain((1..=20).map(Some)) {
++        let mut request = json!({"op":"schema","runtime":"fixture"});
++        if let Some(limit) = requested_limit { request["limit"] = json!(limit); }
++        let mut rows = Vec::new();
++        let mut context = None;
++        let mut cursors = BTreeSet::new();
++        let mut complete = false;
++        for _ in 0..35 {
++            // request_for_test uses one fixed request ID; each independent
++            // command probe gets a fresh receiver, retaining the runtime token.
++            let mut remote = Remote::disabled_for_test("dev_fixture", "fixture");
++            let mut invocation = remote.request_for_test("player_settings", request.clone());
++            invocation.deadline_ms = runtime.now_ms().saturating_add(10_000);
++            let response = commands::command(&mut runtime, &mut app, &invocation).expect("synchronous schema response");
++            assert_eq!(response["status"], "ok", "{response}");
++            // Round-trip the actual response before checking the receiving wire contract.
++            let data: Value = serde_json::from_slice(&serde_json::to_vec(&response["data"]).unwrap()).unwrap();
++            if requested_limit.is_none() {
++                println!("SETTINGS_SCHEMA_V1 {}", json!({"request":request,"data":data}));
++            }
++            if !page_valid(&data, &request) { failures.insert(format!("page limit {requested_limit:?}")); }
++            let page = data["settings"].as_array().expect("schema array");
++            assert!(!page.is_empty());
++            for row in page {
++                if !descriptor_valid(row) { failures.insert(row["id"].as_str().unwrap_or("invalid id").to_owned()); }
++            }
++            rows.extend(page.iter().cloned());
++            if let Some(previous) = &context { assert_eq!(previous, &data["context"]); }
++            context = Some(data["context"].clone());
++            if data["next_cursor"].is_null() { complete = true; break; }
++            let cursor = data["next_cursor"].as_str().unwrap();
++            assert!(cursors.insert(cursor.to_owned()), "repeated cursor");
++            request["cursor"] = json!(cursor);
++        }
++        assert!(complete, "schema pagination must terminate");
++        assert_eq!(rows.len(), 35, "every registered descriptor must be reachable");
++        assert_eq!(rows.iter().map(|row| row["id"].as_str().unwrap()).collect::<BTreeSet<_>>().len(), rows.len());
++        if requested_limit.is_none() { expected = rows; } else { assert_eq!(rows, expected); }
++    }
++    // Exercise the regression oracle itself using valid published metadata.
++    let player = expected.iter().find(|row| row["id"] == "players").unwrap();
++    assert!(descriptor_valid(player));
++    let mut missing_aliases = player.clone();
++    missing_aliases["choices"][0].as_object_mut().unwrap().remove("aliases");
++    assert!(!descriptor_valid(&missing_aliases));
++    let mut duplicate_alias = player.clone();
++    duplicate_alias["choices"][0]["aliases"] = json!(["native", "NATIVE"]);
++    assert!(!descriptor_valid(&duplicate_alias));
++    let mut invalid_unit = player.clone();
++    invalid_unit["unit"] = json!("rows");
++    assert!(!descriptor_valid(&invalid_unit));
++    assert!(failures.is_empty(), "Controller v1 rejects emitted schema metadata: {failures:?}");
++}
 diff --git a/rust-modules/src/app/ott_runtime_tests/standalone_file_admission.rs b/rust-modules/src/app/ott_runtime_tests/standalone_file_admission.rs
 index a18697e2392e16f62b218df440a99c14879feef4..a71edc5d924495be590d67d3cdaff96e082dcddb 100644
 --- a/rust-modules/src/app/ott_runtime_tests/standalone_file_admission.rs
@@ -54069,7 +54265,7 @@ index d9532398d5d6b1d8d996d472182d42ba30d19032..3fe42bb22daa4cd95f23f4e90de321fe
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_settings.rs b/rust-modules/src/app/ott_settings.rs
-index 4b47cb73e176096250b80ca54525fdd4191947cb..47561096e059c30a1bb2ddb890917c6e986c7127 100644
+index 4b47cb73e176096250b80ca54525fdd4191947cb..d684a16564890ffdd236e96af6d9441a41654261 100644
 --- a/rust-modules/src/app/ott_settings.rs
 +++ b/rust-modules/src/app/ott_settings.rs
 @@ -10,20 +10,29 @@ use plx_appkit::menu_visibility::{Item as MenuItem, Change as MenuChange};
@@ -54221,7 +54417,7 @@ index 4b47cb73e176096250b80ca54525fdd4191947cb..47561096e059c30a1bb2ddb890917c6e
 +            Self::Sleep => {
 +                result["constraints"] = json!({"values":[0,1,2,3,4]});
 +                result["choices"] = json!(super::super::sleep_timer::Choice::ALL.into_iter()
-+                    .map(|choice| json!({"value":choice.index(),"label":choice.label()})).collect::<Vec<_>>());
++                    .map(|choice| json!({"value":choice.index(),"label":choice.label(),"aliases":[]})).collect::<Vec<_>>());
 +                result["description"] = json!("Standby after no input. Disabled by kiosk; a new session starts a fresh interval.");
 +            }
 +            Self::Appearance(_) | Self::Geometry(_) | Self::Osd(_) | Self::Classic(_) | Self::Menu(_) | Self::M3uMedia => unreachable!(),
@@ -54496,10 +54692,10 @@ index 4b47cb73e176096250b80ca54525fdd4191947cb..47561096e059c30a1bb2ddb890917c6e
 +mod sleep_timer_tests;
 diff --git a/rust-modules/src/app/ott_settings_classic.rs b/rust-modules/src/app/ott_settings_classic.rs
 new file mode 100644
-index 0000000000000000000000000000000000000000..4094002bb2defa1f89678ee8e21ff21f70ad9590
+index 0000000000000000000000000000000000000000..3a2344b779f5be0d898f6d01ef0bc7437051e3f6
 --- /dev/null
 +++ b/rust-modules/src/app/ott_settings_classic.rs
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,87 @@
 +//! Typed Classic preferences share remote/local validation and accepted publication.
 +use super::Saved;
 +use plx_appkit::classic_settings::{ArrowFunction, ListPosition, PageSize, Preferences, Seek13Duration};
@@ -54552,12 +54748,11 @@ index 0000000000000000000000000000000000000000..4094002bb2defa1f89678ee8e21ff21f
 +        match self {
 +            Self::PageSize => {
 +                result["constraints"] = json!({"minimum":10,"maximum":30});
-+                result["unit"] = json!("rows");
 +                result["description"] = json!("Preferred Classic list rows per page, reduced when text does not fit.");
 +            }
 +            Self::ListPosition => {
 +                result["constraints"] = json!({"values":[0,1]});
-+                result["choices"] = json!([{"value":0,"label":"Right"},{"value":1,"label":"Left"}]);
++                result["choices"] = json!([{"value":0,"label":"Right","aliases":[]},{"value":1,"label":"Left","aliases":[]}]);
 +                result["description"] = json!("Classic catalogue list position.");
 +            }
 +            Self::Seek13Duration => {
@@ -54568,7 +54763,7 @@ index 0000000000000000000000000000000000000000..4094002bb2defa1f89678ee8e21ff21f
 +            Self::ArrowFun => {
 +                result["constraints"] = json!({"values":[0,1,2,3]});
 +                result["choices"] = json!([{"value":0,"label":"Paging","aliases":["paging","neutrino"]},
-+                    {"value":1,"label":"Volume"},{"value":2,"label":"Dune/PHP"}]);
++                    {"value":1,"label":"Volume","aliases":[]},{"value":2,"label":"Dune/PHP","aliases":[]}]);
 +                result["description"] = json!("Classic list left/right behavior. Stored legacy value 3 is preserved as a Paging alias; fullscreen arrow behavior is unchanged.");
 +            }
 +        }

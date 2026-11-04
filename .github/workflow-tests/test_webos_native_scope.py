@@ -214,6 +214,143 @@ class NativeScopeTests(unittest.TestCase):
                                         "replay/**/plxnative-events.log", "replay/**/sim.out")
         })
 
+    def schema_export_step(self):
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        matches = [step for step in workflow["jobs"]["native-candidate"]["steps"]
+                   if step.get("name") == "Export actual Native settings schema"]
+        self.assertEqual(len(matches), 1)
+        return matches[0]
+
+    def test_schema_export_reuses_canonical_host_target_after_full_check(self):
+        step = self.schema_export_step()
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        steps = workflow["jobs"]["native-candidate"]["steps"]
+        index = steps.index(step)
+        self.assertIn("make check-nodef", steps[index - 1]["run"])
+        self.assertEqual(steps[index + 1]["name"], "Build the native Linux renderer")
+        self.assertEqual(step["timeout-minutes"], "5")
+        self.assertNotIn("if", step)
+        self.assertNotIn("continue-on-error", step)
+        self.assertEqual(step["working-directory"], "build/native-webos/source")
+        self.assertEqual(step["env"], {"CARGO_INCREMENTAL": "0", "PLX_CARGO_SEED": "off",
+                                      "HOST_THREADS": "0", "RELEASE": "", "PLX_TEST_JOBS": "1"})
+        evidence = next(item for item in steps
+                        if item.get("with", {}).get("name", "").startswith("ottplay-native-host-verification-"))
+        self.assertEqual(evidence["if"], "always()")
+        for suffix in ("*.json", "*.log"):
+            self.assertIn("${{ runner.temp }}/native-host-verification/" + suffix,
+                          evidence["with"]["path"].splitlines())
+
+    def test_schema_export_requires_actual_one_test_and_two_complete_pages(self):
+        step = self.schema_export_step()
+        code = compile(step["run"].split("python3 - <<'PY'\n", 1)[1].rsplit("\nPY", 1)[0],
+                       "actual schema export workflow", "exec")
+        for case in ("success", "zero", "missing-name", "failed", "missing-page", "duplicate-id",
+                     "changed-context", "wrong-source", "source-changed", "cold-target"):
+            with self.subTest(case=case):
+                self.check_schema_export_case(code, case)
+
+    def check_schema_export_case(self, code, case):
+        import contextlib
+        import io
+
+        test = "app::ott_runtime::tests::settings_schema_contract::every_schema_page_obeys_controller_v1"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            (source / "rust-modules").mkdir(parents=True)
+            if case != "cold-target":
+                (source / "rust-modules/target").mkdir()
+            evidence = root / "native-host-verification"
+            evidence.mkdir()
+            (root / "prepared.json").write_text(json.dumps({"tree": "a" * 40}))
+            files = ("Makefile", "rust-modules/Cargo.lock", "rust-modules/rust-toolchain.toml",
+                     "tools/cargo-test-parallel.py", "rust-modules/src/app/ott_runtime_tests.rs",
+                     "rust-modules/src/app/ott_runtime_tests/settings_schema_contract.rs",
+                     "rust-modules/src/app/ott_settings.rs", "rust-modules/src/app/ott_settings_classic.rs")
+            for name in files:
+                path = source / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("fixture\n")
+            context = {"token": "context", "provider": None, "profile": None}
+            pages = [
+                {"request": {"op": "schema", "runtime": "fixture"},
+                 "data": {"context": context, "next_cursor": "context:20",
+                          "settings": [{"id": f"setting{n}"} for n in range(20)]}},
+                {"request": {"op": "schema", "runtime": "fixture", "cursor": "context:20"},
+                 "data": {"context": dict(context), "next_cursor": None,
+                          "settings": [{"id": f"setting{n}"} for n in range(20, 35)]}},
+            ]
+            if case == "missing-page":
+                pages.pop()
+            if case == "duplicate-id":
+                pages[1]["data"]["settings"][0]["id"] = "setting0"
+            if case == "changed-context":
+                pages[1]["data"]["context"]["token"] = "changed"
+            count = 0 if case == "zero" else 1
+            name = "wrong::name" if case == "missing-name" else test
+            log = (f"running {count} test\ntest {name} ... "
+                   + "\n".join("SETTINGS_SCHEMA_V1 " + json.dumps(page) for page in pages)
+                   + f"\nok\ntest result: ok. {count} passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.01s\n")
+            spawned = []
+
+            def output(command, **_):
+                if command == ["git", "write-tree"]:
+                    return ("b" if case == "wrong-source" else "a") * 40 + "\n"
+                if command == ["git", "diff", "--exit-code", "--quiet"]:
+                    return b""
+                if command == ["make", "-s", "print-cargo-env"]:
+                    return "PLX_RELEASE=fixture\n"
+                if command == ["make", "-s", "print-rust-toolchain"]:
+                    return "1.99.1\n"
+                if command == ["git", "-C", str(root), "rev-parse", "HEAD"]:
+                    return "c" * 40 + "\n"
+                self.fail(f"Unexpected process: {command}")
+
+            def run(command, **kwargs):
+                spawned.append(command)
+                self.assertEqual(command[1:7], ["../tools/cargo-test-parallel.py", "--jobs", "1",
+                                               "--require-match", "--filter", test])
+                self.assertEqual(command[7:], ["--", "cargo", "+1.99.1", "test", "--locked", "--offline",
+                                              "--jobs", "1", "--target-dir", "target", "--lib", "-p",
+                                              "plxnative-modules", "--features", "hostsim", "--", "--exact",
+                                              "--nocapture", "--test-threads=1"])
+                self.assertEqual(kwargs["cwd"], source / "rust-modules")
+                environment = kwargs["env"]
+                self.assertNotIn("RUST_MIN_STACK", environment)
+                self.assertNotIn("PLX_STALE", environment)
+                self.assertEqual(environment["PLX_RELEASE"], "fixture")
+                self.assertEqual(environment["CARGO_INCREMENTAL"], "0")
+                self.assertEqual(environment["CARGO_BUILD_JOBS"], "1")
+                self.assertTrue(Path(environment["PLXNATIVE_RUNTIME_DIR"]).is_dir())
+                kwargs["stdout"].write(log.encode())
+                if case == "source-changed":
+                    (source / "Makefile").write_text("changed\n")
+                return subprocess.CompletedProcess(command, 101 if case == "failed" else 0)
+
+            environment = {"RUNNER_TEMP": str(root), "GITHUB_WORKSPACE": str(root), "GITHUB_SHA": "c" * 40,
+                           "HOST_THREADS": "0", "PATH": "/fixture", "PLX_STALE": "bad", "RUST_MIN_STACK": "bad"}
+            with mock.patch.dict(os.environ, environment, clear=True), \
+                    mock.patch.object(Path, "cwd", return_value=source), \
+                    mock.patch("subprocess.check_output", side_effect=output), \
+                    mock.patch("subprocess.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
+                if case == "success":
+                    # Execute only the workflow parser/orchestrator; every subprocess is mocked.
+                    exec(code, {})  # noqa: S102
+                else:
+                    with self.assertRaises((RuntimeError, subprocess.CalledProcessError)):
+                        exec(code, {})  # noqa: S102
+            if case == "success":
+                binding = json.loads((evidence / "schema-binding.json").read_text())
+                self.assertEqual((binding["status"], binding["raw_exit"], binding["descriptor_count"], binding["page_count"]),
+                                 ("PASS", 0, 35, 2))
+                self.assertEqual(json.loads((evidence / "schema-pages.json").read_text()), pages)
+            else:
+                self.assertFalse((evidence / "schema-pages.json").exists())
+            self.assertEqual(len(spawned), 0 if case in ("cold-target", "wrong-source") else 1)
+
     def test_companion_build_scrubs_inherited_cargo_configuration(self):
         workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
                              Loader=yaml.BaseLoader)
