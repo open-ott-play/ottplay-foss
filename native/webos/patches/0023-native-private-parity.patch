@@ -24387,6 +24387,20 @@ index 8565f28230f6308c497aad9e8625214d46f10da3..896d8c5e614e277b0b588788660cecc6
          }
      }
      fn organization_context(&self) -> Result<Context, &'static str> {
+diff --git a/rust-modules/src/app/ott_catalog_organization_runtime_tests.rs b/rust-modules/src/app/ott_catalog_organization_runtime_tests.rs
+index 44f7ea9d4d17fb28c8e55ed2afa8ed032c7d7aca..bf4fc02e4936e1362b75faf9db869e1eaafba3ca 100644
+--- a/rust-modules/src/app/ott_catalog_organization_runtime_tests.rs
++++ b/rust-modules/src/app/ott_catalog_organization_runtime_tests.rs
+@@ -359,6 +359,9 @@ fn shared_form_save_creates_empty_category_only_after_saved_and_choice_survives_
+ fn member_order_remove_and_add_drive_runtime_and_remote_without_changing_raw_catalog() {
+     let _serial = plx_base::testlock::serial();
+     let mut app = fixture();
++    // This is a browse-only edit, not the initial catalogue autoplay path.
++    let runtime = app.ott.as_mut().unwrap();
++    runtime.continuity.stop(runtime.generation);
+     let raw = app.ott.as_ref().unwrap().catalog.clone();
+     let favorites = app.ott.as_ref().unwrap().saved.favorites.clone();
+     open(&mut app);
 diff --git a/rust-modules/src/app/ott_catalog_organization_tests.rs b/rust-modules/src/app/ott_catalog_organization_tests.rs
 index dbc4b851bc985fa92d623abfa87497676a4d5688..cf7aa05d20a1f7781a88aa329e2590750802cef5 100644
 --- a/rust-modules/src/app/ott_catalog_organization_tests.rs
@@ -36058,10 +36072,42 @@ index 0000000000000000000000000000000000000000..1f71845945b40fffe3a65b28600da0d4
 +    assert_eq!(saved(&app), before);
 +}
 diff --git a/rust-modules/src/app/ott_media_tracks_runtime_tests.rs b/rust-modules/src/app/ott_media_tracks_runtime_tests.rs
-index e3abd03284f155af65c8a82b925c6d52a212e71d..a7db7c25b17e851e00e55b285406532facf56b09 100644
+index e3abd03284f155af65c8a82b925c6d52a212e71d..130818bf45120e88437f729f39b65ffe766c53dc 100644
 --- a/rust-modules/src/app/ott_media_tracks_runtime_tests.rs
 +++ b/rust-modules/src/app/ott_media_tracks_runtime_tests.rs
-@@ -1080,3 +1080,118 @@ fn media_tracks_early_error_does_not_repair_missing_raw_projection() {
+@@ -231,7 +231,14 @@ fn media_tracks_same_off_cannot_bypass_an_existing_manual_intent() {
+         &app.player.session,
+         route::UserRouteIntent::NativeAudioReload,
+     );
+-    let result = invoke(&mut app, select(&listed, "subtitle", None));
++    // The manual intent retires the earlier receipt even for Subtitle Off.
++    let stale = invoke(&mut app, select(&listed, "subtitle", None));
++    assert_eq!(stale["data"]["error"], "playback_changed");
++    assert_eq!(player::desired_sub_idx(), -1);
++    let current = list(&mut app);
++    assert_eq!(current["data"]["playback"], listed["data"]["playback"]);
++    assert_ne!(current["data"]["source_generation"], listed["data"]["source_generation"]);
++    let result = invoke(&mut app, select(&current, "subtitle", None));
+     assert_eq!(result["data"]["error"], "busy");
+     assert_eq!(player::desired_sub_idx(), -1);
+     assert!(route::pending_user_route_intent(
+@@ -250,7 +257,14 @@ fn media_tracks_manual_then_remote_share_the_owner_but_same_url_replacement_reti
+         .choice(TrackKind::Subtitle, Some(1))
+         .unwrap();
+     route::apply_external_track(&mut app.player.session, &manual).unwrap();
+-    let result = invoke(&mut app, select(&listed, "subtitle", Some(0)));
++    // Manual and remote edits share an owner, including its intent-generation fence.
++    let stale = invoke(&mut app, select(&listed, "subtitle", Some(0)));
++    assert_eq!(stale["data"]["error"], "playback_changed");
++    assert_eq!(player::desired_sub_idx(), 1);
++    let current = list(&mut app);
++    assert_eq!(current["data"]["playback"], listed["data"]["playback"]);
++    assert_ne!(current["data"]["source_generation"], listed["data"]["source_generation"]);
++    let result = invoke(&mut app, select(&current, "subtitle", Some(0)));
+     assert_eq!(result["data"]["outcome"], "requested");
+     assert_eq!(player::desired_sub_idx(), 0);
+     let listed = list(&mut app);
+@@ -1080,3 +1094,118 @@ fn media_tracks_early_error_does_not_repair_missing_raw_projection() {
      assert!(response["data"].get("op").is_none());
      assert!(route::claim_route_action().is_none());
  }
@@ -37521,7 +37567,7 @@ index 7a426ebd18fa981ff27a23375329b354eca3301d..3461322925f1c429ccc79b5ecbba718a
          Action::OpenCatalog | Action::OpenCategories => {
              let page = if request.action == Action::OpenCategories { "categories" }
 diff --git a/rust-modules/src/app/ott_playing_favorite.rs b/rust-modules/src/app/ott_playing_favorite.rs
-index b4e407a1b6ebc1d37b914889e5170497cdfe62c8..a2b7c51b1c77374c781f3469bfd4a8d4ef720ea6 100644
+index b4e407a1b6ebc1d37b914889e5170497cdfe62c8..b2e7ea6ef6d88f94d7cfb1310ddab44f6ea14355 100644
 --- a/rust-modules/src/app/ott_playing_favorite.rs
 +++ b/rust-modules/src/app/ott_playing_favorite.rs
 @@ -4,6 +4,7 @@ use super::*;
@@ -37532,7 +37578,28 @@ index b4e407a1b6ebc1d37b914889e5170497cdfe62c8..a2b7c51b1c77374c781f3469bfd4a8d4
      favorite: String,
      added: bool,
  }
-@@ -110,15 +111,36 @@ fn owner<'a>(
+@@ -100,6 +101,20 @@ fn owner<'a>(
+         if transient::source_profile(root).ok().as_ref() == Some(&playing.profile) {
+             return Ok(SelectionOwner::LocalRoot(root));
+         }
++        if root.kind == crate::app::ott_local_session::SourceKind::File {
++            // Ordinary File rows retain their durable numbered profile, while
++            // replay uses source_profile(root). Both must capture the same root.
++            // local_grant already proved the exact live single-file handle;
++            // do not turn an edited, removed or duplicated profile into authority.
++            let mut profiles = runtime.saved.profiles.profiles.iter()
++                .filter(|profile| profile.id == playing.profile.id);
++            if playing.profile.kind == ProviderKind::Local && playing.profile.enabled
++                && profiles.next() == Some(&playing.profile) && profiles.next().is_none()
++            {
++                return Ok(SelectionOwner::LocalRoot(root));
++            }
++            return Err("The playing local profile changed");
++        }
+         if root.kind != crate::app::ott_local_session::SourceKind::Folder
+             || playing.profile.kind != ProviderKind::Local
+             || root.canonical_path.as_deref() != Some(playing.profile.source.as_str())
+@@ -110,15 +125,36 @@ fn owner<'a>(
      Ok(SelectionOwner::Profile(&playing.profile))
  }
  
@@ -37570,7 +37637,7 @@ index b4e407a1b6ebc1d37b914889e5170497cdfe62c8..a2b7c51b1c77374c781f3469bfd4a8d4
  }
  
  /// The caller supplies an actual admitted Playing value after checking its native identity.
-@@ -135,27 +157,43 @@ pub(super) fn candidate(
+@@ -135,27 +171,43 @@ pub(super) fn candidate(
              .map_err(selection::BindingError::message)?
      } else {
          selection::SelectionBindings::profiles_only(&runtime.saved.profiles)
@@ -37615,7 +37682,7 @@ index b4e407a1b6ebc1d37b914889e5170497cdfe62c8..a2b7c51b1c77374c781f3469bfd4a8d4
  fn notice(app: &mut App, message: &'static str) -> bool {
      let now = app.loop_t;
      if let Some(player) = bridge::player_mut(&mut app.pages) {
-@@ -183,11 +221,13 @@ pub(super) fn toggle(runtime: &mut Runtime, app: &mut App) -> Result<(), &'stati
+@@ -183,11 +235,13 @@ pub(super) fn toggle(runtime: &mut Runtime, app: &mut App) -> Result<(), &'stati
              _ => playing.profile.clone(),
          };
          runtime.require_parental_playback(&policy)?;
@@ -37629,7 +37696,7 @@ index b4e407a1b6ebc1d37b914889e5170497cdfe62c8..a2b7c51b1c77374c781f3469bfd4a8d4
              favorite,
              added,
          });
-@@ -206,6 +246,8 @@ pub(super) fn settled(runtime: &mut Runtime, app: &mut App, success: bool) -> bo
+@@ -206,6 +260,8 @@ pub(super) fn settled(runtime: &mut Runtime, app: &mut App, success: bool) -> bo
      if page(app) != Some(pending.page)
          || !playing_matches(&pending.playing, app)
          || owner(runtime, &pending.playing).is_err()
@@ -43184,10 +43251,25 @@ index 2dd650a1f9db16cff7ea63223b2cdb95ede6914e..b91939e6dceb84543a146990061967ad
      assert_eq!(f.app.ott.as_ref().unwrap().catalog.entries[0].description,
          "Full newly loaded description", "enrichment was merged by the real receiver");
 diff --git a/rust-modules/src/app/ott_runtime_tests/category_profile.rs b/rust-modules/src/app/ott_runtime_tests/category_profile.rs
-index daff27b38dc9dc3741b6eff14087c349f5df7370..51f42e2c6d564f34ded49866df83fe261ede7369 100644
+index daff27b38dc9dc3741b6eff14087c349f5df7370..008b8f80da724db789cf9a0ce358591c30ddaa89 100644
 --- a/rust-modules/src/app/ott_runtime_tests/category_profile.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/category_profile.rs
-@@ -463,7 +463,7 @@ fn stale_screen_preview_cannot_target_replacement_profile_with_same_entry_id() {
+@@ -448,9 +448,13 @@ fn stale_screen_preview_cannot_target_replacement_profile_with_same_entry_id() {
+         .unwrap_or_else(|_| panic!("fixture Saved receiver"));
+     runtime_tick(&mut app);
+     let next_generation = {
+-        let r = app.ott.as_ref().unwrap();
++        let r = app.ott.as_mut().unwrap();
+         assert_eq!(r.saved.profiles.active_profile.as_deref(), Some("B"));
+         assert!(r.catalog.entries.is_empty(), "replacement loader remains held");
++        assert!(r.play_target.is_none() && r.resolver_next.is_none() && r.playing.is_none());
++        // Profile activation owns a fresh autoplay policy. Stop that unrelated
++        // startup before testing the retained A preview against B's first batch.
++        r.continuity.stop(r.generation);
+         r.generation
+     };
+     app.pages.emit(MachineId::Instance(reply), Fx::App(AppFx::Ott(OttOut::Action {
+@@ -463,7 +467,7 @@ fn stale_screen_preview_cannot_target_replacement_profile_with_same_entry_id() {
      // number of internal source invalidations. This tick installs B's batch
      // before dispatching the retained A screen action for the same entry ID.
      r.catalog_tx.send(CatalogEvent::Batch(next_generation,
@@ -43196,7 +43278,7 @@ index daff27b38dc9dc3741b6eff14087c349f5df7370..51f42e2c6d564f34ded49866df83fe26
          .unwrap_or_else(|_| panic!("fixture catalogue receiver"));
      runtime_tick(&mut app);
      let r = app.ott.as_ref().unwrap();
-@@ -578,3 +578,116 @@ fn caption_projects_effective_category_all_and_favorites_without_relabeling_prof
+@@ -578,3 +582,116 @@ fn caption_projects_effective_category_all_and_favorites_without_relabeling_prof
      assert_eq!(r.view().category_label.as_deref(), Some("Favorites"));
      r.page = "profiles"; assert!(r.view().category_label.is_none());
  }
@@ -43548,10 +43630,36 @@ index 3c8cc0d21685b3539652ab26a30cf29dcb9ce7a2..084254a26d732e28723cc4d1744e9c9e
          archive: None,
          transient_owner: None,
 diff --git a/rust-modules/src/app/ott_runtime_tests/favorites_items.rs b/rust-modules/src/app/ott_runtime_tests/favorites_items.rs
-index a74a90a525fa562a6ef484b34e00f8ce6efcc4ed..0dd67ff7c59cfcbf0e5893e33d5bb077a5c90382 100644
+index a74a90a525fa562a6ef484b34e00f8ce6efcc4ed..742764c28f4a3cdc79b167216aa061a4f784fd38 100644
 --- a/rust-modules/src/app/ott_runtime_tests/favorites_items.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/favorites_items.rs
-@@ -444,3 +444,169 @@ fn elapsed_pending_request_rejects_before_the_native_route() {
+@@ -365,6 +365,25 @@ fn current_uses_admitted_native_source_and_does_not_toggle_favorites() {
+     let r = app.ott.as_mut().unwrap();
+     r.saving = false;
+     r.loaded = true;
++    // Model the complete owner catalogue at admission, as in playing_favorite::ready.
++    // Browsing remains in the unrelated, incomplete Local source.
++    let playing = r.playing.as_ref().unwrap();
++    assert!(!r.catalog_complete);
++    assert!(r.effective_profile() != Some(&playing.profile));
++    let complete_source = plx_data::ott::Catalog {
++        hierarchy: None,
++        entries: vec![playing.entry.clone()],
++    };
++    let bindings = selection::SelectionBindings::profiles_only(&r.saved.profiles);
++    let proof = selection::capture_channel(
++        &bindings,
++        selection::SelectionOwner::Profile(&playing.profile),
++        &complete_source.entries,
++        &playing.entry,
++    )
++    .unwrap()
++    .expect("the admitted M3u channel retains its complete owner catalogue proof");
++    r.playing.as_mut().unwrap().channel_capture = Some(proof);
+     r.selected = Some("different-browsed-row".into());
+     let expected = playing_favorite::capture(r, r.playing.as_ref().unwrap()).unwrap();
+     let before = serde_json::to_value(&r.saved).unwrap();
+@@ -444,3 +463,169 @@ fn elapsed_pending_request_rejects_before_the_native_route() {
      assert_eq!(response["data"]["error"], "expired");
      assert!(!plx_media::route::has_url(&app.player.session));
  }
@@ -43732,6 +43840,28 @@ index 8234383b89721d747946cef09aabe5f9199f7a6b..f46764a529b3c7ab6f1487fe02abf0a4
 +
 +#[path = "records.rs"]
 +mod records;
+diff --git a/rust-modules/src/app/ott_runtime_tests/guide_order.rs b/rust-modules/src/app/ott_runtime_tests/guide_order.rs
+index ce855c6ed80b26bd63433cbf6691870291fe8c96..7424f7a28c8778320a68d2201ee8b13e361b4da2 100644
+--- a/rust-modules/src/app/ott_runtime_tests/guide_order.rs
++++ b/rust-modules/src/app/ott_runtime_tests/guide_order.rs
+@@ -41,7 +41,7 @@ fn deliver(runtime: &mut Runtime, programmes: Vec<Programme>) -> Guide {
+     reply
+ }
+ 
+-fn opened() -> (App, Runtime) {
++fn opened() -> (Box<App>, Runtime) {
+     let (mut app, mut runtime) = fixture();
+     handle_action(
+         &mut runtime,
+@@ -57,7 +57,7 @@ fn opened() -> (App, Runtime) {
+             programme("Middle", 1_700_000_600),
+         ],
+     );
+-    (app, runtime)
++    (Box::new(app), runtime)
+ }
+ 
+ fn control(runtime: &Runtime, id: &str) -> OttAction {
 diff --git a/rust-modules/src/app/ott_runtime_tests/info_timeout.rs b/rust-modules/src/app/ott_runtime_tests/info_timeout.rs
 new file mode 100644
 index 0000000000000000000000000000000000000000..d2f68063231b4093d19b015b435e65841b108e85
@@ -44115,9 +44245,20 @@ index 664355543c576a57f173285eb07b69628b3b4216..78f1b0417a4238bb741cab2df54bfb6b
          assert!(app.ott.as_ref().unwrap().play_target.is_none());
          assert!(app.ott.as_ref().unwrap().resolver_next.is_none());
 diff --git a/rust-modules/src/app/ott_runtime_tests/lifecycle.rs b/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
-index 420bacc028195be83df98d29de30bba314c432cb..a917a75793ed763f5ee650a1b0eaa4dfe89c96fa 100644
+index 420bacc028195be83df98d29de30bba314c432cb..1d1d33a589286fcd886cadb3af93faa463d61382 100644
 --- a/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
+@@ -15,8 +15,8 @@ fn entry() -> CatalogEntry {
+     entry
+ }
+ 
+-fn prepared() -> App {
+-    let mut app = app_fixture();
++fn prepared() -> Box<App> {
++    let mut app = Box::new(app_fixture());
+     let runtime = app.ott.as_mut().unwrap();
+     runtime.loaded = true;
+     runtime.saved.profiles.profiles = vec![profile()];
 @@ -95,7 +95,7 @@ fn old_catalogue_and_metadata_results_do_not_mutate_suspended_state() {
      sleep(&mut app);
      let runtime = app.ott.as_ref().unwrap();
@@ -44127,6 +44268,15 @@ index 420bacc028195be83df98d29de30bba314c432cb..a917a75793ed763f5ee650a1b0eaa4df
      runtime.metadata_tx.send(crate::app::ott_metadata::Event::Preview(crate::app::ott_metadata::Preview {
          generation: metadata_generation, profile_id: profile().id, entry_id: "first".into(),
          entry: None, result: Ok(json!({"description":"stale description"})),
+@@ -234,7 +234,7 @@ impl Drop for ResetControl {
+     }
+ }
+ 
+-fn failed_pinned_request() -> App {
++fn failed_pinned_request() -> Box<App> {
+     let mut app = prepared();
+     let mut runtime = app.ott.take().unwrap();
+     let mut source = profile();
 diff --git a/rust-modules/src/app/ott_runtime_tests/local_browser.rs b/rust-modules/src/app/ott_runtime_tests/local_browser.rs
 new file mode 100644
 index 0000000000000000000000000000000000000000..70b3fe8d167bf231935f26ca82548274d1b8d035
@@ -46012,19 +46162,110 @@ index b24c447a3b13352d4f17e7971294b7a53e9ccbf3..f9df0c3fcd0aaa51db3a89a395d1eb5a
      assert!(runtime.transient.candidate.is_none());
      assert!(runtime.play_target.is_none());
 diff --git a/rust-modules/src/app/ott_runtime_tests/local_kiosk_resume.rs b/rust-modules/src/app/ott_runtime_tests/local_kiosk_resume.rs
-index aac4697b388e38931b62e8e296bd78f6f7343e59..fd30fb1565f56316f4733097f42dff83309b8a72 100644
+index aac4697b388e38931b62e8e296bd78f6f7343e59..c09bd3e2a8eb84c7498fa36bdd754011341d7021 100644
 --- a/rust-modules/src/app/ott_runtime_tests/local_kiosk_resume.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/local_kiosk_resume.rs
-@@ -178,7 +178,7 @@ fn durable_activation_checkpoints_same_file_but_new_same_folder_command_is_tempo
+@@ -114,12 +114,73 @@ fn designate(app: &mut App) {
+     app.ott = Some(runtime);
+ }
+ 
++/// Qualify only this fixture's saved USB intent through the real worker path.
++/// Mount/identity observations are synthetic; the opened root and device check are not.
++fn qualify_remembered_usb(
++    app: &mut App,
++    root: &local::BoundSource,
++) -> plx_platform::tv::removable::MountCandidate {
++    use crate::app::{ott_local_sources::RememberedFolders, ott_usb as usb};
++    use plx_platform::tv::removable::{identity, MountCandidate};
++
++    let runtime = app.ott.as_mut().unwrap();
++    let folders = RememberedFolders::read(&runtime.saved.settings).unwrap();
++    let binding = folders.folders().iter().find(|folder| folder.id == root.id)
++        .unwrap().usb.clone().expect("remembered stable USB intent");
++    let off = plx_base::task::OffFrame::for_test();
++    let mount_path = std::path::Path::new(root.canonical_path.as_deref().unwrap())
++        .parent().unwrap();
++    let directory = std::fs::File::open(mount_path).unwrap();
++    let device = identity::directory_device(&off, &directory).unwrap();
++    let mount = MountCandidate::directory_device_for_test(
++        mount_path.to_str().unwrap(), 8, device,
++    ).unwrap();
++    let mut dormant = root.clone();
++    dormant.available = false;
++    let usb::Answer::Restored { source, relocation } = usb::execute_with_identity(
++        &off,
++        usb::Task::Restore { binding: binding.clone(), source: dormant },
++        &AtomicBool::new(false),
++        &mut |_, _| Ok(vec![mount.clone()]),
++        &mut |_, mounts, _| Ok(mounts.iter().map(|observed| {
++            identity::IdentityObservation::for_test(
++                observed.clone(),
++                identity::StableIdentity::new(&binding.uuid, observed.filesystem()).unwrap(),
++            )
++        }).collect()),
++    ).unwrap() else {
++        panic!("verified USB restore");
++    };
++    assert!(relocation.is_current(&source));
++    assert!(source.is_live());
++    assert!(source.usb_witness().unwrap().is_observed(&[mount.clone()], root));
++    assert!(source.usb_witness().unwrap().stable_binding() == Some(&binding));
++    let Some(transient::TransientMedia::Local(session)) = runtime.transient.accepted.as_ref()
++    else { panic!("initial Local session"); };
++    let current = session.context.source();
++    let restored = source.descriptor();
++    assert!(current.id == restored.id && current.name == restored.name
++        && current.kind == restored.kind && current.available == restored.available
++        && current.authority_ref == restored.authority_ref
++        && current.generation == restored.generation
++        && current.canonical_path == restored.canonical_path);
++    runtime.local_inventory.install(vec![source], runtime.generation);
++    let selection = runtime.bind_local_selection(root).unwrap();
++    let read = runtime.capture_local_source(&selection).unwrap();
++    assert!(runtime.local_source_read_is_current(&read));
++    let Some(transient::TransientMedia::Local(session)) = runtime.transient.accepted.as_mut()
++    else { panic!("initial Local session"); };
++    session.read = read;
++    mount
++}
++
+ #[test]
+ fn durable_activation_checkpoints_same_file_but_new_same_folder_command_is_temporary() {
+     let _serial = plx_base::testlock::serial();
+     let _reset = Reset;
+     let (_dir, mut app, root) = setup();
+     remembered(&mut app, &root, true);
++    let mount = qualify_remembered_usb(&mut app, &root);
+     install(&mut app, Some(&root), "first");
+     designate(&mut app);
+     checkpoint(&mut app, 23456);
+@@ -170,15 +231,23 @@ fn durable_activation_checkpoints_same_file_but_new_same_folder_command_is_tempo
+     };
+     let request = binding.take().unwrap();
+     let generation = runtime.generation;
+-    let answer = crate::app::ott_catalog::validate_local_bindings_for_test(
++    let answer = crate::app::ott_catalog::validate_local_bindings_observed_for_test(
+         &plx_base::task::OffFrame::for_test(),
+         request,
+         &AtomicBool::new(false),
++        &mut |_, _| Ok(vec![mount.clone()]),
+     )
      .unwrap();
++    assert!(answer.operation_error.is_none());
++    assert_eq!(answer.sources.len(), 1);
++    assert!(answer.sources[0].is_live());
++    assert!(answer.sources[0].same_grant(&runtime.local_inventory.sources[0]));
      transient::binding_result(&mut runtime, &mut app, generation, Ok(answer));
++    assert!(matches!(runtime.transient.candidate.as_ref(),
++        Some(transient::Candidate::Local(candidate))
++            if matches!(&candidate.phase, transient::CandidatePhase::Scanning { .. })));
      let mut incoming = Catalog {
 -        entries: vec![item("new-first")],
 +        hierarchy: None, entries: vec![item("new-first")],
      };
      transient::scan_result(&mut runtime, &mut app, &mut incoming, &mut None);
      assert_eq!(
-@@ -262,7 +262,7 @@ fn admit_pending(app: &mut App) {
+@@ -262,7 +331,7 @@ fn admit_pending(app: &mut App) {
      let after = plx_media::route::play_request_ticket();
      let identity = plx_media::route::playback_identity(&app.player.session);
      assert!(identity.is_some());
@@ -46033,7 +46274,7 @@ index aac4697b388e38931b62e8e296bd78f6f7343e59..fd30fb1565f56316f4733097f42dff83
          archive: None,
          kiosk_selection: None,
          identity,
-@@ -307,7 +307,7 @@ fn cold_prefix(app: &mut App, root: &local::BoundSource, first: &str) {
+@@ -307,7 +376,7 @@ fn cold_prefix(app: &mut App, root: &local::BoundSource, first: &str) {
      transient::kiosk_restore_local_folder(&mut runtime, app, &root.id, &fingerprint).unwrap();
      runtime.resolver_busy = true;
      let mut incoming = Catalog {
@@ -47817,10 +48058,24 @@ index 0000000000000000000000000000000000000000..c5357f57a07e078c210e402cbd536adb
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs b/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs
-index f1433df14dc6d4ad93eea4b5b90c7495082defd9..2745778467630379533d44661c434096915d376b 100644
+index f1433df14dc6d4ad93eea4b5b90c7495082defd9..43f7a7bf4c495cdb31f101f51d7bfed2a1be7e3f 100644
 --- a/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs
-@@ -29,6 +29,13 @@ fn ready(
+@@ -17,10 +17,11 @@ fn ready(
+     local: bool,
+ ) -> (
+     local_integration::TempDir,
+-    App,
++    Box<App>,
+     crate::app::ott_local_session::BoundSource,
+ ) {
+-    let (dir, mut app, root) = local_integration::setup();
++    let (dir, app, root) = local_integration::setup();
++    let mut app = Box::new(app);
+     // The shared lifecycle fixture is inert by default. These admission tests
+     // model a running application with an already-mounted video page.
+     app.running = true;
+@@ -29,6 +30,13 @@ fn ready(
          install_local(&mut app, &root);
      } else {
          local_integration::install(&mut app, None, "playing-selection");
@@ -47834,7 +48089,7 @@ index f1433df14dc6d4ad93eea4b5b90c7495082defd9..2745778467630379533d44661c434096
      }
      let r = app.ott.as_mut().unwrap();
      r.entropy = Some([1; 16]);
-@@ -108,7 +115,7 @@ fn install_local(app: &mut App, root: &crate::app::ott_local_session::BoundSourc
+@@ -108,7 +116,7 @@ fn install_local(app: &mut App, root: &crate::app::ott_local_session::BoundSourc
          Some(source.clone())
      );
      let r = app.ott.as_mut().unwrap();
@@ -47843,7 +48098,16 @@ index f1433df14dc6d4ad93eea4b5b90c7495082defd9..2745778467630379533d44661c434096
          kiosk_selection: None,
          archive: None,
          identity,
-@@ -542,3 +549,51 @@ fn non_session_folder_uses_original_media_withdrawal_fence() {
+@@ -129,7 +137,7 @@ fn install_local(app: &mut App, root: &crate::app::ott_local_session::BoundSourc
+ 
+ fn ready_file() -> (
+     local_integration::TempDir,
+-    App,
++    Box<App>,
+     crate::app::ott_local_session::BoundSource,
+ ) {
+     use crate::app::ott_local_session::SourceKind;
+@@ -542,3 +550,180 @@ fn non_session_folder_uses_original_media_withdrawal_fence() {
      r.local_inventory.install(vec![reopened], 8);
      assert!(action::candidate(r, &playing).is_err());
  }
@@ -47895,6 +48159,135 @@ index f1433df14dc6d4ad93eea4b5b90c7495082defd9..2745778467630379533d44661c434096
 +    assert!(action::capture(r, r.playing.as_ref().unwrap()).is_err());
 +    assert!(action::candidate(r, r.playing.as_ref().unwrap()).is_err());
 +}
++
++// Model the ordinary row admission: unlike Favorite replay it retains the
++// numbered Saved profile with the same original held File grant. No decoder,
++// network or protected write runs in this fixture.
++fn ready_numbered_file() -> (
++    local_integration::TempDir, Box<App>, crate::app::ott_local_session::BoundSource,
++) {
++    let (dir, mut app, root) = ready_file();
++    let r = app.ott.as_mut().unwrap();
++    let mut profile = r.playing.as_ref().unwrap().profile.clone();
++    profile.id = "local-1".into();
++    profile.name = "local 1".into();
++    profile.source_alias = String::new();
++    r.saved.profiles.profiles.push(profile.clone());
++    r.saved.profiles.active_profile = Some(profile.id.clone());
++    r.provider = ProviderKind::Local;
++    r.playing.as_mut().unwrap().profile = profile.clone();
++    r.catalog.entries = vec![r.playing.as_ref().unwrap().entry.clone()];
++    r.catalog_loading = false;
++    r.catalog_complete = true;
++    let (request, admitted, _, _) = r.prepare_play_request(PlaybackRequest::ordinary("first", 0)).unwrap();
++    assert_eq!(admitted, profile, "ordinary rows keep the numbered profile");
++    assert_eq!(request.local_selection, r.playing.as_ref().unwrap().local_selection);
++    assert_ne!(profile, transient::source_profile(&root).unwrap());
++    (dir, app, root)
++}
++
++#[test]
++fn numbered_file_current_and_toggle_use_root_identity_without_rewriting_profile() {
++    let _serial = plx_base::testlock::serial(); let _reset = Reset;
++    let (_dir, mut app, root) = ready_numbered_file();
++    plx_media::player::swap_state_for_test(plx_media::player::PlaybackState::Playing);
++    let mut r = app.ott.take().unwrap();
++    let before = serde_json::to_value(&r.saved).unwrap();
++    let expected = Favorite {
++        title: "first".into(),
++        origin: plx_data::ott::favorites::Origin {
++            provider: "local".into(), profile: "Local videos".into(),
++            subprofile: None, source_alias: root.name.clone(),
++        },
++        locator: plx_data::ott::favorites::Locator::Local {
++            root_alias: root.name.clone(), relative_path: "first.mp4".into(),
++        },
++    };
++    let now = r.now_ms();
++    let body = json!({"commands":[],"server_time":1000,"requests":[{
++        "id":format!("{:032x}",1),"action":"favorites_global_items",
++        "params":{"runtime":"fixture","op":"current","subject":"global"},"expires_at":1020
++    }]}).to_string();
++    let mut requests = r.remote.raw_poll_for_test(&body, now);
++    assert_eq!(requests.len(), 1);
++    let invocation = requests.remove(0);
++    assert!(r.remote.invocation_is_current(&invocation));
++    let response = commands::command(&mut r, &mut app, &invocation).unwrap();
++    assert_eq!(response["status"], "ok");
++    assert_eq!(response["data"]["entry"], serde_json::to_value(&expected).unwrap());
++    assert_eq!(response["data"]["unavailable_reason"], Value::Null);
++    assert_eq!(serde_json::to_value(&r.saved).unwrap(), before, "Current is read-only");
++    let profiles = r.saved.profiles.clone();
++    let (candidate, identity, added) = action::candidate(&r, r.playing.as_ref().unwrap()).unwrap();
++    assert!(added);
++    assert_eq!(candidate.profiles, profiles);
++    assert_eq!(candidate.favorites.entries(), &[expected.clone()]);
++    let replay_profile = transient::source_profile(&root).unwrap();
++    let bindings = r.selection_bindings().unwrap();
++    let permit = candidate.local_favorite_proofs.authorize(
++        &bindings, &candidate.favorites, &expected, &replay_profile,
++    ).unwrap().unwrap();
++    assert_eq!(permit.item_id(), "first");
++    r.saved = candidate;
++    let (request, replay, _, favorite) = r.prepare_play_request(
++        PlaybackRequest::ordinary(&format!("favorite:{identity}"), 0),
++    ).unwrap();
++    assert_eq!(replay, replay_profile);
++    assert_eq!(favorite, Some(expected));
++    assert_eq!(request.local_selection, r.playing.as_ref().unwrap().local_selection);
++    let (removed, removed_identity, added) = action::candidate(&r, r.playing.as_ref().unwrap()).unwrap();
++    assert!(!added);
++    assert_eq!(removed_identity, identity);
++    assert!(removed.favorites.entries().is_empty());
++    assert_eq!(removed.profiles, profiles);
++    app.ott = Some(r);
++}
++
++#[test]
++fn numbered_file_capture_refuses_changed_or_ambiguous_saved_profile() {
++    let _serial = plx_base::testlock::serial(); let _reset = Reset;
++    for mutation in ["removed", "disabled", "renamed", "path", "duplicate", "kind"] {
++        let (_dir, mut app, _) = ready_numbered_file();
++        let r = app.ott.as_mut().unwrap();
++        let playing = r.playing.as_ref().unwrap().clone();
++        let saved = r.saved.profiles.profiles.iter_mut().find(|p| p.id == "local-1").unwrap();
++        match mutation {
++            "disabled" => saved.enabled = false,
++            "renamed" => saved.name = "replacement".into(),
++            "path" => saved.source = "/unrelated/first.mp4".into(),
++            "kind" => saved.kind = ProviderKind::M3u,
++            "removed" => r.saved.profiles.profiles.retain(|p| p.id != "local-1"),
++            "duplicate" => r.saved.profiles.profiles.push(playing.profile.clone()),
++            _ => unreachable!(),
++        }
++        let before = serde_json::to_value(&r.saved).unwrap();
++        assert!(action::capture(r, &playing).is_err(), "{mutation}");
++        assert!(action::candidate(r, &playing).is_err(), "{mutation}");
++        assert_eq!(serde_json::to_value(&r.saved).unwrap(), before);
++        assert!(!r.saving);
++    }
++}
++
++#[test]
++fn numbered_file_capture_keeps_original_handle_and_locator_authority() {
++    let _serial = plx_base::testlock::serial(); let _reset = Reset;
++    let (_dir, mut app, root) = ready_numbered_file();
++    let r = app.ott.as_mut().unwrap();
++    let playing = r.playing.as_ref().unwrap().clone();
++    assert!(action::capture(r, &playing).is_ok());
++    let mut sibling = playing.clone();
++    sibling.entry.media = MediaLocator::Local { relative_path: "sibling.mp4".into() };
++    assert!(action::candidate(r, &sibling).is_err());
++    r.local_inventory.install(r.local_inventory.sources.clone(), 8);
++    assert!(action::candidate(r, &playing).is_ok(), "same retained handle permits receipt refresh");
++    let reopened = crate::app::ott_local_root::LocalSource::acquire_authorized(
++        &plx_base::task::OffFrame::for_test(), root, &mut || true,
++    ).unwrap();
++    r.local_inventory.install(vec![reopened], 9);
++    assert!(action::capture(r, &playing).is_err(), "reopening same path cannot revive original handle");
++    assert!(action::candidate(r, &playing).is_err());
++    assert!(r.saved.favorites.entries().is_empty());
++}
 diff --git a/rust-modules/src/app/ott_runtime_tests/plex_failure.rs b/rust-modules/src/app/ott_runtime_tests/plex_failure.rs
 index e6493dead8f5bc072066a840d3d9903e704406c9..7e6aa8fa22e63b0f5288deb5074243588668ece4 100644
 --- a/rust-modules/src/app/ott_runtime_tests/plex_failure.rs
@@ -47922,7 +48315,7 @@ index d11034856b4bd1d3c7044f547c28a247abac39d6..445b13b70fa656bc98b9d9ea53206bb4
          kiosk_selection: None,
          transient_owner: Some(owner),
 diff --git a/rust-modules/src/app/ott_runtime_tests/plex_queue_remote.rs b/rust-modules/src/app/ott_runtime_tests/plex_queue_remote.rs
-index 0566385ee78ff9ee88dad8ac80da8ec3b16a80c0..0ea9d1483d33289134fbcfd334399c35a144ebd5 100644
+index 0566385ee78ff9ee88dad8ac80da8ec3b16a80c0..0e73e9d9cf6844ba05291cb3930bd0af04e9f8e2 100644
 --- a/rust-modules/src/app/ott_runtime_tests/plex_queue_remote.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/plex_queue_remote.rs
 @@ -224,7 +224,7 @@ fn candidate_id(app: &App) -> String {
@@ -47943,7 +48336,19 @@ index 0566385ee78ff9ee88dad8ac80da8ec3b16a80c0..0ea9d1483d33289134fbcfd334399c35
          kiosk_selection: None,
          archive: None,
          transient_owner: Some(owner),
-@@ -1270,7 +1270,7 @@ fn foreign_server_favorite_with_same_rating_key_cannot_consume_queue_eof_or_be_s
+@@ -1265,12 +1265,19 @@ fn foreign_server_favorite_with_same_rating_key_cannot_consume_queue_eof_or_be_s
+     };
+     let favorite = selection::capture(&profile, &entry).unwrap();
+     let selected = format!("favorite:{}", favorite.identity());
++    // Global Favorites resumes are durable even over a temporary Plex queue.
++    // The foreign queue must neither add its own key nor clear this bookmark.
++    let expected_checkpoints = json!({"favorites": {
++        "entry_id": selected.clone(),
++        "position_ms": 23_000,
++        "source_fingerprint": profile_fingerprint(&profile),
++    }});
+     runtime.saved.favorites.toggle(favorite).unwrap();
+     // The queue predates the global preference; its private compatibility flag
      // deliberately stays false. EOF must consult the durable global selection.
      runtime.saved.favorites_selected = true;
      install_native_identity(&mut app, favorite_sid, "42");
@@ -47952,7 +48357,40 @@ index 0566385ee78ff9ee88dad8ac80da8ec3b16a80c0..0ea9d1483d33289134fbcfd334399c35
          kiosk_selection: None,
          archive: None,
          transient_owner: runtime
-@@ -1701,7 +1701,7 @@ fn directly_opened_foreign_favorite_eof_cannot_wrap_into_the_retained_plex_catal
+@@ -1294,6 +1301,7 @@ fn foreign_server_favorite_with_same_rating_key_cannot_consume_queue_eof_or_be_s
+         .playpos_ns
+         .store(23_000_000_000, Ordering::Release);
+     runtime.checkpoint(&app, true);
++    assert_eq!(serde_json::to_value(&runtime.checkpoints).unwrap(), expected_checkpoints);
+     assert!(!transient::plex_remote::ended(&mut runtime, &mut app),
+         "global Favorites delegates borrowed EOF to the common Favorites list");
+     let saved = serde_json::to_value(&runtime.saved).unwrap();
+@@ -1301,6 +1309,11 @@ fn foreign_server_favorite_with_same_rating_key_cannot_consume_queue_eof_or_be_s
+     assert_eq!(queue_value(&app)["index"], 0);
+     assert_eq!(queue_value(&app)["state"], "paused");
+     assert!(finish_catalog_playback(&mut app));
++    assert_eq!(
++        serde_json::to_value(&app.ott.as_ref().unwrap().checkpoints).unwrap(),
++        expected_checkpoints,
++        "foreign EOF changed the admitted Favorite's resume",
++    );
+     assert_eq!(
+         queue_value(&app)["index"],
+         0,
+@@ -1316,7 +1329,11 @@ fn foreign_server_favorite_with_same_rating_key_cannot_consume_queue_eof_or_be_s
+         "queue Stop cancelled unrelated admitted favorite media"
+     );
+     assert!(runtime.resolver_next.is_none() && runtime.play_target.is_none());
+-    assert!(runtime.checkpoints.is_empty());
++    assert_eq!(
++        serde_json::to_value(&runtime.checkpoints).unwrap(),
++        expected_checkpoints,
++        "queue Stop changed the admitted Favorite's resume",
++    );
+     assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
+ }
+ 
+@@ -1701,7 +1718,7 @@ fn directly_opened_foreign_favorite_eof_cannot_wrap_into_the_retained_plex_catal
      // Supply the admitted native identity at the same boundary as the existing
      // plex_failure fixture, then commit the actual transient admission hook.
      install_native_identity(&mut app, favorite_sid, "42");
@@ -47961,7 +48399,7 @@ index 0566385ee78ff9ee88dad8ac80da8ec3b16a80c0..0ea9d1483d33289134fbcfd334399c35
          kiosk_selection: None,
          archive: None,
          transient_owner: owner,
-@@ -1731,6 +1731,34 @@ fn directly_opened_foreign_favorite_eof_cannot_wrap_into_the_retained_plex_catal
+@@ -1731,6 +1748,34 @@ fn directly_opened_foreign_favorite_eof_cannot_wrap_into_the_retained_plex_catal
      assert_eq!(saved_value(&app), before);
  }
  
@@ -47996,7 +48434,7 @@ index 0566385ee78ff9ee88dad8ac80da8ec3b16a80c0..0ea9d1483d33289134fbcfd334399c35
  
  /// A real external admission without a decoder start. The retained lease is
  /// installed separately, so these fixtures can model both sides of its handoff.
-@@ -1756,7 +1784,7 @@ fn lease_fixture_source(app: &mut App, id: &str, requires_server_lease: bool) {
+@@ -1756,7 +1801,7 @@ fn lease_fixture_source(app: &mut App, id: &str, requires_server_lease: bool) {
      let mut entry = live_entry();
      entry.id = id.into();
      entry.media = MediaLocator::Http { url: format!("https://media.invalid/{id}") };
@@ -48005,7 +48443,7 @@ index 0566385ee78ff9ee88dad8ac80da8ec3b16a80c0..0ea9d1483d33289134fbcfd334399c35
          kiosk_selection: None,
          archive: None,
          identity: plx_media::route::playback_identity(&app.player.session),
-@@ -2111,3 +2139,6 @@ fn failed_native_replacement_play_returns_safe_rejection_for_both_versions() {
+@@ -2111,3 +2156,6 @@ fn failed_native_replacement_play_returns_safe_rejection_for_both_versions() {
          assert_eq!(plx_media::route::playback_identity(&app.player.session), before_identity);
      }
  }
@@ -48352,6 +48790,28 @@ index 0000000000000000000000000000000000000000..802bfd0ec2578a987e474822265702a6
 +    assert_eq!(queue_value(&app)["repeat"], "none", "Off also clears force on a parked queue");
 +    assert_eq!(queue_value(&app)["state"], "paused");
 +}
+diff --git a/rust-modules/src/app/ott_runtime_tests/profile_capacity.rs b/rust-modules/src/app/ott_runtime_tests/profile_capacity.rs
+index 552211c5a2e9d61f907d90b52ef7a335d04a193b..1f2415c683d6610eca149e7c0e1c5c1843aaba33 100644
+--- a/rust-modules/src/app/ott_runtime_tests/profile_capacity.rs
++++ b/rust-modules/src/app/ott_runtime_tests/profile_capacity.rs
+@@ -26,12 +26,15 @@ fn profile(kind: ProviderKind, slot: usize) -> ProviderProfile {
+ }
+ 
+ fn full_runtime(kind: ProviderKind) -> Runtime {
+-    let mut runtime = runtime_fixture();
+-    runtime.loaded = true;
++    // Use the normal decoded-state boundary so settings identities are ready,
++    // then observe the same synthetic profile image without loading a source.
++    let mut app = Box::new(ready_app_fixture());
++    let mut runtime = app.ott.take().unwrap();
+     runtime.provider = kind;
+     runtime.page = "profiles";
+     runtime.saved.profiles.profiles = (1..=15).map(|slot| profile(kind, slot)).collect();
+     runtime.saved.profiles.active_profile = Some(profile(kind, 1).id);
++    runtime.sync_saved_context();
+     runtime
+ }
+ 
 diff --git a/rust-modules/src/app/ott_runtime_tests/profile_setup.rs b/rust-modules/src/app/ott_runtime_tests/profile_setup.rs
 index 700fcb61b3f823921c97e06c66a8cadfded17e5a..d0c26848e997351dbea6cc6d01272e9bd705addb 100644
 --- a/rust-modules/src/app/ott_runtime_tests/profile_setup.rs
@@ -49005,6 +49465,31 @@ index 0000000000000000000000000000000000000000..b295d9bce722b7aa6d84d59951a24723
 +    assert!(app.ott.as_ref().unwrap().view().rows.iter().filter(|row| matches!(row.action, OttAction::EditProfile {..})).all(|row| !row.enabled));
 +    assert!(checked(&mut app, old).is_err());
 +}
+diff --git a/rust-modules/src/app/ott_runtime_tests/programme_remote_keys.rs b/rust-modules/src/app/ott_runtime_tests/programme_remote_keys.rs
+index cc0509d522028632aba109a9a8db2177bfb641e8..a57f2eaf0830bcc37263ba423d33cb38165950c3 100644
+--- a/rust-modules/src/app/ott_runtime_tests/programme_remote_keys.rs
++++ b/rust-modules/src/app/ott_runtime_tests/programme_remote_keys.rs
+@@ -329,7 +329,10 @@ fn queued_physical_command_arrow_never_borrows_native_seek_authority() {
+         let native = crate::app::events::encode_key(0, 489, true);
+         let mut physical = crate::app::events::encode_key(consts::SDLK_RIGHT, 79, true);
+         physical[8..12].copy_from_slice(&1_u32.to_ne_bytes());
+-        physical[24..26].copy_from_slice(&0x0400_u16.to_ne_bytes());
++        // Command alone is an admitted desktop seek on bare video. Add Shift so
++        // this physical chord is genuinely queued, while keeping the HUD hidden:
++        // a mistaken native-remote attribution must still expose an illegal seek.
++        physical[24..26].copy_from_slice(&0x0401_u16.to_ne_bytes());
+         let batch = if native_first { [native, physical] } else { [physical, native] };
+         let before_seek = player::seek_pending();
+         let fr = dispatch_batch_observed(&mut app, &batch, |app, bytes| {
+@@ -338,7 +341,7 @@ fn queued_physical_command_arrow_never_borrows_native_seek_authority() {
+                     event.source == plx_machine::machine::Source::Sdl
+                         && matches!(event.kind, plx_machine::machine::InputKind::Key {
+                             sym: consts::SDLK_RIGHT, .. })),
+-                    "physical Command+Right must really be queued for the shared Player");
++                    "physical Command+Shift+Right must really be queued for the shared Player");
+             }
+         });
+         finish_input(&mut app, &fr);
 diff --git a/rust-modules/src/app/ott_runtime_tests/records.rs b/rust-modules/src/app/ott_runtime_tests/records.rs
 new file mode 100644
 index 0000000000000000000000000000000000000000..f85de51478a1224be623c5f453bdbda7843b4ab1
@@ -49248,10 +49733,38 @@ index 0000000000000000000000000000000000000000..f85de51478a1224be623c5f453bdbda7
 +    assert!(runtime.play_target.is_none() && runtime.resolver_next.is_none());
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/remote_address.rs b/rust-modules/src/app/ott_runtime_tests/remote_address.rs
-index b8d4c56eb3c794295cffb4c801fe985ab2806069..82d9406faf46181bd6975d3b79df5520f5cb02db 100644
+index b8d4c56eb3c794295cffb4c801fe985ab2806069..2244ae3ab35b52f092050384230a266948b52b0d 100644
 --- a/rust-modules/src/app/ott_runtime_tests/remote_address.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/remote_address.rs
-@@ -784,3 +784,82 @@ fn manual_multi_server_rows_bound_domain_labels_without_changing_choices() {
+@@ -103,12 +103,13 @@ fn first_run_key(app: &mut App, key: Key) {
+ 
+ fn first_run_open_body_action(app: &mut App, action: OttAction) {
+     let view = app.ott.as_ref().unwrap().view();
+-    let enabled: Vec<_> = view.rows.iter().filter(|row| row.enabled).collect();
++    // Disabled form rows still take focus; only activation is disabled.
++    // Count the complete body order, but require an enabled destination.
+     let start = view.selected_row.as_ref()
+-        .and_then(|id| enabled.iter().position(|row| row.id == *id))
++        .and_then(|id| view.rows.iter().position(|row| row.id == *id))
+         .unwrap_or(0);
+-    let target = enabled.iter().position(|row| row.action == action)
+-        .expect("first-run body must expose the requested action");
++    let target = view.rows.iter().position(|row| row.enabled && row.action == action)
++        .expect("first-run body must expose the requested enabled action");
+     let direction = if target >= start { Key::Down } else { Key::Up };
+     for _ in 0..target.abs_diff(start) { first_run_key(app, direction); }
+     first_run_key(app, Key::Ok);
+@@ -203,7 +204,8 @@ fn first_run_body_settings_reaches_remote_editor_in_classic_and_modern() {
+             }
+             let before = serde_json::to_value(&app.ott.as_ref().unwrap().saved).unwrap();
+             first_run_open_body_action(&mut app, OttAction::ShowSettings);
+-            assert_eq!(app.ott.as_ref().unwrap().page, "settings");
++            assert_eq!(app.ott.as_ref().unwrap().page, "settings",
++                "mode={mode:?} through_profiles={through_profiles}");
+             first_run_open_body_action(&mut app, OttAction::EditSetting("remote.address".into()));
+             let runtime = app.ott.as_ref().unwrap();
+             let editor = runtime.edit_session.as_ref().expect("real content action opened an editor");
+@@ -784,3 +786,82 @@ fn manual_multi_server_rows_bound_domain_labels_without_changing_choices() {
      assert_eq!(selected["enabled"], false);
      assert_eq!(selected["saving"], false);
  }
@@ -52831,6 +53344,25 @@ index 939322cdcf079f99e12f36b85508612bf74c66c9..138ab20101e6c9d31395b2724b0f320b
 +    assert!(screen.status.is_empty());
 +    assert!(screen.rows.iter().any(|row| row.id.starts_with("stremio.catalog:") && row.enabled));
 +}
+diff --git a/rust-modules/src/app/ott_subtitle_geometry_remote_tests.rs b/rust-modules/src/app/ott_subtitle_geometry_remote_tests.rs
+index da28ce2b7bce7f0b60f7b60da82052a64e82cf37..8cd60eec906f3123f7bd5a9739ad652e1c634791 100644
+--- a/rust-modules/src/app/ott_subtitle_geometry_remote_tests.rs
++++ b/rust-modules/src/app/ott_subtitle_geometry_remote_tests.rs
+@@ -32,8 +32,13 @@ fn geometry_schema_get_set_uses_actual_saved_completion_and_shared_native_consum
+     let first = setting(&mut app, json!({"op":"schema","runtime":"fixture"})).unwrap();
+     assert_eq!(first["status"], "ok");
+     let second = setting(&mut app, json!({"op":"schema","runtime":"fixture","cursor":first["data"]["next_cursor"]})).unwrap();
++    assert_eq!(second["status"], "ok");
+     let ids: Vec<_> = second["data"]["settings"].as_array().unwrap().iter().map(|entry| entry["id"].as_str().unwrap()).collect();
+-    assert!(ids.ends_with(&["nativeSubtitleSize", "nativeSubtitlePosition", "nativeSubtitleTone"]));
++    // Other settings may follow geometry; each geometry field must still appear once, in order.
++    let geometry: Vec<_> = ids.into_iter().filter(|id| matches!(*id,
++        "nativeSubtitleSize" | "nativeSubtitlePosition" | "nativeSubtitleTone"
++    )).collect();
++    assert_eq!(geometry, ["nativeSubtitleSize", "nativeSubtitlePosition", "nativeSubtitleTone"]);
+     let owner = TrackCommitSource::capture(&app.player.session);
+     for (id, value, edit) in [
+         ("nativeSubtitleSize", json!("large"), subtitle_settings::Edit::Size(SubtitleSize::Large)),
 diff --git a/rust-modules/src/app/ott_subtitle_runtime_tests.rs b/rust-modules/src/app/ott_subtitle_runtime_tests.rs
 index f1395287158d8496740d449eda112c0292638818..8df9aff9ba3886f25cd197d05e9412119a3d9693 100644
 --- a/rust-modules/src/app/ott_subtitle_runtime_tests.rs
