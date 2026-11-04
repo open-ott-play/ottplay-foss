@@ -105,6 +105,10 @@ def release_body(inputs):
     except UnicodeDecodeError:
         raise PromotionError("Native release notes must be UTF-8") from None
     require(body.strip() and "\x00" not in body, "Native release notes are empty or contain NUL")
+    require(
+        not re.search(r"\brelease[ \t]+preparation[ \t]*(?:\*\*)?[ \t]*:", body, re.IGNORECASE),
+        "Native release notes still contain a release preparation notice",
+    )
     return body
 
 

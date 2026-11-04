@@ -114,6 +114,37 @@ class ReleaseNotesTests(unittest.TestCase):
         self.commit()
         self.assertEqual(self.body().encode("utf-8"), raw)
 
+    def test_explicit_preparation_notices_are_not_publishable(self):
+        for notice in ("**Release preparation:**", "Release preparation:", "**RELEASE PREPARATION**:"):
+            with self.subTest(notice=notice):
+                self.notes.write_text("# Native release\n\n" + notice + " Package verification is pending.\n", encoding="utf-8")
+                self.commit()
+                with self.assertRaisesRegex(publish.PromotionError, "release preparation notice"):
+                    self.body()
+
+    def test_preparation_notice_removal_requires_a_new_verified_commit(self):
+        self.notes.write_text("**Release preparation:** verification is pending.\n", encoding="utf-8")
+        self.commit()
+        final_notes = "# Native release\n\nRelease preparation completed before publication.\nPackage and source are included; device limits remain documented.\n"
+        self.notes.write_text(final_notes, encoding="utf-8")
+        with self.assertRaisesRegex(publish.PromotionError, "release preparation notice"):
+            self.body()
+        self.commit()
+        self.assertEqual(self.body(), final_notes)
+
+    def test_preparation_notice_stops_publish_before_tag_or_release_writes(self):
+        self.notes.write_text("**Release preparation:** verification is pending.\n", encoding="utf-8")
+        self.commit()
+        checked = publish.validate_inputs(17, self.sha, VERSION, TAG)
+        with patch.object(publish, "ROOT", self.root), \
+                patch.object(publish, "load_receipt", return_value={"inputs": checked}), \
+                patch.object(publish, "verify_source_receipt"), \
+                patch.object(publish, "api_json", return_value=None) as api, \
+                self.assertRaisesRegex(publish.PromotionError, "release preparation notice"):
+            publish.publish(SimpleNamespace(bundle=self.root))
+        self.assertEqual(len(api.call_args_list), 2)
+        self.assertTrue(all(call.kwargs.get("method", "GET") == "GET" for call in api.call_args_list))
+
     def test_exact_size_limit_is_accepted(self):
         self.notes.write_bytes(b"x" * (64 * 1024))
         self.commit()

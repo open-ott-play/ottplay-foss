@@ -90,6 +90,12 @@ Keep the file nonempty and at most 64 KiB, and describe features, limitations,
 and the validation actually performed. Package verification alone does not
 establish television playback compatibility.
 
+An explicit `Release preparation:` notice, including its bold Markdown form,
+blocks publication before a tag or release is created. Keep the notice while
+package verification is pending. Before publishing, replace it with accurate
+release notes and build a new candidate from that committed source. Removing
+the notice is not evidence of hardware validation; report the actual limits.
+
 An absent notes file preserves the generic description used by older versions.
 Untracked files and later checkout edits cannot supply notes. A symlink,
 invalid encoding, empty file, or oversized file stops publication before it
