@@ -160,6 +160,21 @@
 - Align dependency-check fixtures with their current build inputs and record
   original and measured baseline trees in native build comparisons.
 
+### Upgrade
+
+- Existing profiles, Favorites and playback settings are retained. This 1.1.65
+  development line does not require migrating from the shared web player to the
+  experimental native webOS client.
+- Native installation and physical LG playback require separate qualification;
+  software CI does not establish device compatibility.
+
+### Security
+
+- Native package checks validate the actual archive members against bundled
+  library notices and bind linked dependencies to their corresponding source.
+- Native build validation rejects unclassified archives and malformed or unknown
+  build-configuration stamps rather than accepting incomplete provenance.
+
 ## [1.1.64] - 2026-11-04
 
 ### Changes
