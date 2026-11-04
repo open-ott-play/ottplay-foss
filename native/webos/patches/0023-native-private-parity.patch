@@ -41272,7 +41272,7 @@ index 98f84bf62ac4d6ef700b9da90736a1f70c0e41d9..1ee1c615cd53cb6ff91a63c5f9b6ab79
              body: r.body,
          });
 diff --git a/rust-modules/src/app/ott_runtime.rs b/rust-modules/src/app/ott_runtime.rs
-index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b2ade7ed4 100644
+index 9681ec31dfc280aab9cf7b9fd396c897e040857d..52b2f74b3e464a6bbbdb802e980b9e44a638ac2e 100644
 --- a/rust-modules/src/app/ott_runtime.rs
 +++ b/rust-modules/src/app/ott_runtime.rs
 @@ -1,6 +1,8 @@
@@ -41627,7 +41627,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          let (_, favorites) = self.view_selection();
          let category = self.effective_category();
          if favorites {
-@@ -1037,14 +1134,37 @@ impl Runtime {
+@@ -1037,14 +1134,55 @@ impl Runtime {
              self.organization_rows(category).into_iter().map(|(_, entry)|entry.id.clone()).collect()
          }
      }
@@ -41641,6 +41641,24 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
 +            return None;
 +        }
 +        self.folder_row_for(playing)
++    }
++    /// Root files use the current held folder's display name, without changing
++    /// catalogue categories or deriving a label from a path or profile alias.
++    fn local_playing_collection_label(&self, playing: &Playing) -> Option<&str> {
++        if playing.profile.kind != ProviderKind::Local { return None; }
++        let MediaLocator::Local { relative_path } = &playing.entry.media else { return None; };
++        if !plx_data::ott::valid_local_relative_path(relative_path) || relative_path.contains('/') {
++            return None;
++        }
++        let selection = playing.local_selection.clone()
++            .or_else(|| self.local_profile_selection(&playing.profile))?;
++        let root = self.current_local_root(&selection)?;
++        if root.canonical_path.as_deref() != Some(playing.profile.source.as_str())
++            || !plx_data::ott::valid_local_source_label(&root.name)
++        {
++            return None;
++        }
++        Some(root.name.as_str())
 +    }
      fn load_catalog(&mut self) {
 +        self.load_catalog_profile(self.active().cloned(), false);
@@ -41667,7 +41685,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              .and_then(|key| {
                  self.checkpoints
                      .get(&key)
-@@ -1054,10 +1174,13 @@ impl Runtime {
+@@ -1054,10 +1192,13 @@ impl Runtime {
              .map(|value| continuity::ResumePoint {
                  entry_id: value.entry_id.clone(),
                  position_ms: value.position_ms,
@@ -41683,7 +41701,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              self.provider = profile.kind;
              self.page = if self.saved.favorites_selected {
                  "favorites"
-@@ -1084,6 +1207,9 @@ impl Runtime {
+@@ -1084,6 +1225,9 @@ impl Runtime {
      /// Refresh listings without converting an asynchronous completion into a
      /// playback command. In-flight resolvers keep their independent generation.
      fn refresh_catalog_preserving_playback(&mut self) {
@@ -41693,7 +41711,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if self.transient.accepted.is_some() || self.transient.candidate.is_some() { return; }
          let page = self.page;
          let provider = self.provider;
-@@ -1093,7 +1219,7 @@ impl Runtime {
+@@ -1093,7 +1237,7 @@ impl Runtime {
          );
          let resume_pending = self.resume_pending.take();
          let retry = self.continuity_retry_log.take();
@@ -41702,7 +41720,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          self.page = page;
          self.provider = provider;
          continuity.rebase(self.generation);
-@@ -1104,28 +1230,67 @@ impl Runtime {
+@@ -1104,28 +1248,67 @@ impl Runtime {
                  self.now_ms(), self.generation);
          }
      }
@@ -41789,7 +41807,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          let Some(task) = task else { return; };
          if !ott_catalog::start(
              task,
-@@ -1134,6 +1299,7 @@ impl Runtime {
+@@ -1134,6 +1317,7 @@ impl Runtime {
              self.catalog_tx.clone(),
              self.catalog_done.clone(),
          ) {
@@ -41797,7 +41815,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              self.usb_launch_failed();
              transient::launch_failed(self);
              self.status = "Could not start catalogue loader".into();
-@@ -1178,6 +1344,7 @@ impl Runtime {
+@@ -1178,6 +1362,7 @@ impl Runtime {
              return Err("A Favorites operation needs reconciliation");
          }
          category_state::prepare_profile_change(&self.saved, &mut candidate)?;
@@ -41805,7 +41823,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          // Forget proof with an explicitly removed or replaced descriptor. Live
          // mount identity refusal is supplied by the existing Local source owner.
          let previous_roots = super::ott_local_sources::RememberedFolders::read(&self.saved.settings)?;
-@@ -1286,9 +1453,9 @@ impl Runtime {
+@@ -1286,9 +1471,9 @@ impl Runtime {
          let tx = self.tx.clone();
          let cancel = self.begin_plex_restore();
          self.plex_refresh_pending =
@@ -41817,7 +41835,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  }))
                  .unwrap_or_else(|_| vec![Err("Plex restoration worker failed")]);
                  let _ = tx.send(Job::PlexRestored(cancel, result));
-@@ -1303,6 +1470,9 @@ impl Runtime {
+@@ -1303,6 +1488,9 @@ impl Runtime {
          self.suspend_with_retry_reason(app, continuity_diagnostics::Reason::Suspend);
      }
      fn suspend_with_retry_reason(&mut self, app: &mut App, reason: continuity_diagnostics::Reason) {
@@ -41827,7 +41845,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          self.retire_parental_source();
          let preparation_preserved = self.preserve_kiosk_preparation(app);
          self.preserve_admitted_resume(app);
-@@ -1350,6 +1520,7 @@ impl Runtime {
+@@ -1350,6 +1538,7 @@ impl Runtime {
          self.continuity.stop(self.generation);
          self.release_active_lease();
          self.playing = None;
@@ -41835,7 +41853,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          self.changed();
      }
      fn stop_catalog(&mut self, app: &mut App) {
-@@ -1359,6 +1530,8 @@ impl Runtime {
+@@ -1359,6 +1548,8 @@ impl Runtime {
      }
      fn consume_exit(&mut self, app: &mut App) {
          if let Some(exit) = app.player.pending_exit.take() {
@@ -41844,7 +41862,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              self.checkpoint_at(app, true, Some(&exit));
              self.retire_catalog_playback(app);
              let reason = match exit.cause {
-@@ -1372,6 +1545,12 @@ impl Runtime {
+@@ -1372,6 +1563,12 @@ impl Runtime {
      /// Accepted viewer transport commits the currently playing fallback. This
      /// is called by remote and native performers, never by internal clock holds.
      fn viewer_transport(&mut self, app: &App) {
@@ -41857,7 +41875,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if !playback_allowed(app) || app.player.pending_exit.is_some() {
              return;
          }
-@@ -1387,6 +1566,11 @@ impl Runtime {
+@@ -1387,6 +1584,11 @@ impl Runtime {
          if playing_superseded(playing, app) {
              return;
          }
@@ -41869,7 +41887,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          let id = playing.selection_id.clone();
          self.playback_epoch = self.playback_epoch.wrapping_add(1);
          if restoring {
-@@ -1442,6 +1626,7 @@ impl Runtime {
+@@ -1442,6 +1644,7 @@ impl Runtime {
          let plex_failure = transient::plex_remote::failure_event(self, app);
          self.checkpoint(app, false);
          self.playing = None;
@@ -41877,7 +41895,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          self.release_active_lease();
          plx_media::player::stop_bufferfeed(&mut app.player.session, &mut app.adapters.player);
          plx_media::route::cancel_play(&mut app.player.session);
-@@ -1530,7 +1715,17 @@ impl Runtime {
+@@ -1530,7 +1733,17 @@ impl Runtime {
              else {
                  break;
              };
@@ -41896,7 +41914,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  Ok(()) => {
                      self.restore_play_generation = (reason == continuity::Reason::Restore)
                          .then_some(self.play_generation);
-@@ -1583,6 +1778,43 @@ impl Runtime {
+@@ -1583,6 +1796,43 @@ impl Runtime {
      fn checkpoint(&mut self, app: &App, force: bool) {
          self.checkpoint_at(app, force, None);
      }
@@ -41940,7 +41958,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      fn checkpoint_at(
          &mut self,
          app: &App,
-@@ -1622,18 +1854,37 @@ impl Runtime {
+@@ -1622,18 +1872,37 @@ impl Runtime {
          } else {
              playing.profile.id.clone()
          };
@@ -41980,7 +41998,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          else { self.checkpoints.insert(
              key,
              SavedResume {
-@@ -1744,9 +1995,37 @@ impl Runtime {
+@@ -1744,9 +2013,37 @@ impl Runtime {
          Ok(())
      }
      fn launch_metadata(&mut self) {
@@ -42018,7 +42036,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if !self.metadata_work_allowed() { return; }
          if matches!(self.metadata_next.as_ref(), Some((_, MetadataSelection::LocalPublish(_)))) { return; }
          if !self.metadata_done.load(Ordering::Acquire) {
-@@ -1774,7 +2053,10 @@ impl Runtime {
+@@ -1774,7 +2071,10 @@ impl Runtime {
                  self.metadata_done.clone(),
              )),
              MetadataSelection::Favorite(favorite, local_proof) => query.is_some_and(|query| {
@@ -42030,7 +42048,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                      super::ott_metadata::start_attachment_favorite(receipt,favorite,self.metadata_generation,
                          query,self.metadata_cancel.clone(),
                          self.metadata_tx.clone(),self.metadata_done.clone())
-@@ -1853,15 +2135,23 @@ impl Runtime {
+@@ -1853,15 +2153,23 @@ impl Runtime {
          self.organization_categories().into_iter().find(|category| category.id == id).map(|category| category.title)
      }
  
@@ -42055,7 +42073,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if let Some(mut view) = companion_adapter::view(self) {
              if let Some(status) = self.protected_state_status() {
                  view.status = status.into();
-@@ -1875,7 +2165,8 @@ impl Runtime {
+@@ -1875,7 +2183,8 @@ impl Runtime {
          let search = self.search_filter();
          let media_resume = self.ui_media_resume();
          let favorite_index = self.selection_bindings().ok().and_then(|bindings|self.row_owner()
@@ -42065,7 +42083,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          let mut rows: Vec<OttRow> = match self.page {
              "profile-setup" => self.setup.as_ref().map(|setup| {
                  let editable = self.pending_setup_save != Some(setup.id);
-@@ -1924,10 +2215,25 @@ impl Runtime {
+@@ -1924,10 +2233,25 @@ impl Runtime {
              .collect(),
              "profiles" => {
                  let mut profiles: Vec<_> = self.saved.profiles.profiles.iter()
@@ -42094,7 +42112,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  if self.provider != ProviderKind::Plex {
                      let refusal = self.profile_add_refusal();
                      let mut add = row("action/profile.add".into(), "Add profile".into(),
-@@ -1941,8 +2247,15 @@ impl Runtime {
+@@ -1941,8 +2265,15 @@ impl Runtime {
                      connect.enabled = self.loaded && !self.saving;
                      profiles.push(connect);
                  }
@@ -42110,7 +42128,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              "categories" => std::iter::once(row(
                  "all".into(),
                  "All".into(),
-@@ -1993,6 +2306,8 @@ impl Runtime {
+@@ -1993,6 +2324,8 @@ impl Runtime {
                      if let Some(entry) = preview {
                          item.guide_available = self.prepare_play_request(PlaybackRequest::ordinary(&id, 0))
                              .is_ok_and(|(_, profile, _, _)| guide_ui::is_live(&profile, entry));
@@ -42119,7 +42137,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                          item.description = entry.description.clone();
                          item.poster = if matches!(entry.media, MediaLocator::Local { .. }) { self.local_entry_art(entry) } else { entry_poster(entry) };
                      }
-@@ -2010,7 +2325,16 @@ impl Runtime {
+@@ -2010,7 +2343,16 @@ impl Runtime {
                  ("remote.address", "Remote control server"),
                  ("remote.find", "Find command server"),
                  ("uiFontScale", "Interface text scale (%)"),
@@ -42136,7 +42154,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  ("native.audio", "Audio tracks"),
                  ("native.subtitles", "Subtitles and appearance"),
                  ("native.settings", "Playback and interface settings"),
-@@ -2030,18 +2354,25 @@ impl Runtime {
+@@ -2030,18 +2372,25 @@ impl Runtime {
                      id.into(),
                      title.into(),
                      if id == "uiFontScale" { format!("{}%", self.font_scale_percent()) }
@@ -42163,7 +42181,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  if id == "remote.find" {
                      item.enabled = self.remote_snapshot["persisted"] != false && self.remote_snapshot["saving"] != true;
                  }
-@@ -2066,6 +2397,7 @@ impl Runtime {
+@@ -2066,6 +2415,7 @@ impl Runtime {
                              .is_some_and(|index| index.contains(e)),
                      );
                      item.guide_available = self.effective_profile().is_some_and(|profile| guide_ui::is_live(profile, e));
@@ -42171,7 +42189,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                      item.content_title = Some(e.title.clone());
                      item.media = ui_projection::entry(e, &e.id, media_resume);
                      item.guide = self.selected_row_guide(&e.id, Some(e));
-@@ -2170,12 +2502,17 @@ impl Runtime {
+@@ -2170,12 +2520,17 @@ impl Runtime {
                  else { self.organization_category_id(effective_category) }),
              "settings" => self.settings_focus.filter(|id| rows.iter().any(|row| row.enabled && row.id == *id))
                  .map(str::to_owned),
@@ -42190,7 +42208,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          };
          let page_id = if self.page == "profile-setup" {
              format!("profile-setup:{}", self.setup.as_ref()
-@@ -2185,7 +2522,7 @@ impl Runtime {
+@@ -2185,7 +2540,7 @@ impl Runtime {
          } else {
              self.search_page_id().unwrap_or_else(|| self.page.into())
          };
@@ -42199,7 +42217,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              preview_context: preview::context(self),
              order_context: self.local_order_key(),
              random_context: random::context(self, &rows),
-@@ -2197,13 +2534,16 @@ impl Runtime {
+@@ -2197,13 +2552,16 @@ impl Runtime {
                  "providers" => "Providers",
                  "profiles" => "Profiles",
                  "profile-setup" => "Profile setup",
@@ -42217,7 +42235,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  "Enter the connection details supplied by your provider".into()
              } else if self.page == "settings" && self.remote_snapshot["pairing_server"].as_str().is_some_and(|s| !s.is_empty()) {
                  self.remote_snapshot["pairing_server"].as_str().unwrap_or("").into()
-@@ -2297,10 +2637,18 @@ impl Runtime {
+@@ -2297,10 +2655,18 @@ impl Runtime {
              return Err("This profile changed; reopen its setup before saving");
          }
          let mut candidate = self.saved.clone();
@@ -42236,7 +42254,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              candidate.profiles.profiles.push(profile.clone());
          }
          candidate.profiles.active_profile = Some(profile.id);
-@@ -2316,6 +2664,7 @@ impl Runtime {
+@@ -2316,6 +2682,7 @@ impl Runtime {
              return;
          }
          self.complete_archive_hours(session);
@@ -42244,7 +42262,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if let Some(profile) = self.edit_profile.as_ref().and_then(|draft|
              self.saved.profiles.profiles.iter().find(|current| current.id == draft.id)).cloned()
          {
-@@ -2339,6 +2688,7 @@ impl Runtime {
+@@ -2339,6 +2706,7 @@ impl Runtime {
      }
  
      fn recover_plex_profiles(&mut self, app: &mut App, explicit: bool) -> Result<(), &'static str> {
@@ -42252,7 +42270,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          use super::ott_plex_setup::{self, PlexSetupPlan, PlexSetupServer};
          self.profile_focus = None;
          self.plex_omitted_servers = 0;
-@@ -2347,6 +2697,7 @@ impl Runtime {
+@@ -2347,6 +2715,7 @@ impl Runtime {
          let servers: Vec<_> = plx_plex::plex::server_ids().into_iter().filter_map(|sid| {
              let client = plx_plex::plex::client_for(sid)?;
              let machine_id = client.machine_id();
@@ -42260,7 +42278,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              if machine_id.is_empty()
                  || !plx_plex::plex::grant::credential_allowed_for(machine_id, client.origin())
              {
-@@ -2367,6 +2718,7 @@ impl Runtime {
+@@ -2367,6 +2736,7 @@ impl Runtime {
          }
          if let Some(error) = self.settings_write_refusal() { return Err(error); }
          match ott_plex_setup::plan(&self.saved.profiles, &servers)? {
@@ -42268,7 +42286,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              PlexSetupPlan::Login => app.pages.emit(MachineId::Nav,
                  Fx::App(plx_screens::registry::AppFx::Loop(
                      plx_screens::registry::LoopReq::AccountSignIn))),
-@@ -2387,6 +2739,7 @@ impl Runtime {
+@@ -2387,6 +2757,7 @@ impl Runtime {
  
      fn cancel_editor(&mut self) {
          self.archive_hours_editor = None;
@@ -42276,7 +42294,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          self.organization_cancel_editor();
          self.edit_session = None;
          self.edit_profile = None;
-@@ -2395,6 +2748,47 @@ impl Runtime {
+@@ -2395,6 +2766,47 @@ impl Runtime {
          // a draft must neither cancel that write nor retarget its result.
      }
  
@@ -42324,7 +42342,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      fn editor_result(&mut self, app: &mut App, session: &EditorSession, error: Option<String>) {
          if error.is_none() && self.edit_session.as_ref() == Some(session) {
              self.cancel_editor();
-@@ -2405,7 +2799,7 @@ impl Runtime {
+@@ -2405,7 +2817,7 @@ impl Runtime {
                  MachineId::Instance(session.owner),
                  Delivery::Screen(plx_ui::screen::ScreenEvent::App(AppMsg::OttEditorResult {
                      session: session.id,
@@ -42333,7 +42351,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  })),
              ),
          );
-@@ -2424,11 +2818,18 @@ impl Runtime {
+@@ -2424,11 +2836,18 @@ impl Runtime {
              );
          }
      }
@@ -42352,7 +42370,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          self.restore_play_generation = None;
          self.play_ticket = None;
          self.resolver_next = None;
-@@ -2438,6 +2839,7 @@ impl Runtime {
+@@ -2438,6 +2857,7 @@ impl Runtime {
          }
      }
      fn rebind_native_admission(&mut self,app:&App,profile:&ProviderProfile,entry:&CatalogEntry)->Result<(),&'static str> {
@@ -42360,7 +42378,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if favorites_items::pending_error(self).is_some() { return Err("Favorite selection changed before playback"); }
          let request=self.play_target.as_ref().ok_or("Playback request is no longer current")?.clone();
          let (bound,bound_profile,bound_entry,favorite)=match transient::staged_native_binding(self,&request) {
-@@ -2459,6 +2861,7 @@ impl Runtime {
+@@ -2459,6 +2879,7 @@ impl Runtime {
          kiosk_capture::explicit_admitted(self);
          Ok(())
      }
@@ -42368,7 +42386,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      fn play(&mut self, app: &mut App, id: &str) -> Result<(), &'static str> {
          self.play_with_policy(app, id, true)
      }
-@@ -2472,6 +2875,9 @@ impl Runtime {
+@@ -2472,6 +2893,9 @@ impl Runtime {
          self.play_request_with_policy(app,request)
      }
      fn play_request_with_policy(&mut self,app:&mut App,request:PlaybackRequest)->Result<(),&'static str> {
@@ -42378,7 +42396,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if !self.play_work_allowed() {
              return Err("Media work is waiting for foreground or worker retirement");
          }
-@@ -2480,6 +2886,7 @@ impl Runtime {
+@@ -2480,6 +2904,7 @@ impl Runtime {
          if !transient::lifecycle_target_ready(self, &profile, request.local_selection.as_ref()) {
              return Err("The local source is still being validated");
          }
@@ -42386,7 +42404,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          let policy_profile=self.attachment_policy_profile(&profile,favorite.as_ref())?;
          self.require_parental_playback(&policy_profile)?;
          kiosk_source::admit_bound(self,app,kiosk_source::BoundCandidate {request:&request,profile:&profile,entry:entry.as_ref(),favorite:favorite.as_ref()}).map_err(kiosk_source::SourceError::message)?;
-@@ -2487,9 +2894,10 @@ impl Runtime {
+@@ -2487,9 +2912,10 @@ impl Runtime {
          self.resume_pending=None;
          self.playback_epoch=self.playback_epoch.wrapping_add(1);
          self.continuity.user_selected(self.generation,&id);
@@ -42398,7 +42416,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              if let Some(playing) = self.playing.as_ref() {
                  self.continuity
                      .retain_selection(self.generation, &playing.selection_id);
-@@ -2573,7 +2981,11 @@ impl Runtime {
+@@ -2573,7 +2999,11 @@ impl Runtime {
          self.queue_play_request(request,profile,entry,favorite,true)
      }
      fn queue_play_request(&mut self, request:PlaybackRequest, profile:ProviderProfile,
@@ -42411,7 +42429,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if !self.play_work_allowed() {
              return Err("Media work is waiting for foreground or worker retirement");
          }
-@@ -2594,7 +3006,9 @@ impl Runtime {
+@@ -2594,7 +3024,9 @@ impl Runtime {
          let selected_id = request.id.clone();
          let archive = request.archive.clone();
          self.play_target=Some(request);
@@ -42421,7 +42439,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          transient::plex_remote::selected(self, &selected_id);
          self.status="Opening video…".into();
          self.resolver_next=Some(ResolveRequest{archive,generation:self.play_generation,profile,entry,favorite,local_proof,cancel:self.play_cancel.clone(),plex:None,plex_choice,local_read});
-@@ -2623,6 +3037,17 @@ impl Runtime {
+@@ -2623,6 +3055,17 @@ impl Runtime {
          }
      }
      fn launch_resolver(&mut self) -> Result<(), &'static str> {
@@ -42439,7 +42457,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if self.resolver_next.is_some() && !self.pending_attachment_current() { return Err("M3U media attachment changed before lookup"); }
          if !self.play_work_allowed() { return Ok(()); }
          if self.resolver_busy {
-@@ -2642,6 +3067,12 @@ impl Runtime {
+@@ -2642,6 +3085,12 @@ impl Runtime {
              archive, generation, profile, entry, favorite, local_proof, cancel, plex, plex_choice, local_read,
          } = request;
          let sender = self.tx.clone();
@@ -42452,7 +42470,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          // Preparation only reads Plex metadata. An actual prepared choice is
          // a replacement: transfer the previous lease to this same worker so
          // its stop completion is drained before native Plex admission.
-@@ -2662,9 +3093,9 @@ impl Runtime {
+@@ -2662,9 +3111,9 @@ impl Runtime {
                      .lock()
                      .unwrap_or_else(|poison| poison.into_inner())
                      .take();
@@ -42465,7 +42483,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  if cancel.load(Ordering::Relaxed) {
                      return Err("Playback request cancelled");
                  }
-@@ -2697,23 +3128,20 @@ impl Runtime {
+@@ -2697,23 +3146,20 @@ impl Runtime {
                      let (source, lease) = if matches!(entry.media, MediaLocator::Local { .. }) {
                          (transient::open_video_source(worker, local_read.as_ref(), &profile, &entry, &cancel)?, None)
                      } else {
@@ -42497,7 +42515,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  };
                  if cancel.load(Ordering::Relaxed) {
                      if let ReadySource::External(_, _, Some(lease)) = ready {
-@@ -2721,16 +3149,24 @@ impl Runtime {
+@@ -2721,16 +3167,24 @@ impl Runtime {
                      }
                      return Err("Playback request cancelled");
                  }
@@ -42524,7 +42542,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              if let Some(lease) = previous_lease.lock().unwrap_or_else(|poison| poison.into_inner()).take() {
                  self.active_lease = Some(lease);
              }
-@@ -2829,6 +3265,10 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2829,6 +3283,10 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
              Job::FavoriteCommit(result) => favorites::finish(runtime, result),
              Job::FavoriteRecovery(result) => favorites_recovery::finish(runtime, result),
              Job::PlexPrepared(..) => { runtime.resolver_busy = false; }
@@ -42535,7 +42553,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              Job::Play(_, _, result) => {
                  runtime.resolver_busy = false;
                  if let Ok((_, ReadySource::External(_, _, Some(lease)))) = result {
-@@ -2848,6 +3288,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2848,6 +3306,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
      let started = ClockSample::capture_main(app.adapters.player.mt()).ok();
      Runtime::withdraw_reminder_ui(app);
      runtime.reminders.invalidate();
@@ -42543,7 +42561,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      runtime.reminder_save = None;
      runtime.consume_exit(app);
      runtime.checkpoint(app, false);
-@@ -2863,7 +3304,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2863,7 +3322,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
      transient::plex_remote::cancel_shutdown(&runtime);
      runtime.cancel_play_request();
      runtime.cancel_catalog();
@@ -42552,7 +42570,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      if let Some(lease) = runtime.active_lease.take() {
          lease.begin_release();
          leases.push(lease.into_lease());
-@@ -2920,6 +3361,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2920,6 +3379,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
          transient::revoke_unavailable_proofs(&runtime, &mut saved);
          kiosk_resume::merge(&mut saved, &runtime.checkpoints);
          kiosk_resume::sanitize(&mut saved);
@@ -42560,7 +42578,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          let _ = favorites::write_verified(&saved, &runtime.write_permit);
      }
      for lease in leases {
-@@ -2933,8 +3375,17 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2933,8 +3393,17 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
  
  /// Synchronous native-input handoff, after the media performer accepted it.
  pub(super) fn viewer_transport(app: &mut App) {
@@ -42579,7 +42597,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          app.ott = Some(runtime);
      }
  }
-@@ -2942,12 +3393,14 @@ pub(super) fn viewer_transport(app: &mut App) {
+@@ -2942,12 +3411,14 @@ pub(super) fn viewer_transport(app: &mut App) {
  pub(super) fn track_request(app: &mut App, request: plx_screens::registry::PlayerReq)
      -> Option<plx_screens::registry::PlayerReq>
  {
@@ -42596,7 +42614,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
  }
  
  /// Validate queued remote track work before the native pump consumes it. The
-@@ -2963,6 +3416,16 @@ pub(super) fn before_playback_tick(app: &mut App) {
+@@ -2963,6 +3434,16 @@ pub(super) fn before_playback_tick(app: &mut App) {
  }
  
  pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSample) {
@@ -42613,7 +42631,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      let programme_changed = observe_programme(app, clock_sample.unix_ms());
      let Some(mut runtime) = app.ott.take() else {
          app.bridge.publish_ott_catalog_offer(None);
-@@ -2982,12 +3445,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -2982,12 +3463,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          app.rec
              .refuse("Nondefault UI typography is not bound in this recording format");
      }
@@ -42629,7 +42647,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  runtime.persistence_uncertain = true;
                  Job::Loaded(Ok((saved, entropy)))
              },
-@@ -2995,6 +3460,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -2995,6 +3478,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          };
          match job {
              Job::LoadedItemsUncertain(_, _) => unreachable!("load uncertainty normalized above"),
@@ -42637,7 +42655,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              Job::Parental(completion) => parental_runtime::completed(&mut runtime, app, completion),
              Job::Loaded(result) => {
                  runtime.kiosk_capture.cancel_unwritten();
-@@ -3004,8 +3470,12 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3004,8 +3488,12 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let browse = (runtime.page, runtime.provider);
                  match result {
                      Ok((saved, entropy)) => {
@@ -42650,7 +42668,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                          runtime.saved = saved;
                          transient::local_save_finished(&mut runtime, true);
                          runtime.sync_saved_context();
-@@ -3013,7 +3483,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3013,7 +3501,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          runtime.parental_authoritative_load();
                          runtime.status.clear();
                          if let Err(error) = runtime.load_reminders(app) { runtime.status = error.into(); }
@@ -42659,7 +42677,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                              runtime.status = error.into();
                          }
                          if let Err(error) = runtime
-@@ -3028,6 +3498,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3028,6 +3516,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          } else {
                              runtime.plex_refresh_requested = true;
                              let kiosk_startup = runtime.stage_kiosk_startup(app);
@@ -42667,7 +42685,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                              if runtime.active().is_some() {
                                  if runtime.navigation_epoch == 0 {
                                      runtime.load_catalog();
-@@ -3080,6 +3551,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3080,6 +3569,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          (Err(Cow::Owned(save_error::message(error))), invocation, reload, response),
                      _ => unreachable!("matched settings write completion"),
                  };
@@ -42675,7 +42693,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  let browse = (runtime.page, runtime.provider);
                  let navigation = std::mem::replace(&mut runtime.save_navigation, SaveNavigation::Preserve);
                  let ui_owner = runtime.save_ui_owner.take();
-@@ -3102,7 +3574,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3102,7 +3592,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let usb_activation_ready = result.as_ref().is_ok_and(|candidate|
                      owner_current && runtime.save_playback_epoch == runtime.playback_epoch
                          && runtime.usb_save_ready(candidate));
@@ -42685,7 +42703,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  let mut editor_error = None;
                  let setup_persisted = result.is_ok();
                  let capture_write=invocation.is_none() && runtime.kiosk_capture.pending();
-@@ -3126,10 +3599,19 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3126,10 +3617,19 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          if (source_changed && restore_allowed) || usb_ready {
                              runtime.invalidate_source(app);
                          }
@@ -42705,7 +42723,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                          runtime.usb_save_finished(usb_ready);
                          kiosk_resume::reconciled(&mut runtime);
                          runtime.parental_confirmed();
-@@ -3151,7 +3633,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3151,7 +3651,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                                      super::ott_import::register_verified(&source).map(|_| ())
                                  })
                              })
@@ -42715,7 +42733,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                          kiosk_settings_applied = applied.is_ok();
                          if let Err(error) = applied {
                              subtitle_outcome = TrackCommitOutcome::Rejected(TrackCommitFailure::Unavailable);
-@@ -3176,7 +3659,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3176,7 +3677,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                                      } else {
                                          runtime.continuity.suppress_unrequested_start();
                                      }
@@ -42726,7 +42744,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                                  }
                              }
                              response
-@@ -3192,6 +3677,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3192,6 +3695,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          response
                      }
                  };
@@ -42734,7 +42752,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  if let Some(startup) = usb_startup { runtime.finish_usb_startup(app, startup); }
                  if !may_navigate || usb_preserve_browse {
                      (runtime.page, runtime.provider) = browse;
-@@ -3235,10 +3721,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3235,10 +3739,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.remote.complete(invocation, response);
                  }
                  if let Some(pending) = subtitle_save { pending.finish(app, subtitle_outcome); }
@@ -42748,7 +42766,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  runtime.kiosk_capture.cancel_unwritten();
                  let capture_write=invocation.is_none() && runtime.kiosk_capture.pending();
                  runtime.parental_uncertain();
-@@ -3389,7 +3878,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3389,7 +3896,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.changed();
                  }
              }
@@ -42762,7 +42780,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  runtime.restore_play_generation = None;
                  let superseded = runtime
                      .play_ticket
-@@ -3448,8 +3943,23 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3448,8 +3961,23 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                              runtime.retire_result(Ok((entry,source)));
                              return Err(error);
                          }
@@ -42787,7 +42805,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                          native_start=Some(NativeStartReceipt {generation,before,after:plx_media::route::play_request_ticket()});
                          result
                      })
-@@ -3527,7 +4037,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3527,7 +4055,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      }
      runtime.reconcile_m3u_attachment(app);
      let resolver_generation = runtime.play_generation;
@@ -42796,7 +42814,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          transient::plex_remote::resolver_failed(&mut runtime);
          // Synchronous resolver refusal has the same kiosk-before-catalog order.
          let pinned_retry = runtime.kiosk_resolve_failed(app, runtime.play_generation);
-@@ -3555,18 +4065,40 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3555,18 +4083,40 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      // immutable screen model. Large local folders must not rebuild the full list
      // once for every 64 files that arrived during the same frame.
      runtime.rearm_source_work(app);
@@ -42839,7 +42857,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              }
              CatalogEvent::Finished(generation, result) if generation == runtime.generation => {
                  runtime.catalog_warning = None;
-@@ -3581,11 +4113,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3581,11 +4131,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          }
      }
      transient::scan_result(&mut runtime,app,&mut incoming,&mut finished);
@@ -42854,7 +42872,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              finished = None;
          } else {
              runtime.catalog_revision = runtime.catalog_revision.wrapping_add(1);
-@@ -3605,12 +4139,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3605,12 +4157,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  .map(|(_, warning)| warning.to_owned())
                  .unwrap_or_else(|| format!("{} videos", runtime.catalog.entries.len())));
          runtime.changed();
@@ -42869,7 +42887,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  if guide_ui::accept_failure(&mut runtime, &event) { continue; }
                  event
              },
-@@ -3631,6 +4167,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3631,6 +4185,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  continue;
              }
          };
@@ -42879,7 +42897,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if !runtime.metadata_attachment_current() { continue; }
          if let Some(binding)=runtime.metadata_local_selection.as_ref(){
              let current=runtime.saved.favorites.entries().iter().find(|f|event.entry_id==format!("favorite:{}",f.identity()));
-@@ -3696,7 +4235,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3696,7 +4253,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      if updated != entry
                          && runtime
                              .catalog
@@ -42888,7 +42906,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                                  entries: vec![updated],
                              })
                              .is_ok()
-@@ -3741,7 +4280,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3741,7 +4298,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      transient::cleanup_local_proofs(&mut runtime);
      transient::pending_tick(&mut runtime,app);
      runtime.poll_local_assets(app);
@@ -42897,7 +42915,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      if playback_allowed(app) {
          live_hud::rearm_player(&mut runtime, app);
          runtime.refresh_metadata();
-@@ -3765,6 +4304,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3765,6 +4322,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          };
          if let Some(request) = resume {
              let exact = !request.advance_on_failure;
@@ -42906,7 +42924,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              let result = if request.continuation.as_ref().is_some_and(|identity|
                  !plx_media::route::playback_identity_matches(&app.player.session, identity))
              {
-@@ -3776,6 +4317,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3776,6 +4335,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  runtime.play_request(request)
              };
              if result.is_ok() {
@@ -42914,7 +42932,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  if let Some(attempt) = kiosk_source::admitted_pinned_request(&runtime) {
                      runtime.note_kiosk_attempt(attempt);
                  }
-@@ -3785,13 +4327,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3785,13 +4345,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.continuity.stop(runtime.generation);
                  }
                  runtime.play_target = None;
@@ -42931,7 +42949,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              let ids = runtime.ordered_ids();
              let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
              let decision = runtime.continuity.catalog_updated(
-@@ -3835,10 +4377,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3835,10 +4395,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
              OttOut::Action { reply, action } => {
                  runtime.reply = Some(reply);
                  let navigates = match &action {
@@ -42948,7 +42966,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                      OttAction::EditSetting(key) if key == "local.usb" || key.starts_with("local.usb.select:")
                          || key.starts_with("local.usb.browse:") => false,
                      OttAction::Back if runtime.usb_browsing() => false,
-@@ -3850,36 +4395,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3850,36 +4413,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                              && matches!(editor.purpose, search::EditorPurpose::Search { .. })),
                      OttAction::CancelSetting { session } => runtime.edit_session.as_ref()
                          .is_some_and(|editor| editor.id == *session && editor.owner == reply),
@@ -42988,7 +43006,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  if runtime.reply.is_none() { break; }
              }
          }
-@@ -3889,8 +4411,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3889,8 +4429,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      let state = state(app, &runtime);
      for invocation in runtime.remote.tick(now, state) {
          let response = if let Err(error) = input_policy::remote(&mut runtime, &invocation) {
@@ -42999,7 +43017,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          } else if matches!(
              invocation.action.as_str(),
              "native_companion" | "torrent_indexer"
-@@ -3901,6 +4423,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3901,6 +4441,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          } else {
              commands::command(&mut runtime, app, &invocation)
          };
@@ -43009,7 +43027,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if let Some(response) = response {
              runtime.remote.complete(invocation, response);
          }
-@@ -3913,9 +4438,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3913,9 +4456,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          runtime.remote_snapshot = snapshot;
          runtime.changed();
      }
@@ -43024,7 +43042,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      // Consume failed-start deadlines only after viewer and remote commands, so
      // Stop/standby/source changes win even on the frame a retry becomes due.
      if playback_allowed(app) && runtime.play_work_allowed() && runtime.play_target.is_none()
-@@ -3936,6 +4466,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3936,6 +4484,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      if !plx_appkit::menu_visibility::projected().is_default() {
          app.rec.refuse("Nondefault menu visibility is not bound in this recording format");
      }
@@ -43033,7 +43051,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      let programme_dirty=programme_changed || runtime.revision != before;
      publish_programme(&mut runtime, app, programme_dirty);
      if runtime.revision != before {
-@@ -3945,40 +4477,111 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3945,40 +4495,111 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      app.ott = Some(runtime);
  }
  
@@ -43150,7 +43168,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              | OttAction::PlayArchive { .. } | OttAction::ReturnLive { .. } | OttAction::ToggleReminder { .. }
              => unreachable!("guide action was handled above"),
          OttAction::ReminderAnswer { .. } => return Err("Reminder reply must come from the player"),
-@@ -3990,6 +4593,10 @@ fn handle_action(
+@@ -3990,6 +4611,10 @@ fn handle_action(
              | OttAction::CancelSearch { .. } => unreachable!("search action was handled above"),
          OttAction::ShowProviders => { runtime.cancel_setup(); runtime.page = "providers"; }
          OttAction::ShowProfiles => { runtime.cancel_setup(); runtime.page = "profiles"; }
@@ -43161,7 +43179,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          OttAction::ShowCategories => { runtime.cancel_setup(); runtime.page = "categories"; }
          OttAction::ShowFavorites => {
              runtime.save_category_choice(None)?;
-@@ -4014,6 +4621,18 @@ fn handle_action(
+@@ -4014,6 +4639,18 @@ fn handle_action(
                  runtime.recover_plex_profiles(app, false)?;
              }
          }
@@ -43180,7 +43198,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          OttAction::SelectProfile(id) => {
              let mut saved = runtime.saved.clone();
              saved.profiles.active_profile = Some(id);
-@@ -4038,12 +4657,16 @@ fn handle_action(
+@@ -4038,12 +4675,16 @@ fn handle_action(
                      .ok_or("Video not found")?;
                  let bindings=runtime.selection_bindings().map_err(|_|"Source inventory is invalid")?;
                  let owner=runtime.row_owner().ok_or("Select a provider profile")?;
@@ -43197,7 +43215,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          OttAction::Preview(id) => {
              if id.starts_with("favorite:") {
                  return runtime.request_favorite_metadata(&id);
-@@ -4060,13 +4683,24 @@ fn handle_action(
+@@ -4060,13 +4701,24 @@ fn handle_action(
                  }
              }
          }
@@ -43223,7 +43241,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              runtime.cancel_setup();
          }
          OttAction::Refresh => {
-@@ -4077,7 +4711,13 @@ fn handle_action(
+@@ -4077,7 +4729,13 @@ fn handle_action(
                  // Only this admitted viewer action may attribute cancellation to Refresh.
                  // Hold its diagnostic record away from generic source invalidation below.
                  let retry = runtime.continuity_retry_log.take();
@@ -43238,7 +43256,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  if let Some(retry) = retry {
                      if runtime.continuity.pending_retry().is_some_and(|pending|
                          retry.catalog_generation == pending.generation
-@@ -4103,6 +4743,8 @@ fn handle_action(
+@@ -4103,6 +4761,8 @@ fn handle_action(
                  return Ok(());
              }
              let return_catalog = runtime.catalog_return_after_back();
@@ -43247,7 +43265,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              let leaving_setup = runtime.setup.is_some();
              runtime.cancel_setup();
              transient::cancel_play_candidate(runtime,app);
-@@ -4112,6 +4754,7 @@ fn handle_action(
+@@ -4112,6 +4772,7 @@ fn handle_action(
              runtime.playback_epoch = runtime.playback_epoch.wrapping_add(1);
              runtime.cancel_play_request();
              runtime.cancel_catalog();
@@ -43255,7 +43273,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              runtime.catalog_return = return_catalog.map(|profile| (runtime.generation, profile));
              runtime.status.clear();
              if leaving_setup || matches!(runtime.page, "channels" | "favorites") {
-@@ -4279,6 +4922,10 @@ fn handle_action(
+@@ -4279,6 +4940,10 @@ fn handle_action(
                  }
                  "profile.history_hours" => ("Archive hours (0 uses playlist values)",
                      runtime.begin_archive_hours()?, false, 4, OttTextPolicy::Literal),
@@ -43266,7 +43284,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  "uiFontScale" => ("Interface text scale (20–200%)",
                      runtime.font_scale_percent().to_string(), false, 3, OttTextPolicy::Literal),
                  "remote.address" => ("Remote control server", remote_settings::address_input(runtime), false, 2048, OttTextPolicy::Literal),
-@@ -4300,8 +4947,8 @@ fn handle_action(
+@@ -4300,8 +4965,8 @@ fn handle_action(
                  let editor = OttEditor {
                      kind: plx_screens::ott::OttEditorKind::Setting,
                      session,
@@ -43276,7 +43294,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                      value,
                      secret,
                      limit,
-@@ -4364,9 +5011,18 @@ fn handle_action(
+@@ -4364,9 +5029,18 @@ fn handle_action(
                      runtime.status.clear();
                      return Ok(true);
                  }
@@ -43296,7 +43314,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  } else if key == "uiFontScale" {
                      let saved = runtime.font_scale_candidate(&value, session)?;
                      runtime.save(saved, None, false)?;
-@@ -4392,6 +5048,12 @@ fn handle_action(
+@@ -4392,6 +5066,12 @@ fn handle_action(
                      }
                      profile.validate().map_err(|_| "Invalid profile source or name")?;
                      let original = runtime.edit_profile_original.clone();
@@ -43309,7 +43327,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                      let saved = runtime.profile_candidate(profile, original.as_ref())?;
                      runtime.save(saved, None, true)?;
                  }
-@@ -4452,13 +5114,15 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4452,13 +5132,15 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
          app.ott = Some(runtime);
          return true;
      }
@@ -43326,7 +43344,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          let key = if current.starts_with("favorite:") {
              "favorites".into()
          } else {
-@@ -4479,12 +5143,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4479,12 +5161,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
      }
      let ids = runtime.ordered_ids();
      let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
@@ -43345,7 +43363,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      if let Some(playing) = runtime.playing.as_mut() {
          playing.advance_on_failure = true;
      }
-@@ -4569,8 +5233,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4569,8 +5251,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
      source: ReadySource,
      resources: &mut R,
  ) -> Result<(), &'static str> {
@@ -43359,7 +43377,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      if let Err(error) = runtime.validate_archive_admission(&request, &profile, &entry, &source) {
          runtime.retire_result(Ok((entry, source)));
          return Err(error);
-@@ -4601,10 +5270,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4601,10 +5288,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
      } else {
          plx_media::route::cancel_play(&mut app.player.session);
      }
@@ -43373,7 +43391,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
      let advance_on_failure = request.advance_on_failure;
      let mut owned_source = None;
      match source {
-@@ -4668,12 +5340,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4668,12 +5358,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
              } else {
                  0
              };
@@ -43388,7 +43406,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
                  None,
                  &mut app.pages,
                  &mut app.bridge,
-@@ -4713,8 +5386,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4713,8 +5404,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
              }
          }
      }
@@ -43403,7 +43421,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          kiosk_selection: request.kiosk_selection,
          archive: request.archive,
          identity: plx_media::route::playback_identity(&app.player.session),
-@@ -4727,10 +5406,19 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4727,10 +5424,19 @@ fn start_resolved_with<R: playback::PlaybackResources>(
          advance_on_failure,
          requires_server_lease,
      });
@@ -43423,7 +43441,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          if playing.archive.is_none() && transient::plex_remote::choice(runtime, &playing.entry.id).is_none() {
              if runtime.playing_attachment.is_some() && playing.selection_id.starts_with("favorite:") {
                  let _=runtime.request_favorite_metadata(&playing.selection_id);
-@@ -4738,6 +5426,9 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4738,6 +5444,9 @@ fn start_resolved_with<R: playback::PlaybackResources>(
                  runtime.request_metadata(playing.profile.clone(), playing.entry.clone());
              }
          }
@@ -43433,7 +43451,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
          runtime.transient_checkpoint(&playing,position_ms);
      }
      Ok(())
-@@ -4830,7 +5521,13 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
+@@ -4830,7 +5539,13 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
      let start=playing.identity.as_ref().and_then(|identity|app.player.programme.started_at(identity));
      let next=if runtime.play_target.is_some() || runtime.transient.owns_playback() {None} else {
          let ids=runtime.ordered_ids();let refs:Vec<&str>=ids.iter().map(String::as_str).collect();
@@ -43448,7 +43466,17 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b
              let title=if let Some(identity)=id.strip_prefix("favorite:") {
                  runtime.saved.favorites.entries().iter().find(|favorite|favorite.identity()==identity).map(|favorite|favorite.title.clone())
              } else {runtime.catalog.entries.iter().find(|entry|entry.id==id).map(|entry|entry.title.clone())}?;
-@@ -4958,6 +5655,12 @@ pub(super) fn foreign_content_allowed(app:&mut App)->bool {
+@@ -4855,7 +5570,8 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
+         entry_poster(entry).or_else(|| leaf_owner.and_then(|_|leaf.as_ref())
+             .and_then(|leaf| programme_leaf_art(leaf, plx_media::route::cur_sid(&app.player.session))))
+     };
+-    let projection=OttNowPlaying {live:None,archive:None,collection_label:entry.category.clone(),confirmed_start_unix_ms:start,next,art};
++    let collection_label=runtime.local_playing_collection_label(playing).unwrap_or(&entry.category).to_owned();
++    let projection=OttNowPlaying {live:None,archive:None,collection_label,confirmed_start_unix_ms:start,next,art};
+     let mut now=leaf.unwrap_or_else(||NowPlaying {
+         ott:None,is_episode:false,is_real_episode:false,title:entry.title.clone(),ep_title:String::new(),season:0,index:0,
+         summary:entry.description.clone(),year:0,dur_ms:duration.unwrap_or(0),rating:String::new(),thumb:String::new(),detail_rk:String::new(),
+@@ -4958,6 +5674,12 @@ pub(super) fn foreign_content_allowed(app:&mut App)->bool {
  #[path = "ott_reminder_wiring_tests.rs"]
  mod reminder_wiring_tests;
  
@@ -49191,10 +49219,19 @@ index 700fcb61b3f823921c97e06c66a8cadfded17e5a..d0c26848e997351dbea6cc6d01272e9b
              },
          ))
 diff --git a/rust-modules/src/app/ott_runtime_tests/programme.rs b/rust-modules/src/app/ott_runtime_tests/programme.rs
-index 0a7c52e6dc729038358c7c28ebd35b5e86a11434..916567e117f107967bc11c9f43a0605d2ae99e5e 100644
+index 0a7c52e6dc729038358c7c28ebd35b5e86a11434..a539d15b5938435a1c668cfb5f31296dc1178f73 100644
 --- a/rust-modules/src/app/ott_runtime_tests/programme.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/programme.rs
-@@ -84,13 +84,13 @@ fn fixture() -> App {
+@@ -2,6 +2,8 @@
+ //! proves metadata projection, not hardware presentation or wall-clock precision.
+ use super::*;
+ use plx_media::{player, route};
++#[path = "programme_local_root_label.rs"]
++mod local_root_label;
+ struct Globals(u8);
+ impl Drop for Globals {
+     fn drop(&mut self) {
+@@ -84,13 +86,13 @@ fn fixture() -> App {
      runtime.saved.profiles.profiles = vec![profile.clone()];
      runtime.saved.profiles.active_profile = Some(profile.id.clone());
      runtime.provider = ProviderKind::VPortal;
@@ -49210,7 +49247,7 @@ index 0a7c52e6dc729038358c7c28ebd35b5e86a11434..916567e117f107967bc11c9f43a0605d
          kiosk_selection: None,
          archive: None,
          transient_owner: None,
-@@ -276,9 +276,9 @@ fn plex_fixture() -> (App, plx_plex::plex::ServerId) {
+@@ -276,9 +278,9 @@ fn plex_fixture() -> (App, plx_plex::plex::ServerId) {
      runtime.loaded=true; runtime.saving=true; runtime.write_permit.revoke();
      runtime.saved.profiles.profiles=vec![profile.clone()];
      runtime.saved.profiles.active_profile=Some(profile.id.clone());
@@ -49222,7 +49259,7 @@ index 0a7c52e6dc729038358c7c28ebd35b5e86a11434..916567e117f107967bc11c9f43a0605d
          kiosk_selection: None,
          archive: None,
          identity:route::playback_identity(&app.player.session), transient_owner:None,local_selection:None,
-@@ -503,3 +503,9 @@ mod live_hud;
+@@ -503,3 +505,9 @@ mod live_hud;
  
  #[path = "programme_catalog_route.rs"]
  mod catalog_route;
@@ -49232,6 +49269,214 @@ index 0a7c52e6dc729038358c7c28ebd35b5e86a11434..916567e117f107967bc11c9f43a0605d
 +
 +#[path = "programme_m3u_media.rs"]
 +mod m3u_media;
+diff --git a/rust-modules/src/app/ott_runtime_tests/programme_local_root_label.rs b/rust-modules/src/app/ott_runtime_tests/programme_local_root_label.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..9dba38f6f6449f1041b09296f1ed7beab1428dd6
+--- /dev/null
++++ b/rust-modules/src/app/ott_runtime_tests/programme_local_root_label.rs
+@@ -0,0 +1,202 @@
++//! Real held Local grants and the existing Now Playing publisher. These tests
++//! model route admission; they do not start a decoder, scanner or Saved writer.
++use super::*;
++use crate::app::ott_local_root::LocalSource;
++use crate::app::ott_local_session::{self as local, BoundSource};
++
++fn local_fixture(relative: &str) -> (local_integration::TempDir, Box<App>, BoundSource) {
++    let (directory, mut app, root) = local_integration::setup();
++    local_integration::install(&mut app, Some(&root), "first");
++    app.running = true;
++    if relative != "first.mp4" {
++        // Keep the installed native source consistent with the injected row.
++        playback::replace_player_in_place(
++            &mut app.player, &mut app.adapters.player, &mut app.repause_at, &mut app.pages,
++        );
++        route::reset_player_control_for_test(&app.player.session);
++        let mut info = unsupported_info();
++        info.video_codec = "h264".into();
++        info.audio_codec = "aac".into();
++        info.audio_channels = 2;
++        info.audio_sample_rate = 48000;
++        info.audio_bit_depth = 16;
++        route::request_external_source(
++            &mut app.player.session, &info,
++            plx_media::ff::ExternalSource::Local(
++                std::path::Path::new(root.canonical_path.as_deref().unwrap()).join(relative),
++            ),
++            "Current file", "Movies", plx_platform::devcaps::assumed_shared(),
++        ).unwrap();
++    }
++    let runtime = app.ott.as_mut().unwrap();
++    let mut profile = runtime.playing.as_ref().unwrap().profile.clone();
++    profile.id = "local1".into();
++    profile.name = "local1".into();
++    let files = [relative, "next.mp4"].map(|path| plx_data::ott::LocalFile {
++        relative_path: path.into(), size: 1, duration_ms: Some(60_000),
++    });
++    let catalog = plx_data::ott::catalog_from_local_files(&files, &profile).unwrap();
++    let entry = catalog.entries.iter().find(|entry|
++        matches!(&entry.media, MediaLocator::Local { relative_path } if relative_path == relative)
++    ).unwrap().clone();
++    let playing = runtime.playing.as_mut().unwrap();
++    playing.profile = profile.clone();
++    playing.entry = entry.clone();
++    playing.selection_id = entry.id.clone();
++    playing.identity = route::playback_identity(&app.player.session);
++    playing.source = route::external_source(&app.player.session);
++    if let Some(transient::TransientMedia::Local(session)) = runtime.transient.accepted.as_mut() {
++        session.profile = profile;
++        let items = catalog.entries.iter().map(|entry| local::LocalItem {
++            id: entry.id.clone(), playable: true,
++        }).collect::<Vec<_>>();
++        session.context.update(local::OwnerToken(root.generation), &local::CatalogSnapshot {
++            source_id: &root.id, authority_ref: root.authority_ref, source_generation: root.generation,
++            state: local::ScanState::Complete, items: &items,
++        }).unwrap();
++        session.context.note_intent(local::OwnerToken(root.generation), local::LocalIntent::Selected(&entry.id)).unwrap();
++    }
++    runtime.catalog = catalog;
++    runtime.catalog_complete = true;
++    runtime.catalog_loading = false;
++    runtime.selected = Some(entry.id.clone());
++    runtime.continuity = continuity::Continuity::new(runtime.generation, None);
++    runtime.continuity.user_selected(runtime.generation, &entry.id);
++    let installed = runtime.playing.clone().unwrap();
++    assert!(playing_matches(&installed, &app));
++    (directory, app, root)
++}
++
++fn assert_label_without_source_changes(app: &mut App, expected: &str) {
++    let runtime = app.ott.as_ref().unwrap();
++    let saved = serde_json::to_value(&runtime.saved).unwrap();
++    let catalog = runtime.catalog.clone();
++    let selection = runtime.playing.as_ref().unwrap().selection_id.clone();
++    let identity = runtime.playing.as_ref().unwrap().identity.clone();
++    publish(app);
++    assert_eq!(projection(app).collection_label, expected);
++    let runtime = app.ott.as_ref().unwrap();
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
++    assert_eq!(runtime.catalog, catalog);
++    assert_eq!(runtime.playing.as_ref().unwrap().selection_id, selection);
++    assert_eq!(runtime.playing.as_ref().unwrap().identity, identity);
++}
++
++#[test]
++fn local_root_programme_uses_held_folder_with_explicit_or_profile_binding() {
++    let _lock = plx_base::testlock::serial();
++    let _globals = Globals(player::swap_state_for_test(player::PlaybackState::Idle));
++    let (_directory, mut app, root) = local_fixture("first.mp4");
++    let runtime = app.ott.as_ref().unwrap();
++    assert_eq!(runtime.provider, ProviderKind::M3u);
++    assert_eq!(runtime.active().unwrap().kind, ProviderKind::M3u);
++    assert_eq!(runtime.playing.as_ref().unwrap().entry.category, "local1");
++    assert_eq!(runtime.current_local_root(
++        runtime.playing.as_ref().unwrap().local_selection.as_ref().unwrap()
++    ).unwrap().id, root.id);
++    assert_label_without_source_changes(&mut app, "Movies");
++    assert_eq!(app.bridge.metadata_view().now_playing().unwrap().title, "first.mp4");
++    assert_eq!(projection(&app).next.unwrap().title, "next.mp4");
++
++    app.ott.as_mut().unwrap().playing.as_mut().unwrap().local_selection = None;
++    assert_label_without_source_changes(&mut app, "Movies");
++    assert_eq!(projection(&app).next.unwrap().title, "next.mp4");
++}
++
++#[test]
++fn local_root_programme_preserves_nested_and_nonlocal_collection_labels() {
++    let _lock = plx_base::testlock::serial();
++    let _globals = Globals(player::swap_state_for_test(player::PlaybackState::Idle));
++    let (_directory, mut app, _) = local_fixture("Series/first.mp4");
++    assert_eq!(app.ott.as_ref().unwrap().playing.as_ref().unwrap().entry.category, "Series");
++    assert_label_without_source_changes(&mut app, "Series");
++    drop(app);
++    let mut nonlocal = fixture();
++    assert_label_without_source_changes(&mut nonlocal, "Collection");
++}
++
++#[test]
++fn local_root_programme_keeps_single_file_grant_fallback() {
++    let _lock = plx_base::testlock::serial();
++    let _globals = Globals(player::swap_state_for_test(player::PlaybackState::Idle));
++    let (_directory, mut app, root) = local_fixture("first.mp4");
++    let path = std::path::Path::new(root.canonical_path.as_deref().unwrap()).join("first.mp4");
++    std::fs::write(&path, b"fixture").unwrap();
++    let file = BoundSource {
++        id: "single".into(), name: "Single file display".into(), kind: local::SourceKind::File,
++        available: true, authority_ref: local::AuthorityRef(2), generation: root.generation,
++        canonical_path: Some(path.to_str().unwrap().into()),
++    };
++    let source = LocalSource::acquire_authorized(
++        &plx_base::task::OffFrame::for_test(), file.clone(), &mut || true,
++    ).unwrap();
++    assert!(source.is_live());
++    assert!(source.root_handle().is_none());
++    let runtime = app.ott.as_mut().unwrap();
++    runtime.local_inventory.install(vec![source], root.generation);
++    let selected = runtime.bind_local_selection(&file).unwrap();
++    assert!(runtime.current_local_source(&selected).is_some());
++    assert!(runtime.current_local_root(&selected).is_none());
++    let playing = runtime.playing.as_mut().unwrap();
++    playing.local_selection = Some(selected);
++    playing.profile.source = file.canonical_path.unwrap();
++    assert_label_without_source_changes(&mut app, "local1");
++}
++
++#[test]
++fn local_root_programme_uses_playing_owner_and_never_repairs_stale_selection() {
++    let _lock = plx_base::testlock::serial();
++    let _globals = Globals(player::swap_state_for_test(player::PlaybackState::Idle));
++    let (directory, mut app, root) = local_fixture("first.mp4");
++    let other = BoundSource {
++        id: "other".into(), name: "Other folder".into(), kind: local::SourceKind::Folder,
++        available: true, authority_ref: local::AuthorityRef(3), generation: root.generation,
++        canonical_path: Some(directory.folder("Other")),
++    };
++    let runtime = app.ott.as_mut().unwrap();
++    let first = runtime.local_inventory.sources[0].clone();
++    runtime.local_inventory.install(
++        vec![first, local_integration::acquire_root(other.clone())], root.generation,
++    );
++    let other_profile = transient::source_profile(&other).unwrap();
++    runtime.saved.profiles.active_profile = Some(other_profile.id.clone());
++    runtime.saved.profiles.profiles.push(other_profile);
++    runtime.transient.accepted = None;
++    runtime.catalog.entries[0].category = "Other browsing collection".into();
++    runtime.catalog.entries[0].title = "Other browsing title".into();
++    assert_ne!(runtime.effective_profile().unwrap().source, runtime.playing.as_ref().unwrap().profile.source);
++    assert_label_without_source_changes(&mut app, "Movies");
++    assert_eq!(app.bridge.metadata_view().now_playing().unwrap().title, "first.mp4");
++
++    // An explicit selection for one root cannot borrow the profile's other root.
++    app.ott.as_mut().unwrap().playing.as_mut().unwrap().profile.source = other.canonical_path.unwrap();
++    assert_label_without_source_changes(&mut app, "local1");
++    let runtime = app.ott.as_mut().unwrap();
++    runtime.playing.as_mut().unwrap().profile.source = root.canonical_path.unwrap();
++    runtime.playing.as_mut().unwrap().local_selection.as_mut().unwrap().generation += 1;
++    assert!(runtime.local_profile_selection(&runtime.playing.as_ref().unwrap().profile).is_some());
++    assert_label_without_source_changes(&mut app, "local1");
++}
++
++#[test]
++fn local_root_programme_keeps_fallback_when_source_or_root_label_is_untrusted() {
++    let _lock = plx_base::testlock::serial();
++    let _globals = Globals(player::swap_state_for_test(player::PlaybackState::Idle));
++    for case in ["missing", "withdrawn", "empty_name", "control_name", "invalid_relative"] {
++        let (_directory, mut app, mut root) = local_fixture("first.mp4");
++        let runtime = app.ott.as_mut().unwrap();
++        match case {
++            "missing" => runtime.local_inventory.install(Vec::new(), root.generation),
++            "withdrawn" => runtime.local_inventory.sources[0].withdraw(),
++            "empty_name" | "control_name" => {
++                root.name = if case == "empty_name" { "" } else { "Movies\nprivate" }.into();
++                runtime.local_inventory.install(vec![local_integration::acquire_root(root.clone())], root.generation);
++            }
++            "invalid_relative" => runtime.playing.as_mut().unwrap().entry.media = MediaLocator::Local {
++                relative_path: "C:private.mp4".into(),
++            },
++            _ => unreachable!(),
++        }
++        assert_label_without_source_changes(&mut app, "local1");
++    }
++}
 diff --git a/rust-modules/src/app/ott_runtime_tests/programme_m3u_media.rs b/rust-modules/src/app/ott_runtime_tests/programme_m3u_media.rs
 new file mode 100644
 index 0000000000000000000000000000000000000000..b950458c2330f106bb9390489db6a423e822b1ba
