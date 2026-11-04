@@ -412,7 +412,8 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                         mock.patch("subprocess.run") as run, \
                         mock.patch("subprocess.check_output") as output:
                     with self.assertRaises(ValueError):
-                        exec(code, {})  # noqa: S102: invalid-input preflight; process APIs are mocked
+                        # Invalid-input preflight; process APIs are mocked.
+                        exec(code, {})  # noqa: S102
                     run.assert_not_called()
                     output.assert_not_called()
 
@@ -496,10 +497,11 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                     path.symlink_to(target)
                 elif case != "missing":
                     path.write_bytes(patch if case == "exact" else patch + b"\n")
-                scope = dict(workspace=root, digest=lambda p: hashlib.sha256(p.read_bytes()).hexdigest())
+                scope = {"workspace": root, "digest": lambda p: hashlib.sha256(p.read_bytes()).hexdigest()}
                 with mock.patch("subprocess.run") as run, mock.patch("subprocess.check_output") as output:
                     if case == "exact":
-                        exec(code, scope)  # noqa: S102: exact workflow preflight; no process
+                        # Exact workflow preflight; no process is launched.
+                        exec(code, scope)  # noqa: S102
                     else:
                         with self.assertRaises(ValueError):
                             exec(code, scope)  # noqa: S102
@@ -564,7 +566,6 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
 
     def test_bench_restores_snapshot_after_binding_failure(self):
         import ast
-        from contextlib import nullcontext
         tree = ast.parse(self.bench_code())
         phase = next(node for node in tree.body if isinstance(node, ast.For)
                      and isinstance(node.target, ast.Tuple)
@@ -580,123 +581,132 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
             "benchmark-entry", "benchmark-failure", "document-failure", "head-restore")]
         cases += [("before", point) for point in ("original-hash", "apply", "measured-tree")]
         for label, point in cases:
-            with self.subTest(label=label, point=point), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory)
-                prepared_path = root / "prepared.json"
-                prepared_path.write_text("{}\n")
-                upstream, snapshot = "a" * 40, "b" * 40
-                expected_tree, corrected_tree = "c" * 40, "d" * 40
-                old_hash, new_hash = "1" * 64, "2" * 64
-                initial_hash = old_hash if label == "before" else new_hash
-                current = dict(head=upstream, index=expected_tree, fixture=initial_hash)
-                calls = []
-                failure = OSError("injected " + point)
-                fixture_path = "tests/test_harness.py"
+            with self.subTest(label=label, point=point):
+                self._check_benchmark_transaction_case(code, label, point)
 
-                def git(source, *args, **kwargs):
-                    calls.append(args)
-                    if args[:2] == ("apply", "--index"):
-                        self.assertEqual(label, "before", "AFTER must not apply the fixture twice")
-                        current.update(index=corrected_tree, fixture=new_hash)
-                        if point == "apply":
-                            raise failure  # Even a partially applied fixture must be restored.
-                        return ""
-                    if args == ("write-tree",):
-                        return "e" * 40 if point == "measured-tree" else current["index"]
-                    if args[0] == "diff-tree":
-                        return fixture_path
-                    if args[0] == "commit-tree":
-                        self.assertEqual(args[1], current["index"])
-                        if point == "commit":
-                            raise failure
-                        return snapshot
-                    if args[:3] == ("update-ref", "--no-deref", "HEAD"):
-                        new, old = args[3:]
-                        self.assertEqual(current["head"], old)  # Real CAS semantics.
-                        if (new == snapshot and point == "swap") or (new == upstream and point == "head-restore"):
-                            raise failure
-                        current["head"] = new
-                        return ""
-                    if args[0] == "restore":
-                        self.assertEqual(args, ("restore", "--source=" + expected_tree,
-                                               "--staged", "--worktree", "--", fixture_path))
-                        current.update(index=expected_tree, fixture=initial_hash)
-                        return ""
-                    self.fail("Unexpected Git command: " + repr(args))
+    def _check_benchmark_transaction_case(self, code, label, point):
+        from contextlib import nullcontext
 
-                def digest(path):
-                    if point == "binding-digest" and path.name == "Makefile":
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prepared_path = root / "prepared.json"
+            prepared_path.write_text("{}\n")
+            upstream, snapshot = "a" * 40, "b" * 40
+            expected_tree, corrected_tree = "c" * 40, "d" * 40
+            old_hash, new_hash = "1" * 64, "2" * 64
+            initial_hash = old_hash if label == "before" else new_hash
+            current = {"head": upstream, "index": expected_tree, "fixture": initial_hash}
+            calls = []
+            failure = OSError("injected " + point)
+            fixture_path = "tests/test_harness.py"
+
+            def git(source, *args, **kwargs):
+                calls.append(args)
+                if args[:2] == ("apply", "--index"):
+                    self.assertEqual(label, "before", "AFTER must not apply the fixture twice")
+                    current.update(index=corrected_tree, fixture=new_hash)
+                    if point == "apply":
+                        raise failure  # Even a partially applied fixture must be restored.
+                    return ""
+                if args == ("write-tree",):
+                    return "e" * 40 if point == "measured-tree" else current["index"]
+                if args[0] == "diff-tree":
+                    return fixture_path
+                if args[0] == "commit-tree":
+                    self.assertEqual(args[1], current["index"])
+                    if point == "commit":
                         raise failure
-                    if path == root / "source" / fixture_path:
-                        if point == "original-hash" or (point == "corrected-hash" and current["fixture"] == new_hash):
-                            return "0" * 64
-                        return current["fixture"]
-                    return "f" * 64
-
-                def check_source(*_):
-                    self.assertEqual(current, dict(head=upstream, index=expected_tree, fixture=initial_hash))
-                    self.assertEqual(prepared_path.read_bytes(), b"{}\n")
-
-                original_write = Path.write_text
-                def write_text(path, *args, **kwargs):
-                    if point == "binding-write" and path.name == label + "-binding-before.json":
+                    return snapshot
+                if args[:3] == ("update-ref", "--no-deref", "HEAD"):
+                    new, old = args[3:]
+                    self.assertEqual(current["head"], old)  # Real CAS semantics.
+                    if (new == snapshot and point == "swap") or (new == upstream and point == "head-restore"):
                         raise failure
-                    return original_write(path, *args, **kwargs)
+                    current["head"] = new
+                    return ""
+                if args[0] == "restore":
+                    self.assertEqual(args, ("restore", "--source=" + expected_tree,
+                                           "--staged", "--worktree", "--", fixture_path))
+                    current.update(index=expected_tree, fixture=initial_hash)
+                    return ""
+                self.fail("Unexpected Git command: " + repr(args))
 
-                def checked_document(*_):
-                    if point == "document-failure":
-                        raise failure
-                    return dict(git_sha=snapshot[:12], tree_dirty=False,
-                                toolchain="pinned", host="same", runner="same")
+            def digest(path):
+                if point == "binding-digest" and path.name == "Makefile":
+                    raise failure
+                if path == root / "source" / fixture_path:
+                    if point == "original-hash" or (point == "corrected-hash" and current["fixture"] == new_hash):
+                        return "0" * 64
+                    return current["fixture"]
+                return "f" * 64
 
-                builder = types.SimpleNamespace(check_source=mock.Mock(side_effect=check_source),
-                    cargo_environment=mock.Mock(return_value=nullcontext({"CARGO_HOME": "/unused"})))
-                if point == "benchmark-entry":
-                    builder.cargo_environment.side_effect = failure
-                scope = dict(git=git, digest=digest, builder=builder, source=root / "source",
-                             upstream=upstream, label=label, expected_tree=expected_tree,
-                             baseline_measured_tree=corrected_tree, identity={},
-                             fixture_path=fixture_path, fixture_patch=root / "correction.patch",
-                             fixture_before_sha256=old_hash, fixture_after_sha256=new_hash,
-                             fixture_patch_sha256="9" * 64,
-                             outer_sha="d" * 40, prepared={}, prepared_path=prepared_path,
-                             provenance=root / "PROVENANCE.json", tool_hash="e" * 64,
-                             mod_path=root / "build.py", evidence=root, args=object(),
-                             manifest={}, json=json, os=os, subprocess=subprocess,
-                             rows="noop,sizes", checked_document=checked_document)
-                with mock.patch.object(Path, "write_text", new=write_text), \
-                        mock.patch("subprocess.run") as run, \
-                        mock.patch("subprocess.check_output") as output:
-                    if point == "benchmark-failure":
-                        run.side_effect = failure
-                    if point == "success":
-                        exec(code, scope)  # noqa: S102: real transaction; process adapters are mocked
-                    else:
-                        expected = ValueError if point in ("original-hash", "corrected-hash", "measured-tree") else OSError
-                        with self.assertRaises(expected) as caught:
-                            exec(code, scope)  # noqa: S102
-                        if expected is OSError:
-                            self.assertIs(caught.exception, failure)
-                    output.assert_not_called()
-                self.assertEqual(current["index"], expected_tree)
-                self.assertEqual(current["fixture"], initial_hash)
-                if point == "head-restore":
-                    self.assertEqual(current["head"], snapshot)
-                    builder.check_source.assert_not_called()
-                else:
-                    self.assertEqual(current["head"], upstream)
-                    builder.check_source.assert_called_once()
-                if label == "after":
-                    self.assertFalse(any(call[0] in ("apply", "restore") for call in calls))
+            def check_source(*_):
+                self.assertEqual(current, {"head": upstream, "index": expected_tree, "fixture": initial_hash})
+                self.assertEqual(prepared_path.read_bytes(), b"{}\n")
+
+            original_write = Path.write_text
+            def write_text(path, *args, **kwargs):
+                if point == "binding-write" and path.name == label + "-binding-before.json":
+                    raise failure
+                return original_write(path, *args, **kwargs)
+
+            def checked_document(*_):
+                if point == "document-failure":
+                    raise failure
+                return {"git_sha": snapshot[:12], "tree_dirty": False,
+                        "toolchain": "pinned", "host": "same", "runner": "same"}
+
+            builder = types.SimpleNamespace(check_source=mock.Mock(side_effect=check_source),
+                cargo_environment=mock.Mock(return_value=nullcontext({"CARGO_HOME": "/unused"})))
+            if point == "benchmark-entry":
+                builder.cargo_environment.side_effect = failure
+            scope = {
+                "git": git, "digest": digest, "builder": builder, "source": root / "source",
+                "upstream": upstream, "label": label, "expected_tree": expected_tree,
+                "baseline_measured_tree": corrected_tree, "identity": {},
+                "fixture_path": fixture_path, "fixture_patch": root / "correction.patch",
+                "fixture_before_sha256": old_hash, "fixture_after_sha256": new_hash,
+                "fixture_patch_sha256": "9" * 64,
+                "outer_sha": "d" * 40, "prepared": {}, "prepared_path": prepared_path,
+                "provenance": root / "PROVENANCE.json", "tool_hash": "e" * 64,
+                "mod_path": root / "build.py", "evidence": root, "args": object(),
+                "manifest": {}, "json": json, "os": os, "subprocess": subprocess,
+                "rows": "noop,sizes", "checked_document": checked_document,
+            }
+            with mock.patch.object(Path, "write_text", new=write_text), \
+                    mock.patch("subprocess.run") as run, \
+                    mock.patch("subprocess.check_output") as output:
+                if point == "benchmark-failure":
+                    run.side_effect = failure
                 if point == "success":
-                    binding = json.loads((root / (label + "-binding-after.json")).read_text())
-                    self.assertEqual(binding["original_prepared_tree"], expected_tree)
-                    self.assertEqual(binding["measured_tree"], corrected_tree if label == "before" else expected_tree)
-                    self.assertEqual(binding["fixture_correction"]["applied"], label == "before")
-                    self.assertEqual(binding["fixture_correction"]["measured_sha256"], new_hash)
-                elif point == "head-restore":
-                    self.assertFalse((root / (label + "-binding-after.json")).exists())
-                self.assertFalse((root / "complete-pair.json").exists())
+                    # Real transaction; process adapters are mocked.
+                    exec(code, scope)  # noqa: S102
+                else:
+                    expected = ValueError if point in ("original-hash", "corrected-hash", "measured-tree") else OSError
+                    with self.assertRaises(expected) as caught:
+                        exec(code, scope)  # noqa: S102
+                    if expected is OSError:
+                        self.assertIs(caught.exception, failure)
+                output.assert_not_called()
+            self.assertEqual(current["index"], expected_tree)
+            self.assertEqual(current["fixture"], initial_hash)
+            if point == "head-restore":
+                self.assertEqual(current["head"], snapshot)
+                builder.check_source.assert_not_called()
+            else:
+                self.assertEqual(current["head"], upstream)
+                builder.check_source.assert_called_once()
+            if label == "after":
+                self.assertFalse(any(call[0] in ("apply", "restore") for call in calls))
+            if point == "success":
+                binding = json.loads((root / (label + "-binding-after.json")).read_text())
+                self.assertEqual(binding["original_prepared_tree"], expected_tree)
+                self.assertEqual(binding["measured_tree"], corrected_tree if label == "before" else expected_tree)
+                self.assertEqual(binding["fixture_correction"]["applied"], label == "before")
+                self.assertEqual(binding["fixture_correction"]["measured_sha256"], new_hash)
+            elif point == "head-restore":
+                self.assertFalse((root / (label + "-binding-after.json")).exists())
+            self.assertFalse((root / "complete-pair.json").exists())
 
 
 if __name__ == "__main__":
