@@ -251,6 +251,11 @@ command connections and provider transports retain their behavior.
 
 ### Operator runbook: no address entry on the player
 
+For the managed h3 network, the [router-side runbook](https://github.com/4alvit/h3-openwrt-backup/blob/main/managed/lan-services/dns/OTT-CONTROL-DISCOVERY.md)
+records the deployed DNS/DHCP configuration and maintenance steps. Access to
+that private repository is required. Use the client procedure below with the
+network's advertised service; do not duplicate router configuration in a player.
+
 1. Publish the controller's PTR/SRV/TXT records under the intended network search
    domain and enable its discovery/pairing configuration. Ensure the advertised
    HTTPS hostname, port and path match the controller's public URL and certificate.
