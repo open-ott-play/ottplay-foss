@@ -71,6 +71,41 @@ index 13d91d1fa7f6973111151c7c48aa11b6d6428b6c..fbd4f68fd4b3048a1dc8f23b8b8aaafa
  rust-modules/data/src/person.rs::seed_dev_credits::tape::active
  rust-modules/data/src/person.rs::sources::server_ids
  rust-modules/data/src/person.rs::sync_roster::server_roster_gen
+diff --git a/ci/check-package.py b/ci/check-package.py
+index 11c4591dfe06661c830c90441f506f0eaca54cba..2070d7c427425cbe09ecdd80a38b118fb71cabdf 100755
+--- a/ci/check-package.py
++++ b/ci/check-package.py
+@@ -89,7 +89,8 @@ def build_configuration(stamp: "str | None") -> "str | None":
+     recipe in the Makefile's header is `--no-default-features --features devtriggers`, which a
+     substring test would grade as a release build and then fail for carrying exactly the surface it
+     asked for. `+tel:`, `+symbols`, `+nightly:`, `+rc:` and `+control:` remain optional for
+-    historical stamps. Control discovery appends either `none` or its 64-character lowercase
++    historical stamps. Only tvdev emits a profile suffix; the release profile omits it.
++    Control discovery appends either `none` or its 64-character lowercase
+     SHA-256 fingerprint. Feature flags cannot contain the `+` field delimiter: malformed,
+     reordered, duplicate or unknown fields must fail instead of becoming ungraded flags.
+     `nightly_stamp_date` and `rc_stamp_number` read the `+nightly:` and `+rc:` fields' VALUES
+@@ -98,7 +99,7 @@ def build_configuration(stamp: "str | None") -> "str | None":
+     if stamp is None:
+         return None
+     fields = re.fullmatch(
+-        r"features:(?P<flags>[^+\r\n]*)(?:\+profile:[a-z]+)?(?:\+symbols)?"
++        r"features:(?P<flags>[^+\r\n]*)(?:\+profile:tvdev)?(?:\+symbols)?"
+         r"(?:\+nightly:[0-9]{8})?(?:\+rc:[0-9]+)?(?:\+tel:[0-9a-f]+)?"
+         r"(?:\+control:(?:none|[0-9a-f]{64}))?",
+         stamp.strip())
+@@ -483,6 +484,11 @@ def _selftest() -> int:
+         "features:+tel:abc+control:none+control:none",
+         "features:+control:none+tel:abc", "features:+tel:abc+tel:def",
+         "features:+symbols+profile:tvdev+tel:abc+control:none",
++        # Makefile writes a profile suffix only for tvdev. Release omits it;
++        # an unknown profile must not inherit the feature field's grade.
++        "features:--no-default-features+profile:unknown+tel:abc+control:none",
++        "features:+profile:release+tel:abc+control:none",
++        "features:+profile:tvdevx+tel:abc+control:none",
+         "features:+tel:abc+control:none+unknown:abc",
+         "features:+tel:abc\n+control:none",
+         "features:--features lab-diagnostics+tel:abc+unknown:abc",
 diff --git a/ci/list-caps.ini b/ci/list-caps.ini
 index f1287e64cefd0c68c098c61e3e45479ef6674a5c..0cafc71e63b2b0e109c956557617ae72187996b6 100644
 --- a/ci/list-caps.ini
@@ -2695,7 +2730,7 @@ index 0000000000000000000000000000000000000000..0aeb4d4724963bc75961c673e25dc7de
 +    plx_ui::table::assert_no_fit_failures(&failures);
 +}
 diff --git a/rust-modules/appkit/src/player_hud/classic.rs b/rust-modules/appkit/src/player_hud/classic.rs
-index 1bd3968d8c526ba69af3ed495f1bf24a096ad159..2ff22146c4dd800c3f87acd59d952ca1d3b2071b 100644
+index 1bd3968d8c526ba69af3ed495f1bf24a096ad159..4df04254972c67c02c0e05241797c428a4007645 100644
 --- a/rust-modules/appkit/src/player_hud/classic.rs
 +++ b/rust-modules/appkit/src/player_hud/classic.rs
 @@ -8,7 +8,7 @@
@@ -2725,6 +2760,15 @@ index 1bd3968d8c526ba69af3ed495f1bf24a096ad159..2ff22146c4dd800c3f87acd59d952ca1
          0.0,
      );
  }
+@@ -817,7 +822,7 @@ pub(crate) struct OttClassicLayout {
+ }
+ pub(crate) fn ott_classic_layout(measure: &dyn Measure) -> OttClassicLayout {
+     use plx_ui::text_view::TextView;
+-    let line_h = |size| TextView::new("M", size, theme::TEXT_PRIMARY).with_measure(measure).line_h();
++    let line_h = |size| TextView::new("", size, theme::TEXT_PRIMARY).with_measure(measure).line_h();
+     let gap = theme::space::XS;
+     let current_h = line_h(theme::size::BODY);
+     let next_h = line_h(theme::size::CAPTION);
 @@ -913,7 +918,7 @@ pub fn draw_hud_in_mode(
          ott_classic_layout(measure).transport_y
      } else { 0.0 };
@@ -3100,7 +3144,7 @@ index 7eb9bfcd7afdfd0af1029c5d6b460357aad1d012..899b6c6163ed7f366df32fb769777cc5
      fn duplicate_context_and_empty_next_do_not_take_optional_rows() {
          let mut playing = video();
 diff --git a/rust-modules/appkit/src/player_hud/modern.rs b/rust-modules/appkit/src/player_hud/modern.rs
-index 708886812ec0bd6c73deb1d9edf7732b07a8c131..df1ed825cb9f8a8d07d3c8602972d7efd235145c 100644
+index 708886812ec0bd6c73deb1d9edf7732b07a8c131..c4498f2cfebb3b4d842fafa7abe6a26df4fcf000 100644
 --- a/rust-modules/appkit/src/player_hud/modern.rs
 +++ b/rust-modules/appkit/src/player_hud/modern.rs
 @@ -1,7 +1,7 @@
@@ -3121,6 +3165,24 @@ index 708886812ec0bd6c73deb1d9edf7732b07a8c131..df1ed825cb9f8a8d07d3c8602972d7ef
  use plx_ui::{theme, Painter, Rect, View};
  use std::ffi::CString;
  
+@@ -49,7 +49,7 @@ fn control_rects(controls: Controls, motion: &HudMotion, focused: Option<i32>,
+     label: &str, rail: Rect, measure: &dyn Measure) -> [Option<Rect>; BTN_N as usize] {
+     let caption = CString::new(label).unwrap_or_default();
+     let h = super::classic::CTRL_H.max(
+-        TextView::new("M", theme::size::CAPTION, theme::TEXT_PRIMARY)
++        TextView::new("", theme::size::CAPTION, theme::TEXT_PRIMARY)
+             .with_measure(measure).line_h() + theme::space::SM * 2.0);
+     let scales: [f32; BTN_N as usize] = std::array::from_fn(|i|
+         motion.scale(i as i32).max(plx_ui::widgets::CTRL_FOCUS_SCALE));
+@@ -84,7 +84,7 @@ fn control_rects(controls: Controls, motion: &HudMotion, focused: Option<i32>,
+ pub(super) fn compose(mut geometry: HudGeometry, slot: ControlSlot, motion: &HudMotion,
+     focused: Option<i32>, label: &str, playing: Option<&NowPlaying>, wall_now_s: Option<i64>,
+     measure: &dyn Measure) -> Layout {
+-    let line_h = TextView::new("M", theme::size::CAPTION, theme::TEXT_PRIMARY)
++    let line_h = TextView::new("", theme::size::CAPTION, theme::TEXT_PRIMARY)
+         .with_measure(measure).line_h();
+     let mut content_bottom = geometry.row.y - theme::space::LG;
+     if let ControlSlot::Discs(controls) = slot {
 @@ -143,25 +143,65 @@ pub(super) fn compose(mut geometry: HudGeometry, slot: ControlSlot, motion: &Hud
              width + 2.0 * theme::space::SM, plx_ui::consts::SCR_H - plx_ui::consts::MARGIN_Y - top) }
  }
@@ -4113,6 +4175,586 @@ index e36e0c1c9ef8ee4785c042abd3df6b8553d29be4..55697129a9176059c3eae9ebcbf8acda
          let keys: Vec<u32> = ids.iter().map(|i| i.key().0).collect();
          for (n, a) in keys.iter().enumerate() {
              assert!(*a < BAND_BASE);
+diff --git a/rust-modules/base/src/eventlog.rs b/rust-modules/base/src/eventlog.rs
+index ea86b37c03a41b58af4ac47dcafad6bf58ea8061..a5a6db37a3e19ac9c4fff7d6178ea3fca118ee34 100644
+--- a/rust-modules/base/src/eventlog.rs
++++ b/rust-modules/base/src/eventlog.rs
+@@ -28,6 +28,31 @@ impl CloseReport {
+     fn exit_code(self, code: i32) -> i32 { if self.complete { code } else { INCOMPLETE_EXIT_CODE } }
+ }
+ 
++// Internal provenance of the actual close branch. The public completion contract stays unchanged.
++#[derive(Clone, Copy)]
++struct CloseAttempt { report: CloseReport, reason: &'static str }
++impl CloseAttempt {
++    fn pending(reason: &'static str) -> Self { Self { report: CloseReport::PENDING, reason } }
++}
++
++fn close_diagnostic_record(attempt: CloseAttempt, preinit_active: usize, preinit_lost: usize,
++    sink_snapshot: &str) -> Option<String> {
++    if attempt.report.complete { return None; }
++    // PENDING.lost is a sentinel, not an observed zero. The separate counters are sampled state,
++    // not a replacement for a completed receipt, and can still change while a callback is pending.
++    let lost = if attempt.report.quiescent { attempt.report.lost.to_string() } else { "unknown".into() };
++    Some(format!("eventlog: close incomplete reason={} quiescent={} complete=0 receipt_lost={lost} preinit_active={preinit_active} preinit_lost={preinit_lost}; {sink_snapshot}\n",
++        attempt.reason, usize::from(attempt.report.quiescent)))
++}
++
++fn write_close_diagnostic(record: &str) {
++    // Fixed internal fields only; one best-effort write, no logger recursion, retry, flush, fd
++    // flag mutation or Rust stderr lock. This bounds payload/work, NOT blocking kernel I/O time.
++    // exit_now already flushes stdout/stderr; neither operation is a hard I/O deadline guarantee.
++    // SAFETY: this borrowed string remains valid for the call; fd 2 is process-owned stderr.
++    let _ = unsafe { libc::write(libc::STDERR_FILENO, record.as_ptr().cast(), record.len()) };
++}
++
+ struct Service {
+     sink: std::sync::OnceLock<sink::Sink>,
+     closed: std::sync::atomic::AtomicBool,
+@@ -71,12 +96,23 @@ impl Service {
+         if let Some(sink) = self.sink.get() { sink.close(); }
+     }
+     fn finish(&self, path: std::path::PathBuf, allowance: std::time::Duration) -> CloseReport {
++        self.finish_attempt(path, allowance).report
++    }
++    fn finish_attempt(&self, path: std::path::PathBuf, allowance: std::time::Duration) -> CloseAttempt {
+         use std::sync::atomic::Ordering::SeqCst;
+         self.close();
+-        if self.preinit_active.load(SeqCst) != 0 { return CloseReport::PENDING; }
++        if self.preinit_active.load(SeqCst) != 0 { return CloseAttempt::pending("preinit_active"); }
+         let prior = self.preinit_lost.load(SeqCst);
+-        self.sink.get().map_or(CloseReport { quiescent: true, lost: prior, complete: prior == 0 },
+-            |sink| sink.finish(path, prior, allowance))
++        self.sink.get().map_or(CloseAttempt {
++            report: CloseReport { quiescent: true, lost: prior, complete: prior == 0 },
++            reason: "preinit_only",
++        }, |sink| sink.finish_attempt(path, prior, allowance))
++    }
++    fn diagnostic_record(&self, attempt: CloseAttempt) -> Option<String> {
++        use std::sync::atomic::Ordering::SeqCst;
++        if attempt.report.complete { return None; }
++        let snapshot = self.sink.get().map_or_else(|| "sink=not_started".into(), |sink| sink.diagnostic_snapshot());
++        close_diagnostic_record(attempt, self.preinit_active.load(SeqCst), self.preinit_lost.load(SeqCst), &snapshot)
+     }
+ }
+ static SERVICE: Service = Service::new();
+@@ -99,7 +135,9 @@ pub fn finish_close() -> CloseReport {
+ /// Reserved normal-exit failure: diagnostic results/absence must not be trusted for this run.
+ pub const INCOMPLETE_EXIT_CODE: i32 = 70;
+ pub fn normal_exit_code(code: i32) -> i32 {
+-    finish_close().exit_code(code)
++    let attempt = SERVICE.finish_attempt(events_log(), std::time::Duration::from_millis(250));
++    if let Some(record) = SERVICE.diagnostic_record(attempt) { write_close_diagnostic(&record); }
++    attempt.report.exit_code(code)
+ }
+ /// The bounded in-memory record ring, tapped by [`log`] one call below the redaction. Behind the
+ /// lab feature: a build without it has nothing to put in a ring.
+diff --git a/rust-modules/base/src/eventlog/sink.rs b/rust-modules/base/src/eventlog/sink.rs
+index 135a27a653d47526870a9bbe02ee382c918b9029..a7c94d8db0491a196cfe1d5a75acc66d45d997dd 100644
+--- a/rust-modules/base/src/eventlog/sink.rs
++++ b/rust-modules/base/src/eventlog/sink.rs
+@@ -2,6 +2,9 @@
+ //! Closing admission is atomic. One reserved control slot fences all earlier record callbacks;
+ //! completion waits only on its existing worker ticket, outside the frame, with one deadline.
+ 
++mod loss;
++use loss::{Kind, Losses};
++
+ use crate::storage_worker::{Ticket, Writer};
+ use std::path::{Path, PathBuf};
+ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+@@ -30,17 +33,17 @@ pub(super) fn lose(total: &AtomicUsize) {
+ 
+ struct Record { path: Box<Path>, line: Box<str> }
+ enum Command { Record(Record), Close { path: Option<Box<Path>>, prior_lost: usize } }
+-enum Reply { Record, Closed(super::CloseReport) }
++enum Reply { Record, Closed(super::CloseAttempt) }
+ #[derive(Default)]
+ struct Closing {
+     ticket: Option<Ticket<Reply>>,
+     waiting: bool,
+-    done: Option<super::CloseReport>,
++    done: Option<super::CloseAttempt>,
+ }
+ 
+ pub(super) struct Sink {
+     writer: Option<Writer<Command, Reply>>,
+-    lost: Arc<AtomicUsize>,
++    lost: Arc<Losses>,
+     queued: Arc<AtomicUsize>,
+     capacity: usize,
+     closed: AtomicBool,
+@@ -53,7 +56,7 @@ impl Sink {
+         capacity: usize,
+         mut write: impl FnMut(&Path, &str) -> std::io::Result<()> + Send + 'static,
+     ) -> Self {
+-        let lost = Arc::new(AtomicUsize::new(0));
++        let lost = Arc::new(Losses::new());
+         let queued = Arc::new(AtomicUsize::new(0));
+         let (worker_lost, worker_queued) = (lost.clone(), queued.clone());
+         let mut reported = 0;
+@@ -62,21 +65,31 @@ impl Sink {
+         let writer = Writer::start("eventlog", slots, move |command| match command {
+             Command::Record(record) => {
+                 worker_queued.fetch_sub(1, Ordering::Release);
+-                let total = worker_lost.load(Ordering::Relaxed);
+-                if total != reported {
+-                    let summary = format!("eventlog: {} diagnostic records lost (queue/output unavailable)", total - reported);
+-                    if write(&record.path, &summary).is_ok() { reported = total; }
++                if worker_lost.total() != reported {
++                    let (total, summary) = worker_lost.report(reported, capacity, 0);
++                    if let Some(summary) = summary {
++                        if write(&record.path, &summary).is_ok() { reported = total; }
++                    }
++                }
++                if let Err(error) = write(&record.path, &record.line) {
++                    worker_lost.record(Kind::OutputError, worker_queued.load(Ordering::Acquire), Some(&error));
+                 }
+-                if write(&record.path, &record.line).is_err() { lose(&worker_lost); }
+                 Reply::Record
+             }
+             Command::Close { path, prior_lost } => {
+-                let total = prior_lost.saturating_add(worker_lost.load(Ordering::Relaxed));
++                let (total, summary) = worker_lost.report(reported, capacity, prior_lost);
++                if let (Some(path), Some(summary)) = (&path, summary) { let _ = write(path, &summary); }
+                 let marker = format!("eventlog: closed lost={total} complete={}", usize::from(total == 0));
+-                let written = path.as_ref().is_some_and(|path| write(path, &marker).is_ok());
+-                if !written { lose(&worker_lost); }
+-                Reply::Closed(super::CloseReport { quiescent: true,
+-                    lost: total.saturating_add(usize::from(!written)), complete: total == 0 && written })
++                let written = path.as_ref().is_some_and(|path| match write(path, &marker) {
++                    Ok(()) => true,
++                    Err(error) => { worker_lost.record(Kind::OutputError, 0, Some(&error)); false },
++                });
++                if path.is_none() { worker_lost.record(Kind::InvalidRecord, 0, None); }
++                let reason = if path.is_none() { "invalid_close_path" }
++                    else if !written { "marker_output_error" }
++                    else if total != 0 { "record_loss" } else { "complete" };
++                Reply::Closed(super::CloseAttempt { report: super::CloseReport { quiescent: true,
++                    lost: total.saturating_add(usize::from(!written)), complete: total == 0 && written }, reason })
+             }
+         }).ok();
+         Self { writer, lost, queued, capacity, closed: AtomicBool::new(false),
+@@ -91,35 +104,60 @@ impl Sink {
+         // The lock protects only admission, never an output callback, a wait or a join.
+         let _admission = self.admission.lock().unwrap_or_else(|e| e.into_inner());
+         if self.closed.load(Ordering::Acquire) { return; }
+-        if invalid || self.queued.load(Ordering::Acquire) >= self.capacity {
+-            lose(&self.lost); return;
+-        }
++        let queued = self.queued.load(Ordering::Acquire);
++        if invalid { self.lost.record(Kind::InvalidRecord, queued, None); return; }
++        let Some(writer) = &self.writer else {
++            self.lost.record(Kind::WriterUnavailable, queued, None); return;
++        };
++        if queued >= self.capacity { self.lost.record(Kind::QueueFull, queued, None); return; }
+         self.queued.fetch_add(1, Ordering::Relaxed);
+-        let accepted = self.writer.as_ref().is_some_and(|writer| writer.submit_ticket(Command::Record(record)).is_ok());
+-        if !accepted { self.queued.fetch_sub(1, Ordering::Relaxed); lose(&self.lost); }
++        if let Err(error) = writer.submit_ticket(Command::Record(record)) {
++            self.queued.fetch_sub(1, Ordering::Relaxed);
++            let kind = match error {
++                crate::storage_worker::SubmitErrorGeneric::Full(_) => Kind::QueueFull,
++                crate::storage_worker::SubmitErrorGeneric::Stopped(_) => Kind::WriterStopped,
++            };
++            self.lost.record(kind, queued, None);
++        }
+     }
+ 
+     pub(super) fn close(&self) { self.closed.store(true, Ordering::Release); }
+ 
++    #[cfg(test)]
+     pub(super) fn finish(&self, path: PathBuf, prior_lost: usize, allowance: Duration) -> super::CloseReport {
++        self.finish_attempt(path, prior_lost, allowance).report
++    }
++
++    pub(super) fn diagnostic_snapshot(&self) -> String {
++        let details = self.lost.try_diagnostic(self.capacity);
++        format!("sink=started closed={} writer_present={} queued={} capacity={} observed_lost={} {details}",
++            usize::from(self.closed.load(Ordering::Acquire)), usize::from(self.writer.is_some()),
++            self.queued.load(Ordering::Acquire), self.capacity, self.lost.total())
++    }
++
++    pub(super) fn finish_attempt(&self, path: PathBuf, prior_lost: usize, allowance: Duration) -> super::CloseAttempt {
+         use std::os::unix::ffi::OsStrExt;
+         let started = Instant::now();
+         let path = (path.as_os_str().as_bytes().len() <= MAX_PATH_BYTES).then(|| path.into_boxed_path());
+         self.close();
+-        let unavailable = || super::CloseReport { quiescent: true,
+-            lost: prior_lost.saturating_add(self.lost.load(Ordering::Relaxed)), complete: false };
++        let unavailable = |reason| super::CloseAttempt { report: super::CloseReport { quiescent: true,
++            lost: prior_lost.saturating_add(self.lost.total()), complete: false }, reason };
+         let ticket = {
+-            let Ok(mut closing) = self.closing.try_lock() else { return super::CloseReport::PENDING; };
++            let Ok(mut closing) = self.closing.try_lock() else { return super::CloseAttempt::pending("closing_lock_unavailable"); };
+             if let Some(done) = closing.done { return done; }
+-            if closing.waiting { return super::CloseReport::PENDING; }
++            if closing.waiting { return super::CloseAttempt::pending("close_wait_in_progress"); }
+             if closing.ticket.is_none() {
+-                let Ok(_admission) = self.admission.try_lock() else { return super::CloseReport::PENDING; };
+-                let Some(writer) = &self.writer else { closing.done = Some(unavailable()); return unavailable(); };
++                let Ok(_admission) = self.admission.try_lock() else { return super::CloseAttempt::pending("admission_lock_unavailable"); };
++                let Some(writer) = &self.writer else {
++                    let done = unavailable("writer_unavailable"); closing.done = Some(done); return done;
++                };
+                 use crate::storage_worker::SubmitErrorGeneric;
+                 match writer.submit_ticket(Command::Close { path, prior_lost }) {
+                     Ok(ticket) => closing.ticket = Some(ticket),
+-                    Err(SubmitErrorGeneric::Full(_)) => return super::CloseReport::PENDING,
+-                    Err(SubmitErrorGeneric::Stopped(_)) => { closing.done = Some(unavailable()); return unavailable(); }
++                    Err(SubmitErrorGeneric::Full(_)) => return super::CloseAttempt::pending("close_queue_full"),
++                    Err(SubmitErrorGeneric::Stopped(_)) => {
++                        let done = unavailable("writer_stopped"); closing.done = Some(done); return done;
++                    }
+                 }
+             }
+             closing.waiting = true;
+@@ -134,10 +172,13 @@ impl Sink {
+         closing.waiting = false;
+         match result {
+             crate::task::time::DrainResult::Complete => closing.done = answer,
+-            crate::task::time::DrainResult::Disconnected => closing.done = Some(unavailable()),
++            crate::task::time::DrainResult::Disconnected => closing.done = Some(unavailable("close_disconnected")),
+             crate::task::time::DrainResult::TimedOut => closing.ticket = Some(ticket),
+         }
+-        closing.done.unwrap_or(super::CloseReport::PENDING)
++        closing.done.unwrap_or_else(|| super::CloseAttempt::pending(match result {
++            crate::task::time::DrainResult::TimedOut => "drain_timeout",
++            _ => "close_reply_missing",
++        }))
+     }
+ }
+ 
+diff --git a/rust-modules/base/src/eventlog/sink/close_tests.rs b/rust-modules/base/src/eventlog/sink/close_tests.rs
+index f4dd34856563e6a3499ed3486d21a4090160023a..3ed7b5768513a54964f2855411279fa9aab2a76b 100644
+--- a/rust-modules/base/src/eventlog/sink/close_tests.rs
++++ b/rust-modules/base/src/eventlog/sink/close_tests.rs
+@@ -56,7 +56,7 @@ fn lost_records_prevent_a_complete_marker_but_not_quiescence() {
+     sink.close(); release.now();
+     let done = sink.finish(path(), 0, Duration::from_millis(250));
+     assert!(done.quiescent && !done.complete); assert_eq!(done.lost, 1);
+-    assert_eq!(receive(&rx), "eventlog: 1 diagnostic records lost (queue/output unavailable)");
++    assert!(receive(&rx).starts_with("eventlog: 1 diagnostic records lost (queue/output unavailable); total=1 "));
+     assert_eq!(receive(&rx), "second");
+     assert_eq!(receive(&rx), "eventlog: closed lost=1 complete=0");
+ }
+@@ -96,6 +96,7 @@ fn early_output_failures_are_included_in_the_final_count() {
+     let sink = Sink::start(2, move |_, line| { tx.send(line.to_owned()).unwrap(); Ok(()) });
+     let done = sink.finish(path(), 2, Duration::from_millis(250));
+     assert!(done.quiescent && !done.complete); assert_eq!(done.lost, 2);
++    assert!(receive(&rx).contains("prior_output_error=2"));
+     assert_eq!(receive(&rx), "eventlog: closed lost=2 complete=0");
+ }
+ 
+@@ -127,3 +128,68 @@ fn erasure_waits_for_old_io_and_closed_admission_cannot_recreate_the_file() {
+         assert!(!file.exists());
+     });
+ }
++
++#[test]
++fn close_diagnostics_survive_a_blocked_output_without_claiming_zero_loss() {
++    let (entered, entry) = mpsc::channel(); let (release, gate) = mpsc::channel();
++    let mut release = Release(Some(release));
++    let sink = Sink::start(1, move |_, line| {
++        if line == "held" { entered.send(()).unwrap(); gate.recv().unwrap(); } Ok(())
++    });
++    sink.emit(path(), "held".into()); receive(&entry);
++    sink.emit(path(), "queued".into());
++    let attempt = sink.finish_attempt(path(), 0, Duration::from_millis(20));
++    assert_eq!(attempt.reason, "drain_timeout");
++    assert_eq!(attempt.report.exit_code(0), super::super::INCOMPLETE_EXIT_CODE);
++    let record = super::super::close_diagnostic_record(attempt, 0, 0, &sink.diagnostic_snapshot()).unwrap();
++    assert!(record.contains("receipt_lost=unknown") && record.contains("queued=1 capacity=1"));
++    assert!(!record.contains("unused-fixture") && !record.contains("held"));
++    // The separate diagnostic is already available while the actual output callback is held.
++    release.now();
++    let done = sink.finish_attempt(path(), 0, Duration::from_millis(250));
++    assert!(done.report.complete);
++    assert!(super::super::close_diagnostic_record(done, 0, 0, &sink.diagnostic_snapshot()).is_none());
++}
++
++#[test]
++fn close_diagnostics_survive_permanent_output_error_and_preserve_exit_70() {
++    let sink = Sink::start(2, |_, _| Err(std::io::Error::from_raw_os_error(5)));
++    sink.emit(path(), "private record that must not escape".into());
++    let attempt = sink.finish_attempt(path(), 0, Duration::from_millis(250));
++    assert_eq!(attempt.reason, "marker_output_error");
++    assert!(attempt.report.quiescent && !attempt.report.complete);
++    assert_eq!(attempt.report.lost, 2);
++    assert_eq!(attempt.report.exit_code(0), super::super::INCOMPLETE_EXIT_CODE);
++    let record = super::super::close_diagnostic_record(attempt, 0, 0, &sink.diagnostic_snapshot()).unwrap();
++    assert!(record.contains("receipt_lost=2") && record.contains("output_error=2"));
++    assert!(record.contains("raw_os_error=5") && record.contains("first=output_error"));
++    assert!(!record.contains("private record") && !record.contains("unused-fixture"));
++    assert_eq!(record.lines().count(), 1);
++    assert!(record.len() < 1024);
++}
++
++#[test]
++fn close_diagnostics_distinguish_admission_contention_from_missing_writer() {
++    let sink = Sink::start(1, |_, _| Ok(()));
++    let held = sink.admission.lock().unwrap();
++    let pending = sink.finish_attempt(path(), 0, Duration::ZERO);
++    assert_eq!(pending.reason, "admission_lock_unavailable");
++    assert!(!pending.report.quiescent);
++    drop(held);
++    assert!(sink.finish(path(), 0, Duration::from_millis(250)).complete);
++    let unavailable = Sink::start(0, |_, _| panic!("no inline output"));
++    let failed = unavailable.finish_attempt(path(), 0, Duration::ZERO);
++    assert_eq!(failed.reason, "writer_unavailable");
++    assert!(failed.report.quiescent && !failed.report.complete);
++}
++
++#[test]
++fn close_diagnostics_format_pending_and_large_counters_without_payloads() {
++    let pending = super::super::CloseAttempt::pending("preinit_active");
++    let record = super::super::close_diagnostic_record(pending, usize::MAX, usize::MAX,
++        "sink=not_started").unwrap();
++    assert!(record.starts_with("eventlog: close incomplete reason=preinit_active "));
++    assert!(record.contains("receipt_lost=unknown"));
++    assert_eq!(record.lines().count(), 1);
++    assert!(record.len() < 1024);
++}
+diff --git a/rust-modules/base/src/eventlog/sink/loss.rs b/rust-modules/base/src/eventlog/sink/loss.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..94eea8945958bf992323654ff3cee856fcd33e75
+--- /dev/null
++++ b/rust-modules/base/src/eventlog/sink/loss.rs
+@@ -0,0 +1,122 @@
++//! Loss reasons are recorded where they occur, not when the writer later reports them.
++//! One fixed snapshot contains no record contents or paths and does not alter admission.
++
++use std::sync::atomic::{AtomicUsize, Ordering};
++use std::sync::Mutex;
++use std::time::Instant;
++
++#[derive(Clone, Copy)]
++pub(super) enum Kind { QueueFull, WriterUnavailable, WriterStopped, InvalidRecord, OutputError }
++
++impl Kind {
++    fn name(self) -> &'static str {
++        match self {
++            Self::QueueFull => "queue_full",
++            Self::WriterUnavailable => "writer_unavailable",
++            Self::WriterStopped => "writer_stopped",
++            Self::InvalidRecord => "invalid_record",
++            Self::OutputError => "output_error",
++        }
++    }
++}
++
++struct First {
++    kind: Kind,
++    elapsed_ms: u128,
++    queued: usize,
++    error: Option<(std::io::ErrorKind, Option<i32>)>,
++}
++
++#[derive(Default)]
++struct State { counts: [usize; 5], first: Option<First> }
++
++pub(super) struct Losses {
++    total: AtomicUsize,
++    state: Mutex<State>,
++    started: Instant,
++}
++
++impl Losses {
++    pub(super) fn new() -> Self {
++        Self { total: AtomicUsize::new(0), state: Mutex::new(State::default()), started: Instant::now() }
++    }
++
++    pub(super) fn total(&self) -> usize { self.total.load(Ordering::Acquire) }
++
++    pub(super) fn try_diagnostic(&self, capacity: usize) -> String {
++        let state = match self.state.try_lock() {
++            Ok(state) => state,
++            Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
++            Err(std::sync::TryLockError::WouldBlock) => return "counts=unavailable first=unavailable".into(),
++        };
++        let [queue_full, writer_unavailable, writer_stopped, invalid_record, output_error] = state.counts;
++        let first = state.first.as_ref().map_or_else(|| "first=none".into(), |first| {
++            let (kind, code) = first.error.map_or_else(|| ("none".into(), "none".into()), |(kind, code)| {
++                (format!("{kind:?}"), code.map_or_else(|| "none".into(), |n| n.to_string()))
++            });
++            format!("first={} after_ms={} first_queued={} first_capacity={capacity} error_kind={kind} raw_os_error={code}",
++                first.kind.name(), first.elapsed_ms, first.queued)
++        });
++        format!("counts=available queue_full={queue_full} writer_unavailable={writer_unavailable} writer_stopped={writer_stopped} invalid_record={invalid_record} output_error={output_error} {first}")
++    }
++
++    pub(super) fn record(&self, kind: Kind, queued: usize, error: Option<&std::io::Error>) {
++        // Only loss accounting holds this lock; it never encloses output or worker admission.
++        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
++        let counter = &mut state.counts[kind as usize];
++        *counter = counter.saturating_add(1);
++        if state.first.is_none() {
++            state.first = Some(First { kind, elapsed_ms: self.started.elapsed().as_millis(), queued,
++                error: error.map(|e| (e.kind(), e.raw_os_error())) });
++        }
++        self.total.store(self.total.load(Ordering::Relaxed).saturating_add(1), Ordering::Release);
++    }
++
++    pub(super) fn report(&self, reported: usize, capacity: usize, prior_output_error: usize)
++        -> (usize, Option<String>) {
++        let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
++        let total = self.total.load(Ordering::Relaxed).saturating_add(prior_output_error);
++        if total == reported { return (total, None); }
++        let first = state.first.as_ref().map_or_else(|| "first=unavailable".to_owned(), |first| {
++            let error = first.error.map_or_else(|| "error_kind=none raw_os_error=none".to_owned(), |(kind, code)| {
++                format!("error_kind={kind:?} raw_os_error={}", code.map_or_else(|| "none".to_owned(), |n| n.to_string()))
++            });
++            format!("first={} after_ms={} queued={} capacity={} {error}",
++                first.kind.name(), first.elapsed_ms, first.queued, capacity)
++        });
++        let [queue_full, writer_unavailable, writer_stopped, invalid_record, output_error] = state.counts;
++        (total, Some(format!(
++            "eventlog: {} diagnostic records lost (queue/output unavailable); total={total} queue_full={queue_full} writer_unavailable={writer_unavailable} writer_stopped={writer_stopped} invalid_record={invalid_record} output_error={output_error} prior_output_error={prior_output_error}; {first}",
++            total.saturating_sub(reported))))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn later_losses_preserve_the_first_loss_context_and_all_reason_counts() {
++        let losses = Losses::new();
++        losses.record(Kind::QueueFull, 2, None);
++        let (first_total, first) = losses.report(0, 2, 0);
++        let first = first.unwrap();
++        losses.record(Kind::OutputError, 0, Some(&std::io::Error::from_raw_os_error(5)));
++        let (total, later) = losses.report(first_total, 2, 0);
++        let later = later.unwrap();
++        assert_eq!((first_total, total), (1, 2));
++        assert!(later.contains("queue_full=1") && later.contains("output_error=1"));
++        assert_eq!(first.split("; ").last(), later.split("; ").last());
++        assert!(later.contains("first=queue_full") && later.contains("queued=2 capacity=2"));
++        assert!(losses.report(total, 2, 0).1.is_none());
++    }
++
++    #[test]
++    fn close_diagnostics_do_not_wait_for_loss_accounting() {
++        let losses = Losses::new();
++        let held = losses.state.lock().unwrap();
++        assert_eq!(losses.try_diagnostic(64), "counts=unavailable first=unavailable");
++        drop(held);
++        assert!(losses.try_diagnostic(64).contains("counts=available"));
++    }
++}
+diff --git a/rust-modules/base/src/eventlog/sink/tests.rs b/rust-modules/base/src/eventlog/sink/tests.rs
+index 764c5abd40f03e1e90f634b32a27c6f9a50ad384..cc98ca3e45d0f9ad64a848d8a42bf7c72c34ce81 100644
+--- a/rust-modules/base/src/eventlog/sink/tests.rs
++++ b/rust-modules/base/src/eventlog/sink/tests.rs
+@@ -35,10 +35,10 @@ fn a_full_queue_drops_without_inline_io_and_reports_loss_on_recovery() {
+     with_sink(sink.clone(), || log("first"));
+     assert_eq!(receive(&rx), "first"); // The one executing record is held outside the queue.
+     with_sink(sink.clone(), || { log("second"); log("third"); });
+-    assert_eq!(sink.lost.load(Ordering::Relaxed), 1);
++    assert_eq!(sink.lost.total(), 1);
+     assert!(matches!(rx.try_recv(), Err(mpsc::TryRecvError::Empty)));
+     release.now();
+-    assert_eq!(receive(&rx), "eventlog: 1 diagnostic records lost (queue/output unavailable)");
++    assert!(receive(&rx).starts_with("eventlog: 1 diagnostic records lost (queue/output unavailable); total=1 "));
+     assert_eq!(receive(&rx), "second");
+     drop(sink);
+     assert!(matches!(rx.recv_timeout(Duration::from_secs(2)), Err(mpsc::RecvTimeoutError::Disconnected)));
+@@ -51,8 +51,9 @@ fn an_unavailable_writer_never_uses_inline_output() {
+     // The real shared constructor rejects zero capacity; the sink retains the unavailable state.
+     let sink = Arc::new(Sink::start(0, move |_path, _line| { observed.fetch_add(1, Ordering::Relaxed); Ok(()) }));
+     with_sink(sink.clone(), || log("unavailable-output"));
+-    assert_eq!(sink.lost.load(Ordering::Relaxed), 1);
++    assert_eq!(sink.lost.total(), 1);
+     assert_eq!(writes.load(Ordering::Relaxed), 0);
++    assert!(sink.lost.report(0, 0, 0).1.unwrap().contains("writer_unavailable=1"));
+ }
+ 
+ #[test]
+@@ -68,8 +69,9 @@ fn a_stopped_writer_never_uses_inline_output() {
+     }).ok().unwrap();
+     assert!(ticket.wait_blocking().is_err()); // Writer closes admission before closing this receipt.
+     with_sink(sink.clone(), || log("after-output-stopped"));
+-    assert_eq!(sink.lost.load(Ordering::Relaxed), 1);
++    assert_eq!(sink.lost.total(), 1);
+     assert_eq!(writes.load(Ordering::Relaxed), 1);
++    assert!(sink.lost.report(0, 2, 0).1.unwrap().contains("writer_stopped=1"));
+ }
+ 
+ #[test]
+@@ -81,9 +83,9 @@ fn output_errors_are_counted_without_retrying_on_the_producer() {
+     }));
+     with_sink(sink.clone(), || { log("discard"); log("kept"); });
+     assert_eq!(receive(&rx), "discard");
+-    assert_eq!(receive(&rx), "eventlog: 1 diagnostic records lost (queue/output unavailable)");
++    assert!(receive(&rx).starts_with("eventlog: 1 diagnostic records lost (queue/output unavailable); total=1 "));
+     assert_eq!(receive(&rx), "kept");
+-    assert_eq!(sink.lost.load(Ordering::Relaxed), 1);
++    assert_eq!(sink.lost.total(), 1);
+ }
+ 
+ #[test]
+@@ -121,8 +123,9 @@ fn oversized_output_paths_are_counted_and_never_written() {
+     let observed = writes.clone();
+     let sink = Sink::start(2, move |_path, _line| { observed.fetch_add(1, Ordering::Relaxed); Ok(()) });
+     sink.emit(PathBuf::from("x".repeat(MAX_PATH_BYTES + 1)), "record".into());
+-    assert_eq!(sink.lost.load(Ordering::Relaxed), 1);
++    assert_eq!(sink.lost.total(), 1);
+     assert_eq!(writes.load(Ordering::Relaxed), 0);
++    assert!(sink.lost.report(0, 2, 0).1.unwrap().contains("invalid_record=1"));
+ }
+ 
+ #[test]
+@@ -140,3 +143,49 @@ fn the_worker_uses_the_secure_file_sink_at_the_record_path() {
+         assert_eq!(std::fs::read_to_string(path).unwrap(), "worker-file-record\n");
+     });
+ }
++
++#[test]
++fn loss_diagnostics_distinguish_a_full_queue_at_the_producer() {
++    let (tx, rx) = mpsc::channel();
++    let (release, gate) = mpsc::channel();
++    let mut release = Release(Some(release));
++    let sink = Sink::start(1, move |_path, line| {
++        tx.send(line.to_owned()).unwrap();
++        if line == "held" { gate.recv().unwrap(); }
++        Ok(())
++    });
++    let path = PathBuf::from("unused-fixture");
++    sink.emit(path.clone(), "held".into());
++    assert_eq!(receive(&rx), "held");
++    sink.emit(path.clone(), "queued".into());
++    sink.emit(path.clone(), "refused".into());
++    assert!(matches!(rx.try_recv(), Err(mpsc::TryRecvError::Empty)));
++    release.now();
++    let summary = receive(&rx);
++    assert!(summary.contains("queue_full=1") && summary.contains("output_error=0"), "{summary}");
++    assert!(summary.contains("first=queue_full") && summary.contains("queued=1 capacity=1"), "{summary}");
++    assert_eq!(receive(&rx), "queued");
++    let report = sink.finish(path, 0, Duration::from_millis(250));
++    assert!(report.quiescent && !report.complete);
++    assert_eq!(report.lost, 1);
++    assert_eq!(receive(&rx), "eventlog: closed lost=1 complete=0");
++}
++
++#[test]
++fn loss_diagnostics_report_a_last_output_failure_before_the_close_marker() {
++    let (tx, rx) = mpsc::channel();
++    let sink = Sink::start(1, move |_path, line| {
++        tx.send(line.to_owned()).unwrap();
++        if line == "discard" { Err(std::io::Error::from_raw_os_error(5)) } else { Ok(()) }
++    });
++    let path = PathBuf::from("unused-fixture");
++    sink.emit(path.clone(), "discard".into());
++    assert_eq!(receive(&rx), "discard");
++    let report = sink.finish(path, 0, Duration::from_millis(250));
++    assert!(report.quiescent && !report.complete);
++    assert_eq!(report.lost, 1);
++    let summary = receive(&rx);
++    assert!(summary.contains("output_error=1") && summary.contains("queue_full=0"), "{summary}");
++    assert!(summary.contains("first=output_error") && summary.contains("raw_os_error=5"), "{summary}");
++    assert_eq!(receive(&rx), "eventlog: closed lost=1 complete=0");
++}
 diff --git a/rust-modules/base/src/task/time.rs b/rust-modules/base/src/task/time.rs
 index 8eb05319f7fa83eaf27d6ddf95a2d78a6c22d6ae..5c83b79ffe9c9b9c735ac870e3774f428c7b7012 100644
 --- a/rust-modules/base/src/task/time.rs
@@ -15605,7 +16247,7 @@ index 0000000000000000000000000000000000000000..d2d911deb43456471cecf9334186978c
 +    Rejected(PlayerGeometryFailure),
 +}
 diff --git a/rust-modules/screens/src/ott/cards_harness.rs b/rust-modules/screens/src/ott/cards_harness.rs
-index 1d08b1a97a0876972614c5df7cda9e65eeb23d02..1b9f16a7523ab51c2d0b78cf3bd0b7bda1600a96 100644
+index 1d08b1a97a0876972614c5df7cda9e65eeb23d02..2b0e2d7efa65627b8bdd30c42c31d06cbefbe5e9 100644
 --- a/rust-modules/screens/src/ott/cards_harness.rs
 +++ b/rust-modules/screens/src/ott/cards_harness.rs
 @@ -19,14 +19,14 @@ const ENTRY: EntryId = EntryId(9);
@@ -15621,12 +16263,45 @@ index 1d08b1a97a0876972614c5df7cda9e65eeb23d02..1b9f16a7523ab51c2d0b78cf3bd0b7bd
      fn new(n: usize) -> Self {
          let mut h = Self { screen: OttScreen::new(ENTRY, InstanceId(9)), focus: None, press: 1.0, ms: 0 };
 -        h.step(ScreenEvent::App(AppMsg::OttSnapshot(Arc::new(OttView { category_label: None,
-+        h.step(ScreenEvent::App(AppMsg::OttSnapshot(Arc::new(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None,
++        h.step(ScreenEvent::App(AppMsg::OttSnapshot(Arc::new(OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None,
              preview_context: Some("source-fixture".into()), random_context: None, order_context: None,
              page_id: "channels:fixture".into(), revision: 1, title: msg::ott_channel_list().into(),
              description: String::new(), status: String::new(), selected_row: None,
+diff --git a/rust-modules/screens/src/ott/classic.rs b/rust-modules/screens/src/ott/classic.rs
+index 1dc12f7422cdad611854d907dd0479ff24821ed1..de479813a83afa74f9a822222ce4835b2466a61c 100644
+--- a/rust-modules/screens/src/ott/classic.rs
++++ b/rust-modules/screens/src/ott/classic.rs
+@@ -50,7 +50,7 @@ fn line(p: Painter, flow: &mut VFlow, width: f32, text: &str, size: i32, bold: b
+     }
+ }
+ 
+-pub(super) fn paint_left(p: Painter, layout: Layout, row: &OttRow, status: &str, now: Option<i64>, measure: &dyn Measure) {
++pub(super) fn paint_left(p: Painter, layout: Layout, row: &OttRow, status: &str, status_working: bool, now: Option<i64>, measure: &dyn Measure) {
+     let area = layout.details;
+     let _clip = plx_ui::screen::ClipScope::open_in(p, area);
+     let p = p.translate(area.x, 0.0);
+@@ -76,7 +76,7 @@ pub(super) fn paint_left(p: Painter, layout: Layout, row: &OttRow, status: &str,
+     let bottom = area.y + area.h;
+     let body_y = flow.push(Item::new(0.0)).map_or(area.y, |s| s.y);
+     let status_view = TextView::new(status, theme::size::CAPTION, theme::TEXT_TERTIARY).max_lines(2).with_measure(measure);
+-    let hint = plx_platform::i18n::msg::widgets_hint_hold_options("OK");
++    let hint = plx_platform::i18n::msg::widgets_hint_hold_options(plx_ui::hold_hint::key_label());
+     let hint_view = TextView::new(&hint, theme::size::CAPTION, theme::TEXT_TERTIARY).max_lines(2).with_measure(measure);
+     let hint_h = if row.enabled && matches!(&row.action, super::OttAction::Play(_)) { hint_view.measure_h(area.w) + theme::space::SM } else { 0.0 };
+     let status_h = if status.is_empty() { 0.0 } else { status_view.measure_h(area.w) + theme::space::SM };
+@@ -99,7 +99,9 @@ pub(super) fn paint_left(p: Painter, layout: Layout, row: &OttRow, status: &str,
+         TextView::new(description, theme::size::CAPTION, theme::TEXT_SECONDARY)
+             .max_lines(lines).with_measure(measure).fade_last(theme::space::LG).draw(p, body);
+     }
+-    if status_h > 0.0 { status_view.draw(p, Rect::new(0.0, bottom - status_h - hint_h, area.w, status_h)); }
++    if status_h > 0.0 {
++        super::media::note_status(p, status, status_working);
++        status_view.draw(p, Rect::new(0.0, bottom - status_h - hint_h, area.w, status_h)); }
+     if hint_h > 0.0 { hint_view.draw(p, Rect::new(0.0, bottom - hint_h, area.w, hint_h)); }
+ }
+ 
 diff --git a/rust-modules/screens/src/ott/input_tests.rs b/rust-modules/screens/src/ott/input_tests.rs
-index e59cfa3d06b970ef4d9c9da22322b75dd3fe06a9..e3613e1f7e21d1665bdabf13bfdf94a9a0d276f7 100644
+index e59cfa3d06b970ef4d9c9da22322b75dd3fe06a9..e619bf0998c10aa3f9a86294b76bad538040c82c 100644
 --- a/rust-modules/screens/src/ott/input_tests.rs
 +++ b/rust-modules/screens/src/ott/input_tests.rs
 @@ -1,6 +1,6 @@
@@ -15671,7 +16346,7 @@ index e59cfa3d06b970ef4d9c9da22322b75dd3fe06a9..e3613e1f7e21d1665bdabf13bfdf94a9
  
  fn boot(favorite: bool) -> (Dispatcher<TestHost>, TestRig) {
 -    let snapshot = Arc::new(OttView { category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
-+    let snapshot = Arc::new(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
++    let snapshot = Arc::new(OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
          page_id: if favorite { "favorites" } else { "channels" }.into(),
          revision: 1, title: "Fixture videos".into(), description: String::new(),
          status: String::new(), selected_row: Some("video-one".into()),
@@ -15704,7 +16379,7 @@ index e59cfa3d06b970ef4d9c9da22322b75dd3fe06a9..e3613e1f7e21d1665bdabf13bfdf94a9
  
  fn navigation_view(page_id: &str, revision: u64, rows: Vec<OttRow>, selected: Option<&str>) -> Arc<OttView> {
 -    Arc::new(OttView { category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None, page_id: page_id.into(), revision, title: page_id.into(),
-+    Arc::new(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None, page_id: page_id.into(), revision, title: page_id.into(),
++    Arc::new(OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None, page_id: page_id.into(), revision, title: page_id.into(),
          description: String::new(), status: String::new(), rows,
          selected_row: selected.map(str::to_owned) })
  }
@@ -15718,7 +16393,7 @@ index e59cfa3d06b970ef4d9c9da22322b75dd3fe06a9..e3613e1f7e21d1665bdabf13bfdf94a9
              poster: None, action: OttAction::Play(id.into()), enabled: true, favorite: false,
          }).collect();
 -    let (mut d, mut rig) = boot_snapshot(Arc::new(OttView { category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
-+    let (mut d, mut rig) = boot_snapshot(Arc::new(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
++    let (mut d, mut rig) = boot_snapshot(Arc::new(OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
          page_id: "channels".into(), revision: 1, title: "Fixture videos".into(),
          description: String::new(), status: String::new(), rows,
          selected_row: Some("empty-first".into()),
@@ -15736,7 +16411,7 @@ index e59cfa3d06b970ef4d9c9da22322b75dd3fe06a9..e3613e1f7e21d1665bdabf13bfdf94a9
  fn dispatcher_editor_cancel_returns_to_add_profile_and_can_reopen_it() {
      let _guard = plx_base::testlock::serial();
 -    let snapshot = Arc::new(OttView { category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
-+    let snapshot = Arc::new(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
++    let snapshot = Arc::new(OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, search: None,
          page_id: "profiles:m3u".into(), revision: 1, title: "Profiles".into(),
          description: String::new(), status: String::new(), selected_row: Some("profile.add".into()),
 -        rows: vec![OttRow { content_title: None, guide: None, guide_available: false, media: None, id: "profile.add".into(), title: "Add profile".into(),
@@ -15939,7 +16614,7 @@ index e59cfa3d06b970ef4d9c9da22322b75dd3fe06a9..e3613e1f7e21d1665bdabf13bfdf94a9
 +}
 +
 +fn quality_view(context: &str, revision: u64, variants: &[&str], selected: &str) -> Arc<OttView> {
-+    Arc::new(OttView {
++    Arc::new(OttView { status_working: false,
 +        classic_preferences: Default::default(), volume_available: false,
 +        page_id: format!("vportal-quality:{context}"), revision,
 +        title: msg::settings_playback_quality().into(),
@@ -16399,7 +17074,7 @@ index e59cfa3d06b970ef4d9c9da22322b75dd3fe06a9..e3613e1f7e21d1665bdabf13bfdf94a9
 +    assert!(!rig.actions.iter().any(|a| matches!(a, OttAction::VolumeStep(_))));
 +}
 diff --git a/rust-modules/screens/src/ott/media.rs b/rust-modules/screens/src/ott/media.rs
-index 3e963f8284bba477d025afea898d8415f14114be..88f1c6fa32187d6b86fa98614b3ec7c91165aa56 100644
+index 3e963f8284bba477d025afea898d8415f14114be..02df1f8185bd436251a44a4d6a1267c4924e9648 100644
 --- a/rust-modules/screens/src/ott/media.rs
 +++ b/rust-modules/screens/src/ott/media.rs
 @@ -71,8 +71,15 @@ impl<H: AppLike<Memory = PageMemory>> CardSource<H> for Cards<'_> {
@@ -16430,7 +17105,15 @@ index 3e963f8284bba477d025afea898d8415f14114be..88f1c6fa32187d6b86fa98614b3ec7c9
      if landscape {
          return crate::registry::captions::still_block(title, &detail(row)).within_tile();
      }
-@@ -192,7 +200,7 @@ mod label_tests {
+@@ -172,6 +180,7 @@ pub(super) fn detail(row: &super::OttRow) -> String {
+ }
+ 
+ pub(super) fn status(view: &OttView) -> String {
++    // placeholder-exempt: copy builder only; note_status accounts at each visible status paint.
+     use plx_platform::i18n::msg;
+     let Some(progress) = view.catalog_progress else { return view.status.clone(); };
+     let loaded = i64::try_from(progress.loaded).unwrap_or(i64::MAX);
+@@ -192,7 +201,7 @@ mod label_tests {
          super::super::OttRow {
              id: "file-1".into(), title: "7 Fixture One.mp4".into(), content_title: Some("Fixture One.mp4".into()),
              detail: "Local videos".into(), description: String::new(), poster: None, guide: None,
@@ -16439,7 +17122,7 @@ index 3e963f8284bba477d025afea898d8415f14114be..88f1c6fa32187d6b86fa98614b3ec7c9
                  duration_ms: Some(12_000), progress: None }),
              action: OttAction::Play("file-1".into()), enabled: true, favorite: false,
          }
-@@ -207,7 +215,7 @@ mod label_tests {
+@@ -207,7 +216,7 @@ mod label_tests {
              let mut row = file(); row.media.as_mut().unwrap().kind = kind;
              for details in [DetailsKind::YearLength, DetailsKind::Genre, DetailsKind::Video, DetailsKind::AgeRatingScore] {
                  let rendered = label(&row, false, &CaptionPolicy { title: false, details });
@@ -16448,7 +17131,7 @@ index 3e963f8284bba477d025afea898d8415f14114be..88f1c6fa32187d6b86fa98614b3ec7c9
                  assert!(rendered.glyph);
              }
          }
-@@ -216,11 +224,166 @@ mod label_tests {
+@@ -216,11 +225,174 @@ mod label_tests {
      fn card_title_policy_and_unknown_title_fallback_remain_explicit() {
          let mut row = file();
          assert_eq!(text(&label(&row, false, &CaptionPolicy { title: true, details: DetailsKind::YearLength })),
@@ -16534,7 +17217,7 @@ index 3e963f8284bba477d025afea898d8415f14114be..88f1c6fa32187d6b86fa98614b3ec7c9
 +        read: impl FnOnce(&Cards<'_>, &cards::Tile)) {
 +        let landscape = matches!(row.media.as_ref().unwrap().kind,
 +            OttMediaKind::LiveChannel | OttMediaKind::Episode);
-+        let view = OttView { page_id: "channels:fixture".into(), revision: 1, title: String::new(),
++        let view = OttView { status_working: false, page_id: "channels:fixture".into(), revision: 1, title: String::new(),
 +            classic_preferences: Default::default(), volume_available: false, category_label: None, description: String::new(), status: String::new(),
 +            selected_row: Some(row.id.clone()), rows: vec![row], search: None, catalog_progress: None,
 +            preview_context: None, random_context: None, order_context: None };
@@ -16576,7 +17259,7 @@ index 3e963f8284bba477d025afea898d8415f14114be..88f1c6fa32187d6b86fa98614b3ec7c9
 +                });
 +            }
 +        }
-     }
++    }
 +    #[test]
 +    fn no_art_card_fallback_never_overlays_declared_poster_art() {
 +        let _lock = plx_base::testlock::serial();
@@ -16616,9 +17299,38 @@ index 3e963f8284bba477d025afea898d8415f14114be..88f1c6fa32187d6b86fa98614b3ec7c9
 +        });
 +    }
 +
++}
++
++/// Account only the status paint, never snapshot construction or source work.
++/// The stable key intentionally excludes user/provider text from diagnostics.
++pub(super) fn note_status(p: plx_ui::Painter, status: &str, working: bool) {
++    if working && !status.trim().is_empty() {
++        plx_ui::placeholder::note(p, plx_ui::placeholder::Reason::WorkingReadout, "ott-status");
+     }
  }
+diff --git a/rust-modules/screens/src/ott/metadata.rs b/rust-modules/screens/src/ott/metadata.rs
+index 3373f88156bef6035eaca48d1bf7d9176a070044..7a485cfa82de38551a96c85a08213e30b3d51896 100644
+--- a/rust-modules/screens/src/ott/metadata.rs
++++ b/rust-modules/screens/src/ott/metadata.rs
+@@ -101,7 +101,7 @@ pub(super) fn preview_rect(row:&OttRow,status:&str,measure:&dyn Measure,layout:R
+     (measured.body.h>=0.0).then_some(rect)
+ }
+ 
+-pub(super) fn paint(p:Painter,measure:&dyn Measure,row:&OttRow,status:&str,reading:bool,cards:bool,layout:RouteLayout,preview:Option<Rect>,now:Option<i64>){
++pub(super) fn paint(p:Painter,measure:&dyn Measure,row:&OttRow,status:&str,status_working:bool,reading:bool,cards:bool,layout:RouteLayout,preview:Option<Rect>,now:Option<i64>){
+     let area=layout.narrative;
+     let flow=flow(row,status,measure,layout,preview,now);
+     if let Some(crumb)=flow.crumb {
+@@ -113,6 +113,7 @@ pub(super) fn paint(p:Painter,measure:&dyn Measure,row:&OttRow,status:&str,readi
+     TextView::new(&detail_copy,theme::size::CAPTION,theme::TEXT_SECONDARY).max_lines(2)
+         .with_measure(measure).draw(p,flow.detail);
+     if let Some(rect)=flow.status {
++        super::media::note_status(p, status, status_working);
+         TextView::new(status,theme::size::CAPTION,theme::TEXT_SECONDARY).max_lines(3)
+             .with_measure(measure).draw(p,rect);
+     }
 diff --git a/rust-modules/screens/src/ott/mod.rs b/rust-modules/screens/src/ott/mod.rs
-index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411003e7537 100644
+index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..a107d457db1b3838c7ff9a8f21ae2e4f5205b7af 100644
 --- a/rust-modules/screens/src/ott/mod.rs
 +++ b/rust-modules/screens/src/ott/mod.rs
 @@ -31,7 +31,7 @@ use plx_ui::table_screen::{DocumentFocus, DocumentPart};
@@ -16709,16 +17421,27 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
      /// Display label from the effective catalogue selection; never inferred from a page token.
      pub category_label: Option<String>,
      /// Opaque source/view owner for a debounced UI Preview; absent means no preview request.
-@@ -247,7 +268,7 @@ pub struct OttView {
+@@ -240,6 +261,8 @@ pub struct OttView {
+     pub title: String,
+     pub description: String,
+     pub status: String,
++    /// The status describes pending work; accounted only where its text is drawn.
++    pub status_working: bool,
+     pub rows: Vec<OttRow>,
+     pub selected_row: Option<String>,
+     pub search: Option<OttSearch>,
+@@ -247,8 +270,8 @@ pub struct OttView {
  
  impl Default for OttView {
      fn default() -> Self {
 -        Self { category_label: None, order_context: None, preview_context: None, random_context: None, catalog_progress: None, page_id: "loading".into(), revision: 0, title: msg::ott_brand().into(),
+-            description: msg::ott_intro().into(), status: String::new(),
 +        Self { classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: None, random_context: None, catalog_progress: None, page_id: "loading".into(), revision: 0, title: msg::ott_brand().into(),
-             description: msg::ott_intro().into(), status: String::new(),
++            description: msg::ott_intro().into(), status: String::new(), status_working: false,
              rows: Vec::new(), selected_row: None, search: None }
      }
-@@ -289,6 +310,8 @@ pub struct OttScreen {
+ }
+@@ -289,6 +312,8 @@ pub struct OttScreen {
      preview_token: Option<String>,
      previewed: Option<String>,
      preview_dwell: f32,
@@ -16727,7 +17450,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
  }
  
  impl OttScreen {
-@@ -296,6 +319,31 @@ impl OttScreen {
+@@ -296,6 +321,31 @@ impl OttScreen {
      /// The runner must suppress raw text recording for every native editor.
      pub fn handles_private_text(&self) -> bool { self.editor.is_some() }
  
@@ -16759,7 +17482,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
      pub fn new(entry: EntryId, instance: InstanceId) -> Self {
          let mut screen = Self { entry, instance, snapshot: Arc::new(OttView::default()),
              classic_mode: false, classic_visible: false, classic_layout: std::cell::Cell::new(None), guide_clock: Default::default(), viewport: Default::default(),
-@@ -305,7 +353,8 @@ impl OttScreen {
+@@ -305,7 +355,8 @@ impl OttScreen {
              card_presentation: None, catalog_keys: Vec::new(), restore_memory: None, editor: None, editing: false, browse: false, browse_return: None,
              menu_visibility: Default::default(), focus_request: None, header_cache: plx_ui::page_header::SharedRow::new(), header_capsules: TabStrip::new(), header_pop: CtlPop::new(), media: None,
              media_keys: HashMap::new(), reading: false, reader: DocumentReader::new(), read_target: 0,
@@ -16769,7 +17492,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
          screen.install(Arc::new(OttView::default()));
          screen
      }
-@@ -324,7 +373,20 @@ impl OttScreen {
+@@ -324,7 +375,20 @@ impl OttScreen {
  
      fn install_restoring(&mut self, snapshot: Arc<OttView>, return_to: Option<(&str, Option<&String>)>) {
          if snapshot.revision < self.snapshot.revision { return; }
@@ -16791,7 +17514,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
          if let Some(memory) = &restore {
              self.keys = memory.keys.clone();
              self.next_key = memory.next_key;
-@@ -336,7 +398,7 @@ impl OttScreen {
+@@ -336,7 +400,7 @@ impl OttScreen {
                      || memory.selected.as_deref().is_some_and(missing))
          });
          let previous_presentation = self.card_presentation;
@@ -16800,12 +17523,12 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
              |(page, _)| page == snapshot.page_id);
          if self.snapshot.preview_context != snapshot.preview_context {
              self.preview = None; self.preview_token = None; self.previewed = None; self.preview_dwell = 0.0;
-@@ -400,26 +462,39 @@ impl OttScreen {
+@@ -400,26 +464,39 @@ impl OttScreen {
              let key = self.row_key(item.id);
              navigation = navigation.item_keyed(item.id.to_owned(), key, RowKind::Button, item.action, item.row);
          }
 -        let mut content = FormSection::new(snapshot.title.clone());
-+        let category_page = snapshot.page_id.split(':').next() == Some("categories");
++        let category_page = snapshot.page_id.split(':').next().is_some_and(|page| page == "categories");
 +        let classic_catalogue = self.classic_mode && !self.browse && snapshot.rows.iter().any(|row| row.enabled)
 +            && snapshot.rows.iter().all(|row| match &row.action {
 +                OttAction::Play(_) | OttAction::SelectCategory(_) | OttAction::SelectCategoryAt { .. } => true,
@@ -16846,7 +17569,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
                  _ => false,
              });
          let mut footer = FormSection::new("");
-@@ -431,9 +506,6 @@ impl OttScreen {
+@@ -431,9 +508,6 @@ impl OttScreen {
              footer = footer.item_keyed("nav:back".to_owned(), self.row_key("nav:back"), RowKind::Button,
                  if self.browse { FormAction::CloseBrowse } else { FormAction::Forward(OttAction::Back) }, Row::new(msg::settings_back()));
          }
@@ -16856,7 +17579,19 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
          let form = if self.browse || snapshot.rows.is_empty() { Form::new().section(navigation).section(footer) }
              else if classic_catalogue { Form::new().section(content) }
              else { Form::new().section(content).section(footer) };
-@@ -522,9 +594,13 @@ impl OttScreen {
+@@ -494,6 +568,11 @@ impl OttScreen {
+         self.form.table.set_classic_catalogue(classic_catalogue);
+     }
+ 
++    fn status_working(&self) -> bool {
++        self.snapshot.status_working || self.snapshot.catalog_progress
++            .is_some_and(|progress| progress.loading && !progress.complete)
++    }
++
+     fn grid_active(&self) -> bool {
+         !self.classic_mode && self.card_presentation.is_some() && !self.browse && self.editor.is_none() && !self.reading
+     }
+@@ -522,9 +601,13 @@ impl OttScreen {
          self.classic_mode = classic;
          self.form.table.set_classic(classic);
          self.classic_layout.set(Some(plx_ui::classic::Layout::new(Rect::FULL, measure,
@@ -16871,7 +17606,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
      }
  
      fn header_scroll(&self) -> f32 {
-@@ -652,7 +728,10 @@ impl OttScreen {
+@@ -652,7 +735,10 @@ impl OttScreen {
              TextEdit::Commit(text) if editor.spec.text_policy == OttTextPolicy::Literal => next.insert(text),
              _ => next.edit(edit),
          }
@@ -16883,7 +17618,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
              editor.draft = next;
              self.editor_form(false);
              fx.invalidate(plx_machine::present::Provenance::Input);
-@@ -843,6 +922,8 @@ impl<H: AppLike<Memory = PageMemory>> Machine<H> for OttScreen {
+@@ -843,6 +929,8 @@ impl<H: AppLike<Memory = PageMemory>> Machine<H> for OttScreen {
      type Ev = ScreenEvent<H>;
      fn step(&mut self, ev: &Self::Ev, cx: &Cx<'_, H>, fx: &mut Effects<'_, H>) -> Handled {
          let handled = self.step_inner(ev, cx, fx);
@@ -16892,7 +17627,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
          self.refresh_viewport(cx.measure);
          let viewport = self.viewport_event(ev, fx);
          self.sync_viewport(fx);
-@@ -852,6 +933,7 @@ impl<H: AppLike<Memory = PageMemory>> Machine<H> for OttScreen {
+@@ -852,6 +940,7 @@ impl<H: AppLike<Memory = PageMemory>> Machine<H> for OttScreen {
  impl OttScreen {
      fn step_inner<H: AppLike<Memory = PageMemory>>(&mut self, ev: &ScreenEvent<H>, cx: &Cx<'_, H>, fx: &mut Effects<'_, H>) -> Handled {
          self.refresh_presentation(H::ui_mode(&cx.views), cx.measure);
@@ -16900,7 +17635,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
          let guide_changed = self.guide_clock.update(self.media.and_then(|i| self.snapshot.rows.get(i)).and_then(|row| row.guide.as_ref()), cx.tick.ms);
          if guide_changed && !self.classic_mode && self.browse && self.editor.is_none() {
              let listed = self.form.index_of_key(RowKey(self.keys["nav:description"])).is_some();
-@@ -870,6 +952,7 @@ impl OttScreen {
+@@ -870,6 +959,7 @@ impl OttScreen {
          if matches!(ev, ScreenEvent::Input(input) if matches!(input.kind,
              InputKind::Key { key: Key::Back, edge: Edge::Down, .. })) { self.restore_memory = None; }
          if let ScreenEvent::Input(input) = ev {
@@ -16908,7 +17643,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
              if let Some(handled) = self.remote_input(input, cx, fx) { return handled; }
          }
          if !matches!(ev, ScreenEvent::App(AppMsg::OttSnapshot(_))) {
-@@ -957,6 +1040,10 @@ impl OttScreen {
+@@ -957,6 +1047,10 @@ impl OttScreen {
                  Handled::Yes
              }
              ScreenEvent::Tick(tick) => {
@@ -16919,7 +17654,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
                  if let Some(header) = self.header(cx.measure) {
                      header.step(self.entry, cx.focus.current, &mut self.header_capsules, &mut self.header_pop, tick.dt());
                  }
-@@ -993,6 +1080,14 @@ impl OttScreen {
+@@ -993,6 +1087,14 @@ impl OttScreen {
                  if let Some(index) = self.media_keys.get(&to.elem) {
                      self.media = self.snapshot.rows[*index].enabled.then_some(*index);
                  }
@@ -16934,7 +17669,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
                  self.preview_focus(to.elem);
                  self.form.note_engine_key(Some(RowKey(to.elem)));
                  if let Some(index) = self.form.index_of_key(RowKey(to.elem)) { self.form.table.sel = index as i32; }
-@@ -1115,8 +1210,12 @@ impl LogicalState for OttScreen {
+@@ -1115,8 +1217,12 @@ impl LogicalState for OttScreen {
          self.guide_clock.write(out);
          self.viewport.write(out);
          out.option(self.snapshot.category_label.as_ref(), |out, label| { out.str(label); });
@@ -16948,7 +17683,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
          out.option(self.snapshot.preview_context.as_ref(), |out, context| { out.str(context); });
          out.option(self.snapshot.random_context.as_ref(), |out, context| { out.str(context); });
          out.option(self.snapshot.order_context.as_ref(), |out, context| { out.str(context); });
-@@ -1144,6 +1243,8 @@ impl LogicalState for OttScreen {
+@@ -1144,6 +1250,8 @@ impl LogicalState for OttScreen {
          self.header_pop.write_motion(out);
          self.card_stack.write(out);
          out.option(self.restore_memory.as_ref(), |out, memory| memory.write(out));
@@ -16957,8 +17692,46 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
      }
      fn probe(&self, out: &mut String) { out.push_str("ott"); }
  }
-@@ -1228,6 +1329,9 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
-                 } else { metadata::paint(frame.painter, frame.measure, row, &self.status, false, self.grid_active(), self.route(), self.viewport_aperture(), self.guide_clock.now_for(row.guide.as_ref())); }
+@@ -1171,7 +1279,7 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
+         }
+         if self.reading {
+             if let Some(row) = self.media.and_then(|i| self.snapshot.rows.get(i)) {
+-                if !self.classic_mode { metadata::paint(frame.painter, frame.measure, row, &self.status, true, false, self.route(), None, self.guide_clock.now_for(row.guide.as_ref())); }
++                if !self.classic_mode { metadata::paint(frame.painter, frame.measure, row, &self.status, self.status_working(), true, false, self.route(), None, self.guide_clock.now_for(row.guide.as_ref())); }
+                 let rect = self.document_frame();
+                 let body = self.description(row);
+                 Part::<H>::draw(&mut DocumentPart { reader: &mut self.reader, frame: rect, body,
+@@ -1196,7 +1304,12 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
+                     .phase(frame.cx.tick.ms).draw(&plx_ui::Env::inert(), frame.painter);
+             }
+             if self.grid_active() { Part::<H>::draw(&mut self.grid_view(), frame, self.route().content); }
+-            else { Part::<H>::draw(&mut view, frame, Rect::FULL); }
++            else {
++                if !self.classic_mode && self.editor.is_none() && !self.browse && self.media.is_none() && self.status_working() {
++                    view.header.working_suffix = Some((&self.status, "ott-status"));
++                }
++                Part::<H>::draw(&mut view, frame, Rect::FULL);
++            }
+             if let Some(header) = self.header(frame.measure) {
+                 header.draw(frame.painter, self.header_scroll(), &self.header_capsules, self.header_pop.scale_with(0, frame.press.scale), None);
+                 if frame.records_stops() {
+@@ -1217,17 +1330,21 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
+                     else if !editor.error.is_empty() { &editor.error }
+                     else { msg::ott_editor_help() }
+                 });
++                let working = (self.editor.is_none() && self.status_working()).then_some((self.status.as_str(), "ott-status"));
+                 plx_ui::text_view::TextView::new(copy, theme::size::BODY, theme::TEXT_SECONDARY)
+-                    .with_measure(frame.measure).draw(frame.painter, self.route().narrative);
++                    .with_measure(frame.measure).draw_working_suffix(frame.painter, self.route().narrative, working);
+             }
+             if self.editor.is_none() && !self.browse { if let Some(row) = self.media.and_then(|i| self.snapshot.rows.get(i)) {
+                 if self.classic_mode {
+                     if let Some(layout) = self.classic_layout.get() {
+-                        classic::paint_left(frame.painter, layout, row, &self.status, self.guide_clock.now(), frame.measure);
++                        classic::paint_left(frame.painter, layout, row, &self.status, self.status_working(), self.guide_clock.now(), frame.measure);
+                     }
+-                } else { metadata::paint(frame.painter, frame.measure, row, &self.status, false, self.grid_active(), self.route(), self.viewport_aperture(), self.guide_clock.now_for(row.guide.as_ref())); }
++                } else { metadata::paint(frame.painter, frame.measure, row, &self.status, self.status_working(), false, self.grid_active(), self.route(), self.viewport_aperture(), self.guide_clock.now_for(row.guide.as_ref())); }
              } }
          }
 +        if self.number_notice.visible() && self.accepts_channel_number() {
@@ -16967,12 +17740,20 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
      }
      fn links(&self, out: &mut Vec<Link>) {
          if self.editor.is_none() && !self.reading {
-@@ -1311,12 +1415,53 @@ mod tests {
+@@ -1270,6 +1387,7 @@ mod tests {
+     mod modern_viewport;
+     mod modern_caption;
+     mod settings_navigation;
++    mod working_status;
+     use super::*;
+     use plx_machine::machine::{Host, Stamped};
+     struct TestHost;
+@@ -1311,12 +1429,53 @@ mod tests {
              kind: InputKind::Key { key, sym: 0, wcode: 0, edge: Edge::Down, at_edge: true } })
      }
      fn snapshot(revision: u64, ids: &[&str]) -> Arc<OttView> {
 -        Arc::new(OttView { category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, page_id: "channels".into(), revision, title: "Channels".into(),
-+        Arc::new(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, page_id: "channels".into(), revision, title: "Channels".into(),
++        Arc::new(OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: Some("source-fixture".into()), random_context: None, catalog_progress: None, page_id: "channels".into(), revision, title: "Channels".into(),
              description: String::new(), status: String::new(), selected_row: None, search: None,
 -            rows: ids.iter().map(|id| OttRow { content_title: None, guide: None, guide_available: false, media: None, id: id.to_string(), title: id.to_string(), detail: String::new(),
 +            rows: ids.iter().map(|id| OttRow { content_title: None, guide: None, guide_available: false, records_available: false, media: None, id: id.to_string(), title: id.to_string(), detail: String::new(),
@@ -17023,7 +17804,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
      #[test]
      fn favorites_is_always_reachable_even_without_a_provider() {
          let screen = OttScreen::new(EntryId(1), InstanceId(1));
-@@ -1389,6 +1534,52 @@ mod tests {
+@@ -1389,6 +1548,52 @@ mod tests {
          assert_eq!(screen.snapshot.rows.len(), 1);
          assert!(!screen.handles_private_text());
      }
@@ -17076,7 +17857,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
      #[test]
      fn editor_pending_result_retains_draft_and_allows_retry_after_error() {
          let mut screen = OttScreen::new(EntryId(1), InstanceId(1));
-@@ -1708,7 +1899,7 @@ mod menu_header_tests {
+@@ -1708,7 +1913,7 @@ mod menu_header_tests {
          let mut screen = OttScreen::new(EntryId(92), InstanceId(92));
          let mut view = OttView { revision: 1, page_id: "channels".into(),
              search: Some(OttSearch { query: String::new(), scope: "Home".into() }),
@@ -17085,7 +17866,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
                  description: "Details".into(), poster: None, action: OttAction::Play("film".into()),
                  enabled: true, favorite: false }], ..Default::default() };
          screen.install(Arc::new(view.clone()));
-@@ -1741,3 +1932,7 @@ mod order_tests;
+@@ -1741,3 +1946,7 @@ mod order_tests;
  #[cfg(test)]
  #[path = "usb_folder_tests.rs"]
  mod usb_folder_tests;
@@ -17366,6 +18147,53 @@ index f9c6617424107e6a6ba013c31da219396c282883..2debdffa411c0660a4deec11c516a3f3
 +    assert!(!screen.form.table.is_classic_catalogue());
 +    assert!(screen.form.table.classic_page_rows().is_none());
 +}
+diff --git a/rust-modules/screens/src/ott/tests/modern_viewport.rs b/rust-modules/screens/src/ott/tests/modern_viewport.rs
+index 4f4298c6737d4284086174d22a3505b51a7dc2b2..e35aae8e04a3866592a9d1d0844ae432c5b4b312 100644
+--- a/rust-modules/screens/src/ott/tests/modern_viewport.rs
++++ b/rust-modules/screens/src/ott/tests/modern_viewport.rs
+@@ -95,13 +95,13 @@ fn modern_metadata_painter_leaves_the_acknowledged_aperture_clear() {
+     let measure=plx_ui::fixture::FixtureMeasure;
+     let rect=metadata::preview_rect(row,&screen.status,&measure,route,None).unwrap();
+     let painted=plx_ui::draw_census::capture_runs(|| {
+-        metadata::paint(plx_ui::Painter::recording(),&measure,row,&screen.status,false,false,route,Some(rect),None);
++        metadata::paint(plx_ui::Painter::recording(),&measure,row,&screen.status,false,false,false,route,Some(rect),None);
+     });
+     let title=painted.iter().find(|run| run.text==row.title).expect("selected title is actually painted");
+     assert!(title.at.y>=rect.y+rect.h);
+     assert!(painted.iter().all(|run| run.at.y>=rect.y+rect.h),"no title/detail/body/status/hint crosses the video");
+     let original=plx_ui::draw_census::capture_runs(|| {
+-        metadata::paint(plx_ui::Painter::recording(),&measure,row,&screen.status,false,false,route,None,None);
++        metadata::paint(plx_ui::Painter::recording(),&measure,row,&screen.status,false,false,false,route,None,None);
+     });
+     let original_title=original.iter().find(|run| run.text==row.title).unwrap();
+     assert!(original_title.at.y<rect.y+rect.h,"no admitted aperture retains the original narrative");
+@@ -124,7 +124,7 @@ fn modern_metadata_excerpt_requires_a_complete_actual_text_line() {
+             let mut bounded=route;
+             bounded.action.y=measured.body.y+remaining+theme::space::MD;
+             let runs=plx_ui::draw_census::capture_runs(|| {
+-                metadata::paint(plx_ui::Painter::recording(),&measure,&row,"",false,false,bounded,preview,None);
++                metadata::paint(plx_ui::Painter::recording(),&measure,&row,"",false,false,false,bounded,preview,None);
+             });
+             assert_eq!(runs.iter().any(|run| run.text==row.description),want_excerpt);
+         }
+@@ -163,7 +163,7 @@ fn modern_now_next_paints_titles_and_replaces_the_synopsis_at_rollover() {
+         (1_700_000_120,false,false,""),
+     ] {
+         let runs=plx_ui::draw_census::capture_runs(|| {
+-            metadata::paint(plx_ui::Painter::recording(),&measure,&row,"",false,false,navigation::route(),None,Some(now));
++            metadata::paint(plx_ui::Painter::recording(),&measure,&row,"",false,false,false,navigation::route(),None,Some(now));
+         });
+         assert_eq!(runs.iter().any(|run| run.text.contains("CURRENT_TITLE")),current);
+         assert_eq!(runs.iter().any(|run| run.text.contains("NEXT_TITLE")),next);
+@@ -219,7 +219,7 @@ fn modern_guide_measurement_retires_small_apertures_and_fits_scaled_fallback() {
+         short.action.y=fallback.body.y+theme::space::MD;
+         assert!(metadata::preview_rect(&row,"",&measure,short,None).is_none(),"aperture may not steal the guide's text area");
+         let runs=plx_ui::draw_census::capture_runs(|| {
+-            metadata::paint(plx_ui::Painter::recording(),&measure,&row,"",false,false,route,None,None);
++            metadata::paint(plx_ui::Painter::recording(),&measure,&row,"",false,false,false,route,None,None);
+         });
+         assert!(runs.iter().any(|run| run.text.contains("CURRENT_TITLE")));
+         assert!(runs.iter().any(|run| run.text.contains("NEXT_TITLE")));
 diff --git a/rust-modules/screens/src/ott/tests/settings_navigation.rs b/rust-modules/screens/src/ott/tests/settings_navigation.rs
 index 24bbf564b8952bad474226c0eb24d7eeada32733..fc8c1f335d983203ec04d41802510561653021e1 100644
 --- a/rust-modules/screens/src/ott/tests/settings_navigation.rs
@@ -17450,6 +18278,142 @@ index 24bbf564b8952bad474226c0eb24d7eeada32733..fc8c1f335d983203ec04d41802510561
 +        screen.install(Arc::new(view));
 +        assert!(matches!(action(&screen, "nav:back"), Some(FormAction::Forward(OttAction::Back))));
 +        assert!(action(&screen, "nav:refresh").is_none());
++    }
++}
+diff --git a/rust-modules/screens/src/ott/tests/working_status.rs b/rust-modules/screens/src/ott/tests/working_status.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..b93a759765f6063b0d9ea1c20683cbea88d6a9e9
+--- /dev/null
++++ b/rust-modules/screens/src/ott/tests/working_status.rs
+@@ -0,0 +1,130 @@
++use super::*;
++use plx_machine::machine::UiMode;
++use plx_ui::placeholder::{self, Reason};
++
++fn fixture(mode: UiMode, selected: bool, progress: bool) -> OttScreen {
++    let mut screen = OttScreen::new(EntryId(1), InstanceId(1));
++    let mut view = (*snapshot(1, if selected { &["Selected video"] } else { &[] })).clone();
++    if progress {
++        view.catalog_progress = Some(OttCatalogProgress { loaded: 1, total: Some(20), loading: true, complete: false });
++    } else {
++        view.page_id = "guide:fixture".into();
++        view.status = "Fixture waiting status".into();
++        view.status_working = true;
++    }
++    if selected { view.selected_row = Some("Selected video".into()); }
++    screen.install(Arc::new(view));
++    screen.refresh_presentation(mode, &plx_ui::fixture::FixtureMeasure);
++    screen
++}
++
++fn paint(screen: &mut OttScreen, painter: plx_ui::Painter) {
++    let measure = plx_ui::fixture::FixtureMeasure;
++    let cx = Cx::<TestHost> { views: (), tick: Default::default(), measure: &measure,
++        focus: Default::default(), press: Default::default(),
++        owner: plx_machine::machine::InputOwner::Entry(EntryId(1)) };
++    let mut frame = DrawFrame::new(&cx, painter);
++    plx_gfx::gfx::without_frame_clear(|| screen.draw(&mut frame));
++}
++
++fn observed(screen: &mut OttScreen) -> (Vec<String>, placeholder::Frame) {
++    let runs = plx_ui::draw_census::capture_runs(|| paint(screen, plx_ui::Painter::recording()));
++    let text = runs.into_iter().filter(|run| run.ink[3] > 0.0).map(|run| run.text).collect();
++    let debt = placeholder::capture_declared(|| paint(screen, plx_ui::Painter::root())).1;
++    (text, debt)
++}
++
++#[test]
++fn visible_catalogue_progress_is_counted_in_both_presentations() {
++    let _serial = plx_base::testlock::serial();
++    for mode in [UiMode::Classic, UiMode::Modern] {
++        for selected in [false, true] {
++            let mut screen = fixture(mode, selected, true);
++            let status = screen.status.clone();
++            let (text, debt) = observed(&mut screen);
++            assert!(text.iter().any(|run| run.contains(&status)), "the progress text is actually drawn");
++            assert_eq!(debt.of(Reason::WorkingReadout), 1, "visible pending progress is counted once");
++            assert!(debt.entries.iter().any(|entry| entry.key == "ott-status"));
++        }
++    }
++}
++
++#[test]
++fn visible_typed_guide_wait_is_counted_in_both_presentations() {
++    let _serial = plx_base::testlock::serial();
++    for mode in [UiMode::Classic, UiMode::Modern] {
++        let mut screen = fixture(mode, false, false);
++        let (text, debt) = observed(&mut screen);
++        assert!(text.iter().any(|run| run.contains("Fixture waiting status")));
++        assert_eq!(debt.of(Reason::WorkingReadout), 1, "typed Guide wait is counted once at paint");
++    }
++}
++
++#[test]
++fn hidden_working_status_has_no_placeholder_debt() {
++    let _serial = plx_base::testlock::serial();
++    for hidden in ["editor", "modern-browse", "classic-reader"] {
++        let mode = if hidden == "classic-reader" { UiMode::Classic } else { UiMode::Modern };
++        let mut screen = fixture(mode, true, false);
++        match hidden {
++            "editor" => editor(&mut screen, "draft"),
++            "modern-browse" => { effects(|fx| screen.open_browse(fx)); assert!(screen.browse); }
++            _ => { effects(|fx| screen.show_details(fx)); assert!(screen.reading); }
++        }
++        let (text, debt) = observed(&mut screen);
++        assert!(!text.iter().any(|run| run.contains("Fixture waiting status")), "{hidden} hides the status");
++        assert_eq!(debt.of(Reason::WorkingReadout), 0, "{hidden} must not count hidden status");
++    }
++}
++
++#[test]
++fn working_status_install_and_recording_do_not_accrue_debt() {
++    let _serial = plx_base::testlock::serial();
++    let mut screen = fixture(UiMode::Modern, true, true);
++    let snapshot = screen.snapshot.clone();
++    let debt = placeholder::capture_declared(|| screen.install(snapshot)).1;
++    assert_eq!(debt.of(Reason::WorkingReadout), 0, "publication is not paint");
++    let debt = placeholder::capture_declared(|| paint(&mut screen, plx_ui::Painter::recording())).1;
++    assert_eq!(debt.of(Reason::WorkingReadout), 0, "discovery is not a presented frame");
++}
++
++#[test]
++fn settled_and_untyped_status_text_does_not_create_pending_debt() {
++    let _serial = plx_base::testlock::serial();
++    for mode in [UiMode::Classic, UiMode::Modern] {
++        let mut screen = fixture(mode, true, true);
++        let mut view = (*screen.snapshot).clone();
++        view.catalog_progress.as_mut().unwrap().complete = true;
++        view.status = "Loading is finished".into();
++        screen.install(Arc::new(view));
++        let (text, debt) = observed(&mut screen);
++        assert!(text.iter().any(|run| run.contains("Loading is finished")));
++        assert_eq!(debt.of(Reason::WorkingReadout), 0, "words do not infer pending state");
++    }
++}
++
++#[test]
++fn classic_initial_loading_retains_its_existing_draw_accounting() {
++    let _serial = plx_base::testlock::serial();
++    let mut screen = OttScreen::new(EntryId(1), InstanceId(1));
++    screen.refresh_presentation(UiMode::Classic, &plx_ui::fixture::FixtureMeasure);
++    let (text, debt) = observed(&mut screen);
++    assert!(text.iter().any(|run| run.contains(msg::browse_library_loading())));
++    assert_eq!(debt.of(Reason::WorkingReadout), 1);
++}
++
++#[test]
++fn long_copy_does_not_count_a_status_elided_or_below_the_screen() {
++    let _serial = plx_base::testlock::serial();
++    for mode in [UiMode::Modern, UiMode::Classic] {
++        let mut screen = fixture(mode, false, false);
++        let mut view = (*screen.snapshot).clone();
++        view.description = "A long catalogue introduction fills the narrative column. ".repeat(100);
++        screen.install(Arc::new(view));
++        let runs = plx_ui::draw_census::capture_runs(|| paint(&mut screen, plx_ui::Painter::recording()));
++        assert!(!runs.iter().any(|run| run.text.contains("Fixture waiting status")
++            && run.at.y < Rect::FULL.h && run.at.y + run.at.h > 0.0), "the pending status is not on screen");
++        let debt = placeholder::capture_declared(|| paint(&mut screen, plx_ui::Painter::root())).1;
++        assert_eq!(debt.of(Reason::WorkingReadout), 0);
 +    }
 +}
 diff --git a/rust-modules/screens/src/ott/usb_folder_tests.rs b/rust-modules/screens/src/ott/usb_folder_tests.rs
@@ -23125,7 +24089,7 @@ index dbc4b851bc985fa92d623abfa87497676a4d5688..cf7aa05d20a1f7781a88aa329e259075
      apply(&mut document, &source, &catalog, Operation::Copy { category: provider_id("Large"), label: "First".into() });
      apply(&mut document, &source, &catalog, Operation::Copy { category: provider_id("Large"), label: "Second".into() });
 diff --git a/rust-modules/src/app/ott_catalog_organization_ui.rs b/rust-modules/src/app/ott_catalog_organization_ui.rs
-index 14e18c7bebcdb9194708d8a27a384468c984f42d..fe5631d16022866512b6f379a92a91d6cf84913e 100644
+index 14e18c7bebcdb9194708d8a27a384468c984f42d..4e1cb38eef8e1c3bd971b6e507a4f33fc8624bda 100644
 --- a/rust-modules/src/app/ott_catalog_organization_ui.rs
 +++ b/rust-modules/src/app/ott_catalog_organization_ui.rs
 @@ -5,7 +5,7 @@ use organization_runtime::{Mode, View};
@@ -23142,7 +24106,7 @@ index 14e18c7bebcdb9194708d8a27a384468c984f42d..fe5631d16022866512b6f379a92a91d6
      let category = view.category.as_ref().map_or("", |category| category.id.as_str());
      let item = view.item.as_ref().map_or("", |item| item.id.as_str());
 -    OttView { category_label: None,
-+    OttView { classic_preferences: Default::default(), volume_available: false, category_label: None,
++    OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None,
          preview_context: None,
          page_id: format!("organization:{mode}:{category}:{item}"), revision, title, description,
          status: status.into(), selected_row: rows.first().map(|row| row.id.clone()),
@@ -23949,7 +24913,7 @@ index 3057b589dc28fb444e73cc5a1c2c72d53dcb3701..97cbd569c60a1d493ded8b3df35b66ba
 +    }
  }
 diff --git a/rust-modules/src/app/ott_companion_adapter.rs b/rust-modules/src/app/ott_companion_adapter.rs
-index 162aa79d373fe0efdc92e6b44e9c254114649b56..e8b1f05a081f9251410300fdf863fbef82ebad19 100644
+index 162aa79d373fe0efdc92e6b44e9c254114649b56..1737f9967a9d05ed5aa4b248438801897f26d68b 100644
 --- a/rust-modules/src/app/ott_companion_adapter.rs
 +++ b/rust-modules/src/app/ott_companion_adapter.rs
 @@ -1,5 +1,6 @@
@@ -24235,7 +25199,7 @@ index 162aa79d373fe0efdc92e6b44e9c254114649b56..e8b1f05a081f9251410300fdf863fbef
      }
      rows.push(button("torrent.back", "Back / cancel"));
 -    Some(OttView { category_label: None,
-+    Some(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None,
++    Some(OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None,
          preview_context: None,
          order_context: None, random_context: None,
          catalog_progress: None,
@@ -27332,7 +28296,7 @@ index 0000000000000000000000000000000000000000..fd0c1556911aace22ee3e9739390651d
 +        "a fresh explicit choice may apply once the surface is visible");
 +}
 diff --git a/rust-modules/src/app/ott_guide_runtime.rs b/rust-modules/src/app/ott_guide_runtime.rs
-index 8ef907ef235ec29602063da979ac981075412639..dcfd1af5440f2a867d9fa83606104baf02595a3d 100644
+index 8ef907ef235ec29602063da979ac981075412639..da8f24f1effd809cdf52c68c446d2c5f37141e46 100644
 --- a/rust-modules/src/app/ott_guide_runtime.rs
 +++ b/rust-modules/src/app/ott_guide_runtime.rs
 @@ -10,6 +10,10 @@ use plx_data::ott::{
@@ -27501,7 +28465,15 @@ index 8ef907ef235ec29602063da979ac981075412639..dcfd1af5440f2a867d9fa83606104baf
          OttAction::GuideProgramme {
              generation: state.request_generation,
              programme_id: id,
-@@ -584,46 +615,49 @@ pub(super) fn view(runtime: &Runtime) -> Option<OttView> {
+@@ -514,6 +545,7 @@ fn programme_row(state: &State, programme: &Programme) -> OttRow {
+ }
+ 
+ pub(super) fn view(runtime: &Runtime) -> Option<OttView> {
++    // placeholder-exempt: publishes typed pending state; OttScreen counts the visible status paint.
+     if !matches!(runtime.page, "guide" | "guide-programme") {
+         return None;
+     }
+@@ -584,46 +616,49 @@ pub(super) fn view(runtime: &Runtime) -> Option<OttView> {
              }
          }
      } else {
@@ -27590,7 +28562,7 @@ index 8ef907ef235ec29602063da979ac981075412639..dcfd1af5440f2a867d9fa83606104baf
                      }
                  }
              }
-@@ -646,12 +680,12 @@ pub(super) fn view(runtime: &Runtime) -> Option<OttView> {
+@@ -646,12 +681,12 @@ pub(super) fn view(runtime: &Runtime) -> Option<OttView> {
          error.into()
      } else if state.result.is_none() {
          msg::ott_guide_loading().into()
@@ -27609,14 +28581,14 @@ index 8ef907ef235ec29602063da979ac981075412639..dcfd1af5440f2a867d9fa83606104baf
      } else if !supports_day(&state.profile, &state.entry) {
          msg::ott_guide_short().into()
      } else {
-@@ -662,13 +696,18 @@ pub(super) fn view(runtime: &Runtime) -> Option<OttView> {
+@@ -662,13 +697,18 @@ pub(super) fn view(runtime: &Runtime) -> Option<OttView> {
              .and_then(|[year, month, day]| i18n::current().date(year, month as u8, day as u8))
              .unwrap_or_default(),
          Query::CurrentNext { .. } => msg::ott_guide_current_next().into(),
 +        Query::Records { .. } => String::new(),
      };
 -    Some(OttView { category_label: None, order_context: None, preview_context: None, random_context: None,
-+    Some(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: None, random_context: None,
++    Some(OttView { status_working: current && state.error.is_none() && state.result.is_none(), classic_preferences: Default::default(), volume_available: false, category_label: None, order_context: None, preview_context: None, random_context: None,
          catalog_progress: None,
          search: None,
          page_id: format!("{}:{}", runtime.page, generation),
@@ -27630,6 +28602,34 @@ index 8ef907ef235ec29602063da979ac981075412639..dcfd1af5440f2a867d9fa83606104baf
          description: state.entry.title.clone(),
          status,
          selected_row: state.programme.clone().or_else(|| {
+diff --git a/rust-modules/src/app/ott_guide_runtime_tests.rs b/rust-modules/src/app/ott_guide_runtime_tests.rs
+index d40586c1fed09066daf477e98db3913d23cd9128..00d7366586c2b164519bbaa127f586a4f585a515 100644
+--- a/rust-modules/src/app/ott_guide_runtime_tests.rs
++++ b/rust-modules/src/app/ott_guide_runtime_tests.rs
+@@ -301,3 +301,23 @@ fn rejected_current_next_reply_is_consumed_before_footer_projection() {
+         assert!(runtime.guide.as_ref().unwrap().result.is_none());
+     }
+ }
++
++#[test]
++fn guide_working_status_is_only_the_current_unsettled_request() {
++    let mut runtime = fixture();
++    open(&mut runtime, "channel-one").unwrap();
++    assert!(view(&runtime).unwrap().status_working, "a pending Guide response is typed as working");
++    start_failed(&mut runtime);
++    assert!(!view(&runtime).unwrap().status_working, "failure is settled status");
++
++    let mut runtime = fixture();
++    open(&mut runtime, "channel-one").unwrap();
++    let reply = response(&runtime);
++    assert!(accept(&mut runtime, &reply));
++    assert!(!view(&runtime).unwrap().status_working, "accepted data is settled status");
++
++    let mut runtime = fixture();
++    open(&mut runtime, "channel-one").unwrap();
++    runtime.generation = runtime.generation.wrapping_add(1);
++    assert!(!view(&runtime).unwrap().status_working, "retired source must not look pending");
++}
 diff --git a/rust-modules/src/app/ott_hls_tracks.rs b/rust-modules/src/app/ott_hls_tracks.rs
 new file mode 100644
 index 0000000000000000000000000000000000000000..96f2a9416da68253e5f915a96341cec0f0630cc6
@@ -39690,7 +40690,7 @@ index 98f84bf62ac4d6ef700b9da90736a1f70c0e41d9..1ee1c615cd53cb6ff91a63c5f9b6ab79
              body: r.body,
          });
 diff --git a/rust-modules/src/app/ott_runtime.rs b/rust-modules/src/app/ott_runtime.rs
-index 9681ec31dfc280aab9cf7b9fd396c897e040857d..67beee12d1dab78172980410448e043538a77e94 100644
+index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2db2bcde01 100644
 --- a/rust-modules/src/app/ott_runtime.rs
 +++ b/rust-modules/src/app/ott_runtime.rs
 @@ -1,6 +1,8 @@
@@ -40536,7 +41536,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..67beee12d1dab78172980410448e0435
              self.search_page_id().unwrap_or_else(|| self.page.into())
          };
 -        OttView { category_label: self.category_label(),
-+        OttView { classic_preferences: self.classic_preferences(), volume_available: self.playing.is_some(), category_label: self.category_label(),
++        OttView { status_working: false, classic_preferences: self.classic_preferences(), volume_available: self.playing.is_some(), category_label: self.category_label(),
              preview_context: preview::context(self),
              order_context: self.local_order_key(),
              random_context: random::context(self, &rows),
@@ -51403,7 +52403,7 @@ index 0000000000000000000000000000000000000000..2fc29d012133003c38bf5362d87c2bc9
 +    assert_eq!(restarted.step(sample(10_800_000)), Some(Fx::EnterStandby));
 +}
 diff --git a/rust-modules/src/app/ott_stremio_adapter.rs b/rust-modules/src/app/ott_stremio_adapter.rs
-index dc0c9b18788460ad25602878f336dec729855aa4..0f2790ebee987fdd5cdf93a169dc3395799769cc 100644
+index dc0c9b18788460ad25602878f336dec729855aa4..c4d7b126cb7625ecd672d25845580619e5005cef 100644
 --- a/rust-modules/src/app/ott_stremio_adapter.rs
 +++ b/rust-modules/src/app/ott_stremio_adapter.rs
 @@ -489,8 +489,10 @@ pub(super) fn complete(adapter: &mut Adapter, runtime: &mut Runtime, fetched: Fe
@@ -51424,7 +52424,7 @@ index dc0c9b18788460ad25602878f336dec729855aa4..0f2790ebee987fdd5cdf93a169dc3395
      }
      rows.push(button("stremio.back", "Cancel / Back"));
 -    Some(OttView { category_label: None,
-+    Some(OttView { classic_preferences: Default::default(), volume_available: false, category_label: None,
++    Some(OttView { status_working: false, classic_preferences: Default::default(), volume_available: false, category_label: None,
          preview_context: None,
          order_context: None, random_context: None,
          catalog_progress: None,
@@ -59049,6 +60049,54 @@ index 2334e7c20f8b97ba01d02ce377c0e23e7b7aab93..04634d2ce1cc88d9aa817a9d5fd33491
 +        }
 +    }
 +}
+diff --git a/rust-modules/ui/src/hold_hint.rs b/rust-modules/ui/src/hold_hint.rs
+index 783db21762e5bda8b267384d31bc0962f87258e5..730090104d0116556efa56b1315cc70559d61fe1 100644
+--- a/rust-modules/ui/src/hold_hint.rs
++++ b/rust-modules/ui/src/hold_hint.rs
+@@ -618,6 +618,9 @@ pub(crate) fn glass_face() -> plx_gfx::gfx::GlassFace {
+ /// The key the cap names.
+ const KEY: &std::ffi::CStr = c"OK";
+ 
++/// Plain spelling of the same physical key named by the shared hold capsule.
++pub fn key_label() -> &'static str { KEY.to_str().expect("ASCII key identity") }
++
+ /// The catalog sentence, `{key}` held by the object-replacement character.
+ fn sentence() -> String {
+     plx_platform::i18n::msg::widgets_hint_hold_options("\u{fffc}")
+diff --git a/rust-modules/ui/src/route_screen.rs b/rust-modules/ui/src/route_screen.rs
+index a24a9e66d37795d4a862adcff2a72bc9e55db94b..b112eee0f994ff8ebb6aca4bd6d82427002ec4e6 100644
+--- a/rust-modules/ui/src/route_screen.rs
++++ b/rust-modules/ui/src/route_screen.rs
+@@ -1030,6 +1030,12 @@ impl RouteLayout {
+         copy_size: std::os::raw::c_int,
+         measure: &dyn Measure,
+     ) -> f32 {
++        self.draw_narrative_working(p, back_to, title, copy, copy_size, measure, None)
++    }
++
++    pub(crate) fn draw_narrative_working(self, p: Painter, back_to: Option<&str>, title: &str,
++        copy: &str, copy_size: std::os::raw::c_int, measure: &dyn Measure,
++        working_suffix: Option<(&str, &'static str)>) -> f32 {
+         let title = Self::narrative_title(title);
+         let title_h = title.measure_h(self.narrative.w);
+         let flow = self.narrative_flow(back_to.is_some(), title_h);
+@@ -1043,7 +1049,7 @@ impl RouteLayout {
+         let copy_h = TextView::new(copy, copy_size, theme::TEXT_READING)
+             .leading(copy_size as f32 + theme::space::XS)
+             .max_lines(12)
+-            .draw(
++            .draw_working_suffix(
+                 p,
+                 Rect::new(
+                     self.narrative.x,
+@@ -1051,6 +1057,7 @@ impl RouteLayout {
+                     self.narrative.w,
+                     (copy_bottom - copy_top).max(0.0),
+                 ),
++                working_suffix,
+             );
+         copy_top + copy_h
+     }
 diff --git a/rust-modules/ui/src/table.rs b/rust-modules/ui/src/table.rs
 index b04416e37f1e80e116401ddf994ed5675e244eaf..4082fb6d560e2e983787f3daf1e843ba8faf4824 100644
 --- a/rust-modules/ui/src/table.rs
@@ -59241,6 +60289,204 @@ index b04416e37f1e80e116401ddf994ed5675e244eaf..4082fb6d560e2e983787f3daf1e843ba
 +        assert_eq!(table.plain_row_h(), 44.0);
 +    }
 +}
+diff --git a/rust-modules/ui/src/table_screen.rs b/rust-modules/ui/src/table_screen.rs
+index a8348ca42ee5bd3d3608040c2fd2ffa7e72057da..eca1a4b9fe114b148410d8d882a79ce8464a5323 100644
+--- a/rust-modules/ui/src/table_screen.rs
++++ b/rust-modules/ui/src/table_screen.rs
+@@ -85,6 +85,8 @@ pub struct Header<'a> {
+     /// [BACK] to close PlxNative"). Never elided: a screen that sets one owns a fit test for it
+     /// against [`RouteLayout`]'s narrative width.
+     pub hint: Option<KeyHint<'a>>,
++    /// Optional working suffix in `copy`; counted only if emitted by the text view.
++    pub working_suffix: Option<(&'a str, &'static str)>,
+ }
+ 
+ impl<'a> Header<'a> {
+@@ -96,6 +98,7 @@ impl<'a> Header<'a> {
+             copy,
+             copy_size: theme::size::LABEL,
+             hint: None,
++            working_suffix: None,
+         }
+     }
+ 
+@@ -111,7 +114,7 @@ impl<'a> Header<'a> {
+ 
+     /// The one drawing routine, for both loops.
+     pub fn paint(&self, p: Painter, measure: &dyn Measure) {
+-        let copy_end = self.layout.draw_narrative(p, self.crumb, self.title, self.copy, self.copy_size, measure);
++        let copy_end = self.layout.draw_narrative_working(p, self.crumb, self.title, self.copy, self.copy_size, measure, self.working_suffix);
+         if let Some(hint) = &self.hint {
+             // The copy's end, then the hint one MD under it: a two-item run from `copy_end`.
+             let run = [Item::new(0.0), Item::new(KeyHint::height())];
+@@ -171,7 +174,7 @@ impl<H: Host> Part<H> for Header<'_> {
+                 (self.layout.narrative.h - hint_height).max(0.0));
+             {
+                 let _clip = super::screen::ClipScope::open_in(f.painter, copy);
+-                text.draw(f.painter, copy);
++                text.draw_working_suffix(f.painter, copy, self.working_suffix);
+             }
+             if let Some(hint) = &self.hint {
+                 hint.draw(f.painter, self.layout.narrative.x,
+diff --git a/rust-modules/ui/src/text_view.rs b/rust-modules/ui/src/text_view.rs
+index 27a2828cb33f73484e7caa1ae18e4c41735fd84c..f142e83583f17d02d981766213901368f1ba829f 100644
+--- a/rust-modules/ui/src/text_view.rs
++++ b/rust-modules/ui/src/text_view.rs
+@@ -40,6 +40,8 @@ struct Wrapped {
+     lines: Vec<CString>,
+     /// Same indices as `lines`; measured during wrapping, reused by fade and alignment queries.
+     widths: Vec<f32>,
++    /// End of the source text still represented after each line's elision.
++    source_ends: Vec<usize>,
+     truncated: bool,
+ }
+ // A `thread_local!`: the memo holds `Rc`s, which are `!Send` by design, and only the render thread
+@@ -411,6 +413,9 @@ impl<'a> TextView<'a> {
+             .filter(|w| !w.is_empty())
+             .collect();
+         let mut lines: Vec<String> = Vec::new();
++        let mut source_starts = Vec::new();
++        let mut cur_start = 0;
++        let source_offset = |word: &str| word.as_ptr().addr() - self.text.as_ptr().addr();
+         let mut cur = String::new();
+         let mut i = 0;
+         let mut word_offset = 0;
+@@ -435,6 +440,7 @@ impl<'a> TextView<'a> {
+                     if self.measure(&word[..next]) > avail(lines.len()) { break; }
+                     end = next;
+                 }
++                source_starts.push(source_offset(word));
+                 lines.push(word[..end].to_string());
+                 word_offset += end;
+                 if word_offset == words[i].len() {
+@@ -450,17 +456,20 @@ impl<'a> TextView<'a> {
+                 format!("{cur} {word}")
+             };
+             if !cur.is_empty() && self.measure(&trial) > avail(lines.len()) {
++                source_starts.push(cur_start);
+                 lines.push(std::mem::take(&mut cur));
+                 if self.max_lines > 0 && lines.len() == self.max_lines {
+                     break; // out of line budget; `i` still points at unplaced words → truncated
+                 }
+                 continue; // reconsider the word in a fresh, full-width line
+             }
++            if cur.is_empty() { cur_start = source_offset(word); }
+             cur = trial;
+             i += 1;
+             word_offset = 0;
+         }
+         if !cur.is_empty() && (self.max_lines == 0 || lines.len() < self.max_lines) {
++            source_starts.push(cur_start);
+             lines.push(cur);
+             i = words.len();
+         }
+@@ -495,6 +504,21 @@ impl<'a> TextView<'a> {
+             }
+             widths.push(measured);
+         }
++        let source_ends = lines.iter().zip(source_starts).map(|(line, start)| {
++            let mut source = self.text[start..].char_indices().peekable();
++            let mut end = start;
++            for shown in line.chars() {
++                if shown == ' ' && source.peek().is_some_and(|(_, c)| c.is_whitespace() && !matches!(*c, '\u{a0}' | '\u{202f}')) {
++                    while source.peek().is_some_and(|(_, c)| c.is_whitespace() && !matches!(*c, '\u{a0}' | '\u{202f}')) {
++                        let (at, c) = source.next().unwrap();
++                        end = start + at + c.len_utf8();
++                    }
++                } else if let Some((at, c)) = source.next().filter(|(_, c)| *c == shown) {
++                    end = start + at + c.len_utf8();
++                } else { break; } // inserted ellipsis has no source bytes
++            }
++            end
++        }).collect();
+         // A wrapped line is its own bidi paragraph when it is drawn, and takes its direction from
+         // its OWN first letter: a line of an Arabic summary that happens to open with a Latin word
+         // would be laid out left to right, and a line of an English one that opens with an Arabic
+@@ -514,7 +538,7 @@ impl<'a> TextView<'a> {
+                 CString::new(s).unwrap_or_default()
+             })
+             .collect();
+-        Wrapped { lines, widths, truncated }
++        Wrapped { lines, widths, source_ends, truncated }
+     }
+ 
+     /// how many lines the text wraps to at `width` (at least 1) — the count [`Self::measure_h`]
+@@ -615,6 +639,32 @@ impl<'a> TextView<'a> {
+             .unwrap_or(0.0)
+     }
+ 
++    /// Draw the unchanged plain text and account a working suffix only if its source
++    /// survives wrapping/elision on a visible line. Used by narrative copy, which has
++    /// no inline lead, trailing affordance or fade. The key must be a stable identity,
++    /// never the potentially private suffix text.
++    pub fn draw_working_suffix(&self, p: Painter, frame: Rect, suffix: Option<(&str, &'static str)>) -> f32 {
++        let height = self.draw(p, frame);
++        let Some((suffix, key)) = suffix else { return height };
++        if p.is_recording() || p.opacity() <= 0.0 || self.col[3] <= 0.0 || suffix.trim().is_empty()
++            || !self.text.ends_with(suffix) { return height; }
++        debug_assert!(self.lead.is_none() && self.trailing.is_none() && self.fade_last == 0.0
++            && self.vfade_top.is_none() && self.vfade_bot.is_none());
++        let start = self.text.len() - suffix.trim_start().len();
++        let wrapped = self.wrap(frame.w);
++        for (line, &end) in wrapped.source_ends.iter().enumerate() {
++            if end <= start || wrapped.lines[line].as_bytes().is_empty() { continue; }
++            let row = Rect::new(frame.x, frame.y + line as f32 * self.line_h(), frame.w, self.line_h());
++            let (screen, _, clip) = p.to_screen(row);
++            let visible = screen.intersect(clip).intersect(Rect::FULL);
++            if visible.w > 0.0 && visible.h > 0.0 {
++                crate::placeholder::note(p, crate::placeholder::Reason::WorkingReadout, key);
++                break;
++            }
++        }
++        height
++    }
++
+     /// Draw into `frame`: `frame.w` is the wrap width, `frame.x/y` the top-left. Line 0's cap band
+     /// sits at `frame.y`, each subsequent line one `leading` below. Returns the consumed height.
+     ///
+@@ -764,6 +814,42 @@ impl<'a> TextView<'a> {
+ 
+ #[cfg(test)]
+ mod tests {
++    #[test]
++    fn working_suffix_counts_only_source_glyphs_that_survive_the_actual_wrap() {
++        let _serial = plx_base::testlock::serial();
++        struct Ten;
++        impl plx_machine::machine::Measure for Ten {
++            fn width(&self, text: &std::ffi::CStr, _: i32, _: bool) -> f32 {
++                text.to_string_lossy().chars().count() as f32 * 10.0
++            }
++            fn cap_h(&self, _: i32) -> f32 { 20.0 }
++            fn line_h(&self, _: i32) -> f32 { 28.0 }
++        }
++        for (text, suffix, visible) in [
++            ("prefix prefix WAITING", "WAITING", false),
++            ("12345678 W remainder", "W remainder", false),
++            ("1234567 W remainder", "W remainder", true),
++            ("one WAIT remainder", "WAIT remainder", true),
++            ("текст WAIT", "WAIT", true),
++            ("bad\0 WAIT", "WAIT", false),
++        ] {
++            let view = TextView::new(text, theme::size::BODY, theme::TEXT_SECONDARY)
++                .max_lines(1).with_measure(&Ten);
++            let rect = Rect::new(40.0, 40.0, 100.0, 100.0);
++            let runs = crate::draw_census::capture_runs(|| {
++                view.draw_working_suffix(Painter::recording(), rect, Some((suffix, "test-status")));
++            });
++            assert_eq!(runs.iter().any(|run| run.text.contains('W')), visible, "{text}");
++            let debt = crate::placeholder::capture_declared(|| {
++                view.draw_working_suffix(Painter::root(), rect, Some((suffix, "test-status")));
++            }).1;
++            assert_eq!(debt.of(crate::placeholder::Reason::WorkingReadout), usize::from(visible), "{text}");
++            let recording = crate::placeholder::capture_declared(|| {
++                view.draw_working_suffix(Painter::recording(), rect, Some((suffix, "test-status")));
++            }).1;
++            assert_eq!(recording.count, 0);
++        }
++    }
+     #[test]
+     fn long_word_wrapping_preserves_utf8_and_respects_line_limits() {
+         struct Measure;
 diff --git a/rust-modules/ui/src/widgets.rs b/rust-modules/ui/src/widgets.rs
 index 33170378d0a2b06ca913c678560217012730274b..e4e684f4951ea406508da52f9949fae8860d8c5e 100644
 --- a/rust-modules/ui/src/widgets.rs
