@@ -151,6 +151,7 @@ class NativeScopeTests(unittest.TestCase):
         markers = (
             "native/webos/build.py bootstrap", "rustup component add",
             "make check-cargo-lint", "make check-cargo-unit-default",
+            "make check-cargo-unit-hostsim",
             "make sim-linux", "python3 tests/replay_fixtures.py",
             "source-recheck.log", "native/webos/companion/prepare.py",
             '"native/webos/companion/build.py", "build"', "native/webos/build.py all",
@@ -161,7 +162,7 @@ class NativeScopeTests(unittest.TestCase):
         for index in indexes:
             self.assertNotIn("if", steps[index])
             self.assertNotIn("continue-on-error", steps[index])
-        for index in indexes[1:6]:
+        for index in indexes[1:7]:
             step = steps[index]
             self.assertEqual(step["working-directory"], "build/native-webos/source")
             self.assertEqual(step["shell"], "bash")
@@ -182,16 +183,17 @@ class NativeScopeTests(unittest.TestCase):
         self.assertLess(package_commands.index(product_tests), package_commands.index("make check-cargo-lint"))
         self.assertIn("package-selftest.log", package_commands)
         self.assertIn("product-config-tests.log", package_commands)
-        self.assertIn("SIM_TDIR=rust-modules/target-sim-ci", commands[indexes[4]])
-        replay = steps[indexes[5]]
+        self.assertIn("hostsim-libraries.log", commands[indexes[4]])
+        self.assertIn("SIM_TDIR=rust-modules/target-sim-ci", commands[indexes[5]])
+        replay = steps[indexes[6]]
         self.assertEqual(replay["env"]["LIBGL_ALWAYS_SOFTWARE"], "1")
         for argument in ("xvfb-run", '"$PWD/rust-modules/target-sim-ci/release/plxnative-sim"',
                          '--assets "$PWD/pkg"', "--jobs 1", "--timeout 300"):
             self.assertIn(argument, replay["run"])
-        recheck = commands[indexes[6]]
+        recheck = commands[indexes[7]]
         self.assertIn("native/webos/build.py prepare", recheck)
         self.assertIn("prepared-after.json", recheck)
-        self.assertIn("--rust-opt-level s", commands[indexes[9]])
+        self.assertIn("--rust-opt-level s", commands[indexes[10]])
         dependencies = next(command for command in commands if "apt-get install" in command)
         for package in ("libsdl2-dev", "libsdl2-ttf-dev", "libgl1-mesa-dev",
                         "libgl1-mesa-dri", "xvfb", "xauth"):

@@ -145,7 +145,8 @@ This setting alone does not establish playback performance or TV compatibility.
 The hosted workflow checks its Linux prerequisites before compiling: the host
 libcurl must support TLS and HTTP/2, Python TLS must support ALPN, and the pinned,
 hash-verified Pillow wheel must decode the packaged icon. It then runs the native
-lint/type checks, default library and storage tests, package-validator tests and
+lint/type checks, default library and storage tests, the hostsim library tests
+(including OTT interface and host playback regressions), package-validator tests and
 recorded UI scenarios through the Linux simulator under Xvfb. These host checks
 precede ARM packaging because host builds can change files in the staging tree.
 They do not replace the later checks of the actual ARM package or testing on a TV.

@@ -183,6 +183,20 @@ jobs:
           set -euo pipefail
           # Keep every binary identity/result plus the storage and Cargo self-tests.
           make check-cargo-unit-default 2>&1 | tee "$RUNNER_TEMP/native-host-verification/default-libraries.log"
+      - name: Native hostsim libraries and OTT interface contracts
+        timeout-minutes: 25
+        working-directory: build/native-webos/source
+        shell: bash
+        env:
+          CARGO_INCREMENTAL: "0"
+          PLX_CARGO_SEED: "off"
+          HOST_THREADS: "0"
+          RELEASE: ""
+          PLX_TEST_JOBS: "2"
+        run: |
+          set -euo pipefail
+          # OTT interface and host playback regressions are compiled only with hostsim.
+          make check-cargo-unit-hostsim 2>&1 | tee "$RUNNER_TEMP/native-host-verification/hostsim-libraries.log"
       - name: Build the native Linux renderer
         timeout-minutes: 30
         working-directory: build/native-webos/source
