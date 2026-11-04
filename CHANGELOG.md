@@ -159,6 +159,9 @@
   runtime archives. Keep release notes and generated package audits consistent.
 - Align dependency-check fixtures with their current build inputs and record
   original and measured baseline trees in native build comparisons.
+- Start inspected native Local videos without an audio track through the
+  video-only pipeline, retaining their video parameters and clearing audio
+  state left by the previous file.
 
 ### Upgrade
 
