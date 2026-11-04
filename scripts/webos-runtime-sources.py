@@ -642,7 +642,15 @@ def runtime_inputs(text, source, sdk, *, allowed_archives=(), archive_root=None,
         except ValueError:
             fail("Runtime input is outside the recorded SDK: " + path)
 
-    archive_members = set(re.findall(r"([^\s()]+\.(?:a|rlib))\(([^\s()]+)\)", text))
+    # Consume whole unquoted absolute paths first, including spaces. Otherwise
+    # the relative alternative invents a source-relative suffix for that input.
+    archive_members = {
+        (match[1] or match[3], match[2] or match[4])
+        for match in re.finditer(
+            r"(?<!\S)(/[^()\r\n]*?\.(?:a|rlib))\(([^\s()]+)\)"
+            r"|([^\s()]+\.(?:a|rlib))\(([^\s()]+)\)", text
+        )
+    }
     # A loaded archive with no extracted members still needs a classified owner.
     named = {name for name, _ in archive_members}
     archive_members.update(

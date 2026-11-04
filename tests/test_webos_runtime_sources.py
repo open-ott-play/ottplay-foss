@@ -496,6 +496,33 @@ class RuntimeArchiveContainmentTests(unittest.TestCase):
     def inputs(self, path, **kwargs):
         return runtime.runtime_inputs(str(path) + "(member.o)\n", self.source, self.sdk, **kwargs)
 
+    def test_spaced_absolute_archives_keep_full_paths_and_relative_members(self):
+        sdk = self.root / "sdk with spaces"
+        sdk.mkdir()
+        archive = self.archive(sdk / "lib/libgcc.a")
+        helper = self.archive(self.root / "helper/libhelper.a")
+        text = str(archive) + "(div.o) helper/libhelper.a(member.o)\n"
+        try:
+            rows = runtime.runtime_inputs(text, self.source, sdk, archive_root=self.root,
+                                          allowed_archives={str(helper)})
+        except ValueError as error:
+            self.fail("Valid whole archive paths were split: " + str(error))
+        self.assertEqual(rows, [{"source": "gcc-runtime", "archive_or_object": "libgcc.a",
+                                 "member": "div.o", "sdk_path": "lib/libgcc.a"}])
+
+    def test_spaced_unknown_archives_cannot_borrow_suffix_authority(self):
+        for suffix in (".a", ".rlib"):
+            for location, expected in ((self.source, "Static source archive has no bundled source evidence"),
+                                       (self.sdk, "Unclassified static SDK archive"),
+                                       (self.root / "external", "Unclassified static archive")):
+                archive = self.archive(location / ("directory with spaces/libunknown" + suffix))
+                # A separately allowed suffix must not authorize the complete input.
+                misleading = (self.source / ("spaces/libunknown" + suffix)).resolve()
+                with self.subTest(archive=str(archive)), self.assertRaisesRegex(ValueError, expected):
+                    runtime.runtime_inputs(str(archive) + "(member.o)\n", self.source, self.sdk,
+                                           allowed_archives={str(misleading), str(archive)}
+                                           if location != self.root / "external" else {str(misleading)})
+
     def test_source_sibling_prefix_does_not_authorize_archive(self):
         outside = self.archive(self.root / "source-sibling/libother.a")
         with self.assertRaisesRegex(ValueError, "Unclassified static archive"):
@@ -1187,6 +1214,23 @@ class RlibCoverageTests(unittest.TestCase):
         with patch.object(runtime.subprocess, "check_output", side_effect=self.probe):
             return runtime.link_evidence({"plxnative-storage": binary}, self.source, self.sdk,
                                          source_coverage=coverage)
+
+    def test_collector_accepts_bound_builtins_in_spaced_sysroot_without_suffix(self):
+        spaced = self.root / "rust toolchain"
+        self.sysroot.rename(spaced)
+        relative = self.builtins.relative_to(self.sysroot)
+        self.sysroot, self.builtins = spaced, spaced / relative
+        try:
+            result, files, _ = self.link(self.builtins, self.coverage())
+        except ValueError as error:
+            self.fail("Bound compiler builtins path was split: " + str(error))
+        binding = result["plxnative-storage"]["native_rust_runtime"]
+        self.assertEqual(binding["archives"][0]["path"], "/build/native-rust/" + relative.as_posix())
+        self.assertEqual(binding["archives"][0]["sha256"], runtime.digest(self.builtins))
+        self.assertEqual(binding["archives"][0]["validation"], "collection-time")
+        self.assertEqual(len(binding["archives"]), 1)
+        self.assertEqual(len(self.probes), 2)
+        self.assertNotIn(str(self.root).encode(), files["evidence/plxnative-storage.link.map"])
 
     def test_native_rlib_all_linker_forms_require_source_owner(self):
         path = self.source / "custom/libunknown.rlib"

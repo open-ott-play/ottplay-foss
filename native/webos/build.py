@@ -32,6 +32,8 @@ ROOT = HERE.parents[1]
 TARGET = "armv7-unknown-linux-gnueabi"
 PRODUCT_CONFIG = "ci/ottplay-integration/release/product.json"
 RELEASE_DOCUMENT_LIMIT = 64 * 1024
+# Match the release verifier's maximum size for raw Cargo evidence.
+CARGO_EVIDENCE_LIMIT = 8 * 1024 * 1024
 # Unused upstream platform-modification implementation is never part of this
 # product's source or binary distribution. The overlay removes its module.
 EXCLUDED_SOURCE = "rust-modules/platform/src/webos/jail_repair.rs"
@@ -367,7 +369,10 @@ def native_compile_evidence(args, spec, source, configuration):
     for path in (raw_path, archive):
         if not path.is_file() or path.resolve() != path.absolute():
             fail("Native compilation evidence must remain inside its source tree")
-    raw = raw_path.read_bytes()
+    with raw_path.open("rb") as stream:
+        raw = stream.read(CARGO_EVIDENCE_LIMIT + 1)
+    if len(raw) > CARGO_EVIDENCE_LIMIT:
+        fail("Native Cargo evidence exceeds the 8 MiB release limit")
     try:
         records = [json.loads(line) for line in raw.splitlines() if line.strip()]
     except ValueError:
@@ -838,10 +843,21 @@ def package(args, spec):
     ):
         fail("Native binary does not match its recorded source build")
     args.output.mkdir(parents=True, exist_ok=True)
+    evidence_files = []
     for item in (receipt["compilation"]["cargo"], receipt["compilation"]["make"]):
         evidence = args.work_dir / item["file"]
         if Path(item["file"]).name != item["file"] or sha256(evidence) != item["sha256"]:
             fail("Native compilation evidence changed before packaging")
+        evidence_files.append(evidence)
+    destinations = [path.name for path in evidence_files]
+    destinations.extend(output_name(spec) + suffix for suffix in (".ipk", ".json", ".sha256"))
+    destinations.append("ottplay-native-webos-icon.png")
+    if args.base_url:
+        destinations.extend(("ottplay-native-webos-manifest.json", "ottplay-native-webos-repository.json"))
+    for filename in destinations:
+        if (args.output / filename).is_symlink():
+            fail("Native package destination must not be a symlink")
+    for evidence in evidence_files:
         shutil.copy2(evidence, args.output / evidence.name)
     destination = args.output / (output_name(spec) + ".ipk")
     shutil.copy2(built, destination)

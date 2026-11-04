@@ -65,10 +65,48 @@ index 39b23639625c751fb13472a8d8df30fbaf97a1c3..d068edf43cd8e194acb68d0cb9ace5c8
  # Generated test media (tests/fixtures/make_fixtures.py, `make fixtures`). The default output
  # root is ~/plxnative-fixtures and the generator REFUSES an --out anywhere inside this repo, so
 diff --git a/Makefile b/Makefile
-index a7c9be30ddee638c28e51e21de02d33cfc18def3..c79f6452be0713b3f34e4ec99693292905c2b686 100644
+index a7c9be30ddee638c28e51e21de02d33cfc18def3..3964963107a510b1c9375a38e9319bb1972b0d29 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -2513,7 +2513,7 @@ sim-macos-clean:
+@@ -775,6 +775,9 @@ TELEMETRY_CFG  = $(shell printf '%s|%s|%s|%s' '$(PLX_SENTRY_DSN)' '$(PLX_POSTHOG
+ # byte-for-byte what it always was. `+rc:<n>` is the same argument for a release candidate: the
+ # number is what `ci/check-package.py` grades the binary's `X.Y.Z-rc.<n>` against, and an rc.1 and
+ # an rc.2 of one tree must not share a link.
++RUST_TARGET = armv7-unknown-linux-gnueabi
++RUST_LIB    = rust-modules/$(RUST_TDIR)/$(RUST_TARGET)/$(ARM_PROFILE)/libplxnative_modules.a
++
+ RUST_CFG       = features:$(RUST_FEATFLAGS)$(if $(filter-out release,$(ARM_PROFILE)),+profile:$(ARM_PROFILE),)$(if $(SYMBOLS),+symbols,)$(if $(filter nightly,$(FLAVOR)),+nightly:$(PLX_NIGHTLY_DATE),)$(if $(PLX_RC),+rc:$(PLX_RC),)+tel:$(TELEMETRY_CFG)+control:$(CONTROL_DISCOVERY_CFG)
+ # Handled by $(shell) during PARSING, and by DELETING the output rather than by timestamps.
+ # Both choices are load-bearing, and both were arrived at by measuring the failures:
+@@ -784,6 +787,8 @@ RUST_CFG       = features:$(RUST_FEATFLAGS)$(if $(filter-out release,$(ARM_PROFI
+ #   * A newer stamp is not enough either. make 3.81 compares mtimes at ONE-SECOND granularity, so
+ #     a stamp written 0.5s after the binary compares EQUAL and the link is still skipped —
+ #     measured: stamp 1785559259.894 vs binary 1785559259.408, no relink.
++# The selected Rust archive must also be absent: environment-only changes can reuse its path,
++# and rebuilding the ABI sentinel does not force Cargo when its mtime equals the archive's.
+ # Removing pkg/plxnative cannot be defeated by either, because "the target does not exist" is not
+ # a timestamp comparison. The failure this prevents is silent: you get the OTHER configuration's
+ # binary, with the dev counter burned into a release build or vice versa.
+@@ -846,7 +851,7 @@ SIDE_EFFECT_FREE = $(QUERY_GOALS) release-guard lab-guard disk disk-preflight bu
+ PURE_QUERY := $(if $(MAKECMDGOALS),$(if $(filter-out $(SIDE_EFFECT_FREE),$(MAKECMDGOALS)),,yes),)
+ ifneq ($(PURE_QUERY),yes)
+ ifneq ($(RUST_CFG),$(shell cat $(RUST_STAMP) 2>/dev/null))
+-  $(shell mkdir -p pkg && printf '%s' '$(RUST_CFG)' > $(RUST_STAMP) && rm -f pkg/plxnative pkg/plxnative-storage \
++  $(shell mkdir -p pkg && printf '%s' '$(RUST_CFG)' > $(RUST_STAMP) && rm -f pkg/plxnative pkg/plxnative-storage "$(RUST_LIB)" \
+           vendor/ffmpeg-prefix/include/libavformat/avformat.h pkg/lib*-plx.so.* pkg/.ffabi-ok)
+ endif
+ endif
+@@ -867,9 +872,6 @@ ifneq ($(CONFIG_LOCAL_SIG),$(shell cat $(CONFIG_LOCAL_STAMP) 2>/dev/null))
+ endif
+ endif
+ 
+-RUST_TARGET = armv7-unknown-linux-gnueabi
+-RUST_LIB    = rust-modules/$(RUST_TDIR)/$(RUST_TARGET)/$(ARM_PROFILE)/libplxnative_modules.a
+-
+ # Every ordinary C translation unit ships; gpdebug remains an opt-in allocator guard.
+ # ass.c, ass_fonts.c and ass_text.c belong to the privately bundled renderer, never the application
+ # ELF (ci/test_renderer_sources.py holds this list to ci/build-libass.py's).
+@@ -2513,7 +2515,7 @@ sim-macos-clean:
  	rm -rf $(SIM_DIR)
  
  # ---------------------------------------------------------------------------------------------
@@ -329,6 +367,202 @@ index 607a4325071d0c6ce8292da0fc959fe7b4fa74bb..726d0d049c648e69999971b2db81f1f5
          zip_path.unlink(missing_ok=True)
          # ditto, not zipfile: it is the tool that preserves the extended attributes and symlink
          # layout a signed bundle needs. A plain zip can arrive with a broken signature.
+diff --git a/ci/test_arm_profile.py b/ci/test_arm_profile.py
+index 59c014780ef5379abb63c95b6418dfc389796266..0e562e5aba0bcfbe7ef643a7220300ce9ff993bf 100644
+--- a/ci/test_arm_profile.py
++++ b/ci/test_arm_profile.py
+@@ -27,17 +27,20 @@ resolved value and touches nothing (no stamp, no deletion), and the manifest fac
+ """
+ from __future__ import annotations
+ 
++import json
+ import os
+ import re
++import shutil
+ import subprocess
+ import sys
+ import tempfile
++import time
+ import unittest
+ from pathlib import Path
+ 
+ ROOT = Path(__file__).resolve().parent.parent
+ SCRUBBED = ("MAKEFLAGS", "MFLAGS", "MAKELEVEL", "RELEASE", "SYMBOLS", "LAB", "FLAVOR", "CI",
+-            "GITHUB_ACTIONS", "ARM_PROFILE", "TV")
++            "GITHUB_ACTIONS", "ARM_PROFILE", "RUST_TDIR", "RUST_TARGET", "RUST_LIB", "TV")
+ 
+ 
+ def resolved(*args: str, env: dict[str, str] | None = None) -> dict[str, str]:
+@@ -168,9 +171,9 @@ class ScratchTree(unittest.TestCase):
+     """A scratch checkout to run `make -n` in, seeded the way `make ARM_PROFILE=release` leaves a tree.
+ 
+     The scratch tree holds symlinks to the checkout's own files (the Makefile reads `ci/` and `tools/`
+-    while it parses) and REAL `pkg/` and `vendor/` directories. That is load-bearing: the reset removes
+-    paths under exactly those two, and through a symlink it would delete the checkout's binary and its
+-    FFmpeg header sentinel (a ~2 minute rebuild).
++    while it parses) and REAL `pkg/`, `vendor/` and Rust target directories. The reset removes
++    outputs under those paths; symlinking them would delete the checkout's binary, Rust archive
++    or FFmpeg header sentinel.
+     """
+ 
+     def setUp(self):
+@@ -178,8 +181,15 @@ class ScratchTree(unittest.TestCase):
+         self.addCleanup(td.cleanup)
+         self.tree = Path(td.name)
+         for entry in ROOT.iterdir():
+-            if entry.name not in (".git", "pkg", "vendor"):
++            if entry.name not in (".git", "pkg", "vendor", "rust-modules"):
+                 (self.tree / entry.name).symlink_to(entry)
++        # A configuration reset also removes the selected ARM archive. Never let
++        # the scratch tree's target directories resolve into the real checkout.
++        rust = self.tree / "rust-modules"
++        rust.mkdir()
++        for entry in (ROOT / "rust-modules").iterdir():
++            if not entry.name.startswith("target"):
++                (rust / entry.name).symlink_to(entry)
+         self.env = {k: v for k, v in os.environ.items() if k not in SCRUBBED}
+ 
+     def make(self, *args: str) -> subprocess.CompletedProcess:
+@@ -265,6 +275,139 @@ class HostOnlyGoalsKeepTheBuild(ScratchTree):
+         self.assertEqual(set(DEVICE_CONTROL_GOALS) & set(STAMPED_GOALS), set())
+ 
+ 
++class ControlDiscoveryStamp(ScratchTree):
++    """Real Make archive rule/checker with fake Cargo/CC and equal output mtimes.
++
++    Equal mtimes model coarse filesystem timestamps: rebuilding the deleted
++    FFmpeg ABI sentinel is not sufficient to invalidate a newer/equal archive.
++    Only the external FFmpeg recipe is replaced; no compiler or network runs.
++    """
++
++    URL = "https://example.invalid/control-a.json"
++    DIGEST = "a" * 64
++
++    def setUp(self):
++        super().setUp()
++        self.epoch = int(time.time()) - 2
++        makefile = self.tree / "Makefile"
++        makefile.unlink()
++        shutil.copy2(ROOT / "Makefile", makefile)
++        os.utime(makefile, (self.epoch - 20,) * 2)
++        self.library = self.tree / "rust-modules/target-release/armv7-unknown-linux-gnueabi/release/libplxnative_modules.a"
++        self.log = self.tree / "cargo-calls.jsonl"
++        home = self.tree / "fixture-home"
++        bindir = home / ".cargo/bin"
++        bindir.mkdir(parents=True)
++        cargo = bindir / "cargo"
++        cargo.write_text("""#!/usr/bin/env python3
++import json, os, pathlib, sys
++args = sys.argv[1:]
++assert 'rustc' in args and '--crate-type' in args and args[args.index('--crate-type') + 1] == 'staticlib'
++assert '--release' in args
++out = pathlib.Path(args[args.index('--target-dir') + 1]) / args[args.index('--target') + 1] / 'release/libplxnative_modules.a'
++out.parent.mkdir(parents=True, exist_ok=True)
++pair = [os.environ.get('PLX_CONTROL_DISCOVERY_URL'), os.environ.get('PLX_CONTROL_DISCOVERY_SHA256')]
++out.write_text(json.dumps(pair))
++with pathlib.Path(os.environ['FAKE_CARGO_LOG']).open('a') as log:
++    log.write(json.dumps(pair) + '\\n')
++os.utime(out, (int(os.environ['FAKE_EPOCH']),) * 2)
++print(json.dumps({'reason': 'compiler-artifact', 'target': {'name': 'plxnative_modules'}, 'filenames': [str(out.resolve())]}))
++""")
++        cargo.chmod(0o755)
++        touch = bindir / "touch"
++        touch.write_text("""#!/usr/bin/env python3
++import os, pathlib, sys
++for name in sys.argv[1:]:
++    path = pathlib.Path(name)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.touch()
++    os.utime(path, (int(os.environ['FAKE_EPOCH']),) * 2)
++""")
++        touch.chmod(0o755)
++        (self.tree / "fixture.mk").write_text(
++            "include Makefile\n"
++            "$(FFMPEG_INC)/libavformat/avformat.h:\n"
++            "\t@mkdir -p $(dir $@)\n\t@touch $@\n"
++            ".PHONY: fixture-stamp\nfixture-stamp:\n\t@:\n")
++        self.env = {k: v for k, v in self.env.items()
++                    if not k.startswith(("PLX_", "CARGO_", "RUST")) and k != "OTT_PRODUCT_CONFIG"}
++        self.env.update(HOME=str(home), PATH=str(bindir) + os.pathsep + self.env.get("PATH", ""),
++                        FAKE_EPOCH=str(self.epoch), FAKE_CARGO_LOG=str(self.log))
++
++    def run_make(self, pair, goal=None):
++        env = dict(self.env)
++        if pair is not None:
++            env.update(PLX_CONTROL_DISCOVERY_URL=pair[0], PLX_CONTROL_DISCOVERY_SHA256=pair[1])
++        proc = subprocess.run(
++            ["make", "--no-print-directory", "-f", "fixture.mk", "RELEASE=1", "FLAVOR=stable",
++             "ARM_PROFILE=release", "CC=true", "CARGO_SEED=true",
++             goal or str(self.library.relative_to(self.tree))],
++            cwd=self.tree, env=env, capture_output=True, text=True, timeout=20)
++        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
++
++    def calls(self):
++        return [json.loads(line) for line in self.log.read_text().splitlines()]
++
++    def assert_refreshes(self, first, second):
++        self.run_make(first)
++        initial = list(first) if first is not None else [None, None]
++        expected = list(second) if second is not None else [None, None]
++        self.assertEqual(self.calls(), [initial])
++        self.assertEqual(json.loads(self.library.read_text()), initial)
++        other = self.tree / "rust-modules/target-other/untouched.a"
++        other.parent.mkdir(parents=True)
++        other.write_bytes(b"unrelated cache variant")
++        self.run_make(second)
++        self.assertEqual(int(self.library.stat().st_mtime), self.epoch)
++        self.assertEqual(int((self.tree / "pkg/.ffabi-ok").stat().st_mtime), self.epoch)
++        self.assertEqual(self.calls(), [initial, expected], "changed catalog must invoke Cargo even with equal ABI/archive mtimes")
++        self.assertEqual(json.loads(self.library.read_text()), expected)
++        self.assertEqual(other.read_bytes(), b"unrelated cache variant")
++        self.run_make(second)
++        self.assertEqual(self.calls(), [initial, expected], "identical configuration must remain a no-op")
++
++    def test_catalog_url_change_refreshes_the_archive(self):
++        self.assert_refreshes((self.URL, self.DIGEST), ("https://example.invalid/control-b.json", self.DIGEST))
++
++    def test_catalog_digest_change_refreshes_the_archive(self):
++        self.assert_refreshes((self.URL, self.DIGEST), (self.URL, "b" * 64))
++
++    def test_enabling_catalog_refreshes_the_archive(self):
++        self.assert_refreshes(None, (self.URL, self.DIGEST))
++
++    def test_disabling_catalog_refreshes_the_archive(self):
++        self.assert_refreshes((self.URL, self.DIGEST), None)
++
++    def test_identical_catalog_keeps_the_archive(self):
++        pair = (self.URL, self.DIGEST)
++        self.run_make(pair)
++        before = self.library.read_bytes(), self.library.stat().st_mtime_ns
++        self.run_make(pair)
++        self.assertEqual((self.library.read_bytes(), self.library.stat().st_mtime_ns), before)
++        self.assertEqual(self.calls(), [list(pair)])
++
++    def test_query_does_not_consume_a_catalog_change(self):
++        first = (self.URL, self.DIGEST)
++        second = (self.URL, "b" * 64)
++        self.run_make(first)
++        before = self.library.read_bytes(), (self.tree / STAMP).read_bytes()
++        self.run_make(second, "print-appid")
++        self.assertEqual((self.library.read_bytes(), (self.tree / STAMP).read_bytes()), before)
++        self.assertEqual(self.calls(), [list(first)])
++        self.run_make(second)
++        self.assertEqual(self.calls(), [list(first), list(second)])
++
++    def test_stamp_only_goal_invalidates_before_later_archive_build(self):
++        first = (self.URL, self.DIGEST)
++        second = (self.URL, "b" * 64)
++        self.run_make(first)
++        self.run_make(second, "fixture-stamp")
++        self.assertFalse(self.library.exists(), "stamp-only invocation must not leave the previous catalog archive reusable")
++        self.assertEqual(self.calls(), [list(first)])
++        self.run_make(second)
++        self.assertEqual(self.calls(), [list(first), list(second)])
++
++
+ def profile_table(name: str) -> dict[str, str]:
+     """The `key = value` lines of `[profile.<name>]` in rust-modules/Cargo.toml, values as raw text.
+ 
 diff --git a/ci/test_build_not_always_dirty.py b/ci/test_build_not_always_dirty.py
 index 48cc549f67c0e16e72857bb04ae1d6d75ead2544..15afb85d8894d497ebb51a52d09f7756b62c83ee 100644
 --- a/ci/test_build_not_always_dirty.py

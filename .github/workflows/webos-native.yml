@@ -243,7 +243,7 @@ jobs:
           # Native optimization must not change the independently pinned companion.
           environment = dict(os.environ)
           for name in list(environment):
-              if name.startswith("CARGO_PROFILE_"):
+              if name.startswith(("CARGO_PROFILE_", "CARGO_BUILD_", "CARGO_TARGET_")):
                   del environment[name]
           for name in (
               "RUSTC", "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER", "RUSTFLAGS",

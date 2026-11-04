@@ -609,6 +609,30 @@ class NativeCompanionBuildTests(unittest.TestCase):
             self.assertNotIn('ipk-pack', self.steps)
             self.assertFalse((self.root / 'built.json').exists())
 
+    def test_oversized_cargo_evidence_stops_before_native_link(self):
+        original = self.compile_fixture
+        def oversized():
+            original()
+            path = self.source / 'rust-modules/target-release/.lib-artifacts.json'
+            with path.open('ab') as stream:
+                stream.write(b' ' * (8 * 1024 * 1024 + 1 - path.stat().st_size))
+        self.compile_fixture = oversized
+        with self.assertRaisesRegex(ValueError, 'Cargo evidence.*8 MiB'):
+            self.build_candidate()
+        self.assertEqual(self.steps, ['validate', 'compile'])
+        self.assertFalse(self.ipk.exists())
+        self.assertFalse((self.root / 'built.json').exists())
+
+    def test_cargo_evidence_at_verifier_limit_is_preserved(self):
+        self.compile_fixture()
+        path = self.source / 'rust-modules/target-release/.lib-artifacts.json'
+        with path.open('ab') as stream:
+            stream.write(b' ' * (8 * 1024 * 1024 - path.stat().st_size))
+        result = build.native_compile_evidence(self.args, self.spec, self.source, 'fixture config')
+        exported = self.root / result['cargo']['file']
+        self.assertEqual(exported.stat().st_size, 8 * 1024 * 1024)
+        self.assertEqual(build.sha256(exported), build.sha256(path))
+
     def test_archive_drift_during_link_is_rejected(self):
         original = self.external_command
         def drift(command, **kwargs):
@@ -702,6 +726,62 @@ class NativeCompanionBuildTests(unittest.TestCase):
         for field in ('cargo', 'make'):
             evidence = metadata['build']['compilation'][field]
             self.assertEqual(build.sha256(self.args.output / evidence['file']), evidence['sha256'])
+
+    def test_package_rejects_symlinked_outputs_before_writing_any_file(self):
+        self.build_candidate()
+        self.args.output = self.root / 'dist'
+        self.args.output.mkdir()
+        self.args.base_url = 'https://downloads.example.invalid/native'
+        (self.source / 'pkg/icon.png').write_bytes(b'fixture icon')
+        name = build.output_name(self.spec)
+        names = [name + suffix for suffix in
+                 ('-cargo-artifacts.jsonl', '-build-config.txt', '.ipk', '.json', '.sha256')]
+        names += ['ottplay-native-webos-icon.png', 'ottplay-native-webos-manifest.json',
+                  'ottplay-native-webos-repository.json']
+        for index, filename in enumerate(names):
+            for dangling in (False, True):
+                with self.subTest(filename=filename, dangling=dangling):
+                    for other in names:
+                        path = self.args.output / other
+                        path.unlink(missing_ok=True)
+                        if other != filename:
+                            path.write_bytes(b'previous package must not change')
+                    target = self.root / f'outside-package-{index}-{dangling}'
+                    if not dangling:
+                        target.write_bytes(b'outside package must not change')
+                    destination = self.args.output / filename
+                    destination.symlink_to(target)
+                    with (patch.object(build, 'check_source', return_value=self.source),
+                          self.assertRaisesRegex(ValueError, 'package destination.*symlink')):
+                        build.package(self.args, self.spec)
+                    self.assertTrue(destination.is_symlink())
+                    if dangling:
+                        self.assertFalse(target.exists())
+                    else:
+                        self.assertEqual(target.read_bytes(), b'outside package must not change')
+                    for other in names:
+                        if other != filename:
+                            self.assertEqual((self.args.output / other).read_bytes(),
+                                             b'previous package must not change')
+
+    def test_package_refreshes_regular_outputs(self):
+        self.build_candidate()
+        self.args.output = self.root / 'dist'
+        self.args.output.mkdir()
+        self.args.base_url = 'https://downloads.example.invalid/native'
+        (self.source / 'pkg/icon.png').write_bytes(b'fixture icon')
+        name = build.output_name(self.spec)
+        names = [name + suffix for suffix in
+                 ('-cargo-artifacts.jsonl', '-build-config.txt', '.ipk', '.json', '.sha256')]
+        names += ['ottplay-native-webos-icon.png', 'ottplay-native-webos-manifest.json',
+                  'ottplay-native-webos-repository.json']
+        for filename in names:
+            (self.args.output / filename).write_bytes(b'previous package')
+        with patch.object(build, 'check_source', return_value=self.source):
+            build.package(self.args, self.spec)
+        for filename in names:
+            self.assertNotEqual((self.args.output / filename).read_bytes(), b'previous package')
+        self.assertEqual(build.sha256(self.args.output / (name + '.ipk')), build.sha256(self.ipk))
 
     def test_native_opt_cli_validates_before_prepare(self):
         argv = ['build.py', 'all', '--rust-opt-level', '3']

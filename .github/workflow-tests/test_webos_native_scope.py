@@ -214,6 +214,54 @@ class NativeScopeTests(unittest.TestCase):
                                         "replay/**/plxnative-events.log", "replay/**/sim.out")
         })
 
+    def test_companion_build_scrubs_inherited_cargo_configuration(self):
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        run = next(step["run"] for step in workflow["jobs"]["native-candidate"]["steps"]
+                   if '"native/webos/companion/build.py", "build"' in step.get("run", ""))
+        code = compile(run.split("python3 - <<'PY'\n", 1)[1].rsplit("\nPY", 1)[0],
+                       "actual companion workflow", "exec")
+        inherited_overrides = {
+            "CARGO_BUILD_RUSTC": "/wrong/rustc", "CARGO_BUILD_RUSTFLAGS": "--cfg wrong",
+            "CARGO_BUILD_RUSTC_WRAPPER": "/wrong/wrapper",
+            "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER": "/wrong/workspace",
+            "CARGO_BUILD_RUSTDOCFLAGS": "--cfg wrong", "CARGO_BUILD_TARGET": "wrong-target",
+            "CARGO_BUILD_TARGET_DIR": "/wrong/build", "CARGO_BUILD_INCREMENTAL": "1",
+            "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABI_LINKER": "/wrong/linker",
+            "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABI_RUNNER": "/wrong/runner",
+            "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABI_RUSTFLAGS": "--cfg wrong",
+            "CARGO_PROFILE_RELEASE_OPT_LEVEL": "s", "CARGO_PROFILE_DEV_DEBUG": "0",
+            "RUSTC": "/wrong/rustc", "RUSTC_WRAPPER": "/wrong/wrapper",
+            "RUSTC_WORKSPACE_WRAPPER": "/wrong/workspace", "RUSTFLAGS": "--cfg wrong",
+            "CARGO_ENCODED_RUSTFLAGS": "--cfg\x1fwrong",
+        }
+        prepared_env = {"CARGO_HOME": "/fixture/cargo", "CARGO_TARGET_DIR": "/fixture/target",
+                        "CARGO_BUILD_JOBS": "2", "CARGO_INCREMENTAL": "0",
+                        "RUSTUP_TOOLCHAIN": "1.96.1", "CARGO_NET_OFFLINE": "true",
+                        "LIBCLANG_PATH": "/fixture/clang"}
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = {"environment": prepared_env, "target_dir": prepared_env["CARGO_TARGET_DIR"],
+                        "libclang": prepared_env["LIBCLANG_PATH"], "rust_sysroot": "/fixture/rust",
+                        "rust_source_archive": "/fixture/rust.tar.gz"}
+            (Path(directory) / "companion-prepared.json").write_text(json.dumps(prepared))
+            preserved = {"RUNNER_TEMP": directory, "PATH": "/usr/bin:/bin", "HOME": "/fixture/home",
+                         "RUSTUP_HOME": "/fixture/rustup", "HTTPS_PROXY": "http://proxy.invalid",
+                         "WEBOS_SDK": "/fixture/sdk", "WEBOS_SDK_ARCHIVE": "/fixture/sdk.tar.bz2"}
+            inherited = {**preserved, **inherited_overrides,
+                         **{name: "wrong" for name in prepared_env}, "RUSTUP_AUTO_INSTALL": "1"}
+            with mock.patch.dict(os.environ, inherited, clear=True), mock.patch("subprocess.run") as calls:
+                # Execute the actual workflow body; both external processes are mocked.
+                exec(code, {})  # noqa: S102
+                self.assertEqual(dict(os.environ), inherited)
+            self.assertEqual(calls.call_count, 2)
+            self.assertEqual(calls.call_args_list[0].args[0][1:3],
+                             ["native/webos/companion/build.py", "build"])
+            self.assertEqual(calls.call_args_list[1].args[0][1], "native/webos/companion/sources.py")
+            expected = {**preserved, **prepared_env, "RUSTUP_AUTO_INSTALL": "0"}
+            for call in calls.call_args_list:
+                self.assertTrue(call.kwargs["check"])
+                self.assertEqual(call.kwargs["env"], expected)
+
     def test_complete_candidate_requires_companion_before_packaging(self):
         workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
                              Loader=yaml.BaseLoader)
@@ -548,6 +596,26 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         self.assertIn("'ec4696bc1a0bc8ac750fcd03a07b686d383410f5'", code)
         self.assertNotIn("reset --hard", code)
         self.assertNotIn("git push", code)
+
+    def test_bench_fixture_checkout_preserves_bytes_with_autocrlf(self):
+        name = "native/webos/benchmarks/fpflags-fixture.patch"
+        original = (ROOT / name).read_bytes()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def git(*args):
+                return subprocess.check_output(["git", "-c", "core.hooksPath=/dev/null", *args],
+                                               cwd=root, stderr=subprocess.PIPE)
+            git("init", "--quiet")
+            (root / ".gitattributes").write_bytes((ROOT / ".gitattributes").read_bytes())
+            fixture = root / name
+            fixture.parent.mkdir(parents=True)
+            fixture.write_bytes(original)
+            git("-c", "core.autocrlf=false", "add", ".gitattributes", name)
+            fixture.unlink()
+            git("-c", "core.autocrlf=true", "checkout-index", "--force", "--", name)
+            self.assertEqual(fixture.read_bytes(), original)
+            self.assertEqual(git("check-attr", "text", "--", name).decode().strip(),
+                             name + ": text: unset")
 
     def test_bench_fixture_patch_is_exact_and_not_a_symlink(self):
         import ast
