@@ -146,6 +146,55 @@
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
+## [1.1.64] - 2026-11-04
+
+### Changes
+
+- Restore each desktop instance's saved Always on top preference at startup.
+  Save only a native-confirmed change, including turning it off; instances keep
+  separate preferences. A missing or invalid preference defaults to off.
+- Add independent Channel list settings for hiding the virtual All and Favorites
+  rows. Both remain visible by default. Preserve catalog identities, saved
+  favorites, direct playback commands and visible-row navigation during reloads
+  and category changes.
+- Apply the selected forward-buffer target to the PiP HLS engine without
+  overwriting the main player's buffer cap. The target is not a wait-before-play
+  threshold; automatic/native engines retain their own buffering behavior.
+- Show the weekday and calendar date in programme-guide rows, including a
+  different ending date for programmes crossing midnight. Add an optional
+  Archive label and date/time colour; retain the archive action and selection.
+- Make full date/time labels use the same selected offset as the player's clock.
+  The existing player timezone setting uses a fixed offset; this change does not
+  add historical daylight-saving conversion. Stored playback times are unchanged.
+- Keep failed TMDb searches and item-detail requests retryable, preserve successful
+  empty results and ignore late responses from an earlier selection. Reopen a
+  cached empty result when the search is requested again.
+- Improve browser-check terminal diagnostics and portable failure reporting.
+  Reduce hot polling in the background-work test helper while retaining its
+  existing two-second deadline and concurrency checks.
+
+### Upgrade
+
+- Existing profiles, Favorites and playback settings are retained. The new
+  category rows and Archive label default to visible; date/time colour inherits
+  the current style until changed in Channel list settings.
+- Always on top uses instance-local desktop storage. Invalid, linked or non-file
+  preference entries are ignored. No automatic native-package installation or
+  deployment is enabled by this release.
+- Native aspect-ratio locking remains a separate requested feature. The original
+  TMDb service failure, intermittent browser permission-query stall and occasional
+  background-drain CI timeouts are not claimed resolved by these changes.
+- Physical TV/STB firmware, decoders, live streams and device installation require
+  separate acceptance; software CI does not establish hardware compatibility.
+
+### Security
+
+- Remove API-key-bearing upstream URLs from TMDb request and response-body error
+  messages before they reach server logs or desktop command responses.
+- Reject non-regular or symbolic-link desktop preference files before reading
+  them, avoiding startup hangs on such entries. Preference directories remain a
+  trusted local boundary; this is not a claim of race-proof filesystem isolation.
+
 ## [1.1.63] - 2026-11-03
 
 ### Changes

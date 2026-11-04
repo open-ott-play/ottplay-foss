@@ -18,6 +18,16 @@ import {
     type SettingsDraft,
 } from "./store";
 
+/** Closed palette: index zero inherits the active interface theme. */
+export const epgTimeColors = [
+    "",
+    "#FFFFFF",
+    "#FFFF00",
+    "#00FFFF",
+    "#00FF00",
+    "#FFB3FF",
+];
+
 // The polyfill preserves this getter so "system" also restores native DST rules.
 const systemTimezoneOffset =
     (Date as any).nativeGetTimezoneOffset || Date.prototype.getTimezoneOffset;
@@ -88,6 +98,8 @@ export function applyTimezoneSetting(index: number): number {
  * @property showName          - Show channel name (0/1).
  * @property showProgress      - Show progress bar (0/1).
  * @property showArchive       - Show archive indicator (0/1).
+ * @property epgArchiveLabel   - Show the Archive word beside the EPG marker (0/1).
+ * @property epgTimeColor      - EPG time palette index (0 inherits the theme).
  * @property showScroll        - Show scrollbar (0/1).
  * @property showDescription   - Show programme description (0/1).
  * @property showProgram       - Show programme title (0/1).
@@ -105,7 +117,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property hdmiSupport       - Enable HDMI-CEC support (0/1).
  * @property autorun           - Auto-start on boot (0/1).
  * @property players           - Player type selection.
- * @property bufSize           - Buffer size in KB.
+ * @property bufSize           - Buffer preference in seconds.
  * @property useGraphicalIndicators - Use graphical icons for yes/no/off (0/1).
  * @property parentPin         - Parental control PIN code.
  * @property hideMenus         - List of menu IDs to hide.
@@ -132,7 +144,9 @@ export interface PlayerSettings {
     deviceUuid: string;
     editor: number;
     eFun: number;
+    epgArchiveLabel: number;
     epgRemindMinutes: number;
+    epgTimeColor: number;
     favorites: number;
     ffFun: number;
     fontShift: number;
@@ -189,8 +203,10 @@ export interface PlayerSettings {
     seek13Duration: number;
     seek46Duration: number;
     seek79Duration: number;
+    showAllCategory: number;
     showArchive: number;
     showDescription: number;
+    showFavoritesCategory: number;
     showName: number;
     showNumber: number;
     showProgram: number;
@@ -247,7 +263,9 @@ export function defaultSettings(): PlayerSettings {
         deviceUuid: "",
         editor: 0,
         eFun: webos ? 1 : 0,
+        epgArchiveLabel: 1,
         epgRemindMinutes: 5,
+        epgTimeColor: 0,
         favorites: 0,
         ffFun: 19,
         fontShift: 4,
@@ -304,8 +322,10 @@ export function defaultSettings(): PlayerSettings {
         seek13Duration: 15,
         seek46Duration: 180,
         seek79Duration: 600,
+        showAllCategory: 1,
         showArchive: 1,
         showDescription: 1,
+        showFavoritesCategory: 1,
         showName: 1,
         showNumber: 1,
         showProgram: 1,
@@ -894,6 +914,12 @@ export const settingsSchema: SettingDefinition[] = [
     ),
     defineSetting("parentPin", "parentPIN", { pin: true }),
     defineSetting("hideMenus", "sHideMenus", { list: true }),
+    defineSetting("showAllCategory", "sShowAllCategory", { range: [0, 1] }),
+    defineSetting("epgArchiveLabel", "sEpgArchiveLabel", { range: [0, 1] }),
+    defineSetting("epgTimeColor", "sEpgTimeColor", { range: [0, 5] }),
+    defineSetting("showFavoritesCategory", "sShowFavoritesCategory", {
+        range: [0, 1],
+    }),
     defineSetting(
         "highlightColorSel",
         "sSHLcolSel",

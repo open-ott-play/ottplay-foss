@@ -509,6 +509,23 @@ const PLAYER_PRESENCE_TRANSPORT_ALLOWANCE = Object.freeze({
     bytes: 27,
     gzipBytes: 10,
 });
+// Optional visibility of the two virtual category rows adds 1505 raw / 415 gzip
+// bytes in paired Node22.23.4 entry builds. Preserve the previous headroom;
+// count this entry-only change once in each aggregate, with no provider or
+// optional-asset allowance. Native/final release artifacts still pass all caps.
+// Evidence: docs/evidence/category-visibility-size.json.
+const CATEGORY_VISIBILITY_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 1505,
+    gzipBytes: 415,
+});
+// EPG dates, offset-consistent labels and optional time/Archive presentation add
+// 992 raw / 355 gzip entry bytes in paired Node22.23.4 builds. Preserve headroom;
+// count once per aggregate, with provider and optional-asset caps unchanged.
+// Evidence: docs/evidence/epg-presentation-size.json.
+const EPG_PRESENTATION_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 992,
+    gzipBytes: 355,
+});
 // Persistent category selection and shared Favorites picker writes:
 // paired Node22.23.4 builds add 2781 raw / at most 780 gzip entry bytes and
 // 209 raw / 65 gzip bytes to the lazy Favorites family. Keep prior headroom
@@ -778,6 +795,8 @@ const BUDGET = Object.freeze({
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.bytes +
+        EPG_PRESENTATION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         1062760 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
@@ -811,6 +830,8 @@ const BUDGET = Object.freeze({
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.gzipBytes +
+        EPG_PRESENTATION_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         328314 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
@@ -1034,6 +1055,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         STB_PLAYER_XTREAM_ALLOWANCE.bytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.bytes +
+        EPG_PRESENTATION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
         1205560 +
@@ -1080,6 +1103,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         STB_PLAYER_XTREAM_ALLOWANCE.gzipBytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.gzipBytes +
+        EPG_PRESENTATION_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
         380214 +
@@ -1303,6 +1328,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         STB_PLAYER_FAVORITES_ALLOWANCE.bytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.bytes +
+        EPG_PRESENTATION_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
@@ -1385,6 +1412,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         STB_PLAYER_FAVORITES_ALLOWANCE.gzipBytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.gzipBytes +
+        EPG_PRESENTATION_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -1580,8 +1609,10 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
         categorySelectionFavoritesAllowance:
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
+        categoryVisibilityEntryAllowance: CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
         companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
         desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
+        epgPresentationEntryAllowance: EPG_PRESENTATION_ENTRY_ALLOWANCE,
         favoritesCategoryPersistenceAllowance:
             FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
         favoritesRecoveryEntryAllowance: FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
@@ -1924,11 +1955,14 @@ function writeBuildBundleReport(
             categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
             categorySelectionFavoritesAllowance:
                 CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
+            categoryVisibilityEntryAllowance:
+                CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
             collectedAt: new Date().toISOString(),
             companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
             complete: !inputErrors.length,
             desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
             diagnostic: true,
+            epgPresentationEntryAllowance: EPG_PRESENTATION_ENTRY_ALLOWANCE,
             favoritesCategoryPersistenceAllowance:
                 FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
             favoritesRecoveryEntryAllowance: FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
@@ -2050,10 +2084,12 @@ module.exports = {
     CATEGORY_PICKER_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
+    CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
     COMPANION_DIAGNOSTICS_ALLOWANCE,
     clearBuildSizeReports,
     collectBundleMeasurement,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
+    EPG_PRESENTATION_ENTRY_ALLOWANCE,
     FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
     FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
     FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
