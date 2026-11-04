@@ -635,6 +635,52 @@ class NativeCompanionBuildTests(unittest.TestCase):
             self.build_candidate()
         self.assertNotIn('ipk-stage', self.steps)
 
+    def test_symlinked_compile_destinations_do_not_write_either_file(self):
+        name = build.output_name(self.spec)
+        destinations = [self.root / (name + suffix) for suffix in
+                        ('-cargo-artifacts.jsonl', '-build-config.txt')]
+        for index in range(2):
+            for dangling in (False, True):
+                with self.subTest(destination=index, dangling=dangling):
+                    for path in destinations:
+                        path.unlink(missing_ok=True)
+                    target = self.root / f'outside-{index}-{dangling}.txt'
+                    if not dangling:
+                        target.write_bytes(b'outside must not change')
+                    destinations[index].symlink_to(target)
+                    sibling = destinations[1 - index]
+                    sibling.write_bytes(b'previous evidence must not change')
+                    self.steps.clear()
+                    with self.assertRaisesRegex(ValueError, 'evidence destination.*symlink'):
+                        self.build_candidate()
+                    self.assertTrue(destinations[index].is_symlink())
+                    self.assertEqual(sibling.read_bytes(), b'previous evidence must not change')
+                    if dangling:
+                        self.assertFalse(target.exists())
+                    else:
+                        self.assertEqual(target.read_bytes(), b'outside must not change')
+                    self.assertEqual(self.steps, ['validate', 'compile'])
+                    self.assertFalse(self.ipk.exists())
+                    self.assertFalse((self.root / 'built.json').exists())
+
+    def test_compile_evidence_regular_destinations_are_refreshed(self):
+        name = build.output_name(self.spec)
+        cargo = self.root / (name + '-cargo-artifacts.jsonl')
+        config = self.root / (name + '-build-config.txt')
+        for path in (cargo, config):
+            path.write_bytes(b'previous evidence')
+        self.build_candidate()
+        raw = self.source / 'rust-modules/target-release/.lib-artifacts.json'
+        self.assertEqual(cargo.read_bytes(), raw.read_bytes())
+        self.assertNotEqual(config.read_bytes(), b'previous evidence')
+        self.assertIn('RUST_TARGET=' + build.TARGET, config.read_text())
+        self.assertTrue(config.read_text().endswith('\n'))
+        receipt = json.loads((self.root / 'built.json').read_text())
+        self.assertEqual(receipt['compilation']['cargo']['sha256'], build.sha256(cargo))
+        self.assertEqual(receipt['compilation']['make']['sha256'], build.sha256(config))
+        self.assertEqual(self.steps, ['validate', 'compile', 'ipk-stage', 'size',
+                                     'elf', 'companion-stage', 'ipk-pack'])
+
     def test_changed_compilation_evidence_cannot_be_packaged(self):
         self.build_candidate()
         self.args.output = self.root / 'dist'

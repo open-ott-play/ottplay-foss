@@ -397,6 +397,9 @@ def native_compile_evidence(args, spec, source, configuration):
         fail("Native Cargo artifact differs from the selected release configuration")
     name = output_name(spec)
     cargo_file, config_file = name + "-cargo-artifacts.jsonl", name + "-build-config.txt"
+    for evidence in (cargo_file, config_file):
+        if (args.work_dir / evidence).is_symlink():
+            fail("Native compilation evidence destination must not be a symlink")
     (args.work_dir / cargo_file).write_bytes(raw)
     (args.work_dir / config_file).write_text(configuration + "\n")
     return {"cargo": {"file": cargo_file, "sha256": sha256(args.work_dir / cargo_file),
