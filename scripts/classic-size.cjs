@@ -791,8 +791,18 @@ const AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 0,
     gzipBytes: 259,
 });
+// Net presentation, recovery and Menu-to-Interface changes from 5901487 to
+// 6b06f42 add 2281 raw / at most 1049 gzip bytes to each entry, and 195 / 74
+// to the existing appearance chunk. Preserve the prior headroom with no
+// additional reserve; aggregate entry and appearance exactly once.
+// Evidence: docs/evidence/classic-presentation-settings-size-20261105.json.
+const CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE = Object.freeze({
+    entry: Object.freeze({ bytes: 2281, gzipBytes: 1049 }),
+    appearance: Object.freeze({ bytes: 195, gzipBytes: 74 }),
+});
 const BUDGET = Object.freeze({
     bytes:
+        CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.bytes +
         DESKTOP_DROP_ALLOWANCE.entry.bytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.bytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.entry.bytes +
@@ -829,6 +839,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
         AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.gzipBytes +
@@ -1045,6 +1056,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.bytes +
         DESKTOP_DROP_ALLOWANCE.entry.bytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.bytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.entry.bytes +
@@ -1094,6 +1106,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
         AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.gzipBytes +
@@ -1277,9 +1290,11 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // Keep the existing lazy editor and its original measurement headroom.
     "subtitle-appearance": Object.freeze({
         bytes:
+            CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.appearance.bytes +
             8100 +
             MODERN_INTERFACE_RELATED_ALLOWANCES["subtitle-appearance"].bytes,
         gzipBytes:
+            CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.appearance.gzipBytes +
             3400 +
             MODERN_INTERFACE_RELATED_ALLOWANCES["subtitle-appearance"]
                 .gzipBytes,
@@ -1293,6 +1308,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.bytes +
+        CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.appearance.bytes +
         DESKTOP_DROP_ALLOWANCE.entry.bytes +
         DESKTOP_DROP_ALLOWANCE.optional.bytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.bytes +
@@ -1379,6 +1396,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.gzipBytes +
+        CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.appearance.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.optional.gzipBytes +
         AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
@@ -1641,6 +1660,8 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         categorySelectionFavoritesAllowance:
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
         categoryVisibilityEntryAllowance: CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
+        classicPresentationSettingsAllowance:
+            CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
         companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
         desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
         epgPresentationEntryAllowance: EPG_PRESENTATION_ENTRY_ALLOWANCE,
@@ -1991,6 +2012,8 @@ function writeBuildBundleReport(
             categoryVisibilityEntryAllowance:
                 CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
             collectedAt: new Date().toISOString(),
+            classicPresentationSettingsAllowance:
+                CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
             companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
             complete: !inputErrors.length,
             desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
@@ -2119,6 +2142,7 @@ module.exports = {
     CATEGORY_SELECTION_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
     CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
+    CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
     COMPANION_DIAGNOSTICS_ALLOWANCE,
     clearBuildSizeReports,
     collectBundleMeasurement,

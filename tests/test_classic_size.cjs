@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 let {
+    CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
     DESKTOP_DROP_ALLOWANCE,
     AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
     NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE,
@@ -122,9 +123,11 @@ function capsWithoutAllowances(names) {
         (a, b) => b.initializer.pos - a.initializer.pos
     )) {
         const neutral =
-            name === "DESKTOP_DROP_ALLOWANCE"
-                ? "Object.freeze({entry:Object.freeze({bytes:0,gzipBytes:0}),optional:Object.freeze({bytes:0,gzipBytes:0})})"
-                : "Object.freeze({bytes:0,gzipBytes:0,optional:Object.freeze({bytes:4800,gzipBytes:1900}),entry:Object.freeze({bytes:0,gzipBytes:0}),favorites:Object.freeze({bytes:0,gzipBytes:0})})";
+            name === "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE"
+                ? "Object.freeze({entry:Object.freeze({bytes:0,gzipBytes:0}),appearance:Object.freeze({bytes:0,gzipBytes:0})})"
+                : name === "DESKTOP_DROP_ALLOWANCE"
+                  ? "Object.freeze({entry:Object.freeze({bytes:0,gzipBytes:0}),optional:Object.freeze({bytes:0,gzipBytes:0})})"
+                  : "Object.freeze({bytes:0,gzipBytes:0,optional:Object.freeze({bytes:4800,gzipBytes:1900}),entry:Object.freeze({bytes:0,gzipBytes:0}),favorites:Object.freeze({bytes:0,gzipBytes:0})})";
         source =
             source.slice(0, initializer.getStart(parsed)) +
             neutral +
@@ -145,16 +148,167 @@ function capsWithoutAllowances(names) {
         );
     return baseline.exports;
 }
+// The paired presentation/settings receipt includes all three platform
+// inventories. Allocate the largest per-platform delta, never their sum.
+const presentationEvidence = require("../docs/evidence/classic-presentation-settings-size-20261105.json");
+const presentationBaseline = capsWithoutAllowances([
+    "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE",
+]);
+assert.deepEqual(
+    CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
+    presentationEvidence.measured_allowance
+);
+assert(Object.isFrozen(CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE));
+for (const part of Object.values(CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE))
+    assert(Object.isFrozen(part));
+const presentationPaths = new Map();
+for (const entry of ARTIFACTS) {
+    presentationPaths.set(entry, "entry");
+    const directory = path.posix.dirname(entry);
+    for (const name of Object.keys(CLASSIC_PROVIDER_BUNDLES))
+        presentationPaths.set(
+            directory + "/provider-" + name + ".js",
+            "provider"
+        );
+    for (const name of Object.keys(CLASSIC_OPTIONAL_BUNDLES))
+        presentationPaths.set(directory + "/" + name + ".js", "optional");
+}
+const presentationAssets = presentationEvidence.assets;
+assert.equal(presentationAssets.length, 78);
+assert.deepEqual(
+    presentationAssets.map((asset) => asset.path).sort(),
+    [...presentationPaths.keys()].sort()
+);
+let unchangedPresentationAssets = 0;
+for (const asset of presentationAssets) {
+    assert.equal(asset.kind, presentationPaths.get(asset.path));
+    for (const side of ["baseline", "candidate"]) {
+        assert.match(asset[side].sha256, /^[0-9a-f]{64}$/);
+        for (const metric of ["bytes", "gzipBytes"])
+            assert(
+                Number.isSafeInteger(asset[side][metric]) &&
+                    asset[side][metric] > 0
+            );
+    }
+    const changed =
+        asset.kind === "entry" ||
+        asset.path.endsWith("/subtitle-appearance.js");
+    if (changed) assert.notEqual(asset.baseline.sha256, asset.candidate.sha256);
+    else {
+        assert.deepEqual(asset.baseline, asset.candidate, asset.path);
+        unchangedPresentationAssets++;
+    }
+}
+assert.equal(unchangedPresentationAssets, 72);
+for (const [part, select] of [
+    ["entry", (asset) => asset.kind === "entry"],
+    ["appearance", (asset) => asset.path.endsWith("/subtitle-appearance.js")],
+]) {
+    const selected = presentationAssets.filter(select);
+    assert.equal(selected.length, 3);
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE[part][metric],
+            Math.max(
+                ...selected.map(
+                    (asset) => asset.candidate[metric] - asset.baseline[metric]
+                )
+            ),
+            part + " uses the measured maximum without extra reserve"
+        );
+}
+assert.deepEqual(
+    presentationEvidence.variants.map((variant) => variant.entry).sort(),
+    [...ARTIFACTS].sort()
+);
+for (const variant of presentationEvidence.variants) {
+    const assets = presentationAssets.filter(
+        (asset) =>
+            path.posix.dirname(asset.path) === path.posix.dirname(variant.entry)
+    );
+    for (const [scope, name] of [
+        ["legacyTotal", "LEGACY_TOTAL_BUDGET"],
+        ["total", "TOTAL_BUDGET"],
+    ])
+        for (const metric of ["bytes", "gzipBytes"]) {
+            const included =
+                scope === "legacyTotal"
+                    ? assets.filter((asset) => asset.kind !== "optional")
+                    : assets;
+            for (const side of ["baseline", "candidate"])
+                assert.equal(
+                    variant[side][scope][metric],
+                    included.reduce(
+                        (sum, asset) => sum + asset[side][metric],
+                        0
+                    ),
+                    variant.entry + " " + scope + " includes every asset once"
+                );
+            assert(
+                latestCaps[name][metric] - variant.candidate[scope][metric] >=
+                    presentationBaseline[name][metric] -
+                        variant.baseline[scope][metric],
+                variant.entry + " preserves measured headroom"
+            );
+        }
+}
+for (const [name, before] of Object.entries(presentationEvidence.caps_before)) {
+    const oldCap =
+        name === "appearance"
+            ? presentationBaseline.OPTIONAL_BUDGETS["subtitle-appearance"]
+            : presentationBaseline[name];
+    const newCap =
+        name === "appearance"
+            ? latestCaps.OPTIONAL_BUDGETS["subtitle-appearance"]
+            : latestCaps[name];
+    assert.deepEqual(
+        oldCap,
+        before,
+        name + " preserves the measured starting cap"
+    );
+    assert.deepEqual(newCap, presentationEvidence.caps_after[name]);
+    for (const metric of ["bytes", "gzipBytes"]) {
+        const allowance = CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE;
+        const expected =
+            name === "appearance"
+                ? allowance.appearance[metric]
+                : allowance.entry[metric] +
+                  (["BASE_TOTAL_BUDGET", "TOTAL_BUDGET"].includes(name)
+                      ? allowance.appearance[metric]
+                      : 0);
+        assert.equal(
+            newCap[metric] - oldCap[metric],
+            expected,
+            name + " counts each allowance exactly once"
+        );
+    }
+}
+for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
+    assert.deepEqual(
+        require("../scripts/classic-size.cjs")[name],
+        presentationBaseline[name]
+    );
+for (const [name, cap] of Object.entries(latestCaps.OPTIONAL_BUDGETS))
+    if (name !== "subtitle-appearance")
+        assert.deepEqual(
+            cap,
+            presentationBaseline.OPTIONAL_BUDGETS[name],
+            name
+        );
+
 // Qualify desktop startup and its new optional asset independently. Earlier
 // receipts predate both; remove them only from the historical cap projections.
-const desktopBaseline = capsWithoutAllowances(["DESKTOP_DROP_ALLOWANCE"]);
+const desktopBaseline = capsWithoutAllowances([
+    "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE",
+    "DESKTOP_DROP_ALLOWANCE",
+]);
 const desktopEvidence = require("../docs/evidence/desktop-video-drop-size.json");
 assert.deepEqual(DESKTOP_DROP_ALLOWANCE, desktopEvidence.allowance);
 assert(Object.isFrozen(DESKTOP_DROP_ALLOWANCE));
 for (const value of Object.values(DESKTOP_DROP_ALLOWANCE))
     assert(Object.isFrozen(value));
 assert.deepEqual(
-    latestCaps.OPTIONAL_BUDGETS["local-drop"],
+    presentationBaseline.OPTIONAL_BUDGETS["local-drop"],
     DESKTOP_DROP_ALLOWANCE.optional
 );
 assert.deepEqual(latestOptionalBundles["local-drop"], [
@@ -182,7 +336,7 @@ for (const metric of ["bytes", "gzipBytes"]) {
         "TOTAL_BUDGET",
     ])
         assert.equal(
-            latestCaps[name][metric] - desktopBaseline[name][metric],
+            presentationBaseline[name][metric] - desktopBaseline[name][metric],
             DESKTOP_DROP_ALLOWANCE.entry[metric] +
                 (["BASE_TOTAL_BUDGET", "TOTAL_BUDGET"].includes(name)
                     ? DESKTOP_DROP_ALLOWANCE.optional[metric]
@@ -197,7 +351,7 @@ for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
     );
 assert.deepEqual(
     Object.fromEntries(
-        Object.entries(latestCaps.OPTIONAL_BUDGETS).filter(
+        Object.entries(presentationBaseline.OPTIONAL_BUDGETS).filter(
             ([name]) => name !== "local-drop"
         )
     ),
@@ -208,10 +362,11 @@ CLASSIC_OPTIONAL_BUNDLES = Object.fromEntries(
         ([name]) => name !== "local-drop"
     )
 );
-// The paired Auto receipt predates desktop drop; earlier receipts predate both.
+// The Auto and earlier receipts also predate the presentation/settings delta.
 // Remove only those named features from historical projections. Live checks
 // below retain the complete merged caps and restore the full asset inventory.
 const preRecoveryCaps = capsWithoutAllowances([
+    "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE",
     "DESKTOP_DROP_ALLOWANCE",
     "AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE",
 ]);
@@ -220,6 +375,7 @@ const withoutAutoRecovery = capsWithoutAllowances([
 ]);
 function historicalCapsWithoutAllowances(names) {
     return capsWithoutAllowances([
+        "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE",
         "DESKTOP_DROP_ALLOWANCE",
         "AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE",
         ...names,
@@ -5163,6 +5319,8 @@ try {
     for (const [key, allowance] of Object.entries({
         autoRelayStallRecoveryEntryAllowance:
             AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
+        classicPresentationSettingsAllowance:
+            CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
         favoritesCategoryPersistenceAllowance:
             FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
         localFavoritesPathAllowance: LOCAL_FAVORITES_PATH_ALLOWANCE,

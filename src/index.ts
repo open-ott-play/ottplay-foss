@@ -4635,7 +4635,8 @@ function createSettingsPage(
  * resume-after-pause behaviour, previous channels count, media history,
  * editor type, player type, and buffer size.
  *
- * Save commits the draft; cancelling discards it without persistence or effects.
+ * Save commits editable preferences; cancelling discards their draft. Native
+ * window actions apply immediately and keep the current page and draft open.
  *
  * Side effects: Calls setTimezone(), setFontSize(), setListPos(),
  * setColor(), setEditor(), setPipPosBuf(), setPlayer(), setAutorun(),
