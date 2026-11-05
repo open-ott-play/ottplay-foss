@@ -103,5 +103,77 @@ class DesktopCaptureContracts(unittest.TestCase):
                     runner.run("synthetic", ["not-executed"])
 
 
+    def test_helper_breadcrumbs_stay_separate_from_single_json_stdout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runner = MODULE.Runner(Path(directory), 10)
+            proc = Mock(pid=123, returncode=0)
+            proc.poll.return_value = 0
+            def fake_spawn(argv, *, stdout, stderr, **kwargs):
+                self.assertIsNot(stdout, stderr)
+                stdout.write(b'{"schema":1,"action":"snapshot","status":"ok"}\n')
+                stderr.write(b'{"phase":"synthetic","state":"before"}\n')
+                return proc
+            with patch.object(MODULE.subprocess, "Popen", side_effect=fake_spawn), \
+                 patch.object(MODULE, "stop_owned", return_value=False):
+                result = runner.helper("synthetic", Path("unused"), "snapshot")
+            self.assertEqual(result["action"], "snapshot")
+            self.assertIn('"phase":"synthetic"', (Path(directory) / "synthetic.stderr.log").read_text())
+            self.assertEqual(runner.commands[0]["stderr_sha256"],
+                             MODULE.sha(Path(directory) / "synthetic.stderr.log"))
+
+    def test_helper_still_rejects_multiple_stdout_documents(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runner = MODULE.Runner(Path(directory), 10)
+            with patch.object(runner, "run", return_value='{}\n{}\n'):
+                with self.assertRaises(json.JSONDecodeError):
+                    runner.helper("synthetic", Path("unused"), "snapshot")
+
+    def test_helper_stderr_budget_failure_remains_failed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runner = MODULE.Runner(Path(directory), 10)
+            proc = Mock(pid=123, returncode=0)
+            proc.poll.return_value = 0
+            def fake_spawn(argv, *, stdout, stderr, **kwargs):
+                stderr.seek(2 * 1024 * 1024)
+                stderr.write(b'x')
+                stderr.flush()
+                return proc
+            with patch.object(MODULE.subprocess, "Popen", side_effect=fake_spawn), \
+                 patch.object(MODULE, "stop_owned", return_value=False) as stop:
+                with self.assertRaisesRegex(RuntimeError, "stderr budget"):
+                    runner.helper("synthetic", Path("unused"), "snapshot")
+            stop.assert_called_once_with(proc)
+            self.assertEqual(runner.commands[0]["status"], "failed")
+
+    def test_one_readonly_failure_diagnostic_preserves_primary_failure(self):
+        receipt = {"status": "FAILED", "error": "primary cold-open deadline"}
+        runner = Mock()
+        runner.helper.side_effect = RuntimeError("diagnostic unavailable")
+        MODULE.collect_failure_evidence(receipt, runner, Path("unused"))
+        runner.helper.assert_called_once_with("finder-failure-state", Path("unused"),
+                                              "finder-diagnostic", seconds=12, cleanup=True)
+        self.assertEqual(receipt["error"], "primary cold-open deadline")
+        self.assertEqual(receipt["status"], "FAILED")
+        self.assertIn("diagnostic unavailable", receipt["finder_diagnostic_error"])
+
+    def test_success_does_not_trigger_failure_diagnostic(self):
+        runner = Mock()
+        receipt = {"status": "CAPTURED_REQUIRES_VISUAL_REVIEW"}
+        MODULE.collect_failure_evidence(receipt, runner, Path("unused"))
+        runner.helper.assert_not_called()
+
+    def test_original_child_failure_survives_cleanup_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runner = MODULE.Runner(Path(directory), 10)
+            proc = Mock(pid=123, returncode=7)
+            proc.poll.return_value = 7
+            with patch.object(MODULE.subprocess, "Popen", return_value=proc), \
+                 patch.object(MODULE, "stop_owned", side_effect=RuntimeError("cleanup failed")):
+                with self.assertRaisesRegex(RuntimeError, "command failed"):
+                    runner.run("synthetic", ["not-executed"])
+            self.assertEqual(runner.commands[0]["exit_code"], 7)
+            self.assertIn("cleanup failed", runner.commands[0]["cleanup_error"])
+
+
 if __name__ == "__main__":
     unittest.main()

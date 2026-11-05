@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """GitHub-hosted-only packaged macOS capture; never an automatic playback verdict."""
 import argparse
+from contextlib import ExitStack
 import hashlib
 import json
 import os
@@ -96,11 +97,12 @@ class Runner:
         commands = output / "commands.json"
         self.commands = json.loads(commands.read_text()) if commands.exists() else []
 
-    def run(self, name, argv, cwd=None, env=None, seconds=30, cleanup=False):
+    def run(self, name, argv, cwd=None, env=None, seconds=30, cleanup=False, capture_stderr=False):
         require(re.fullmatch(r"[a-z0-9-]+", name), "invalid command label")
         limit = seconds if cleanup else min(seconds, self.deadline - time.monotonic())
         require(limit > 0, "attempt deadline exceeded")
         log = self.output / (name + ".log")
+        stderr_log = self.output / (name + ".stderr.log") if capture_stderr else None
         item = {"name": name, "argv": [str(x) for x in argv], "status": "starting"}
         self.commands.append(item)
         proc = None
@@ -108,15 +110,25 @@ class Runner:
         start = time.monotonic()
         forced = False
         try:
-            with log.open("xb") as stream:
+            with ExitStack() as stack:
+                stream = stack.enter_context(log.open("xb"))
+                errors = stack.enter_context(stderr_log.open("xb")) if stderr_log else subprocess.STDOUT
                 proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
-                                        stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
+                                        stdout=stream, stderr=errors, start_new_session=True)
                 item["pid"] = proc.pid
                 while proc.poll() is None:
                     require(time.monotonic() - start < limit, name + ": deadline exceeded")
                     require(log.stat().st_size <= 32 * 1024 * 1024, name + ": output budget exceeded")
+                    if stderr_log is not None:
+                        require(stderr_log.stat().st_size <= 2 * 1024 * 1024, name + ": stderr budget exceeded")
                     time.sleep(.1)
                 item["exit_code"] = proc.returncode
+                if proc.returncode != 0:
+                    failed = RuntimeError(name + ": command failed; see its log")
+                elif log.stat().st_size > 32 * 1024 * 1024:
+                    failed = RuntimeError(name + ": output budget exceeded")
+                elif stderr_log is not None and stderr_log.stat().st_size > 2 * 1024 * 1024:
+                    failed = RuntimeError(name + ": stderr budget exceeded")
         except BaseException as error:
             failed = error
         finally:
@@ -124,11 +136,16 @@ class Runner:
                 try:
                     forced = stop_owned(proc)
                 except BaseException as error:
+                    item["cleanup_error"] = type(error).__name__ + ": " + str(error)
                     if failed is None:
                         failed = error
             item["forced_cleanup"] = forced
             item["elapsed_seconds"] = round(time.monotonic() - start, 3)
             item["log_sha256"] = sha(log) if log.exists() else None
+            if stderr_log is not None:
+                item["stderr_log"] = stderr_log.name
+                item["stderr_sha256"] = sha(stderr_log) if stderr_log.exists() else None
+                item["stderr_bytes"] = stderr_log.stat().st_size if stderr_log.exists() else None
             if failed is not None:
                 item["error"] = type(failed).__name__ + ": " + str(failed)
             item["status"] = "failed" if failed or forced or item.get("exit_code") != 0 else "completed"
@@ -138,12 +155,26 @@ class Runner:
         require(not forced, name + ": child left its process group running")
         require(item.get("exit_code") == 0, name + ": command failed; see its log")
         require(log.stat().st_size <= 32 * 1024 * 1024, name + ": output budget exceeded")
+        if stderr_log is not None:
+            require(stderr_log.stat().st_size <= 2 * 1024 * 1024, name + ": stderr budget exceeded")
         return log.read_text(encoding="utf-8", errors="replace")
 
     def helper(self, name, helper, action, *args, seconds=30, cleanup=False):
-        text = self.run(name, [str(helper), action, *map(str, args)], seconds=seconds, cleanup=cleanup)
+        text = self.run(name, [str(helper), action, *map(str, args)], seconds=seconds,
+                        cleanup=cleanup, capture_stderr=True)
         result = json.loads(text)
         return validate_helper(result, action)
+
+
+def collect_failure_evidence(receipt, runner, helper):
+    """One read-only observation. Its failure never replaces the primary failure."""
+    if receipt.get("status") != "FAILED":
+        return
+    try:
+        receipt["finder_diagnostic"] = runner.helper(
+            "finder-failure-state", helper, "finder-diagnostic", seconds=12, cleanup=True)
+    except BaseException as error:
+        receipt["finder_diagnostic_error"] = type(error).__name__ + ": " + str(error)
 
 
 def clean_source(runner, root, name):
@@ -239,6 +270,7 @@ def main():
                "run_id": os.environ.get("GITHUB_RUN_ID"), "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT")}
     app = None
     registered = False
+    gui_attempted = False
     ls = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
     try:
         commit = runner.run(args.phase + "-head", ["git", "rev-parse", "HEAD"], cwd=root).strip()
@@ -289,6 +321,7 @@ def main():
             for index, (kind, file) in enumerate((("finder-open", first), ("finder-open", second), ("finder-drop", first))):
                 label = ["cold-open", "warm-open", "window-drop"][index]
                 started = time.monotonic()
+                gui_attempted = True
                 action = runner.helper(label, helper, kind, app, file, seconds=40)
                 delivered = time.monotonic()
                 require(action.get("selected_file") == str(file) and action.get("delivery_only") is True,
@@ -342,6 +375,8 @@ def main():
         receipt["status"] = "FAILED"
         receipt["error"] = type(error).__name__ + ": " + str(error)
     finally:
+        if gui_attempted and receipt["status"] == "FAILED":
+            collect_failure_evidence(receipt, runner, helper)
         if app is not None:
             try:
                 receipt["app_cleanup"] = runner.helper("quit-qa", helper, "quit", app, cleanup=True, seconds=15)

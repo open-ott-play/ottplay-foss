@@ -435,6 +435,8 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          cache-on-failure: true
       - run: npm ci --ignore-scripts
       - name: Build isolated package once and capture three actual Finder actions
         run: python3 scripts/ci-macos-desktop.py capture

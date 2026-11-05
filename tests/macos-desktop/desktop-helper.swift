@@ -16,9 +16,58 @@ func require(_ yes: Bool, _ code: String, _ detail: String) throws {
     if !yes { throw Refusal(code: code, detail: detail) }
 }
 let started = ProcessInfo.processInfo.systemUptime
+var operationBudget: Double = 25
+var currentPhase = "startup"
+var lastOperation = "startup"
+var traceBytes = 0
+var traceUnavailable = false
+let traceLimit = 1024 * 1024
+// Only fixed operation names, statuses and timing: never AX values or file paths.
+@discardableResult
+func trace(_ event: String, _ operation: String, status: String = "") -> Bool {
+    guard !traceUnavailable else { return false }
+    let record: [String: Any] = ["schema": 1, "event": event, "phase": currentPhase,
+        "operation": operation, "status": status,
+        "elapsed_ms": Int((ProcessInfo.processInfo.systemUptime - started) * 1000)]
+    guard var data = try? JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]) else {
+        traceUnavailable = true
+        return false
+    }
+    data.append(0x0a)
+    guard traceBytes + data.count <= traceLimit else {
+        traceUnavailable = true
+        return false
+    }
+    do { try FileHandle.standardError.write(contentsOf: data) }
+    catch { traceUnavailable = true; return false }
+    traceBytes += data.count
+    return true
+}
+func observationAllowed() -> Bool {
+    !traceUnavailable && ProcessInfo.processInfo.systemUptime - started < operationBudget
+}
 func tick() throws {
-    try require(ProcessInfo.processInfo.systemUptime - started < 25,
-                "deadline", "Helper's 25-second deadline expired")
+    try require(!traceUnavailable, "trace_budget", "Progress trace limit or write failure")
+    try require(ProcessInfo.processInfo.systemUptime - started < operationBudget,
+                "deadline", "Helper's cooperative deadline expired")
+}
+func phase(_ name: String) throws {
+    try tick()
+    currentPhase = name
+    try require(trace("phase", name), "trace_budget", "Progress trace unavailable")
+}
+func observed<T>(_ operation: String, _ body: () throws -> T) throws -> T {
+    try tick()
+    lastOperation = operation
+    try require(trace("begin", operation), "trace_budget", "Progress trace unavailable")
+    do {
+        let value = try body()
+        try require(trace("end", operation, status: "returned"), "trace_budget", "Progress trace unavailable")
+        return value
+    } catch {
+        trace("end", operation, status: "threw")
+        throw error
+    }
 }
 func pause(_ seconds: Double = 0.05) throws {
     try tick()
@@ -33,8 +82,15 @@ func waitUntil(_ detail: String, seconds: Double = 5, _ body: () throws -> Bool)
     throw Refusal(code: "ui_not_ready", detail: detail)
 }
 func attr(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
+    // Also covers post-walk filters, which previously made unchecked AX calls.
+    guard observationAllowed() else { return nil }
+    let operation = "AXCopy." + name
+    lastOperation = operation
+    guard trace("begin", operation) else { return nil }
     var value: CFTypeRef?
-    return AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success ? value : nil
+    let result = AXUIElementCopyAttributeValue(element, name as CFString, &value)
+    trace("end", operation, status: String(result.rawValue))
+    return result == .success ? value : nil
 }
 func string(_ element: AXUIElement, _ name: String) -> String {
     (attr(element, name) as? String) ?? ""
@@ -86,13 +142,18 @@ func unique(_ root: AXUIElement, role: String, titles: [String]) throws -> AXUIE
 func press(_ element: AXUIElement) throws {
     try tick()
     try require(number(element, "AXEnabled") != 0, "ax_disabled", "Control is disabled")
-    try require(AXUIElementPerformAction(element, "AXPress" as CFString) == .success,
-                "ax_press", "AXPress refused")
+    let result = try observed("AXPress") {
+        AXUIElementPerformAction(element, "AXPress" as CFString)
+    }
+    // CannotComplete may mean a modal action took effect. Never retry it.
+    try require(result == .success, "ax_press", "AXPress returned error " + String(result.rawValue))
 }
 func set(_ element: AXUIElement, _ name: String, _ value: CFTypeRef) throws {
     try tick()
-    try require(AXUIElementSetAttributeValue(element, name as CFString, value) == .success,
-                "ax_set", "Cannot set \(name)")
+    let result = try observed("AXSet." + name) {
+        AXUIElementSetAttributeValue(element, name as CFString, value)
+    }
+    try require(result == .success, "ax_set", "AXSet returned error " + String(result.rawValue))
 }
 func ax(_ pid: pid_t) -> AXUIElement {
     let result = AXUIElementCreateApplication(pid)
@@ -101,7 +162,10 @@ func ax(_ pid: pid_t) -> AXUIElement {
 }
 func front(_ app: NSRunningApplication) throws {
     try require(!app.isTerminated, "app_exited", "Target application exited")
-    try require(app.activate(options: [.activateIgnoringOtherApps]), "activate", "Cannot activate target")
+    let activated = try observed("NSRunningApplication.activate") {
+        app.activate(options: [.activateIgnoringOtherApps])
+    }
+    try require(activated, "activate", "Cannot activate target")
     try waitUntil("Target did not become frontmost") {
         NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier
     }
@@ -115,27 +179,34 @@ func key(_ app: NSRunningApplication, _ code: CGKeyCode, flags: CGEventFlags = [
     }
     down.flags = flags
     up.flags = flags
-    down.post(tap: .cghidEventTap)
-    up.post(tap: .cghidEventTap)
+    try observed("CGEvent.keyDownUp") {
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+    }
 }
 func finderPermission() -> OSStatus {
     let target = NSAppleEventDescriptor(bundleIdentifier: "com.apple.finder")
     return AEDeterminePermissionToAutomateTarget(target.aeDesc, typeWildCard, typeWildCard, false)
 }
 func finder() throws -> NSRunningApplication {
-    let found = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").filter { !$0.isTerminated }
+    let found = try observed("Finder.runningApplications") {
+        NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").filter { !$0.isTerminated }
+    }
     try require(found.count == 1, "finder_unavailable", "Expected one running Finder")
     return found[0]
 }
 func prerequisites() throws -> [String: Any] {
-    let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+    try phase("capabilities")
+    let session = try observed("CGSessionCopyCurrentDictionary") {
+        CGSessionCopyCurrentDictionary() as? [String: Any]
+    }
     let onConsole = session?[kCGSessionOnConsoleKey as String] as? Bool ?? false
     let loggedIn = session?[kCGSessionLoginDoneKey as String] as? Bool ?? false
     let facts: [String: Any] = [
-        "accessibility": AXIsProcessTrusted(),
-        "post_events": CGPreflightPostEventAccess(),
-        "screen_capture": CGPreflightScreenCaptureAccess(),
-        "finder_automation_status": Int(finderPermission()),
+        "accessibility": try observed("AXIsProcessTrusted") { AXIsProcessTrusted() },
+        "post_events": try observed("CGPreflightPostEventAccess") { CGPreflightPostEventAccess() },
+        "screen_capture": try observed("CGPreflightScreenCaptureAccess") { CGPreflightScreenCaptureAccess() },
+        "finder_automation_status": try observed("AEDeterminePermission") { Int(finderPermission()) },
         "on_console": onConsole, "login_complete": loggedIn,
         "display_active": CGDisplayIsActive(CGMainDisplayID()) != 0,
         "os": ProcessInfo.processInfo.operatingSystemVersionString
@@ -170,7 +241,9 @@ struct Target {
         bundleID = id
     }
     func running() throws -> [NSRunningApplication] {
-        let all = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).filter { !$0.isTerminated }
+        let all = try observed("Target.runningApplications") {
+            NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).filter { !$0.isTerminated }
+        }
         try require(all.allSatisfy { $0.bundleURL?.resolvingSymlinksInPath().path == url.path },
                     "bundle_collision", "Another application path uses the QA bundle identifier")
         try require(all.count <= 1, "instance_collision", "Multiple target application instances")
@@ -226,7 +299,9 @@ func reveal(_ file: URL) throws -> NSRunningApplication {
     let app = try finder()
     // Public Finder reveal, followed by exact AX URL proof. No AppleScript or
     // basename-only fallback: a missing accessibility URL is a refusal.
-    NSWorkspace.shared.activateFileViewerSelecting([file])
+    try observed("NSWorkspace.activateFileViewerSelecting") {
+        NSWorkspace.shared.activateFileViewerSelecting([file])
+    }
     try front(app)
     try waitUntil("Finder does not expose the exact selected fixture URL") {
         try require(try finder().processIdentifier == app.processIdentifier, "finder_changed", "Finder changed during reveal")
@@ -248,10 +323,13 @@ func chooserSelection(_ root: AXUIElement, target: URL) throws -> AXUIElement? {
     }
 }
 func finderOpen(_ target: Target, file: URL) throws -> [String: Any] {
+    try phase("finder_open_identity")
     let before = try target.running().first?.processIdentifier
+    try phase("finder_reveal")
     let app = try reveal(file)
     let root = ax(app.processIdentifier)
     guard let menu = elementAttr(root, "AXMenuBar") else { throw Refusal(code: "menu", detail: "No Finder menu bar") }
+    try phase("finder_file_menu")
     let fileMenu = try unique(menu, role: "AXMenuBarItem", titles: ["File"])
     try press(fileMenu)
     var openWith: AXUIElement?
@@ -259,16 +337,19 @@ func finderOpen(_ target: Target, file: URL) throws -> [String: Any] {
         openWith = try walk(fileMenu).first { string($0, "AXRole") == "AXMenuItem" && string($0, "AXTitle") == "Open With" }
         return openWith != nil
     }
+    try phase("finder_open_with")
     try press(openWith!)
     var other: AXUIElement?
     try waitUntil("Finder Open With has no Other item") {
         other = try walk(openWith!).first { string($0, "AXRole") == "AXMenuItem" && ["Other…", "Other..."].contains(string($0, "AXTitle")) }
         return other != nil
     }
+    try phase("finder_other")
     try press(other!)
     try waitUntil("Finder application chooser absent") {
         try walk(root).contains { string($0, "AXRole") == "AXButton" && string($0, "AXTitle") == "Open" }
     }
+    try phase("chooser_go_to_folder")
     try key(app, 5, flags: [.maskCommand, .maskShift]) // Go to Folder, not an Open With substitute.
     var field: AXUIElement?
     try waitUntil("Go to Folder text field absent") {
@@ -277,18 +358,22 @@ func finderOpen(_ target: Target, file: URL) throws -> [String: Any] {
         field = focused
         return true
     }
+    try phase("chooser_exact_path")
     try set(field!, "AXValue", target.url.path as CFString)
     try require(string(field!, "AXValue") == target.url.path, "chooser_path", "Go to Folder did not retain exact bundle path")
     try key(app, 36)
     try waitUntil("Application chooser cannot attest exact selected QA bundle URL") {
         try chooserSelection(root, target: target.url) != nil
     }
+    try phase("chooser_verify_selection_and_default")
     let boxes = try walk(root).filter { string($0, "AXRole") == "AXCheckBox" && string($0, "AXTitle") == "Always Open With" }
     try require(boxes.count == 1, "default_checkbox", "Cannot locate exactly one Always Open With checkbox")
     try require(number(boxes[0], "AXValue") == 0, "default_checkbox", "Always Open With is selected or unreadable; refusing to change defaults")
     let open = try unique(root, role: "AXButton", titles: ["Open"])
     try require(try chooserSelection(root, target: target.url) != nil, "chooser_changed", "Selected application changed before Open")
+    try phase("chooser_open")
     try press(open)
+    try phase("target_arrival")
     var running: NSRunningApplication?
     try waitUntil("Exact QA bundle did not receive Finder Open With", seconds: 8) {
         running = try target.running().first
@@ -470,11 +555,48 @@ func launchServicesOpen(_ target: Target, file: URL) throws -> [String: Any] {
     result["delivery_only"] = true
     return result
 }
+// A separate child can obtain partial, read-only Finder state after an uncertain
+// action. It never activates Finder, reveals a file, presses, types or retries.
+func finderDiagnostic() throws -> [String: Any] {
+    try phase("finder_diagnostic")
+    let trusted = try observed("AXIsProcessTrusted") { AXIsProcessTrusted() }
+    try require(trusted, "diagnostic_accessibility", "Finder diagnostic requires existing AX access")
+    let app = try finder()
+    var pending: [(AXUIElement, Int)] = [(ax(app.processIdentifier), 0)]
+    var nodes: [[String: Any]] = []
+    var truncated = false
+    while !pending.isEmpty && nodes.count < 128 && observationAllowed() {
+        let (node, depth) = pending.removeLast()
+        var row: [String: Any] = ["depth": depth,
+            "role": String(decoding: string(node, "AXRole").utf8.prefix(64), as: UTF8.self),
+            "title": String(decoding: string(node, "AXTitle").utf8.prefix(192), as: UTF8.self)]
+        if let rect = frame(node) { row["frame"] = rectJSON(rect) }
+        if let enabled = number(node, "AXEnabled") { row["enabled"] = enabled }
+        if let selected = number(node, "AXSelected") { row["selected"] = selected }
+        nodes.append(row)
+        if depth < 6 {
+            let nested = children(node)
+            let room = max(0, 128 - nodes.count - pending.count)
+            if nested.count > room { truncated = true }
+            for child in nested.prefix(room).reversed() { pending.append((child, depth + 1)) }
+        } else { truncated = true }
+    }
+    return ["pid": Int(app.processIdentifier), "bundle_id": "com.apple.finder",
+        "nodes": nodes, "traversal_exhausted": !truncated && pending.isEmpty && observationAllowed(),
+        "deadline_reached": ProcessInfo.processInfo.systemUptime - started >= operationBudget,
+        "trace_unavailable": traceUnavailable,
+        "scope": "Read-only partial Finder AX state; unavailable attributes may be absent even when traversal is exhausted; no delivery or playback conclusion"]
+}
+
 func main(_ args: [String]) throws -> [String: Any] {
     try require(!args.isEmpty, "usage", "Expected an action")
     if args[0] == "preflight" {
         try require(args.count == 1, "usage", "preflight takes no arguments")
         return ["capabilities": try prerequisites()]
+    }
+    if args[0] == "finder-diagnostic" {
+        try require(args.count == 1, "usage", "finder-diagnostic takes no arguments")
+        return try finderDiagnostic()
     }
     if args[0] == "handler" {
         try require(args.count == 2, "usage", "handler FILE")
@@ -483,7 +605,8 @@ func main(_ args: [String]) throws -> [String: Any] {
         return ["file": file.path, "application_path": selected as Any? ?? NSNull()]
     }
     try require(args.count >= 2, "usage", "Action requires absolute QA app path")
-    let target = try Target(args[1])
+    try phase("target_resolve")
+    let target = try observed("Target.bundle") { try Target(args[1]) }
     if args[0] == "apps" {
         try require(args.count == 2, "usage", "apps APP")
         return ["apps": try target.running().map { target.json($0) }]
@@ -515,14 +638,24 @@ func main(_ args: [String]) throws -> [String: Any] {
         throw Refusal(code: "usage", detail: "Unknown action")
     }
 }
-_ = NSApplication.shared
-NSApp.setActivationPolicy(.prohibited)
 let args = Array(CommandLine.arguments.dropFirst())
+if args.first == "finder-diagnostic" { operationBudget = 6 }
 var output: [String: Any] = ["schema": 1, "action": args.first ?? ""]
 var status: Int32 = 0
 do {
     guard #available(macOS 14.0, *) else { throw Refusal(code: "macos_version", detail: "Helper requires macOS 14+") }
+    try phase("initialize")
+    // Per-element timeouts do not propagate to descendant or equal AX objects.
+    // This checked setting covers all AX messaging in this helper process only.
+    let timeout = try observed("AXGlobalMessagingTimeout") {
+        AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), 0.5)
+    }
+    try require(timeout == .success, "ax_timeout", "Cannot set process-wide AX messaging timeout")
+    try observed("NSApplication.shared") { _ = NSApplication.shared }
+    try observed("NSApplication.activationPolicy") { _ = NSApp.setActivationPolicy(.prohibited) }
     output.merge(try main(args)) { _, fresh in fresh }
+    // Diagnostic partial results explicitly report their own smaller deadline.
+    if args.first != "finder-diagnostic" { try tick() }
     output["status"] = "ok"
 } catch let refusal as Refusal {
     output["status"] = "refused"
@@ -533,6 +666,10 @@ do {
     output["error"] = ["code": "platform_error", "detail": String(describing: type(of: error))]
     status = 2
 }
+output["phase"] = currentPhase
+output["last_operation"] = lastOperation
+output["deadline_exceeded"] = ProcessInfo.processInfo.systemUptime - started >= operationBudget
+output["trace_unavailable"] = traceUnavailable
 output["elapsed_ms"] = Int((ProcessInfo.processInfo.systemUptime - started) * 1000)
 if let data = try? JSONSerialization.data(withJSONObject: output, options: [.sortedKeys]),
    let text = String(data: data, encoding: .utf8) { print(text) }
