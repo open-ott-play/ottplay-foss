@@ -231,9 +231,11 @@ promise for every playback state.
   establish coverage of all 35 descriptors or setting writes. No separate
   validate/apply command is advertised.
   The current Classic extension adds `showNumber`, `showName`, `showProgram`,
-  and `showDescription`, bringing the schema to 39 descriptors (default pages
-  of 20 and 19). These four visibility settings belong to the selected provider;
-  use the returned context and revision when changing them. The three-setting
+  `showDescription`, and `showProgress`, bringing the schema to 40 descriptors
+  (two default pages of 20). These five visibility settings belong to the
+  selected provider. `showProgress` defaults to On (`1`) and is independent of
+  `showProgram`; use the returned context and revision when changing either.
+  The three-setting
   smoke fixture remains a subset, so complete schema coverage comes from the
   separately exported native contract test rather than this smoke check.
 - `input` contains the six navigation keys while foreground playback is
