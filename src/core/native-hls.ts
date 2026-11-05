@@ -63,12 +63,8 @@ export function createNativeHlsTransport(
             result: any
         ) {
             // A channel change/stop may finish before native session creation.
-            if (!current()) {
-                if (result && typeof result.session === "string")
-                    stop(result.session);
-                return;
-            }
             if (
+                !current() ||
                 !result ||
                 typeof result.session !== "string" ||
                 !result.session ||

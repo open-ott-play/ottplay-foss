@@ -52,7 +52,8 @@ export function watchAutoNativePlayback(
         var method: "addEventListener" | "removeEventListener" = enabled
             ? "addEventListener"
             : "removeEventListener";
-        for (var i = 0; i < events.length; i++) target[method](events[i], handler);
+        for (var i = 0; i < events.length; i++)
+            target[method](events[i], handler);
     }
 
     function listen(enabled: boolean): void {
@@ -354,7 +355,12 @@ export function watchAutoNativePlayback(
         function listen(enabled: boolean): void {
             setEventListeners(media, resetEvents, reset, enabled);
             if (initialState)
-                setEventListeners(media, ["play", "seeked"], resetInitial, enabled);
+                setEventListeners(
+                    media,
+                    ["play", "seeked"],
+                    resetInitial,
+                    enabled
+                );
             setEventListeners(doc, ["visibilitychange"], reset, enabled);
         }
 
