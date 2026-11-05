@@ -16492,7 +16492,7 @@ index 2bee02bd..9fc78c77 100644
 +#[path = "catalog_merge_tests.rs"]
 +mod merge_tests;
 diff --git a/rust-modules/data/src/ott/profiles.rs b/rust-modules/data/src/ott/profiles.rs
-index 056add5d..726786a5 100644
+index 056add5d..f8c8630a 100644
 --- a/rust-modules/data/src/ott/profiles.rs
 +++ b/rust-modules/data/src/ott/profiles.rs
 @@ -112,7 +112,9 @@ impl ProviderProfile {
@@ -16506,6 +16506,36 @@ index 056add5d..726786a5 100644
              || self.source.len() > 16384
              || self.source.chars().any(char::is_control)
          {
+@@ -231,6 +233,29 @@ pub fn parse_profiles_json(input: &str) -> Result<ProviderProfiles, CatalogError
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++    #[test]
++    fn cleared_source_slots_roundtrip_but_are_not_playable_profiles() {
++        for kind in [ProviderKind::M3u, ProviderKind::VPortal] {
++            let profile = ProviderProfile { id: "slot-7".into(), name: "Keep this name".into(),
++                kind, source: String::new(), source_alias: "Keep this alias".into(), enabled: true };
++            let saved = ProviderProfiles { version: 1, active_profile: Some(profile.id.clone()),
++                profiles: vec![profile.clone()] };
++            assert_eq!(parse_profiles_json(&serde_json::to_string(&saved).unwrap()).unwrap(), saved);
++            assert!(profile.validate().is_err(), "a stored empty slot is not a playable source");
++            for source in [" ", "\t", "invalid", "file:///tmp/list.m3u", "https://fixture.invalid/\n"] {
++                let mut bad = saved.clone();
++                bad.profiles[0].source = source.into();
++                assert!(bad.validate().is_err(), "nonempty invalid sources must still fail");
++            }
++        }
++        for kind in [ProviderKind::Xtream, ProviderKind::Stalker, ProviderKind::Local, ProviderKind::Plex] {
++            let profile = ProviderProfile { id: "other".into(), name: "Other".into(), kind,
++                source: String::new(), source_alias: String::new(), enabled: true };
++            let saved = ProviderProfiles { version: 1, active_profile: None, profiles: vec![profile] };
++            assert!(saved.validate().is_err(), "empty-source storage is limited to URL slots");
++        }
++    }
++
+     #[test]
+     fn m3u_source_kind_reuses_portal_parser_without_accepting_blank_profiles() {
+         let portal = "portal::[key:fixture-secret]https://fixture.invalid/api/";
 diff --git a/rust-modules/data/src/ott/records.rs b/rust-modules/data/src/ott/records.rs
 new file mode 100644
 index 00000000..dbd07bc4
@@ -65153,10 +65183,10 @@ index 4ee617b9..8f9666f3 100644
 +mod name_tests;
 diff --git a/rust-modules/src/app/ott_commands_name_tests.rs b/rust-modules/src/app/ott_commands_name_tests.rs
 new file mode 100644
-index 00000000..5b869af5
+index 00000000..ad77f554
 --- /dev/null
 +++ b/rust-modules/src/app/ott_commands_name_tests.rs
-@@ -0,0 +1,119 @@
+@@ -0,0 +1,204 @@
 +//! Existing command admission with an inert runtime; no writer or transport starts.
 +use super::*;
 +
@@ -65274,6 +65304,91 @@ index 00000000..5b869af5
 +            assert_no_save(&runtime, &before);
 +            assert_eq!(runtime.provider, ProviderKind::M3u);
 +        }
++    }
++}
++
++#[test]
++fn explicit_empty_source_retains_slot_metadata_and_compare_identity() {
++    for kind in [ProviderKind::M3u, ProviderKind::VPortal] {
++        let mut runtime = fixture(kind, "Keep name");
++        let before = runtime.saved.clone();
++        let id = before.profiles.active_profile.clone().unwrap();
++        runtime.saved.settings.insert(format!("history:{id}"), json!(72));
++        let index = insert_profile(&mut runtime.saved, kind, 7, String::new(), None).unwrap();
++        assert_eq!(runtime.saved.profiles.profiles[index].id, id);
++        assert_eq!(runtime.saved.profiles.profiles[index].name, "Keep name");
++        assert_eq!(runtime.saved.profiles.active_profile, before.profiles.active_profile);
++        assert_eq!(runtime.saved.settings[&format!("history:{id}")], 72);
++        assert!(runtime.saved.profiles.validate().is_ok());
++        assert_eq!(metadata(&runtime.saved, kind, 7)["active"], true);
++        let key = if kind == ProviderKind::VPortal { "vportal" } else { "playlist" };
++        let mut settings = json!({"name":"Keep name"});
++        settings[key] = json!("");
++        if kind == ProviderKind::M3u { settings["history_hours"] = json!(72); }
++        let mut params = json!({"provider":wire_provider(kind),"number":7,"settings":settings});
++        if kind == ProviderKind::VPortal { params["runtime"] = json!(runtime.remote.runtime()); }
++        let inv = request(&mut runtime, 1, "settings_compare", params);
++        let response = provider_settings(&mut runtime, &inv).unwrap();
++        assert_eq!(response["data"]["matched"], true);
++        let configured = if kind == ProviderKind::VPortal { "vportal_configured" } else { "playlist_configured" };
++        assert_eq!(metadata(&runtime.saved, kind, 7)[configured], false);
++        assert!(!runtime.saving);
++        let source = if kind == ProviderKind::VPortal { LINK } else { "https://tv.fixture.invalid/refill.m3u" };
++        assert_eq!(insert_profile(&mut runtime.saved, kind, 7, source.into(), None).unwrap(), index);
++        assert!(runtime.saved.profiles.profiles[index].validate().is_ok());
++        assert_eq!(runtime.saved.profiles.profiles[index].name, "Keep name");
++    }
++}
++
++#[test]
++fn explicit_empty_source_reaches_existing_writer_but_invalid_values_do_not() {
++    for kind in [ProviderKind::M3u, ProviderKind::VPortal] {
++        let mut runtime = fixture(kind, "Existing");
++        let before = serde_json::to_value(&runtime.saved).unwrap();
++        let key = if kind == ProviderKind::VPortal { "vportal" } else { "playlist" };
++        let mut settings = json!({});
++        settings[key] = json!("");
++        let inv = request(&mut runtime, 1, "profile_settings", json!({"number":7,"settings":settings}));
++        let refusal = runtime.settings_write_refusal().unwrap();
++        assert_eq!(profiles(&mut runtime, &inv), Some(rejected(refusal)));
++        assert_no_save(&runtime, &before);
++        for (at, value) in [json!(" "), json!("invalid"), json!("file:///tmp/source"),
++            json!("https://fixture.invalid/\n"), json!(false), json!(null)].into_iter().enumerate() {
++            let mut settings = json!({});
++            settings[key] = value;
++            let inv = request(&mut runtime, at as u32 + 2, "profile_settings", json!({"number":7,"settings":settings}));
++            let response = profiles(&mut runtime, &inv).unwrap();
++            assert_eq!(response["status"], "rejected");
++            assert_ne!(response, rejected(refusal), "invalid source must fail before the write gate");
++            assert_no_save(&runtime, &before);
++        }
++    }
++}
++
++#[test]
++fn dedicated_vportal_empty_source_uses_bound_receipt_and_keeps_invalid_sources_rejected() {
++    for (at, source) in ["", " ", "invalid", "file:///tmp/portal", "https://fixture.invalid/\n"].into_iter().enumerate() {
++        let mut runtime = fixture(ProviderKind::VPortal, "Existing");
++        let before = serde_json::to_value(&runtime.saved).unwrap();
++        let params = json!({"provider":"vportal", "runtime":runtime.remote.runtime(),
++            "number":7,"settings":{"vportal":source}});
++        let compare = request(&mut runtime, 1, "settings_compare", params);
++        let compared = provider_settings(&mut runtime, &compare).unwrap();
++        if compared["status"] != "ok" {
++            assert_ne!(at, 0, "empty compare must be supported");
++            assert_no_save(&runtime, &before);
++            continue;
++        }
++        let params = json!({"provider":"vportal", "runtime":runtime.remote.runtime(),
++            "context":compared["data"]["context"],"revision":compared["data"]["revision"],
++            "settings":{"profile":7,"vportal":source}});
++        let inv = request(&mut runtime, 2, "provider_settings", params);
++        let refusal = runtime.settings_write_refusal().unwrap();
++        let response = provider_settings(&mut runtime, &inv).unwrap();
++        assert_eq!(response["status"], "rejected");
++        if source.is_empty() { assert_eq!(response, rejected(refusal)); }
++        else { assert_ne!(response, rejected(refusal)); }
++        assert_no_save(&runtime, &before);
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_commands_offline.rs b/rust-modules/src/app/ott_commands_offline.rs
@@ -103408,20 +103523,23 @@ index 88ceb08c..c539c881 100644
 +include!("catalog_return_identity.rs");
 +include!("catalog_return_lifecycle.rs");
 diff --git a/rust-modules/src/app/ott_runtime_tests/navigation_context.rs b/rust-modules/src/app/ott_runtime_tests/navigation_context.rs
-index 304b74d6..9d9b2d59 100644
+index 304b74d6..1c35a05a 100644
 --- a/rust-modules/src/app/ott_runtime_tests/navigation_context.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/navigation_context.rs
-@@ -11,6 +11,9 @@ use super::*;
+@@ -11,6 +11,12 @@ use super::*;
  #[path = "plex_settings_fields.rs"]
  mod plex_settings_fields;
  
 +#[path = "source_editor_activation.rs"]
 +mod source_editor_activation;
 +
++#[path = "source_clear.rs"]
++mod source_clear;
++
  fn mounted() -> App {
      mount_app(app_fixture())
  }
-@@ -413,7 +416,7 @@ fn first_batch(app: &mut App, id: &str) {
+@@ -413,7 +419,7 @@ fn first_batch(app: &mut App, id: &str) {
          .catalog_tx
          .send(CatalogEvent::Batch(
              runtime.generation,
@@ -113360,6 +113478,165 @@ index 00000000..e4363653
 +    invalid_unit["unit"] = json!("rows");
 +    assert!(!descriptor_valid(&invalid_unit));
 +    assert!(failures.is_empty(), "Controller v1 rejects emitted schema metadata: {failures:?}");
++}
+diff --git a/rust-modules/src/app/ott_runtime_tests/source_clear.rs b/rust-modules/src/app/ott_runtime_tests/source_clear.rs
+new file mode 100644
+index 00000000..a7f7d87e
+--- /dev/null
++++ b/rust-modules/src/app/ott_runtime_tests/source_clear.rs
+@@ -0,0 +1,153 @@
++//! Source clearing uses the normal command/write completion path. Protected
++//! storage success is modeled after the existing revoked-permit writer refusal.
++use super::*;
++
++const PORTAL: &str = "portal::[key:fixture]https://portal.fixture.invalid/api/";
++
++fn setup(kind: ProviderKind, active: bool) -> App {
++    let mut app = mounted_ready();
++    seed_saved(&mut app);
++    let runtime = app.ott.as_mut().unwrap();
++    let profile = &mut runtime.saved.profiles.profiles[1];
++    profile.kind = kind;
++    if kind == ProviderKind::VPortal { profile.source = PORTAL.into(); }
++    runtime.saved.profiles.active_profile = active.then(|| "m3u".into());
++    runtime.saved.settings.insert("selectedProvider".into(), json!(kind.canonical_id()));
++    runtime.saved.settings.insert("slot:m3u".into(), json!(7));
++    runtime.saved.settings.insert("history:m3u".into(), json!(72));
++    runtime.sync_saved_context();
++    runtime.page = "profiles";
++    app
++}
++
++fn request(runtime: &mut Runtime, serial: u32, action: &str, params: Value) -> Invocation {
++    let now = runtime.now_ms();
++    let body = json!({"commands":[],"server_time":1000,"requests":[{
++        "id":format!("{serial:032x}"),"action":action,"params":params,"expires_at":1020
++    }]}).to_string();
++    let mut received = runtime.remote.raw_poll_for_test(&body, now);
++    assert_eq!(received.len(), 1);
++    received.pop().unwrap()
++}
++
++fn admit_clear(app: &mut App, kind: ProviderKind, dedicated: bool) -> (Option<Invocation>, bool, Value) {
++    let mut runtime = app.ott.take().unwrap();
++    let key = if kind == ProviderKind::VPortal { "vportal" } else { "playlist" };
++    let mut settings = json!({});
++    settings[key] = json!("");
++    let (action, params) = if dedicated && kind == ProviderKind::VPortal {
++        let params = json!({"provider":"vportal", "runtime":runtime.remote.runtime(),
++            "number":7,"settings":settings});
++        let query = request(&mut runtime, 1, "settings_compare", params);
++        let reply = commands::command(&mut runtime, app, &query).unwrap();
++        assert_eq!(reply["status"], "ok");
++        settings["profile"] = json!(7);
++        ("provider_settings", json!({"provider":"vportal","runtime":runtime.remote.runtime(),
++            "context":reply["data"]["context"],"revision":reply["data"]["revision"],"settings":settings}))
++    } else if dedicated {
++        ("provider_settings", json!({"provider":"m3u","settings":settings}))
++    } else {
++        ("profile_settings", json!({"number":7,"settings":settings}))
++    };
++    let invocation = request(&mut runtime, 2, action, params);
++    assert!(commands::command(&mut runtime, app, &invocation).is_none(), "clear must admit the existing writer");
++    assert!(matches!(runtime.save_navigation, SaveNavigation::Preserve));
++    app.ott = Some(runtime);
++    let pending = capture_refused_write(app);
++    assert!(!pending.1, "clearing a source is not a reload request");
++    pending
++}
++
++#[test]
++fn remote_source_clear_preserves_selection_retires_old_batches_and_never_autoplays() {
++    let _serial = plx_base::testlock::serial();
++    for kind in [ProviderKind::M3u, ProviderKind::VPortal] {
++        for dedicated in [false, true] {
++            let mut app = setup(kind, true);
++            let old_generation = app.ott.as_ref().unwrap().generation;
++            let old_epoch = app.ott.as_ref().unwrap().playback_epoch;
++            let pending = admit_clear(&mut app, kind, dedicated);
++            let mut cleared = app.ott.as_ref().unwrap().saved.clone();
++            cleared.profiles.profiles[1].source.clear();
++            cleared.validate().unwrap();
++            modeled_saved(&mut app, cleared.clone(), pending);
++            let runtime = app.ott.as_ref().unwrap();
++            assert_eq!(runtime.saved.profiles, cleared.profiles);
++            assert_eq!(runtime.saved.settings["selectedProvider"], cleared.settings["selectedProvider"]);
++            assert_eq!(runtime.saved.settings["history:m3u"], 72);
++            assert_eq!(runtime.playback_epoch, old_epoch, "clear must not claim decoder ownership");
++            assert!(runtime.generation != old_generation);
++            assert!(runtime.catalog_next.is_none() && !runtime.catalog_loading);
++            assert!(runtime.play_target.is_none() && runtime.resolver_next.is_none());
++            runtime.catalog_tx.send(CatalogEvent::Batch(old_generation,
++                Catalog { hierarchy: None, entries: vec![entry("stale")] }))
++                .unwrap_or_else(|_| panic!("fixture catalogue receiver disappeared"));
++            runtime_tick(&mut app);
++            assert!(app.ott.as_ref().unwrap().catalog.entries.is_empty());
++            assert!(app.ott.as_ref().unwrap().play_target.is_none());
++            // The active slot persists across restart; it cannot start a loader.
++            let mut restarted = mounted();
++            deliver(&mut restarted, Job::Loaded(Ok((cleared, [1; 16]))));
++            let runtime = restarted.ott.as_ref().unwrap();
++            assert_eq!(runtime.saved.profiles.active_profile.as_deref(), Some("m3u"));
++            assert!(runtime.catalog_next.is_none() && !runtime.catalog_loading);
++            assert!(runtime.play_target.is_none() && runtime.resolver_next.is_none());
++        }
++    }
++}
++
++#[test]
++fn remote_source_clear_keeps_load_disabled_and_edit_available() {
++    let _serial = plx_base::testlock::serial();
++    for kind in [ProviderKind::M3u, ProviderKind::VPortal] {
++        let mut app = setup(kind, true);
++        let pending = admit_clear(&mut app, kind, false);
++        let mut cleared = app.ott.as_ref().unwrap().saved.clone();
++        cleared.profiles.profiles[1].source.clear();
++        modeled_saved(&mut app, cleared, pending);
++        let runtime = app.ott.as_mut().unwrap();
++        runtime.profile_edit_epoch = 1;
++        let rows = profile_edit::rows(runtime, &runtime.saved.profiles.profiles[1]);
++        assert!(rows.iter().any(|row| matches!(&row.action, OttAction::SelectProfile(_)) && !row.enabled));
++        assert!(rows.iter().any(|row| matches!(&row.action, OttAction::EditProfile { .. }) && row.enabled));
++        let mut runtime = app.ott.take().unwrap();
++        let invocation = request(&mut runtime, 3, "profile", json!({"number":7}));
++        let response = commands::command(&mut runtime, &mut app, &invocation).unwrap();
++        assert_eq!(response["status"], "rejected");
++        assert!(!runtime.saving);
++    }
++}
++
++#[test]
++fn remote_source_clear_with_no_active_profile_never_activates_a_slot() {
++    let _serial = plx_base::testlock::serial();
++    for kind in [ProviderKind::M3u, ProviderKind::VPortal] {
++        for dedicated in [false, true] {
++            let mut app = setup(kind, false);
++            let before = app.ott.as_ref().unwrap().saved.clone();
++            let _pending = admit_clear(&mut app, kind, dedicated);
++            let runtime = app.ott.as_ref().unwrap();
++            assert_eq!(runtime.saved.profiles, before.profiles);
++            assert!(runtime.saved.profiles.active_profile.is_none());
++            assert!(runtime.catalog_next.is_none() && runtime.resolver_next.is_none());
++        }
++    }
++}
++
++#[test]
++fn cleared_source_restart_preserves_favorites_view_without_starting_media() {
++    let _serial = plx_base::testlock::serial();
++    for kind in [ProviderKind::M3u, ProviderKind::VPortal] {
++        let app = setup(kind, true);
++        let mut cleared = app.ott.as_ref().unwrap().saved.clone();
++        cleared.profiles.profiles[1].source.clear();
++        cleared.favorites_selected = true;
++        let mut restarted = mounted();
++        deliver(&mut restarted, Job::Loaded(Ok((cleared, [1; 16]))));
++        let runtime = restarted.ott.as_ref().unwrap();
++        assert_eq!(runtime.page, "favorites");
++        assert!(runtime.saved.favorites_selected);
++        assert!(runtime.catalog_next.is_none() && runtime.resolver_next.is_none());
++        assert!(runtime.play_target.is_none());
++    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/source_editor_activation.rs b/rust-modules/src/app/ott_runtime_tests/source_editor_activation.rs
 new file mode 100644
