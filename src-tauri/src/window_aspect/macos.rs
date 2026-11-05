@@ -8,9 +8,11 @@ struct State {
     previous: NSSize,
     increments: NSSize,
     enabled: bool,
-    active: bool,
 }
 thread_local! { static WINDOWS:RefCell<HashMap<usize,State>>=RefCell::new(HashMap::new()); }
+fn same_size(left: NSSize, right: NSSize) -> bool {
+    left.width == right.width && left.height == right.height
+}
 fn refresh(key: usize) -> Result<(bool, bool), String> {
     MainThreadMarker::new().ok_or("Aspect constraint requires the AppKit thread")?;
     let state = WINDOWS
@@ -19,10 +21,20 @@ fn refresh(key: usize) -> Result<(bool, bool), String> {
     // Retain the NSWindow until Destroyed; queued state callbacks cannot dereference a released pointer.
     let native = &state.native;
     let active = state.enabled
+        && !crate::commands::tauri_commands::macos_simple_fullscreen_active()
         && !native.isZoomed()
         && !native.isMiniaturized()
         && !native.styleMask().contains(NSWindowStyleMask::FullScreen);
-    if active != state.active {
+    let expected = if active {
+        NSSize::new(16.0, 9.0)
+    } else {
+        state.previous
+    };
+    // Style changes can clear native constraints without changing our requested
+    // state. Reconcile the actual constraint, not a cached active bit.
+    if !same_size(native.contentAspectRatio(), expected)
+        || (!active && !same_size(native.contentResizeIncrements(), state.increments))
+    {
         if active {
             native.setContentAspectRatio(NSSize::new(16.0, 9.0));
         } else {
@@ -33,21 +45,23 @@ fn refresh(key: usize) -> Result<(bool, bool), String> {
             }
         }
     }
-    let actual = native.contentAspectRatio();
-    let expected = if active {
-        NSSize::new(16.0, 9.0)
-    } else {
-        state.previous
-    };
-    if actual.width != expected.width || actual.height != expected.height {
+    if !same_size(native.contentAspectRatio(), expected)
+        || (!active && !same_size(native.contentResizeIncrements(), state.increments))
+    {
         return Err("AppKit aspect constraint readback failed".into());
     }
-    WINDOWS.with(|all| {
-        if let Some(value) = all.borrow_mut().get_mut(&key) {
-            value.active = active;
-        }
-    });
     Ok((state.enabled, active))
+}
+pub(super) fn reconcile_initialized(window: &tauri::Window) -> Result<(), String> {
+    MainThreadMarker::new().ok_or("Aspect constraint requires the AppKit thread")?;
+    if WINDOWS.with(|all| all.borrow().is_empty()) {
+        return Ok(());
+    }
+    let key = window.ns_window().map_err(|e| e.to_string())? as usize;
+    if WINDOWS.with(|all| all.borrow().contains_key(&key)) {
+        refresh(key)?;
+    }
+    Ok(())
 }
 pub fn apply(window: &tauri::Window, enabled: Option<bool>) -> Result<(bool, bool), String> {
     MainThreadMarker::new().ok_or("Aspect constraint requires the AppKit thread")?;
@@ -67,7 +81,6 @@ pub fn apply(window: &tauri::Window, enabled: Option<bool>) -> Result<(bool, boo
                     increments: native.contentResizeIncrements(),
                     native,
                     enabled: false,
-                    active: false,
                 },
             )
         });
