@@ -162,6 +162,29 @@ index 13d91d1f..fbd4f68f 100644
  rust-modules/data/src/person.rs::seed_dev_credits::tape::active
  rust-modules/data/src/person.rs::sources::server_ids
  rust-modules/data/src/person.rs::sync_roster::server_roster_gen
+diff --git a/ci/build-budgets.json b/ci/build-budgets.json
+index 23afe5ad..30dd2451 100644
+--- a/ci/build-budgets.json
++++ b/ci/build-budgets.json
+@@ -3,13 +3,13 @@
+   "how_to_raise": "Edit this file in the SAME pull request that grows the number, set limit to the new ceiling, update measured and measured_on, and justify the growth in the PR body (what was added, why it cannot be smaller, what it cost). A budget is raised by a reviewed decision, never to make a red run green.",
+   "budgets": {
+     "binary_bytes": {
+-      "what": "Size in bytes of the STRIPPED ARM plxnative binary that `make ipk FLAVOR=debug` stages into the package (ipkroot/data/usr/palm/applications/<appid>/plxnative), as the CI cross-build job builds it (default features, dev flavour). The shipped release binary is built with --no-default-features and is smaller; this is the number CI can measure on every PR.",
++      "what": "Size in bytes of the stripped ARM plxnative binary staged by the OTT native producer: RELEASE=1, FLAVOR=stable, ARM_PROFILE=release, --no-default-features, opt-level=s, fat LTO and one codegen unit. The baseline uses the pinned Darwin-hosted SDK; Linux CI independently rebuilds and grades its staged binary against the same ceiling.",
+       "unit": "bytes",
+       "mode": "fail",
+-      "limit": 15180000,
+-      "measured": 13799944,
+-      "measured_on": "2026-10-18",
+-      "headroom": "10%"
++      "limit": 18238176,
++      "measured": 16580160,
++      "measured_on": "2026-11-05",
++      "headroom": "10% (ceil(1.10 * measured))"
+     },
+     "packages_default": {
+       "what": "Third-party (registry/git) packages the app crate compiles for armv7-unknown-linux-gnueabi with its DEFAULT features: normal + build dependencies, dev-dependencies excluded, workspace members excluded.",
 diff --git a/ci/build-libass.py b/ci/build-libass.py
 index 8ba4a310..8c2925a8 100755
 --- a/ci/build-libass.py
@@ -921,10 +944,24 @@ index 564873a1..cf153887 100644
          files = {name: data for name, data in self.libraries.items() if name != "libass-plx.so.0"}
          with tempfile.TemporaryDirectory() as temporary:
 diff --git a/docs/agent-reference.md b/docs/agent-reference.md
-index 58c21931..1030b25a 100644
+index 58c21931..b998be2d 100644
 --- a/docs/agent-reference.md
 +++ b/docs/agent-reference.md
-@@ -799,13 +799,14 @@ the pinned Sentry Native cross-build), and `sshpass` (Homebrew; deploy/run use y
+@@ -361,8 +361,11 @@ the pinned Sentry Native cross-build), and `sshpass` (Homebrew; deploy/run use y
+     flag is a reason to read the logs, not a verdict. A job renamed or split in the window (the host
+     jobs were one job until the split) only has the runs since.
+   - *Budgets.* `ci/build-budgets.json` holds the deterministic ceilings and `ci/check-build-budgets.py`
+-    enforces them: the stripped ARM `plxnative` that `make ipk` stages (the cross-build job, dev
+-    flavour, `release` profile: CI selects it by itself, a local `make ipk` needs `ARM_PROFILE=release`), the number of third-party packages in the app crate's resolved graph for
++    enforces them: the stripped ARM `plxnative` staged by the OTT native producer with
++    `RELEASE=1 FLAVOR=stable ARM_PROFILE=release`, `--no-default-features`, opt-level `s`, fat LTO
++    and one codegen unit. Its baseline uses the pinned Darwin-hosted SDK; Linux CI independently
++    rebuilds and grades its own staged binary against the same ceiling. The other budgets cover
++    the number of third-party packages in the app crate's resolved graph for
+     `armv7-unknown-linux-gnueabi` (normal + build edges, dev-dependencies excluded; asked for both with
+     default features and with `--no-default-features`, which is what ships), and the number of crate
+     names present in two versions on the normal-edge graph (what `cargo tree -d --edges normal`
+@@ -799,13 +802,14 @@ the pinned Sentry Native cross-build), and `sshpass` (Homebrew; deploy/run use y
    headers by hand. Neither bug is visible from the other's side: `webosbrew-ipk-verify` reads a
    GNU-named archive fine, and the TV never gets far enough to miss a descriptor. `check-package.py`
    now asserts both. Full account: `docs/distribution.md` §9.
@@ -941,7 +978,7 @@ index 58c21931..1030b25a 100644
    the recipe (its module doc names the three ways a Mac bundle silently ships broken);
    `docs/macos-app.md` is the design note, and `docs/macos-app-readme.md` is what ships beside the
    zip for the recipient.
-@@ -997,8 +998,8 @@ both halves compile-time facts, and it is also webosbrew's published guidance.
+@@ -997,8 +1001,8 @@ both halves compile-time facts, and it is also webosbrew's published guidance.
  **One consequence settles a question that keeps getting re-opened: our FFmpeg has NO network.** It
  is configured `--disable-network` with `--enable-protocol=file` as the *only* protocol, so it
  cannot open a URL — http or https, on any firmware. Every byte reaches the demuxer through **the
@@ -952,7 +989,7 @@ index 58c21931..1030b25a 100644
  around. "Does the TV's FFmpeg have https?" is therefore not
  something to go and probe on a device; it is decided, and the answer is that no FFmpeg in this app
  has any transport of its own.
-@@ -1103,9 +1104,11 @@ FFmpeg the app BUNDLES** — not the television's; see the linking section, and
+@@ -1103,9 +1107,11 @@ FFmpeg the app BUNDLES** — not the television's; see the linking section, and
  (`aq.rs`) → the pump `Feed()`s the Starfish
  pipeline. Worker threads (demux, media/load, and `sf-unload` for a real stop's `Unload`) sit
  beside the main loop, which owns every other ACB/Starfish control call
@@ -967,7 +1004,7 @@ index 58c21931..1030b25a 100644
  source, so `ff.rs` never learns curl-multi mechanics. It exists because LG's reviewers have no PMS
  on their LAN and stream from the public internet, which `stream.rs` cannot reach: it speaks
  cleartext. So **libcurl is used by two modules for two jobs** — `net.rs` for plex.tv plus HTTPS PMS
-@@ -1932,7 +1935,8 @@ you get without waking a television. What it covers today, by module:
+@@ -1932,7 +1938,8 @@ you get without waking a television. What it covers today, by module:
  **Tier 1.5 — the desktop simulator (`make sim-macos` or `tools/sim.ps1`), which DOES draw pixels
  on the host.** This tier
  did not exist before 2026-08-14, and the line below used to read "there is no host *runtime*" flatly
@@ -977,7 +1014,7 @@ index 58c21931..1030b25a 100644
  core built with `--features hostsim` and linked against desktop SDL2 + desktop GL 4.1 core: it
  renders the real interface against a real PMS, boots to a screen with the same `plxnative-*`
  triggers, is driven by the same remote-FIFO tokens, and screenshots itself. **The
-@@ -1960,9 +1964,13 @@ GPU — every simulator heartbeat carries **`sim=1`** so a pasted log cannot be
+@@ -1960,9 +1967,13 @@ GPU — every simulator heartbeat carries **`sim=1`** so a pasted log cannot be
  device measurement), text rasterization, the cached modal ground (its frame cache is off —
  `frame cache: … cache off`), or anything about **LG's decoder** — resource-allocation
  refusals, the ACB video-plane bind, the Load payload's Dolby declaration, `SOUND_ERROR_019`, frame
@@ -994,7 +1031,7 @@ index 58c21931..1030b25a 100644
  Bugs it has already found in DEVICE code: the glyph upload
  ignored `SDL_Surface::pitch` (`text.rs`), `dev`/`remote`/`log` all hardcoded `/tmp`, and — from
  deriving the ABI table at a second pointer width — `AVSubtitleRect` was modelled with `flags`
-@@ -1979,9 +1987,9 @@ an inline `char[32]`, and the shim dereferences it. No Rust panic, no log line,
+@@ -1979,9 +1990,9 @@ an inline `char[32]`, and the shim dereferences it. No Rust panic, no log line,
  gone. The remote FIFO's key and `ck:` tokens are safe because every field they set is a scalar; see
  `docs/search.md` §3.
  
