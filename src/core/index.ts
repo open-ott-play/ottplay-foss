@@ -2392,7 +2392,7 @@ function startCorePlayback(
         };
         var attachNative = function (
             sourceUrl: string,
-            directRetry = false
+            directRetry?: boolean
         ): void {
             if (!active()) return;
             nativeAttached = true;

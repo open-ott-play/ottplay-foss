@@ -30,8 +30,8 @@ export function watchAutoNativePlayback(
     var actionTimer: ReturnType<typeof setTimeout> | 0 = 0;
     var cancelFrameWatch: (() => void) | null = null;
     var detectDrops = !!options.monitorDroppedFrames;
-    var initialEnabled = !!options.monitorInitialStall;
-    var initialFinished = false;
+    // 0: disabled; 1: observing initial playback; 2: finished, retaining source ownership.
+    var initialState: 0 | 1 | 2 = options.monitorInitialStall ? 1 : 0;
     var initialPosition: number | null = null;
     var initialSource = media.src;
     var events = [
@@ -102,7 +102,7 @@ export function watchAutoNativePlayback(
         return (
             !disposed &&
             options.active() &&
-            (!initialEnabled || media.src === initialSource)
+            (!initialState || media.src === initialSource)
         );
     }
 
@@ -159,7 +159,7 @@ export function watchAutoNativePlayback(
                 // A late video track only resolves the audio-only probe. It
                 // does not prove that the native decoder displays its frames.
                 // Retire the previous observation before restoring the native source.
-                initialFinished = true;
+                if (initialState === 1) initialState = 2;
                 stopProbe();
                 stopFrameWatch();
             } else cancel();
@@ -169,8 +169,7 @@ export function watchAutoNativePlayback(
                 // The restored source must prove its own progress. A real radio
                 // or unknown probe outcome does not enable another initial wait.
                 if (restoredVideo) {
-                    initialEnabled = true;
-                    initialFinished = false;
+                    initialState = 1;
                     initialPosition = null;
                 }
                 if (current()) startFrameWatch();
@@ -283,7 +282,7 @@ export function watchAutoNativePlayback(
 
     function startFrameWatch(): void {
         stopFrameWatch();
-        if (detectDrops || (initialEnabled && !initialFinished))
+        if (detectDrops || initialState === 1)
             cancelFrameWatch = watchNativeFrameDrops(function (
                 guard?: () => boolean
             ): void {
@@ -312,7 +311,7 @@ export function watchAutoNativePlayback(
         var recoveryRevision = options.recoveryRevision;
         var target = media as any;
         if (
-            !initialEnabled &&
+            !initialState &&
             typeof target.getVideoPlaybackQuality !== "function" &&
             typeof target.webkitDecodedFrameCount !== "number"
         )
@@ -330,8 +329,8 @@ export function watchAutoNativePlayback(
         var baselinePosition = 0,
             baselineTotal = 0,
             baselineDropped = 0;
-        var warmup = true;
-        var badWindows = 0;
+        // -1 is the warmup window; nonnegative values count consecutive bad windows.
+        var badWindows = -1;
         var resetEvents = [
             "pause",
             "seeking",
@@ -341,12 +340,11 @@ export function watchAutoNativePlayback(
         ];
 
         function resetInitial(): void {
-            if (initialEnabled && !initialFinished) reset();
+            if (initialState === 1) reset();
         }
         function reset(): void {
             baselineTime = null;
-            warmup = true;
-            badWindows = 0;
+            badWindows = -1;
         }
         function cancel(): void {
             disposed = true;
@@ -355,7 +353,7 @@ export function watchAutoNativePlayback(
         }
         function listen(enabled: boolean): void {
             setEventListeners(media, resetEvents, reset, enabled);
-            if (initialEnabled)
+            if (initialState)
                 setEventListeners(media, ["play", "seeked"], resetInitial, enabled);
             setEventListeners(doc, ["visibilitychange"], reset, enabled);
         }
@@ -381,7 +379,7 @@ export function watchAutoNativePlayback(
                 ? quality.totalVideoFrames
                 : target.webkitDecodedFrameCount;
             var knownTotal = validCounter(total);
-            if (initialEnabled && !initialFinished) {
+            if (initialState === 1) {
                 var nextRevision = recoveryRevision ? recoveryRevision() : 0;
                 if (nextRevision !== revision) {
                     revision = nextRevision;
@@ -392,7 +390,7 @@ export function watchAutoNativePlayback(
                     (knownTotal && total > 0) ||
                     (initialPosition !== null && position !== initialPosition)
                 ) {
-                    initialFinished = true;
+                    initialState = 2;
                     reset();
                     if (!detectDrops) cancel();
                 }
@@ -432,8 +430,7 @@ export function watchAutoNativePlayback(
                 if (disposed || !canObserve()) return false;
                 return !!(
                     readSample() &&
-                    initialEnabled &&
-                    !initialFinished &&
+                    initialState === 1 &&
                     baselineTime !== null &&
                     now - lastSample <= 2000 &&
                     now - baselineTime >= 30000
@@ -451,7 +448,7 @@ export function watchAutoNativePlayback(
                     reset();
                     return;
                 }
-                if (initialEnabled && !initialFinished) {
+                if (initialState === 1) {
                     if (initialPosition === null) initialPosition = position;
                     // The same sample window is used for initial waiting and, after
                     // progress, normal frame-loss measurement. Never count a timer gap.
@@ -500,8 +497,8 @@ export function watchAutoNativePlayback(
                 }
                 if (elapsed < 4) return;
                 markBaseline();
-                if (warmup) {
-                    warmup = false;
+                if (badWindows < 0) {
+                    badWindows = 0;
                     return;
                 }
                 badWindows =
