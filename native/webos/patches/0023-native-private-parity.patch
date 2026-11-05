@@ -57858,7 +57858,7 @@ index 00000000..f85de514
 +    assert!(runtime.play_target.is_none() && runtime.resolver_next.is_none());
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/remote_address.rs b/rust-modules/src/app/ott_runtime_tests/remote_address.rs
-index b8d4c56e..cd078bab 100644
+index b8d4c56e..55516774 100644
 --- a/rust-modules/src/app/ott_runtime_tests/remote_address.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/remote_address.rs
 @@ -1,4 +1,4 @@
@@ -58129,7 +58129,7 @@ index b8d4c56e..cd078bab 100644
 +#[test]
 +fn discovery_failure_diagnostic_is_visible_in_settings_status_and_find_row() {
 +    let _serial = plx_base::testlock::serial();
-+    for language in [plx_platform::i18n::Preference::En, plx_platform::i18n::Preference::Fr] {
++    for language in plx_platform::i18n::SHIPPED {
 +        let _locale = plx_platform::i18n::language_on_this_thread_for_test(language);
 +        let mut runtime = runtime_fixture();
 +        runtime.page = "settings";

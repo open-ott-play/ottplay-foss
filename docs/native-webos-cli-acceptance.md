@@ -188,8 +188,10 @@ python3 scripts/check-native-cli-transport.py --cli /path/to/ott
 
 The settings fixture reproduces the native schema bug: removing `aliases` from
 the Native and Modern choice objects must fail validation; both corrected
-choices, the complete schema and all three setting reads must pass. This is a
-native schema correction, not a change to the web or Tauri settings. Optional
+choices, the complete three-setting fixture schema and its three setting reads
+must pass. This checks the regression fixture, not the entire current settings
+catalog or setting writes. It is a native schema correction, not a change to
+the web or Tauri settings. Optional
 `--native-source /path/to/ott_settings.rs` compares the source choice objects to
 the fixture. The loopback check also exercises `unsupported` and
 `request_pending_timeout` through the real CLI, with one enqueue per request.
@@ -217,11 +219,17 @@ The source audit covers `app/ott_commands.rs`, `ott_settings.rs`,
 Read the capability response at the time of an operation; it is not a permanent
 promise for every playback state.
 
-- `player_settings` version 1 advertises `schema`, `get`, `set`, with at most 20
-  descriptors per page. The native descriptors are `uiFontScale` (50–150,
-  default 100, writable), `players` (Native, read-only), and `interfaceMode`
-  (Modern, read-only). Writes require the source context and single-use revision;
-  the smoke only reads them. No separate validate/apply command is advertised.
+- `player_settings` version 1 advertises `schema`, `get`, and `set`, with at most
+  20 descriptors per page. The later native source snapshot
+  `e24c8f87a91e51bddebc7e2e46f73141f99b323a` defines 35 descriptors:
+  `players` remains Native-only and read-only, while `interfaceMode` is writable
+  with Classic (`0`) and Modern (`1`, default) choices. Follow schema pagination
+  and the target build's per-setting access flags. Writes require the captured
+  context and single-use revision. The checked-in three-setting fixture retains
+  the earlier Modern-only, read-only interface schema; the smoke's GET subset
+  remains `uiFontScale`, `players`, and `interfaceMode`. These checks do not
+  establish coverage of all 35 descriptors or setting writes. No separate
+  validate/apply command is advertised.
 - `input` contains the six navigation keys while foreground playback is
   allowed; mute and volume keys additionally require an active native transport.
   Input and lifecycle acceptance precede their after-ACK effect. It does not
