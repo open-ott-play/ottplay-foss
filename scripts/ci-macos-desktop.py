@@ -96,6 +96,33 @@ def validate_reveal(value, file):
     return value
 
 
+def capture_image(runner, label, helper, app, image, expected_pid):
+    require(type(expected_pid) is int and 0 < expected_pid <= 2147483647,
+            "missing positive action PID before screenshot")
+    result = runner.helper(label, helper, "screenshot", app, image, str(expected_pid), seconds=40)
+    validate_helper(result, "screenshot")
+    require(type(result.get("pid")) is int and result["pid"] == expected_pid,
+            "screenshot changed action owner")
+    evidence = result.get("native_window")
+    require(isinstance(evidence, dict) and type(evidence.get("owner_pid")) is int
+            and evidence["owner_pid"] == expected_pid and evidence.get("query_performed") is True
+            and evidence.get("scope") == "owned_on_screen_windows",
+            "missing original-owner native window observation")
+    require(type(evidence.get("candidate_count")) is int and evidence["candidate_count"] == 1
+            and type(evidence.get("owned_count")) is int and evidence["owned_count"] >= 1,
+            "screenshot did not attest one native window")
+    require(type(result.get("window_id")) is int and result["window_id"] > 0
+            and type(evidence.get("selected_id")) is int
+            and evidence["selected_id"] == result["window_id"], "screenshot window identity mismatch")
+    records = evidence.get("records")
+    require(isinstance(records, list) and len(records) <= 16
+            and type(evidence.get("records_truncated")) is int
+            and evidence["records_truncated"] == evidence["owned_count"] - len(records)
+            and evidence["records_truncated"] >= 0, "invalid bounded native window evidence")
+    require(image.is_file(), "screenshot image is absent")
+    return result
+
+
 def stop_owned(proc):
     """Only this Popen's private process group; never a name or discovered PID."""
     forced = False
@@ -389,15 +416,15 @@ def main():
                 for sample in range(3):
                     # Capture pixels first: the short fixture may already be playing.
                     image = output / (label + "-" + str(sample) + ".png")
-                    image_result = runner.helper(label + "-image-" + str(sample), helper, "screenshot", app,
-                                                 image, seconds=40)
-                    require(image_result.get("pid") == owned_pid and image.is_file(), "wrong screenshot owner")
+                    image_result = capture_image(runner, label + "-image-" + str(sample), helper, app,
+                                                 image, owned_pid)
                     snapshot = runner.helper(label + "-ax-" + str(sample), helper, "snapshot", app, seconds=40)
                     require(snapshot.get("pid") == owned_pid, "snapshot changed app owner")
                     write(output / (label + "-ax-" + str(sample) + ".json"), snapshot)
                     step["samples"].append({"png": image.name, "sha256": sha(image),
                                             "after_delivery_seconds": round(time.monotonic() - delivered, 3),
-                                            "window_id": image_result.get("window_id")})
+                                            "window_id": image_result.get("window_id"),
+                                            "native_window": image_result["native_window"]})
                     if sample < 2:
                         time.sleep(.35)
                 if index < 2:

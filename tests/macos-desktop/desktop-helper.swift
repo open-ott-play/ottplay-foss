@@ -410,17 +410,84 @@ func window(_ app: NSRunningApplication) throws -> AXUIElement {
     try require(windows.count == 1, "window_ambiguity", "Expected exactly one target window")
     return windows[0]
 }
-func windowRecord(_ app: NSRunningApplication) throws -> [String: Any] {
-    guard let all = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+// Last bounded observation is retained on both success and refusal.
+// The source query contains on-screen windows only; absence says nothing about off-screen windows.
+var nativeWindowEvidence: [String: Any]?
+func contentWindow(_ record: [String: Any]) -> Bool {
+    (record[kCGWindowLayer as String] as? NSNumber)?.intValue == 0 &&
+    (((record[kCGWindowBounds as String] as? [String: Any])?["Width"] as? NSNumber)?.doubleValue ?? 0) > 100
+}
+func windowCandidates(_ app: NSRunningApplication, sample: Int) throws -> [[String: Any]] {
+    var evidence: [String: Any] = ["owner_pid": Int(app.processIdentifier), "sample": sample,
+        "observed_ms": Int((ProcessInfo.processInfo.systemUptime - started) * 1000),
+        "scope": "owned_on_screen_windows", "query_performed": false]
+    nativeWindowEvidence = evidence
+    let queried = try observed("CGWindowListCopyWindowInfo") {
+        CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+    }
+    guard let all = queried else {
+        evidence["query_error"] = "enumeration_unavailable"
+        nativeWindowEvidence = evidence
+        trace("summary", "NativeWindow.observation", details: evidence)
         throw Refusal(code: "windows", detail: "WindowServer enumeration unavailable")
     }
-    let found = all.filter {
-        ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == app.processIdentifier &&
-        ($0[kCGWindowLayer as String] as? NSNumber)?.intValue == 0 &&
-        ((($0[kCGWindowBounds as String] as? [String: Any])?["Width"] as? NSNumber)?.doubleValue ?? 0) > 100
+    let owned = all.filter { ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == app.processIdentifier }
+    let found = owned.filter(contentWindow)
+    let rows = owned.prefix(16).map { record -> [String: Any] in
+        var row: [String: Any] = ["on_screen": true, "candidate": contentWindow(record)]
+        for (name, key) in [("window_id", kCGWindowNumber as String), ("layer", kCGWindowLayer as String), ("alpha", kCGWindowAlpha as String)] {
+            if let number = record[key] as? NSNumber, number.doubleValue.isFinite { row[name] = number }
+        }
+        if let bounds = record[kCGWindowBounds as String] as? [String: Any] {
+            for (name, key) in [("x", "X"), ("y", "Y"), ("width", "Width"), ("height", "Height")] {
+                if let number = bounds[key] as? NSNumber, number.doubleValue.isFinite { row[name] = number }
+            }
+        }
+        return row
     }
-    try require(found.count == 1, "native_window_ambiguity", "Expected one on-screen target content window")
+    evidence["query_performed"] = true
+    evidence["owned_count"] = owned.count
+    evidence["candidate_count"] = found.count
+    evidence["records"] = rows
+    evidence["records_truncated"] = owned.count - rows.count
+    if found.count == 1 { evidence["selected_id"] = found[0][kCGWindowNumber as String] }
+    nativeWindowEvidence = evidence
+    try require(trace("summary", "NativeWindow.observation", details: evidence),
+                "trace_budget", "Native window evidence unavailable")
+    return found
+}
+func windowRecord(_ app: NSRunningApplication) throws -> [String: Any] {
+    let found = try windowCandidates(app, sample: 1)
+    try require(!found.isEmpty, "native_window_not_ready", "No on-screen target content window")
+    try require(found.count == 1, "native_window_ambiguity", "Multiple on-screen target content windows")
     return found[0]
+}
+func readyWindowRecord(_ target: Target, app: NSRunningApplication, expectedPID: pid_t) throws -> [String: Any] {
+    let end = ProcessInfo.processInfo.systemUptime + 5
+    var sample = 0
+    repeat {
+        try tick()
+        try require(ProcessInfo.processInfo.systemUptime < end, "native_window_not_ready",
+                    "No on-screen target content window within five seconds")
+        let current = try target.one()
+        try require(current.processIdentifier == expectedPID && app.processIdentifier == expectedPID && !app.isTerminated,
+                    "screen_owner", "Action's original QA process exited or changed before capture")
+        sample += 1
+        let found = try windowCandidates(app, sample: sample)
+        try require(found.count <= 1, "native_window_ambiguity", "Multiple on-screen target content windows")
+        let remaining = end - ProcessInfo.processInfo.systemUptime
+        try require(remaining > 0, "native_window_not_ready", "No on-screen target content window within five seconds")
+        if let record = found.first { return record }
+        // Only zero candidates wait. Pump lifecycle events first, then fill an early
+        // RunLoop return with bounded sleep so full observations cannot busy-loop.
+        let nextSample = min(end, ProcessInfo.processInfo.systemUptime + 0.05)
+        let wake = min(nextSample, started + operationBudget)
+        let runLoopWait = wake - ProcessInfo.processInfo.systemUptime
+        if runLoopWait > 0 { try pause(runLoopWait) }
+        let residual = wake - ProcessInfo.processInfo.systemUptime
+        if residual > 0 { try pause(residual, mode: .polling) }
+        try tick()
+    } while true
 }
 func selectedFileElements(_ root: AXUIElement, file: URL) throws -> [AXUIElement] {
     let nodes = try walk(root)
@@ -623,9 +690,13 @@ func awaitResult<Value>(_ box: ResultBox<Value>) throws -> Value {
     return try box.get()!.get()
 }
 @available(macOS 14.0, *)
-func screenshot(_ target: Target, output: String) throws -> [String: Any] {
+func screenshot(_ target: Target, output: String, expectedPID: pid_t) throws -> [String: Any] {
+    try require(expectedPID > 0, "screen_owner", "Expected a positive action PID")
+    nativeWindowEvidence = ["owner_pid": Int(expectedPID), "query_performed": false]
     let app = try target.one()
-    let record = try windowRecord(app)
+    try require(app.processIdentifier == expectedPID, "screen_owner", "Action PID changed before screenshot")
+    try phase("native_window_readiness")
+    let record = try readyWindowRecord(target, app: app, expectedPID: expectedPID)
     let id = (record[kCGWindowNumber as String] as! NSNumber).uint32Value
     let destination = try safeURL(output)
     try require(destination.pathExtension.lowercased() == "png" && !FileManager.default.fileExists(atPath: destination.path), "screenshot_path", "Output must be a new PNG path")
@@ -645,13 +716,15 @@ func screenshot(_ target: Target, output: String) throws -> [String: Any] {
     config.width = Int(win.frame.width.rounded(.up))
     config.height = Int(win.frame.height.rounded(.up))
     config.showsCursor = false
+    try require(try target.one().processIdentifier == expectedPID && !app.isTerminated,
+                "screen_owner", "Action PID changed before image capture")
     let imageBox = ResultBox<CGImage>()
     SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) { image, error in
         if let image { imageBox.put(.success(image)) }
         else { imageBox.put(.failure(error ?? Refusal(code: "screenshot", detail: "No captured image"))) }
     }
     let image = try awaitResult(imageBox)
-    try require(try target.one().processIdentifier == app.processIdentifier, "screen_owner", "QA exited or changed during capture")
+    try require(try target.one().processIdentifier == expectedPID && !app.isTerminated, "screen_owner", "QA exited or changed during capture")
     guard let sink = CGImageDestinationCreateWithURL(destination as CFURL, UTType.png.identifier as CFString, 1, nil) else {
         throw Refusal(code: "png_output", detail: "Cannot create PNG output")
     }
@@ -811,8 +884,11 @@ func main(_ args: [String]) throws -> [String: Any] {
         try require(args.count == 2, "usage", "snapshot APP")
         return try snapshot(target)
     case "screenshot":
-        try require(args.count == 3, "usage", "screenshot APP OUTPUT.png")
-        if #available(macOS 14.0, *) { return try screenshot(target, output: args[2]) }
+        try require(args.count == 4, "usage", "screenshot APP OUTPUT.png EXPECTED_PID")
+        guard let expectedPID = Int32(args[3]), expectedPID > 0 else {
+            throw Refusal(code: "screen_owner", detail: "Expected a positive action PID")
+        }
+        if #available(macOS 14.0, *) { return try screenshot(target, output: args[2], expectedPID: expectedPID) }
         throw Refusal(code: "macos_version", detail: "Screenshot requires macOS 14+")
     case "finder-open", "finder-drop", "open":
         try require(args.count == 3, "usage", "ACTION APP FILE")
@@ -860,6 +936,7 @@ do {
 }
 // Preserve the primary refusal even if its final read summary cannot be written.
 if status != 0 { _ = flushReads() }
+if let evidence = nativeWindowEvidence { output["native_window"] = evidence }
 output["phase"] = currentPhase
 output["last_operation"] = lastOperation
 output["deadline_exceeded"] = ProcessInfo.processInfo.systemUptime - started >= operationBudget

@@ -324,5 +324,62 @@ class DesktopCaptureContracts(unittest.TestCase):
         self.assertFalse(receipt["playback_accepted"])
 
 
+    def _screenshot_result(self):
+        return {"schema": 1, "action": "screenshot", "status": "ok", "pid": 123,
+                "window_id": 77, "native_window": {"owner_pid": 123,
+                    "scope": "owned_on_screen_windows", "query_performed": True,
+                    "candidate_count": 1, "owned_count": 1, "selected_id": 77,
+                    "records": [{"window_id": 77, "on_screen": True, "candidate": True,
+                                 "layer": 0, "width": 1200, "height": 720}], "records_truncated": 0}}
+
+    def test_capture_image_forwards_action_pid_and_keeps_window_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            image = Path(directory) / "owned.png"
+            # File presence only: these mocked bytes are not pixel or PNG evidence.
+            image.write_bytes(b"synthetic image placeholder")
+            runner = Mock()
+            expected = self._screenshot_result()
+            runner.helper.return_value = expected
+            result = MODULE.capture_image(runner, "cold-image", Path("helper"), Path("QA.app"), image, 123)
+            runner.helper.assert_called_once_with("cold-image", Path("helper"), "screenshot",
+                                                  Path("QA.app"), image, "123", seconds=40)
+            self.assertIs(result, expected)
+            self.assertEqual(result["native_window"]["selected_id"], result["window_id"])
+
+    def test_capture_image_rejects_changed_owner_or_incomplete_window_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            image = Path(directory) / "owned.png"
+            image.write_bytes(b"synthetic image placeholder")
+            mutations = [("pid", 124), ("pid", True), ("window_id", 78),
+                         ("native_window", None), ("owner_pid", 124),
+                         ("query_performed", False), ("scope", "all_windows"),
+                         ("candidate_count", 0), ("candidate_count", 2),
+                         ("candidate_count", True), ("owned_count", 0),
+                         ("selected_id", 78), ("records", []), ("records_truncated", -1)]
+            for field, wrong in mutations:
+                with self.subTest(field=field, wrong=wrong):
+                    value = self._screenshot_result()
+                    if field in ("pid", "window_id", "native_window"):
+                        value[field] = wrong
+                    else:
+                        value["native_window"][field] = wrong
+                    runner = Mock()
+                    runner.helper.return_value = value
+                    with self.assertRaises(RuntimeError):
+                        MODULE.capture_image(runner, "cold-image", Path("helper"), Path("QA.app"), image, 123)
+                    runner.helper.assert_called_once()
+
+    def test_capture_image_rejects_bad_action_pid_and_never_retries_refusal(self):
+        runner = Mock()
+        for pid in (None, False, 0, -1, 2147483648):
+            with self.subTest(pid=pid), self.assertRaises(RuntimeError):
+                MODULE.capture_image(runner, "cold-image", Path("helper"), Path("QA.app"), Path("unused.png"), pid)
+        runner.helper.assert_not_called()
+        runner.helper.side_effect = RuntimeError("native_window_ambiguity")
+        with self.assertRaisesRegex(RuntimeError, "native_window_ambiguity"):
+            MODULE.capture_image(runner, "cold-image", Path("helper"), Path("QA.app"), Path("unused.png"), 123)
+        runner.helper.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
