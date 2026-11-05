@@ -2571,6 +2571,28 @@ index d33660bf..3fede70f 100644
 +never become fresh Quit requests. Injected remote Q and native television Back/Q keep their
 +existing Back mapping; Escape remains Back. Physical desktop Quit is not encoded in the current
 +controlled recording format and therefore refuses recording rather than creating a misleading tape.
+diff --git a/docs/remote-source-slots.md b/docs/remote-source-slots.md
+new file mode 100644
+index 00000000..82e6e8a0
+--- /dev/null
++++ b/docs/remote-source-slots.md
+@@ -0,0 +1,16 @@
++# Clearing a remote source slot
++
++For numbered M3U and VPortal profiles, `profile_settings` accepts an explicit empty source string:
++
++```json
++{"number":7,"settings":{"playlist":""}}
++{"number":7,"settings":{"vportal":""}}
++```
++
++This clears the address, retaining the slot number, profile name, enabled state, archive settings, active-profile identity and selected provider. The corresponding `playlist_configured` or `vportal_configured` value becomes `false`. Omitting a field leaves it unchanged. Whitespace, control characters, non-string values and invalid nonempty addresses are not an empty-source clear.
++
++An empty slot remains editable. It cannot be loaded or start a catalogue scan, including after restart. Saving the empty address requests no reload or playback and does not take over an already running decoder. The previous ordinary catalogue is retired after the saved change; late results cannot repopulate it. Playback already bound to a source is independent of the saved address.
++
++Set a valid address to configure the same slot again. A source parser still requires a valid nonempty address before fetching or playing; storage validation alone does not grant playback authority.
++
++Dedicated VPortal `provider_settings` uses the same clear semantics with its existing runtime/context/revision checks. Comparing an already cleared slot against the exact empty address reports `matched: true` without writing. Save acknowledgments describe saved configuration, not proof of decoder playback.
 diff --git a/docs/ui-restructure-spec-v4.md b/docs/ui-restructure-spec-v4.md
 index a85c4ae8..a735c5ac 100644
 --- a/docs/ui-restructure-spec-v4.md
@@ -14350,6 +14372,19 @@ index 764c5abd..cc98ca3e 100644
 +    assert!(summary.contains("first=output_error") && summary.contains("raw_os_error=5"), "{summary}");
 +    assert_eq!(receive(&rx), "eventlog: closed lost=1 complete=0");
 +}
+diff --git a/rust-modules/base/src/sha256.rs b/rust-modules/base/src/sha256.rs
+index c207ed67..3e76b7f4 100644
+--- a/rust-modules/base/src/sha256.rs
++++ b/rust-modules/base/src/sha256.rs
+@@ -187,7 +187,7 @@ impl HmacKey {
+ 
+ /// Graded by the RFC 4231 vectors; the shipping consumer only ever keys through PBKDF2.
+ /// The explicit macOS development storage fixture also authenticates its envelopes.
+-#[cfg(any(test, feature = "test-support", all(feature = "hostsim", feature = "devtriggers", target_os = "macos")))]
++#[cfg(any(test, feature = "test-support", all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux"))))]
+ pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
+     HmacKey::new(key).mac(msg)
+ }
 diff --git a/rust-modules/base/src/task/time.rs b/rust-modules/base/src/task/time.rs
 index 8eb05319..5c83b79f 100644
 --- a/rust-modules/base/src/task/time.rs
@@ -16492,10 +16527,27 @@ index 2bee02bd..9fc78c77 100644
 +#[path = "catalog_merge_tests.rs"]
 +mod merge_tests;
 diff --git a/rust-modules/data/src/ott/profiles.rs b/rust-modules/data/src/ott/profiles.rs
-index 056add5d..f8c8630a 100644
+index 056add5d..523f8f1b 100644
 --- a/rust-modules/data/src/ott/profiles.rs
 +++ b/rust-modules/data/src/ott/profiles.rs
-@@ -112,7 +112,9 @@ impl ProviderProfile {
+@@ -104,7 +104,16 @@ impl ProviderProfile {
+             &self.source_alias
+         }
+     }
++    /// Validate a source that may be fetched or played, rather than an empty slot.
+     pub fn validate(&self) -> Result<(), CatalogError> {
++        self.validate_stored()?;
++        if self.source.is_empty() { return Err(CatalogError::InvalidProfile); }
++        Ok(())
++    }
++
++    /// URL slots may retain their identity and metadata after an explicit clear.
++    /// This does not make the empty slot a usable source; `validate` stays strict.
++    pub fn validate_stored(&self) -> Result<(), CatalogError> {
+         if self.id.is_empty()
+             || self.id.len() > 128
+             || !self
+@@ -112,17 +121,19 @@ impl ProviderProfile {
                  .bytes()
                  .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b':' | b'.'))
              || !label(&self.name)
@@ -16506,7 +16558,28 @@ index 056add5d..f8c8630a 100644
              || self.source.len() > 16384
              || self.source.chars().any(char::is_control)
          {
-@@ -231,6 +233,29 @@ pub fn parse_profiles_json(input: &str) -> Result<ProviderProfiles, CatalogError
+             return Err(CatalogError::InvalidProfile);
+         }
+         let valid = match self.kind {
+-            ProviderKind::M3u => m3u_source_kind(&self.source).is_ok(),
++            ProviderKind::M3u => self.source.is_empty() || m3u_source_kind(&self.source).is_ok(),
+             ProviderKind::Xtream => super::xtream::Config::parse(&self.source).is_ok(),
+             ProviderKind::Stalker => super::stalker::Config::parse(&self.source).is_ok(),
+-            ProviderKind::VPortal => parse_vportal_link(&self.source).is_ok(),
++            ProviderKind::VPortal => self.source.is_empty() || parse_vportal_link(&self.source).is_ok(),
+             ProviderKind::Local => {
+                 http_url(&self.source).is_some()
+                     || (self.source.starts_with('/')
+@@ -203,7 +214,7 @@ impl ProviderProfiles {
+         }
+         let mut ids = BTreeSet::new();
+         for profile in &self.profiles {
+-            profile.validate()?;
++            profile.validate_stored()?;
+             if !ids.insert(&profile.id) {
+                 return Err(CatalogError::InvalidProfile);
+             }
+@@ -231,6 +242,29 @@ pub fn parse_profiles_json(input: &str) -> Result<ProviderProfiles, CatalogError
  #[cfg(test)]
  mod tests {
      use super::*;
@@ -31632,9 +31705,27 @@ index dd24cb43..7df18b20 100644
 +    }
 +}
 diff --git a/rust-modules/platform/src/keymanager.rs b/rust-modules/platform/src/keymanager.rs
-index 3a2fa7fb..d591c2da 100644
+index 3a2fa7fb..86efde0e 100644
 --- a/rust-modules/platform/src/keymanager.rs
 +++ b/rust-modules/platform/src/keymanager.rs
+@@ -58,7 +58,7 @@ pub fn open(sealed: &Sealed) -> Option<Vec<u8>> {
+         // Kept only so an interim/pre-release envelope deserializes as locked instead of being
+         // mistaken for plaintext. AES-CFB does not authenticate the file, so never open it.
+         Backend::PalmKeymanager => None,
+-        #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++        #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+         Backend::HostFixture => None,
+     }
+     .and_then(|s| b64::decode(&s.data))
+@@ -73,7 +73,7 @@ pub fn remove(backend: &Backend, key: &str) {
+             "luna://com.webos.service.keymanager3/removeKey",
+             &json!({"name": key}),
+         ),
+-        #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++        #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+         Backend::HostFixture => None,
+         Backend::PalmKeymanager => call(
+             "luna://com.palm.keymanager/remove",
 @@ -113,11 +113,11 @@ pub fn open_named(namespace: crate::tv::secure::Namespace, sealed: &Sealed) -> O
  pub fn open_named_detailed(namespace: crate::tv::secure::Namespace, sealed: &Sealed) -> Result<Vec<u8>, KeymanagerFailure> {
      let name = namespace.key_name();
@@ -33717,7 +33808,7 @@ index 03f06191..a03a4556 100644
      }
  }
 diff --git a/rust-modules/platform/src/storage/private.rs b/rust-modules/platform/src/storage/private.rs
-index b5b6ed21..6c6b156e 100644
+index b5b6ed21..872e2087 100644
 --- a/rust-modules/platform/src/storage/private.rs
 +++ b/rust-modules/platform/src/storage/private.rs
 @@ -1,6 +1,7 @@
@@ -33742,6 +33833,15 @@ index b5b6ed21..6c6b156e 100644
  
  #[derive(Clone, Copy, Debug, PartialEq, Eq)]
  pub enum Error {
+@@ -125,7 +132,7 @@ fn label(namespace: Namespace) -> &'static str {
+ }
+ 
+ pub fn root() -> PathBuf {
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     if let Some(root) = secure::fixture::records_root() { return root; }
+     if cfg!(any(feature = "hostsim", test, feature = "test-support")) {
+         plx_base::paths::persistent_state_root().join("ott-state")
 @@ -137,7 +144,12 @@ pub fn root() -> PathBuf {
  /// IO boundary; run on the storage worker, never in a screen's step.
  pub fn load(namespace: Namespace) -> Result<Option<Value>, Error> {
@@ -33768,7 +33868,16 @@ index b5b6ed21..6c6b156e 100644
      } else {
          inspect_at(&root(), namespace, secure::open_named)
      };
-@@ -176,7 +191,12 @@ pub fn save_guarded(
+@@ -158,7 +173,7 @@ pub fn inspect(namespace: Namespace) -> Result<Option<NamespaceSnapshot>, Inspec
+ }
+ 
+ fn check_fixture_authority() -> Result<(), Error> {
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     if secure::fixture::active() && !secure::fixture::check() {
+         return Err(Error::ProtectionUnavailable);
+     }
+@@ -176,13 +191,18 @@ pub fn save_guarded(
      if !permit.is_valid() {
          return Err(Error::Revoked);
      }
@@ -33782,6 +33891,13 @@ index b5b6ed21..6c6b156e 100644
      ensure_parent()?;
      save_guarded_at(&root(), namespace, value, permit, secure::seal_named)
  }
+ 
+ fn ensure_parent() -> Result<(), Error> {
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     if secure::fixture::active() {
+         return if secure::fixture::check() { Ok(()) } else { Err(Error::ProtectionUnavailable) };
+     }
 @@ -353,7 +373,7 @@ fn erase_store_with(store: &JsonStore, managed_cleanup: impl FnOnce() -> Vec<Str
          return vec![format!("OTT import barrier: {error:?}")];
      }
@@ -33799,6 +33915,42 @@ index b5b6ed21..6c6b156e 100644
          ]
          .iter()
          .any(|key| super::safe_temp_name(&name, &format!(".{}.new-", key.file_name())));
+@@ -551,7 +572,7 @@ fn decode_payload(namespace: Namespace, payload: &str,
+     Ok(Some(plain.value))
+ }
+ 
+-#[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++#[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+ pub(crate) fn fixture_commit_receipt(receipt: CommitReceipt, authority_valid: bool) -> CommitReceipt {
+     match (receipt, authority_valid) {
+         (CommitReceipt::Durable, false) => CommitReceipt::Uncertain {
+@@ -610,7 +631,7 @@ fn save_guarded_at(
+         .ok_or(Error::Invalid)?;
+     let sealed = seal(namespace, &bytes).ok_or(Error::ProtectionUnavailable)?;
+     let accepted_backend = sealed.backend == secure::Backend::Keymanager3;
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     let accepted_backend = if secure::fixture::active() {
+         sealed.backend == secure::Backend::HostFixture && secure::fixture::check()
+     } else { accepted_backend };
+@@ -623,7 +644,7 @@ fn save_guarded_at(
+     // Already committed bytes must never be reported NotApplied merely because
+     // fixture authority was replaced during IO. The existing unknown-outcome
+     // recovery owns this case; retain any earlier, more precise uncertainty.
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     let receipt = fixture_commit_receipt(receipt,
+         !secure::fixture::active() || secure::fixture::check());
+     Ok(receipt)
+@@ -1033,7 +1054,7 @@ mod tests {
+         assert_eq!(imports_suppressed_at(&dir), Ok(true));
+         assert_eq!(erasure_pending_at(&dir), Ok(false));
+     }
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     #[test]
+     fn lost_fixture_authority_after_commit_is_unknown_not_not_applied() {
+         assert_eq!(fixture_commit_receipt(CommitReceipt::Durable, true), CommitReceipt::Durable);
 diff --git a/rust-modules/platform/src/storage/private_helper.rs b/rust-modules/platform/src/storage/private_helper.rs
 index b16bf9f9..a621daa3 100644
 --- a/rust-modules/platform/src/storage/private_helper.rs
@@ -37803,7 +37955,7 @@ index d93d32cf..1c7051af 100644
              preservation: AuthPreservation::Unchanged,
              db8_commit_verified: false,
 diff --git a/rust-modules/platform/src/tv/removable.rs b/rust-modules/platform/src/tv/removable.rs
-index 15f8c0c0..9c74f234 100644
+index 15f8c0c0..f29b2851 100644
 --- a/rust-modules/platform/src/tv/removable.rs
 +++ b/rust-modules/platform/src/tv/removable.rs
 @@ -45,31 +45,20 @@ impl MountCandidate {
@@ -37840,7 +37992,7 @@ index 15f8c0c0..9c74f234 100644
 +        Self::fixture_directory(directory, mount_id, device)
 +    }
 +    /// Explicit host fixture metadata, never a filesystem access grant.
-+    #[cfg(any(test, feature = "test-support", all(feature = "hostsim", feature = "devtriggers", target_os = "macos")))]
++    #[cfg(any(test, feature = "test-support", all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux"))))]
 +    pub(in crate::tv) fn fixture_directory(directory: &str, mount_id: u64, device: (u32, u32)) -> Result<Self, SnapshotError> {
 +        if mount_id == 0 { return Err(SnapshotError::InvalidRecord); }
 +        let escaped = directory.replace('\\', "\\134").replace(' ', "\\040");
@@ -37850,7 +38002,7 @@ index 15f8c0c0..9c74f234 100644
      pub fn mount_id(&self) -> u64 {
          self.mount_id
 diff --git a/rust-modules/platform/src/tv/removable/identity.rs b/rust-modules/platform/src/tv/removable/identity.rs
-index 03b5f4fa..681afb60 100644
+index 03b5f4fa..9b1b9b53 100644
 --- a/rust-modules/platform/src/tv/removable/identity.rs
 +++ b/rust-modules/platform/src/tv/removable/identity.rs
 @@ -74,6 +74,10 @@ impl IdentityObservation {
@@ -37859,16 +38011,34 @@ index 03b5f4fa..681afb60 100644
      pub fn for_test(mount: MountCandidate, identity: StableIdentity) -> Self {
 +        Self::fixture_observation(mount, identity)
 +    }
-+    #[cfg(any(test, feature = "test-support", all(feature = "hostsim", feature = "devtriggers", target_os = "macos")))]
++    #[cfg(any(test, feature = "test-support", all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux"))))]
 +    pub(in crate::tv) fn fixture_observation(mount: MountCandidate, identity: StableIdentity) -> Self {
          Self { mount, identity }
      }
  }
 diff --git a/rust-modules/platform/src/tv/secure.rs b/rust-modules/platform/src/tv/secure.rs
-index 37b1d720..4cdaf3e5 100644
+index 37b1d720..086ca241 100644
 --- a/rust-modules/platform/src/tv/secure.rs
 +++ b/rust-modules/platform/src/tv/secure.rs
-@@ -81,7 +81,7 @@ pub fn seal_named_detailed(namespace: Namespace, plain: &[u8]) -> Result<Sealed,
+@@ -3,7 +3,7 @@
+ //! envelope types live here so the on-disk shape does not depend on which platform sealed it.
+ use serde::{Deserialize, Serialize};
+ 
+-#[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++#[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+ pub mod fixture;
+ 
+ #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+@@ -11,7 +11,7 @@ pub mod fixture;
+ pub enum Backend {
+     Keymanager3,
+     PalmKeymanager,
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     HostFixture,
+ }
+ 
+@@ -81,13 +81,13 @@ pub fn seal_named_detailed(namespace: Namespace, plain: &[u8]) -> Result<Sealed,
  pub fn protection_unavailable() -> crate::storage::wire::KeymanagerFailure {
      use crate::storage::wire::{ErrorCode, KeymanagerFailure, KeymanagerFailureCategory, KeymanagerOperation, KeymanagerStage};
      KeymanagerFailure { operation: KeymanagerOperation::Seal, stage: KeymanagerStage::Validate,
@@ -37877,10 +38047,23 @@ index 37b1d720..4cdaf3e5 100644
  }
  pub fn open_named(namespace: Namespace, sealed: &Sealed) -> Option<Vec<u8>> {
      (super::port().open_named)(namespace, sealed)
+ }
+ 
+-#[cfg(all(test, not(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))))]
++#[cfg(all(test, not(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))))]
+ #[test]
+ fn shipping_codec_refuses_host_fixture_backend() {
+     let encoded = r#"{"backend":"host_fixture","key":"fixture","iv":"","data":""}"#;
 diff --git a/rust-modules/platform/src/tv/secure/fixture.rs b/rust-modules/platform/src/tv/secure/fixture.rs
-index 53aef48f..15075e32 100644
+index 53aef48f..03c58bd2 100644
 --- a/rust-modules/platform/src/tv/secure/fixture.rs
 +++ b/rust-modules/platform/src/tv/secure/fixture.rs
+@@ -1,4 +1,4 @@
+-//! Explicit, NONCONFIDENTIAL named storage for synthetic macOS acceptance only.
++//! Explicit, NONCONFIDENTIAL named storage for synthetic macOS/Linux acceptance only.
+ //! The parent module excludes this entire adapter from every shipping/TV build.
+ //! One immutable entrypoint authority is shared with storage workers; no screen or
+ //! machine consults it. The held lock excludes a second process until process exit.
 @@ -21,6 +21,10 @@ use std::{
  
  #[path = "fixture_ca.rs"]
@@ -37892,7 +38075,16 @@ index 53aef48f..15075e32 100644
  
  const PAYLOAD_BYTES: usize = 1024 * 1024;
  const MARKER_BYTES: usize = 8192;
-@@ -54,6 +58,8 @@ struct Context {
+@@ -40,6 +44,8 @@ const ASSETS: &[&str] = &[
+     "OFL.txt",
+     "le-roots.pem",
+     "libass-plx.0.dylib",
++    #[cfg(target_os = "linux")]
++    "libass-plx-host.so.0",
+     "libavutil-plx.61.dylib",
+     "libavcodec-plx.63.dylib",
+     "libavformat-plx.63.dylib",
+@@ -54,6 +60,8 @@ struct Context {
      key: [u8; 32],
      install: String,
      ca: Option<ca::Snapshot>,
@@ -37901,7 +38093,7 @@ index 53aef48f..15075e32 100644
  }
  // This is a process-lifetime port authority, installed once before plex_run starts
  // workers. Unlike the thread-local unit seam, it also governs asynchronous writes.
-@@ -81,6 +87,54 @@ pub fn open(namespace: Namespace, sealed: &Sealed) -> Option<Vec<u8>> {
+@@ -81,6 +89,54 @@ pub fn open(namespace: Namespace, sealed: &Sealed) -> Option<Vec<u8>> {
      ACTIVE.get()?.open(namespace, sealed)
  }
  
@@ -37956,7 +38148,7 @@ index 53aef48f..15075e32 100644
  /// Consume only a leading, complete fixture declaration. Inactive calls have no
  /// filesystem side effects. The simulator calls this before HUD tools/path caches.
  pub fn activate_from_args(args: &[String]) -> Result<Option<Vec<String>>, &'static str> {
-@@ -90,7 +144,7 @@ pub fn activate_from_args(args: &[String]) -> Result<Option<Vec<String>>, &'stat
+@@ -90,14 +146,14 @@ pub fn activate_from_args(args: &[String]) -> Result<Option<Vec<String>>, &'stat
      if ACTIVE.get().is_some() {
          return Err("fixture already activated");
      }
@@ -37965,7 +38157,15 @@ index 53aef48f..15075e32 100644
      let (runtime, assets) = validate_environment()?;
      let directory = private_directory(&root)?;
      if overlap(&root, &runtime) || overlap(&root, &assets) || overlap(&runtime, &assets) {
-@@ -110,13 +164,21 @@ pub fn activate_from_args(args: &[String]) -> Result<Option<Vec<String>>, &'stat
+         return Err("fixture, runtime and assets must be disjoint");
+     }
+     // The host normally offers legacy candidates as well. Never read one in this
+-    // mode, even if a Mac happens to have a /media tree from another installation.
++    // mode, even if the host has a /media tree from another installation.
+     for path in plx_base::paths::session_migration_candidates() {
+         if !path.starts_with(&runtime) && !path.starts_with(&assets) {
+             match std::fs::symlink_metadata(path) {
+@@ -110,13 +166,21 @@ pub fn activate_from_args(args: &[String]) -> Result<Option<Vec<String>>, &'stat
      if let Some((path, origin)) = ca {
          context.install_ca(&path, origin)?;
      }
@@ -37988,7 +38188,7 @@ index 53aef48f..15075e32 100644
  fn parse_args(args: &[String]) -> Result<ParsedArgs<'_>, &'static str> {
      if args.len() < 3 || args[0] != "--fixture-state" {
          return Err("invalid fixture arguments");
-@@ -135,6 +197,16 @@ fn parse_args(args: &[String]) -> Result<ParsedArgs<'_>, &'static str> {
+@@ -135,6 +199,16 @@ fn parse_args(args: &[String]) -> Result<ParsedArgs<'_>, &'static str> {
      } else {
          (None, &args[3..])
      };
@@ -38005,7 +38205,7 @@ index 53aef48f..15075e32 100644
      if !rest.is_empty()
          && (rest.len() != 2
              || rest[0] != "127.0.0.1"
-@@ -142,7 +214,7 @@ fn parse_args(args: &[String]) -> Result<ParsedArgs<'_>, &'static str> {
+@@ -142,7 +216,7 @@ fn parse_args(args: &[String]) -> Result<ParsedArgs<'_>, &'static str> {
      {
          return Err("fixture server must be explicit IPv4 loopback and port");
      }
@@ -38014,7 +38214,7 @@ index 53aef48f..15075e32 100644
  }
  
  fn validate_environment() -> Result<(PathBuf, PathBuf), &'static str> {
-@@ -388,6 +460,8 @@ impl Context {
+@@ -388,6 +462,8 @@ impl Context {
              key,
              install: install.to_owned(),
              ca: None,
@@ -38023,7 +38223,7 @@ index 53aef48f..15075e32 100644
          };
          let marker = context.marker()?;
          if create {
-@@ -421,6 +495,17 @@ impl Context {
+@@ -421,6 +497,17 @@ impl Context {
          }
          Ok(context)
      }
@@ -39076,7 +39276,7 @@ index 00000000..1824563c
 +    assert!(validate_environment_values(&changed).is_err());
 +}
 diff --git a/rust-modules/platform/src/tv/secure/fixture_tests.rs b/rust-modules/platform/src/tv/secure/fixture_tests.rs
-index 39667199..860f2377 100644
+index 39667199..8b2c9fea 100644
 --- a/rust-modules/platform/src/tv/secure/fixture_tests.rs
 +++ b/rust-modules/platform/src/tv/secure/fixture_tests.rs
 @@ -73,8 +73,10 @@ fn parser_requires_complete_opt_in_and_only_fixture_loopback() {
@@ -39100,13 +39300,35 @@ index 39667199..860f2377 100644
      assert_eq!(grant, Some((PathBuf::from("/tmp/input.pem"), "https://127.0.0.1:9443")));
      assert_eq!(rest, ["127.0.0.1", "32400"]);
      for tail in [
-@@ -564,3 +566,6 @@ fn simvideo_marker_rejects_content_links_directories_and_public_permissions() {
+@@ -564,3 +566,28 @@ fn simvideo_marker_rejects_content_links_directories_and_public_permissions() {
          "directory marker"
      );
  }
 +
 +#[path = "fixture_plex_tests.rs"]
 +mod plex_tests;
++
++#[cfg(target_os = "linux")]
++#[test]
++fn linux_renderer_library_keeps_the_existing_asset_authority_checks() {
++    let runtime = Scratch::new();
++    let assets = Scratch::new();
++    let env = environment(&runtime.0, &assets.0);
++    let library = assets.0.join("libass-plx-host.so.0");
++    std::fs::write(&library, b"synthetic library asset; not loaded").unwrap();
++    std::fs::set_permissions(&library, std::fs::Permissions::from_mode(0o644)).unwrap();
++    assert!(validate_environment_values(&env).is_ok());
++
++    std::fs::set_permissions(&library, std::fs::Permissions::from_mode(0o666)).unwrap();
++    assert!(validate_environment_values(&env).is_err());
++    std::fs::remove_file(&library).unwrap();
++    symlink(runtime.0.join("missing-library"), &library).unwrap();
++    assert!(validate_environment_values(&env).is_err());
++    std::fs::remove_file(&library).unwrap();
++
++    std::fs::write(assets.0.join("unlisted.so"), b"not an allowed asset").unwrap();
++    assert!(validate_environment_values(&env).is_err());
++}
 diff --git a/rust-modules/platform/src/tv/sink.rs b/rust-modules/platform/src/tv/sink.rs
 index bc924146..7348cf54 100644
 --- a/rust-modules/platform/src/tv/sink.rs
@@ -58699,7 +58921,7 @@ index 93319a35..a82d7556 100644
          Some(AppArg::Login) => Root::Login,
          Some(AppArg::Home) => Root::Home,
 diff --git a/rust-modules/src/app/events.rs b/rust-modules/src/app/events.rs
-index 2fdc48b6..64540af1 100644
+index 2fdc48b6..5aab155e 100644
 --- a/rust-modules/src/app/events.rs
 +++ b/rust-modules/src/app/events.rs
 @@ -333,9 +333,12 @@ pub(crate) fn remote_synth_pointer(et: u32, x: i32, y: i32) {
@@ -58720,7 +58942,7 @@ index 2fdc48b6..64540af1 100644
  /// `true` means the token was accepted and injected/requested, not that the screen necessarily
  /// changed — pressing DOWN at the bottom of a list is still a successfully delivered command.
  pub(crate) fn dispatch_remote_token(tok: &str, ps: &plx_media::route::PlaybackSession) -> bool {
-+    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
 +    if let Some(event) = plx_platform::tv::secure::fixture::local_lifecycle(tok) {
 +        // The normal SDL consumer owns every state transition and network invalidation.
 +        let accepted = try_remote_synth_lifecycle(event);
@@ -64763,7 +64985,7 @@ index 00000000..e49c5e6a
 +    Ok(true)
 +}
 diff --git a/rust-modules/src/app/ott_commands.rs b/rust-modules/src/app/ott_commands.rs
-index 4ee617b9..8f9666f3 100644
+index 4ee617b9..ec4ed115 100644
 --- a/rust-modules/src/app/ott_commands.rs
 +++ b/rust-modules/src/app/ott_commands.rs
 @@ -4,9 +4,42 @@ use super::*;
@@ -64893,7 +65115,55 @@ index 4ee617b9..8f9666f3 100644
  fn number(params: &Value) -> Result<usize, &'static str> {
      params["number"]
          .as_u64()
-@@ -511,7 +584,7 @@ fn provider_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+@@ -313,7 +386,7 @@ fn insert_profile(
+         };
+     }
+     profile
+-        .validate()
++        .validate_stored()
+         .map_err(|_| "Invalid provider source or profile name")?;
+     // Freeze all previous ordinal slots before adding a sparse numbered slot.
+     let ordinals: Vec<_> = saved
+@@ -380,6 +453,9 @@ fn profiles(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+         if !profile.enabled {
+             return Some(rejected("This profile is disabled"));
+         }
++        if profile.source.is_empty() {
++            return Some(rejected("Configure this profile before selecting it"));
++        }
+         let reload = saved.profiles.active_profile.as_ref() != Some(&profile.id);
+         saved.profiles.active_profile = Some(profile.id.clone());
+ 
+@@ -410,7 +486,7 @@ fn profiles(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+         "playlist"
+     };
+     let source = if let Some(source) = settings.get(source_key) {
+-        match text(source, 8192, false) {
++        match text(source, 8192, true) {
+             Some(s) => s.to_owned(),
+             None => return Some(rejected("Use a valid playlist URL")),
+         }
+@@ -420,6 +496,9 @@ fn profiles(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+             .map(|p| p.source.clone())
+             .unwrap_or_default()
+     };
++    if current.is_none() && !settings.as_object().unwrap().contains_key(source_key) {
++        return Some(rejected("Use a valid playlist URL"));
++    }
+     let name = if let Some(name) = settings.get("name") {
+         match text(name, 256, true) {
+             Some(s) => Some(s.to_owned()),
+@@ -441,7 +520,8 @@ fn profiles(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+             json!(hours),
+         );
+     }
+-    let reload = saved.profiles.active_profile.as_ref() == Some(&saved.profiles.profiles[index].id);
++    let reload = !saved.profiles.profiles[index].source.is_empty()
++        && saved.profiles.active_profile.as_ref() == Some(&saved.profiles.profiles[index].id);
+     let changed =
+         saved.profiles != runtime.saved.profiles || saved.settings != runtime.saved.settings;
+     let response = ok(
+@@ -511,7 +591,7 @@ fn provider_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
              || text(&settings["vportal"], 8192, true).is_none()
              || settings
                  .get("name")
@@ -64902,7 +65172,31 @@ index 4ee617b9..8f9666f3 100644
              || (!compare && settings.get("profile").is_none())
          {
              return Some(rejected("Unsupported VPortal settings fields"));
-@@ -700,6 +773,9 @@ fn plex_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+@@ -583,7 +663,7 @@ fn provider_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+         "playlist"
+     };
+     let source = if let Some(value) = settings.get(source_key) {
+-        match text(value, 16384, false) {
++        match text(value, 16384, true) {
+             Some(s) => s.to_owned(),
+             None => return Some(rejected("Invalid provider source")),
+         }
+@@ -603,10 +683,12 @@ fn provider_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+         Ok(i) => i,
+         Err(e) => return Some(rejected(e)),
+     };
+-    if kind == ProviderKind::M3u && saved.profiles.active_profile.is_none() {
++    if kind == ProviderKind::M3u && !saved.profiles.profiles[index].source.is_empty()
++        && saved.profiles.active_profile.is_none() {
+         saved.profiles.active_profile = Some(saved.profiles.profiles[index].id.clone());
+     }
+-    let reload = saved.profiles.active_profile.as_ref() == Some(&saved.profiles.profiles[index].id);
++    let reload = !saved.profiles.profiles[index].source.is_empty()
++        && saved.profiles.active_profile.as_ref() == Some(&saved.profiles.profiles[index].id);
+     let mut data = json!({"provider":wire_provider(kind),"fields":settings.as_object().unwrap().keys().collect::<Vec<_>>(),"saved":true});
+     if kind == ProviderKind::VPortal {
+         data["runtime"] = json!(runtime.remote.runtime());
+@@ -700,6 +782,9 @@ fn plex_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
  pub(super) fn offline_rows(runtime: &Runtime) -> Vec<(usize, String)> {
      offline::unbound_rows(&runtime.saved)
  }
@@ -64912,7 +65206,7 @@ index 4ee617b9..8f9666f3 100644
  pub(super) fn bind_local(
      runtime: &Runtime,
      number: usize,
-@@ -785,7 +861,7 @@ pub(super) fn kiosk_pending(runtime: &Runtime) -> bool { kiosk::pending(runtime)
+@@ -785,7 +870,7 @@ pub(super) fn kiosk_pending(runtime: &Runtime) -> bool { kiosk::pending(runtime)
  pub(super) fn kiosk_settled(runtime: &mut Runtime, app: &mut App, invocation: &Invocation, outcome: KioskSettlement) -> Option<Value> {
      kiosk::settled(runtime, app, invocation, outcome)
  }
@@ -64921,7 +65215,7 @@ index 4ee617b9..8f9666f3 100644
      settings::after_saved(runtime, app)
  }
  fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> Option<Value> {
-@@ -877,7 +953,7 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
+@@ -877,7 +962,7 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
          };
          let position = target.clamp(0.0, duration as f64 / 1e9);
          playback::commit_seek((position * 1e9) as i64);
@@ -64930,7 +65224,7 @@ index 4ee617b9..8f9666f3 100644
          let mut data = json!({"dispatched":true,"operation":operation,"position":position});
          if operation == "seek_relative" {
              data["from"] = json!(from);
-@@ -891,6 +967,10 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
+@@ -891,6 +976,10 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
  
  /// Keep individual-setting failures inside their existing typed wire contract.
  /// Other command families retain their own response shapes.
@@ -64941,7 +65235,7 @@ index 4ee617b9..8f9666f3 100644
  pub(super) fn settings_failure(inv: &Invocation, reason: &str) -> Option<Value> {
      (inv.action == "player_settings").then(|| settings::failure(&inv.params, reason))
  }
-@@ -912,6 +992,14 @@ fn media_tracks_failure(
+@@ -912,6 +1001,14 @@ fn media_tracks_failure(
  }
  
  pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
@@ -64956,7 +65250,7 @@ index 4ee617b9..8f9666f3 100644
      if let Some(response) = media_tracks_failure(
          inv,
          crate::app::ott_remote::media_tracks::Error::Restricted,
-@@ -926,11 +1014,18 @@ pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
+@@ -926,11 +1023,18 @@ pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
  }
  
  pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> Option<Value> {
@@ -64975,7 +65269,7 @@ index 4ee617b9..8f9666f3 100644
      if runtime.now_ms() >= inv.deadline_ms {
          if inv.action == favorites_items::ACTION { return Some(favorites_items::error(inv, "expired")); }
          return Some(category_select_rejection(runtime, inv, "unavailable")
-@@ -939,6 +1034,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -939,6 +1043,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
              .unwrap_or_else(|| rejected("Request expired")));
      }
      if let Err(error) = super::input_policy::remote(runtime, inv) {
@@ -64984,7 +65278,7 @@ index 4ee617b9..8f9666f3 100644
          return Some(category_select_rejection(runtime, inv, "restricted")
              .unwrap_or_else(|| policy_rejection(inv, error)));
      }
-@@ -947,13 +1044,24 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -947,13 +1053,24 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
          favorites_items::ACTION => favorites_items::command(runtime, app, inv),
          "kiosk" => kiosk::command(runtime, app, inv),
          "media_tracks" => media_tracks::command(runtime,app,inv,Runtime::track_selection_kiosk),
@@ -65012,7 +65306,7 @@ index 4ee617b9..8f9666f3 100644
              value["uuid"] = json!(runtime.remote.device_id());
              if value.get("provider").is_none() {
                  value["provider"] = json!(wire_provider(runtime.effective_provider()));
-@@ -962,11 +1070,21 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -962,11 +1079,21 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
                  runtime.loaded && (!runtime.catalog_loading || !runtime.catalog.entries.is_empty())
              );
              value["channels"] = json!(runtime.catalog.entries.len());
@@ -65036,7 +65330,7 @@ index 4ee617b9..8f9666f3 100644
                      .iter()
                      .any(|key| p.get(*key).is_some_and(|value| value.as_bool() != Some(true)))
              {
-@@ -987,12 +1105,18 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -987,12 +1114,18 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
                  "vportal_settings":{"version":1},"player_settings":{"version":1,"operations":["schema","get","set"],"max_page_size":20},
                  "favorites_global":plx_data::ott::favorites_wire::Protocol::capability(),
                  "favorites_global_items":{"version":1}});
@@ -65055,7 +65349,16 @@ index 4ee617b9..8f9666f3 100644
              data["plex_library"] = crate::app::ott_plex_queue::library_capability();
              data["plex_library_truncation"] = json!({"version":1});
              if media_tracks::supports_current(runtime, app, Runtime::track_selection_kiosk) {
-@@ -1274,11 +1398,21 @@ pub(super) fn track_request_pending(runtime: &Runtime) -> bool {
+@@ -1072,7 +1205,7 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+                 .profiles
+                 .profiles
+                 .iter()
+-                .find(|p| p.enabled && p.kind == kind)
++                .find(|p| p.enabled && p.kind == kind && !p.source.is_empty())
+                 .map(|p| p.id.clone());
+             saved
+                 .settings
+@@ -1274,11 +1407,21 @@ pub(super) fn track_request_pending(runtime: &Runtime) -> bool {
      media_tracks::has_pending(runtime)
  }
  
@@ -65077,7 +65380,7 @@ index 4ee617b9..8f9666f3 100644
      let now = runtime.now_ms();
      media_tracks::poll_pending(runtime, app, Runtime::track_selection_kiosk, Some(now));
      media_tracks::retire_stale(runtime,app,Runtime::track_selection_kiosk);
-@@ -1509,6 +1643,95 @@ mod tests {
+@@ -1509,6 +1652,95 @@ mod tests {
              .to_string()
              .contains("fixture"));
      }
@@ -65173,7 +65476,7 @@ index 4ee617b9..8f9666f3 100644
      #[test]
      fn invalid_source_is_atomic_and_sparse_slots_keep_their_numbers() {
          let mut saved = Saved::default();
-@@ -1587,3 +1810,7 @@ pub(super) fn category_select_settled(runtime: &Runtime, inv: &Invocation, saved
+@@ -1587,3 +1819,7 @@ pub(super) fn category_select_settled(runtime: &Runtime, inv: &Invocation, saved
      applied: bool, response: Value) -> Value {
      catalog_remote::select_settled(runtime, inv, saved, applied, response)
  }
@@ -71910,7 +72213,7 @@ index 00000000..8bec3de0
 +    assert_eq!(player::SHARED.playpos_ns.load(Ordering::Acquire), position);
 +}
 diff --git a/rust-modules/src/app/ott_import.rs b/rust-modules/src/app/ott_import.rs
-index 36b01ba7..e0314ba4 100644
+index 36b01ba7..d7b4f801 100644
 --- a/rust-modules/src/app/ott_import.rs
 +++ b/rust-modules/src/app/ott_import.rs
 @@ -1,10 +1,9 @@
@@ -71935,7 +72238,7 @@ index 36b01ba7..e0314ba4 100644
 -        .unwrap_or_else(|| plx_base::paths::in_app_dir("ottplay-profile.json"))
 +fn profile_path() -> Result<Option<PathBuf>, &'static str> {
 +    profile_path_with(|| {
-+        #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++        #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
 +        if plx_platform::tv::secure::fixture::active() {
 +            return Some(plx_platform::tv::secure::fixture::plex_profile_path());
 +        }
@@ -72071,7 +72374,7 @@ index 36b01ba7..e0314ba4 100644
 +
 +fn read_configuration(path: &std::path::Path) -> Result<Option<Vec<u8>>, &'static str> {
 +    read_configuration_with(path, |_path, _bytes| {
-+        #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++        #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
 +        if plx_platform::tv::secure::fixture::active() {
 +            return plx_platform::tv::secure::fixture::validate_plex_profile(_path, _bytes);
 +        }
@@ -81829,10 +82132,10 @@ index 00000000..7affef25
 +}
 diff --git a/rust-modules/src/app/ott_numeric_input_tests.rs b/rust-modules/src/app/ott_numeric_input_tests.rs
 new file mode 100644
-index 00000000..ed773b28
+index 00000000..32dbb86c
 --- /dev/null
 +++ b/rust-modules/src/app/ott_numeric_input_tests.rs
-@@ -0,0 +1,890 @@
+@@ -0,0 +1,1025 @@
 +//! Numeric keys enter through the real application queue; fixtures perform no media IO.
 +use super::*;
 +use crate::app::events;
@@ -82721,6 +83024,141 @@ index 00000000..ed773b28
 +        assert!(app.ott.as_ref().unwrap().pending_category_choice.is_none());
 +        assert_eq!(app.ott.as_ref().unwrap().navigation_epoch, navigation);
 +        assert_eq!(requested(&app), None);
++    }
++}
++
++
++/// Model only the existing Saved-success settlement boundary. The real writer
++/// remains revoked: this test does not claim a durable write. Hosted coverage
++/// must separately accept an actual writer result and reopen persisted state.
++#[test]
++fn modeled_successful_save_settles_classic_category_digits_and_global_favorites() {
++    let _serial = plx_base::testlock::serial();
++    let mut app = classic_categories();
++    {
++        let mut runtime = app.ott.take().unwrap();
++        let profile = runtime.saved.profiles.profiles[0].clone();
++        let local = selection::capture(&profile, &runtime.catalog.entries[0]).unwrap();
++        let other_provider = Favorite {
++            title: "Library film".into(),
++            origin: plx_data::ott::favorites::Origin { provider: "plex".into(),
++                profile: "Library".into(), subprofile: None, source_alias: "Server".into() },
++            locator: plx_data::ott::favorites::Locator::Plex {
++                server_id: "synthetic-server".into(), rating_key: "42".into() },
++        };
++        runtime.saved.favorites.toggle(local).unwrap();
++        runtime.saved.favorites.toggle(other_provider).unwrap();
++        runtime.changed();
++        runtime.publish(&mut app);
++        app.ott = Some(runtime);
++        settle_pages(&mut app);
++    }
++    let runtime = app.ott.as_ref().unwrap();
++    let profiles = runtime.saved.profiles.clone();
++    let favorites = runtime.saved.favorites.clone();
++    let favorite_ids: Vec<_> = favorites.entries().iter()
++        .map(|favorite| format!("favorite:{}", favorite.identity())).collect();
++    let all_ids: Vec<_> = runtime.catalog.entries.iter().map(|entry| entry.id.clone()).collect();
++    assert_eq!(all_ids.len(), 10);
++    assert!(runtime.organization_projection().is_some(), "use the actual saved-provider projection");
++    let ninth_category = runtime.organization_categories().into_iter()
++        .find(|category| category.title == "Category 6").unwrap().id;
++    let ninth_item = runtime.catalog.entries.iter()
++        .find(|entry| entry.title == "Channel 6").unwrap().id.clone();
++    let generation = runtime.generation;
++    let catalog_revision = runtime.catalog_revision;
++    let play_generation = runtime.play_generation;
++    let playback_epoch = runtime.playback_epoch;
++
++    // Ninth -> Favorites -> All makes every committed transition observable.
++    // All/Favorites occupy the first two visible rows in this default fixture.
++    for digit in [b'9', b'2', b'1'] {
++        let mut runtime = app.ott.take().unwrap();
++        apply_ui_action(&mut runtime, &mut app, OttAction::ShowCategories, true, false, false);
++        runtime.publish(&mut app);
++        app.ott = Some(runtime);
++        settle_pages(&mut app);
++        let runtime = app.ott.as_ref().unwrap();
++        let view = runtime.view();
++        assert_eq!(runtime.page, "categories");
++        assert_eq!(view.rows[0].id, "all");
++        assert_eq!(view.rows[1].id, "favorites");
++        assert_eq!(view.rows[8].id, ninth_category);
++        assert_eq!(view.rows[8].title, "Category 6");
++        let owner = bridge::ott_ui_target(&app.pages).unwrap();
++        assert_eq!(runtime.reply, Some(owner));
++        let screen = app.pages.nav.instance(owner).unwrap().screen.as_any().unwrap()
++            .downcast_ref::<plx_screens::ott::OttScreen>().unwrap();
++        assert!(screen.channel_number_context(&view.page_id, view.revision));
++        assert!(screen.category_number_action(digit - b'0').is_some());
++        let category = match digit { b'9' => Some(ninth_category.as_str()), b'2' => None, _ => Some("") };
++        let candidate = runtime.category_choice_candidate(category).unwrap();
++        let before = serde_json::to_value(&runtime.saved).unwrap();
++        let navigation = runtime.navigation_epoch;
++        let old_category = runtime.saved.category.clone();
++
++        ingest(&mut app, events::encode_key(u32::from(digit), 0, true));
++        assert_eq!(app.ott.as_ref().unwrap().navigation_epoch, navigation + 1);
++        ingest(&mut app, events::encode_key_repeat(u32::from(digit), 0));
++        ingest(&mut app, events::encode_key(u32::from(digit), 0, false));
++        let runtime = app.ott.as_ref().unwrap();
++        assert_eq!(runtime.navigation_epoch, navigation + 1, "one digit, one selection");
++        assert!(app.inputs.is_empty());
++        assert!(runtime.saving && runtime.pending_category_choice.is_some());
++        assert_eq!(runtime.page, "categories", "do not leave before settlement");
++        assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), before);
++        assert_eq!(requested(&app), None);
++        // Same explicit modeling seam as category_profile::stage/deliver. Join
++        // the revoked worker first; no successful persistence is inferred from it.
++        assert!(matches!(runtime.rx.recv_timeout(Duration::from_secs(5)).unwrap(),
++            Job::Saved(Err(_), None, false, _)));
++        assert!(runtime.rx.try_recv().is_err(), "no repeated writer request");
++        runtime.tx.send(Job::Saved(Ok(candidate), None, false, json!({"status":"ok"})))
++            .unwrap_or_else(|_| panic!("fixture receiver disappeared"));
++        runtime_tick(&mut app);
++        settle_pages(&mut app);
++
++        let runtime = app.ott.as_ref().unwrap();
++        assert!(!runtime.saving && runtime.pending_category_choice.is_none());
++        assert_eq!(runtime.navigation_epoch, navigation + 1);
++        assert_eq!(runtime.saved.profiles, profiles);
++        assert_eq!(runtime.saved.favorites, favorites, "selection never rewrites the global document");
++        assert_eq!((runtime.generation, runtime.catalog_revision, runtime.play_generation, runtime.playback_epoch),
++            (generation, catalog_revision, play_generation, playback_epoch));
++        assert!(runtime.playing.is_none());
++        assert_eq!(requested(&app), None, "category choice never autoplays");
++        let view = runtime.view();
++        let ids: Vec<_> = view.rows.iter().filter_map(|row| match &row.action {
++            OttAction::Play(id) => Some(id.clone()), _ => None,
++        }).collect();
++        match digit {
++            b'9' => {
++                assert_eq!(runtime.page, "channels");
++                assert_eq!(runtime.saved.category, ninth_category);
++                assert!(!runtime.saved.favorites_selected);
++                assert_eq!(ids, vec![ninth_item.clone()]);
++            }
++            b'2' => {
++                assert_eq!(runtime.page, "favorites");
++                assert!(runtime.saved.favorites_selected);
++                assert_eq!(runtime.saved.category, old_category);
++                assert_eq!(ids, favorite_ids, "include both active M3U and foreign Plex origin");
++                assert_eq!(view.rows[0].detail, "m3u · Numeric");
++                assert_eq!(view.rows[1].detail, "plex · Library");
++            }
++            _ => {
++                assert_eq!(runtime.page, "channels");
++                assert!(!runtime.saved.favorites_selected);
++                assert!(runtime.saved.category.is_empty());
++                assert_eq!(ids, all_ids);
++            }
++        }
++        let screen = app.pages.nav.instance(owner).unwrap().screen.as_any().unwrap()
++            .downcast_ref::<plx_screens::ott::OttScreen>().unwrap();
++        assert_eq!(bridge::ott_ui_target(&app.pages), Some(owner));
++        assert!(screen.channel_number_context(&view.page_id, view.revision),
++            "the acknowledged view reaches the same actual mounted screen");
++        assert!(screen.accepts_channel_number());
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_osd_ui.rs b/rust-modules/src/app/ott_osd_ui.rs
@@ -85747,10 +86185,10 @@ index b30bd1ae..86949de7 100644
  }
 diff --git a/rust-modules/src/app/ott_profile_edit.rs b/rust-modules/src/app/ott_profile_edit.rs
 new file mode 100644
-index 00000000..83b783e4
+index 00000000..a64a6b4f
 --- /dev/null
 +++ b/rust-modules/src/app/ott_profile_edit.rs
-@@ -0,0 +1,205 @@
+@@ -0,0 +1,206 @@
 +//! Addressed edits of saved provider sources share the existing editor protocol.
 +//! Admission is checked against the published row before this module opens a form.
 +use super::*;
@@ -85772,6 +86210,7 @@ index 00000000..83b783e4
 +pub(super) fn rows(runtime: &Runtime, profile: &ProviderProfile) -> Vec<OttRow> {
 +    let mut load = row(profile.id.clone(), profile.name.clone(), profile.kind.canonical_id().into(),
 +        OttAction::SelectProfile(profile.id.clone()), false);
++    load.enabled = !profile.source.is_empty();
 +    let mut edit = supported(profile.kind).then(|| {
 +        let context = runtime.profile_edit_context(profile);
 +        let mut item = row(format!("action/profile.edit/{context}"),
@@ -90136,7 +90575,7 @@ index 00000000..7462686f
 +    assert_eq!(take_response(&mut delivery)["data"]["error"], "cancelled");
 +}
 diff --git a/rust-modules/src/app/ott_remote/transport.rs b/rust-modules/src/app/ott_remote/transport.rs
-index 98f84bf6..02720025 100644
+index 98f84bf6..0efb6660 100644
 --- a/rust-modules/src/app/ott_remote/transport.rs
 +++ b/rust-modules/src/app/ott_remote/transport.rs
 @@ -1,10 +1,7 @@
@@ -90177,13 +90616,22 @@ index 98f84bf6..02720025 100644
 -        let response = http_request(&request, &headers, body_limit)
 -        .map(|r| Response {
 +        let response = http_request(&request, &headers, body_limit);
-+        #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++        #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
 +        plx_platform::tv::secure::fixture::observe_local_control(request.method, &request.url,
 +            request.body.as_deref(), response.as_ref().ok().map(|r| (r.status, r.body.as_slice())));
 +        let response = response.map(|r| Response {
              status: r.status,
              body: r.body,
          });
+@@ -94,7 +99,7 @@ fn http_request(request: &Request, headers: &[String], body_limit: usize)
+     let timeouts = plx_net::net::Timeouts {
+         connect_s: 4, total_s: 8, total_ms: 8000, low_speed_bps: 0, low_speed_s: 0,
+     };
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     if let Some(bundle) = plx_platform::tv::secure::fixture::control_ca_bundle(&request.url)
+         .map_err(|_| plx_net::net::RequestFailure::from(plx_net::net::RequestError::Transport))?
+     {
 @@ -179,12 +184,18 @@ fn confirm_config(config: Config, required: bool,
      }
      Ok((config, true))
@@ -90830,7 +91278,7 @@ index 00000000..0cd16fbb
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime.rs b/rust-modules/src/app/ott_runtime.rs
-index 9681ec31..8cb650c3 100644
+index 9681ec31..182fc931 100644
 --- a/rust-modules/src/app/ott_runtime.rs
 +++ b/rust-modules/src/app/ott_runtime.rs
 @@ -1,8 +1,29 @@
@@ -91492,7 +91940,7 @@ index 9681ec31..8cb650c3 100644
              .and_then(|key| {
                  self.checkpoints
                      .get(&key)
-@@ -1054,10 +1293,13 @@ impl Runtime {
+@@ -1054,11 +1293,24 @@ impl Runtime {
              .map(|value| continuity::ResumePoint {
                  entry_id: value.entry_id.clone(),
                  position_ms: value.position_ms,
@@ -91506,9 +91954,20 @@ index 9681ec31..8cb650c3 100644
 -        if let Some(profile) = self.active().cloned() {
 +        if let Some(profile) = profile {
              self.provider = profile.kind;
++            // Keep retirement above this guard: a cleared active slot must not
++            // publish a late batch from its previous source or start a new one.
++            if profile.source.is_empty() {
++                self.page = if self.saved.favorites_selected { "favorites" } else { "profiles" };
++                self.continuity.suppress_unrequested_start();
++                self.catalog_complete = true;
++                self.status.clear();
++                self.changed();
++                return;
++            }
              self.page = if self.saved.favorites_selected {
                  "favorites"
-@@ -1084,6 +1326,9 @@ impl Runtime {
+             } else {
+@@ -1084,6 +1336,9 @@ impl Runtime {
      /// Refresh listings without converting an asynchronous completion into a
      /// playback command. In-flight resolvers keep their independent generation.
      fn refresh_catalog_preserving_playback(&mut self) {
@@ -91518,7 +91977,7 @@ index 9681ec31..8cb650c3 100644
          if self.transient.accepted.is_some() || self.transient.candidate.is_some() { return; }
          let page = self.page;
          let provider = self.provider;
-@@ -1093,7 +1338,7 @@ impl Runtime {
+@@ -1093,7 +1348,7 @@ impl Runtime {
          );
          let resume_pending = self.resume_pending.take();
          let retry = self.continuity_retry_log.take();
@@ -91527,7 +91986,7 @@ index 9681ec31..8cb650c3 100644
          self.page = page;
          self.provider = provider;
          continuity.rebase(self.generation);
-@@ -1104,40 +1349,101 @@ impl Runtime {
+@@ -1104,40 +1359,101 @@ impl Runtime {
                  self.now_ms(), self.generation);
          }
      }
@@ -91649,7 +92108,7 @@ index 9681ec31..8cb650c3 100644
              self.catalog_dirty = true;
              self.changed();
          }
-@@ -1160,56 +1466,86 @@ impl Runtime {
+@@ -1160,56 +1476,86 @@ impl Runtime {
          self.save_with_response(candidate, Some(invocation), reload, response)
      }
      fn save_with_response(
@@ -91704,7 +92163,7 @@ index 9681ec31..8cb650c3 100644
 +        } else {
 +            if let Some(error) = self.settings_write_refusal() {
 +                return Err(error);
-+            }
+             }
 +            if self
 +                .saved
 +                .receipts
@@ -91712,7 +92171,7 @@ index 9681ec31..8cb650c3 100644
 +                .any(|receipt| receipt.outcome == plx_data::ott::favorites_wire::Outcome::Unknown)
 +            {
 +                return Err("A Favorites operation needs reconciliation");
-             }
++            }
 +            profile_rename = profile_rename::prepare(self, &mut candidate)?;
 +            category_state::prepare_profile_change(&self.saved, &mut candidate)?;
 +            if profile_rename.is_none() { browse_focus::prepare(self, &mut candidate)?; }
@@ -91767,7 +92226,7 @@ index 9681ec31..8cb650c3 100644
          let sender = self.tx.clone();
          let before = self.saved.clone();
          let write_permit = self.write_permit.clone();
-@@ -1219,6 +1555,17 @@ impl Runtime {
+@@ -1219,6 +1565,17 @@ impl Runtime {
                  .deadline_at_unix_ms(request.deadline_ms)
          });
          let started = plx_base::task::spawn_off_frame("ott-save", move |off_frame| {
@@ -91785,7 +92244,7 @@ index 9681ec31..8cb650c3 100644
              let panic_invocation = invocation.clone();
              let job = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                  let result = favorite_item_ids::write_prepared_with(&mut candidate,
-@@ -1263,9 +1610,11 @@ impl Runtime {
+@@ -1263,9 +1620,11 @@ impl Runtime {
              return Err("Could not start settings writer");
          }
          self.saving = true;
@@ -91797,7 +92256,7 @@ index 9681ec31..8cb650c3 100644
          self.status = "Saving…".into();
          self.changed();
          Ok(())
-@@ -1286,9 +1635,9 @@ impl Runtime {
+@@ -1286,9 +1645,9 @@ impl Runtime {
          let tx = self.tx.clone();
          let cancel = self.begin_plex_restore();
          self.plex_refresh_pending =
@@ -91809,7 +92268,7 @@ index 9681ec31..8cb650c3 100644
                  }))
                  .unwrap_or_else(|_| vec![Err("Plex restoration worker failed")]);
                  let _ = tx.send(Job::PlexRestored(cancel, result));
-@@ -1303,6 +1652,9 @@ impl Runtime {
+@@ -1303,6 +1662,9 @@ impl Runtime {
          self.suspend_with_retry_reason(app, continuity_diagnostics::Reason::Suspend);
      }
      fn suspend_with_retry_reason(&mut self, app: &mut App, reason: continuity_diagnostics::Reason) {
@@ -91819,7 +92278,7 @@ index 9681ec31..8cb650c3 100644
          self.retire_parental_source();
          let preparation_preserved = self.preserve_kiosk_preparation(app);
          self.preserve_admitted_resume(app);
-@@ -1350,6 +1702,7 @@ impl Runtime {
+@@ -1350,6 +1712,7 @@ impl Runtime {
          self.continuity.stop(self.generation);
          self.release_active_lease();
          self.playing = None;
@@ -91827,7 +92286,7 @@ index 9681ec31..8cb650c3 100644
          self.changed();
      }
      fn stop_catalog(&mut self, app: &mut App) {
-@@ -1359,6 +1712,8 @@ impl Runtime {
+@@ -1359,6 +1722,8 @@ impl Runtime {
      }
      fn consume_exit(&mut self, app: &mut App) {
          if let Some(exit) = app.player.pending_exit.take() {
@@ -91836,7 +92295,7 @@ index 9681ec31..8cb650c3 100644
              self.checkpoint_at(app, true, Some(&exit));
              self.retire_catalog_playback(app);
              let reason = match exit.cause {
-@@ -1372,6 +1727,12 @@ impl Runtime {
+@@ -1372,6 +1737,12 @@ impl Runtime {
      /// Accepted viewer transport commits the currently playing fallback. This
      /// is called by remote and native performers, never by internal clock holds.
      fn viewer_transport(&mut self, app: &App) {
@@ -91849,7 +92308,7 @@ index 9681ec31..8cb650c3 100644
          if !playback_allowed(app) || app.player.pending_exit.is_some() {
              return;
          }
-@@ -1387,6 +1748,11 @@ impl Runtime {
+@@ -1387,6 +1758,11 @@ impl Runtime {
          if playing_superseded(playing, app) {
              return;
          }
@@ -91861,7 +92320,7 @@ index 9681ec31..8cb650c3 100644
          let id = playing.selection_id.clone();
          self.playback_epoch = self.playback_epoch.wrapping_add(1);
          if restoring {
-@@ -1405,6 +1771,8 @@ impl Runtime {
+@@ -1405,6 +1781,8 @@ impl Runtime {
          self.changed();
      }
      fn reconcile_owner(&mut self, app: &mut App) {
@@ -91870,7 +92329,7 @@ index 9681ec31..8cb650c3 100644
          // An explicit OTT selection made after the retained native request is
          // now the pending owner. Its admission fence lasts only for the resolve;
          // an automatic restore never acquires this priority.
-@@ -1439,9 +1807,13 @@ impl Runtime {
+@@ -1439,9 +1817,13 @@ impl Runtime {
          else {
              return;
          };
@@ -91884,7 +92343,7 @@ index 9681ec31..8cb650c3 100644
          self.release_active_lease();
          plx_media::player::stop_bufferfeed(&mut app.player.session, &mut app.adapters.player);
          plx_media::route::cancel_play(&mut app.player.session);
-@@ -1530,7 +1902,17 @@ impl Runtime {
+@@ -1530,7 +1912,17 @@ impl Runtime {
              else {
                  break;
              };
@@ -91903,7 +92362,7 @@ index 9681ec31..8cb650c3 100644
                  Ok(()) => {
                      self.restore_play_generation = (reason == continuity::Reason::Restore)
                          .then_some(self.play_generation);
-@@ -1578,11 +1960,50 @@ impl Runtime {
+@@ -1578,11 +1970,50 @@ impl Runtime {
                  Err(_)=>false,
              };
          }
@@ -91955,7 +92414,7 @@ index 9681ec31..8cb650c3 100644
      fn checkpoint_at(
          &mut self,
          app: &App,
-@@ -1622,18 +2043,37 @@ impl Runtime {
+@@ -1622,18 +2053,37 @@ impl Runtime {
          } else {
              playing.profile.id.clone()
          };
@@ -91995,7 +92454,7 @@ index 9681ec31..8cb650c3 100644
          else { self.checkpoints.insert(
              key,
              SavedResume {
-@@ -1744,9 +2184,45 @@ impl Runtime {
+@@ -1744,9 +2194,45 @@ impl Runtime {
          Ok(())
      }
      fn launch_metadata(&mut self) {
@@ -92041,7 +92500,7 @@ index 9681ec31..8cb650c3 100644
          if !self.metadata_work_allowed() { return; }
          if matches!(self.metadata_next.as_ref(), Some((_, MetadataSelection::LocalPublish(_)))) { return; }
          if !self.metadata_done.load(Ordering::Acquire) {
-@@ -1764,17 +2240,22 @@ impl Runtime {
+@@ -1764,17 +2250,22 @@ impl Runtime {
              MetadataSelection::Local(work) => super::ott_metadata::start_local(
                  work, self.metadata_generation, self.metadata_cancel.clone(),
                  self.metadata_tx.clone(), self.metadata_done.clone()),
@@ -92074,7 +92533,7 @@ index 9681ec31..8cb650c3 100644
                      super::ott_metadata::start_attachment_favorite(receipt,favorite,self.metadata_generation,
                          query,self.metadata_cancel.clone(),
                          self.metadata_tx.clone(),self.metadata_done.clone())
-@@ -1793,6 +2274,7 @@ impl Runtime {
+@@ -1793,6 +2284,7 @@ impl Runtime {
          }
      }
      fn refresh_metadata(&mut self) {
@@ -92082,7 +92541,7 @@ index 9681ec31..8cb650c3 100644
          if !transient::lifecycle_metadata_ready(self) { return; }
          if self.guide.is_some() { return; }
          if self.metadata_refresh_ms == 0 || self.now_ms() < self.metadata_refresh_ms {
-@@ -1853,15 +2335,35 @@ impl Runtime {
+@@ -1853,15 +2345,35 @@ impl Runtime {
          self.organization_categories().into_iter().find(|category| category.id == id).map(|category| category.title)
      }
  
@@ -92119,7 +92578,7 @@ index 9681ec31..8cb650c3 100644
          if let Some(mut view) = companion_adapter::view(self) {
              if let Some(status) = self.protected_state_status() {
                  view.status = status.into();
-@@ -1874,8 +2376,6 @@ impl Runtime {
+@@ -1874,8 +2386,6 @@ impl Runtime {
          use ui_projection::row;
          let search = self.search_filter();
          let media_resume = self.ui_media_resume();
@@ -92128,7 +92587,7 @@ index 9681ec31..8cb650c3 100644
          let mut rows: Vec<OttRow> = match self.page {
              "profile-setup" => self.setup.as_ref().map(|setup| {
                  let editable = self.pending_setup_save != Some(setup.id);
-@@ -1923,26 +2423,38 @@ impl Runtime {
+@@ -1923,26 +2433,38 @@ impl Runtime {
              })
              .collect(),
              "profiles" => {
@@ -92174,7 +92633,7 @@ index 9681ec31..8cb650c3 100644
              "categories" => std::iter::once(row(
                  "all".into(),
                  "All".into(),
-@@ -1972,12 +2484,13 @@ impl Runtime {
+@@ -1972,12 +2494,13 @@ impl Runtime {
                  .favorites
                  .entries()
                  .iter()
@@ -92191,7 +92650,7 @@ index 9681ec31..8cb650c3 100644
                          format!("{} · {}", f.origin.provider, f.origin.profile),
                          OttAction::Play(id.clone()),
                          true,
-@@ -1993,6 +2506,8 @@ impl Runtime {
+@@ -1993,6 +2516,8 @@ impl Runtime {
                      if let Some(entry) = preview {
                          item.guide_available = self.prepare_play_request(PlaybackRequest::ordinary(&id, 0))
                              .is_ok_and(|(_, profile, _, _)| guide_ui::is_live(&profile, entry));
@@ -92200,7 +92659,7 @@ index 9681ec31..8cb650c3 100644
                          item.description = entry.description.clone();
                          item.poster = if matches!(entry.media, MediaLocator::Local { .. }) { self.local_entry_art(entry) } else { entry_poster(entry) };
                      }
-@@ -2010,7 +2525,16 @@ impl Runtime {
+@@ -2010,7 +2535,16 @@ impl Runtime {
                  ("remote.address", "Remote control server"),
                  ("remote.find", "Find command server"),
                  ("uiFontScale", "Interface text scale (%)"),
@@ -92217,7 +92676,7 @@ index 9681ec31..8cb650c3 100644
                  ("native.audio", "Audio tracks"),
                  ("native.subtitles", "Subtitles and appearance"),
                  ("native.settings", "Playback and interface settings"),
-@@ -2030,18 +2554,26 @@ impl Runtime {
+@@ -2030,18 +2564,26 @@ impl Runtime {
                      id.into(),
                      title.into(),
                      if id == "uiFontScale" { format!("{}%", self.font_scale_percent()) }
@@ -92246,7 +92705,7 @@ index 9681ec31..8cb650c3 100644
                  if id == "remote.find" {
                      item.enabled = self.remote_snapshot["persisted"] != false && self.remote_snapshot["saving"] != true;
                  }
-@@ -2053,22 +2585,21 @@ impl Runtime {
+@@ -2053,22 +2595,21 @@ impl Runtime {
                  item
              })
              .collect(),
@@ -92279,7 +92738,7 @@ index 9681ec31..8cb650c3 100644
                      item.description = e.description.clone();
                      item.poster = if matches!(e.media, MediaLocator::Local { .. }) { self.local_entry_art(e) } else { entry_poster(e) };
                      if let Some(guide) = &item.guide {
-@@ -2076,7 +2607,8 @@ impl Runtime {
+@@ -2076,7 +2617,8 @@ impl Runtime {
                      }
                      item
                  })
@@ -92289,7 +92748,7 @@ index 9681ec31..8cb650c3 100644
          };
          // Count this exact filtered list before unrelated action rows are appended.
          let catalog_progress = ui_projection::catalog(
-@@ -2124,12 +2656,17 @@ impl Runtime {
+@@ -2124,12 +2666,17 @@ impl Runtime {
                  ));
              }
              if let Some(servers) = self.remote_snapshot["servers"].as_array() {
@@ -92309,7 +92768,7 @@ index 9681ec31..8cb650c3 100644
                          address.into(),
                          if domain.is_empty() { id.into() } else { format!("{domain} · {id}") },
                          // The engine binds this opaque token to the validated
-@@ -2170,12 +2707,19 @@ impl Runtime {
+@@ -2170,12 +2717,19 @@ impl Runtime {
                  else { self.organization_category_id(effective_category) }),
              "settings" => self.settings_focus.filter(|id| rows.iter().any(|row| row.enabled && row.id == *id))
                  .map(str::to_owned),
@@ -92330,7 +92789,7 @@ index 9681ec31..8cb650c3 100644
          };
          let page_id = if self.page == "profile-setup" {
              format!("profile-setup:{}", self.setup.as_ref()
-@@ -2185,7 +2729,7 @@ impl Runtime {
+@@ -2185,7 +2739,7 @@ impl Runtime {
          } else {
              self.search_page_id().unwrap_or_else(|| self.page.into())
          };
@@ -92339,7 +92798,7 @@ index 9681ec31..8cb650c3 100644
              preview_context: preview::context(self),
              order_context: self.local_order_key(),
              random_context: random::context(self, &rows),
-@@ -2197,13 +2741,16 @@ impl Runtime {
+@@ -2197,13 +2751,16 @@ impl Runtime {
                  "providers" => "Providers",
                  "profiles" => "Profiles",
                  "profile-setup" => "Profile setup",
@@ -92357,7 +92816,7 @@ index 9681ec31..8cb650c3 100644
                  "Enter the connection details supplied by your provider".into()
              } else if self.page == "settings" && self.remote_snapshot["pairing_server"].as_str().is_some_and(|s| !s.is_empty()) {
                  self.remote_snapshot["pairing_server"].as_str().unwrap_or("").into()
-@@ -2213,7 +2760,7 @@ impl Runtime {
+@@ -2213,7 +2770,7 @@ impl Runtime {
              status: if let Some(status) = self.protected_state_status() {
                  status.into()
              } else if self.page == "settings" {
@@ -92366,7 +92825,7 @@ index 9681ec31..8cb650c3 100644
                      .or_else(|| self.remote_snapshot["pairing_code"]
                      .as_str()
                      .filter(|code| !code.is_empty())
-@@ -2260,6 +2807,7 @@ impl Runtime {
+@@ -2260,6 +2817,7 @@ impl Runtime {
          self.setup_serial = id;
          self.setup = Some(SetupSession {
              id,
@@ -92374,7 +92833,7 @@ index 9681ec31..8cb650c3 100644
              draft,
              original: (!is_new).then_some(profile),
              selected_key,
-@@ -2269,6 +2817,49 @@ impl Runtime {
+@@ -2269,6 +2827,49 @@ impl Runtime {
          Ok(())
      }
  
@@ -92424,7 +92883,7 @@ index 9681ec31..8cb650c3 100644
      fn cancel_setup(&mut self) {
          self.setup = None;
          self.cancel_editor();
-@@ -2297,10 +2888,18 @@ impl Runtime {
+@@ -2297,10 +2898,18 @@ impl Runtime {
              return Err("This profile changed; reopen its setup before saving");
          }
          let mut candidate = self.saved.clone();
@@ -92443,7 +92902,7 @@ index 9681ec31..8cb650c3 100644
              candidate.profiles.profiles.push(profile.clone());
          }
          candidate.profiles.active_profile = Some(profile.id);
-@@ -2316,6 +2915,8 @@ impl Runtime {
+@@ -2316,6 +2925,8 @@ impl Runtime {
              return;
          }
          self.complete_archive_hours(session);
@@ -92452,7 +92911,7 @@ index 9681ec31..8cb650c3 100644
          if let Some(profile) = self.edit_profile.as_ref().and_then(|draft|
              self.saved.profiles.profiles.iter().find(|current| current.id == draft.id)).cloned()
          {
-@@ -2339,6 +2940,7 @@ impl Runtime {
+@@ -2339,6 +2950,7 @@ impl Runtime {
      }
  
      fn recover_plex_profiles(&mut self, app: &mut App, explicit: bool) -> Result<(), &'static str> {
@@ -92460,7 +92919,7 @@ index 9681ec31..8cb650c3 100644
          use super::ott_plex_setup::{self, PlexSetupPlan, PlexSetupServer};
          self.profile_focus = None;
          self.plex_omitted_servers = 0;
-@@ -2347,6 +2949,7 @@ impl Runtime {
+@@ -2347,6 +2959,7 @@ impl Runtime {
          let servers: Vec<_> = plx_plex::plex::server_ids().into_iter().filter_map(|sid| {
              let client = plx_plex::plex::client_for(sid)?;
              let machine_id = client.machine_id();
@@ -92468,7 +92927,7 @@ index 9681ec31..8cb650c3 100644
              if machine_id.is_empty()
                  || !plx_plex::plex::grant::credential_allowed_for(machine_id, client.origin())
              {
-@@ -2367,9 +2970,8 @@ impl Runtime {
+@@ -2367,9 +2980,8 @@ impl Runtime {
          }
          if let Some(error) = self.settings_write_refusal() { return Err(error); }
          match ott_plex_setup::plan(&self.saved.profiles, &servers)? {
@@ -92480,7 +92939,7 @@ index 9681ec31..8cb650c3 100644
              PlexSetupPlan::Profiles { updated, first_profile_id, changed, omitted_servers } => {
                  self.profile_focus = Some(first_profile_id);
                  self.plex_omitted_servers = omitted_servers;
-@@ -2387,14 +2989,58 @@ impl Runtime {
+@@ -2387,14 +2999,58 @@ impl Runtime {
  
      fn cancel_editor(&mut self) {
          self.archive_hours_editor = None;
@@ -92539,7 +92998,7 @@ index 9681ec31..8cb650c3 100644
      fn editor_result(&mut self, app: &mut App, session: &EditorSession, error: Option<String>) {
          if error.is_none() && self.edit_session.as_ref() == Some(session) {
              self.cancel_editor();
-@@ -2405,7 +3051,7 @@ impl Runtime {
+@@ -2405,7 +3061,7 @@ impl Runtime {
                  MachineId::Instance(session.owner),
                  Delivery::Screen(plx_ui::screen::ScreenEvent::App(AppMsg::OttEditorResult {
                      session: session.id,
@@ -92548,7 +93007,7 @@ index 9681ec31..8cb650c3 100644
                  })),
              ),
          );
-@@ -2422,13 +3068,22 @@ impl Runtime {
+@@ -2422,13 +3078,22 @@ impl Runtime {
                      ))),
                  ),
              );
@@ -92571,7 +93030,7 @@ index 9681ec31..8cb650c3 100644
          self.restore_play_generation = None;
          self.play_ticket = None;
          self.resolver_next = None;
-@@ -2438,6 +3093,9 @@ impl Runtime {
+@@ -2438,6 +3103,9 @@ impl Runtime {
          }
      }
      fn rebind_native_admission(&mut self,app:&App,profile:&ProviderProfile,entry:&CatalogEntry)->Result<(),&'static str> {
@@ -92581,7 +93040,7 @@ index 9681ec31..8cb650c3 100644
          if favorites_items::pending_error(self).is_some() { return Err("Favorite selection changed before playback"); }
          let request=self.play_target.as_ref().ok_or("Playback request is no longer current")?.clone();
          let (bound,bound_profile,bound_entry,favorite)=match transient::staged_native_binding(self,&request) {
-@@ -2459,6 +3117,7 @@ impl Runtime {
+@@ -2459,6 +3127,7 @@ impl Runtime {
          kiosk_capture::explicit_admitted(self);
          Ok(())
      }
@@ -92589,7 +93048,7 @@ index 9681ec31..8cb650c3 100644
      fn play(&mut self, app: &mut App, id: &str) -> Result<(), &'static str> {
          self.play_with_policy(app, id, true)
      }
-@@ -2472,14 +3131,20 @@ impl Runtime {
+@@ -2472,14 +3141,20 @@ impl Runtime {
          self.play_request_with_policy(app,request)
      }
      fn play_request_with_policy(&mut self,app:&mut App,request:PlaybackRequest)->Result<(),&'static str> {
@@ -92610,7 +93069,7 @@ index 9681ec31..8cb650c3 100644
          let policy_profile=self.attachment_policy_profile(&profile,favorite.as_ref())?;
          self.require_parental_playback(&policy_profile)?;
          kiosk_source::admit_bound(self,app,kiosk_source::BoundCandidate {request:&request,profile:&profile,entry:entry.as_ref(),favorite:favorite.as_ref()}).map_err(kiosk_source::SourceError::message)?;
-@@ -2487,9 +3152,10 @@ impl Runtime {
+@@ -2487,9 +3162,10 @@ impl Runtime {
          self.resume_pending=None;
          self.playback_epoch=self.playback_epoch.wrapping_add(1);
          self.continuity.user_selected(self.generation,&id);
@@ -92622,7 +93081,7 @@ index 9681ec31..8cb650c3 100644
              if let Some(playing) = self.playing.as_ref() {
                  self.continuity
                      .retain_selection(self.generation, &playing.selection_id);
-@@ -2510,6 +3176,7 @@ impl Runtime {
+@@ -2510,6 +3186,7 @@ impl Runtime {
      fn prepare_play_request(&self, mut request: PlaybackRequest)
          -> Result<(PlaybackRequest,ProviderProfile,Option<CatalogEntry>,Option<Favorite>), &'static str> {
          if let Some(bound)=kiosk_source::bind_pinned_request(self,&request).map_err(kiosk_source::SourceError::message)? {
@@ -92630,7 +93089,7 @@ index 9681ec31..8cb650c3 100644
              self.validate_archive_request(&bound.0, &bound.1, bound.2.as_ref())?;
              return Ok(bound);
          }
-@@ -2545,6 +3212,7 @@ impl Runtime {
+@@ -2545,6 +3222,7 @@ impl Runtime {
              return Err("Temporary playback session ended");
          }
          self.validate_archive_request(&request, &profile, entry.as_ref())?;
@@ -92638,7 +93097,7 @@ index 9681ec31..8cb650c3 100644
          Ok((request,profile,entry,favorite))
      }
      fn validate_archive_request(&self, request: &PlaybackRequest, profile: &ProviderProfile,
-@@ -2573,7 +3241,12 @@ impl Runtime {
+@@ -2573,7 +3251,12 @@ impl Runtime {
          self.queue_play_request(request,profile,entry,favorite,true)
      }
      fn queue_play_request(&mut self, request:PlaybackRequest, profile:ProviderProfile,
@@ -92652,7 +93111,7 @@ index 9681ec31..8cb650c3 100644
          if !self.play_work_allowed() {
              return Err("Media work is waiting for foreground or worker retirement");
          }
-@@ -2587,6 +3260,7 @@ impl Runtime {
+@@ -2587,6 +3270,7 @@ impl Runtime {
          let attachment = favorite.as_ref().map(|favorite|self.attachment_for(favorite)).transpose()?.flatten();
          let plex_choice = transient::plex_remote::choice(self, &request.id);
          let local_read = transient::capture_video_root(self, &request, &profile)?;
@@ -92660,7 +93119,7 @@ index 9681ec31..8cb650c3 100644
          self.cancel_play_request();
          self.play_cancel=Arc::new(AtomicBool::new(false));
          self.play_ticket=Some(plx_media::route::play_request_ticket());
-@@ -2594,13 +3268,27 @@ impl Runtime {
+@@ -2594,13 +3278,27 @@ impl Runtime {
          let selected_id = request.id.clone();
          let archive = request.archive.clone();
          self.play_target=Some(request);
@@ -92689,7 +93148,7 @@ index 9681ec31..8cb650c3 100644
      }
      fn validate_archive_admission(&self, request: &PlaybackRequest, profile: &ProviderProfile,
          entry: &CatalogEntry, source: &ReadySource) -> Result<(), &'static str> {
-@@ -2623,6 +3311,21 @@ impl Runtime {
+@@ -2623,6 +3321,21 @@ impl Runtime {
          }
      }
      fn launch_resolver(&mut self) -> Result<(), &'static str> {
@@ -92711,7 +93170,7 @@ index 9681ec31..8cb650c3 100644
          if self.resolver_next.is_some() && !self.pending_attachment_current() { return Err("M3U media attachment changed before lookup"); }
          if !self.play_work_allowed() { return Ok(()); }
          if self.resolver_busy {
-@@ -2641,7 +3344,14 @@ impl Runtime {
+@@ -2641,7 +3354,14 @@ impl Runtime {
          let ResolveRequest {
              archive, generation, profile, entry, favorite, local_proof, cancel, plex, plex_choice, local_read,
          } = request;
@@ -92726,7 +93185,7 @@ index 9681ec31..8cb650c3 100644
          // Preparation only reads Plex metadata. An actual prepared choice is
          // a replacement: transfer the previous lease to this same worker so
          // its stop completion is drained before native Plex admission.
-@@ -2649,6 +3359,7 @@ impl Runtime {
+@@ -2649,6 +3369,7 @@ impl Runtime {
              if plex.is_none() { self.active_lease.take() } else { None }));
          let worker_lease = previous_lease.clone();
          let started = plx_base::task::spawn_off_frame("ott-media", move |worker| {
@@ -92734,7 +93193,7 @@ index 9681ec31..8cb650c3 100644
              if let Some(work) = plex {
                  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
                      transient::plex_remote::run(worker, &work)))
-@@ -2662,9 +3373,9 @@ impl Runtime {
+@@ -2662,9 +3383,9 @@ impl Runtime {
                      .lock()
                      .unwrap_or_else(|poison| poison.into_inner())
                      .take();
@@ -92747,7 +93206,7 @@ index 9681ec31..8cb650c3 100644
                  if cancel.load(Ordering::Relaxed) {
                      return Err("Playback request cancelled");
                  }
-@@ -2697,23 +3408,20 @@ impl Runtime {
+@@ -2697,23 +3418,20 @@ impl Runtime {
                      let (source, lease) = if matches!(entry.media, MediaLocator::Local { .. }) {
                          (transient::open_video_source(worker, local_read.as_ref(), &profile, &entry, &cancel)?, None)
                      } else {
@@ -92779,7 +93238,7 @@ index 9681ec31..8cb650c3 100644
                  };
                  if cancel.load(Ordering::Relaxed) {
                      if let ReadySource::External(_, _, Some(lease)) = ready {
-@@ -2721,16 +3429,26 @@ impl Runtime {
+@@ -2721,16 +3439,26 @@ impl Runtime {
                      }
                      return Err("Playback request cancelled");
                  }
@@ -92808,7 +93267,7 @@ index 9681ec31..8cb650c3 100644
              if let Some(lease) = previous_lease.lock().unwrap_or_else(|poison| poison.into_inner()).take() {
                  self.active_lease = Some(lease);
              }
-@@ -2760,10 +3478,35 @@ pub(super) fn open_player_catalog(app: &mut App, request: plx_screens::registry:
+@@ -2760,10 +3488,35 @@ pub(super) fn open_player_catalog(app: &mut App, request: plx_screens::registry:
      result
  }
  
@@ -92844,7 +93303,7 @@ index 9681ec31..8cb650c3 100644
  }
  
  pub(super) fn remote_player_action(app: &mut App, request: plx_screens::registry::OttPlayerRequest)
-@@ -2774,6 +3517,23 @@ pub(super) fn remote_player_action(app: &mut App, request: plx_screens::registry
+@@ -2774,6 +3527,23 @@ pub(super) fn remote_player_action(app: &mut App, request: plx_screens::registry
      result
  }
  
@@ -92868,7 +93327,7 @@ index 9681ec31..8cb650c3 100644
  pub(super) fn playback_allowed(app: &App) -> bool {
      app.window_activity.allow_present(true) && !app.ott_standby
  }
-@@ -2810,18 +3570,30 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2810,18 +3580,30 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
                  runtime.retire_parental_completion(completion);
              }
              Job::Saved(result, ..) => {
@@ -92899,7 +93358,7 @@ index 9681ec31..8cb650c3 100644
                  runtime.saving = false;
                  runtime.subtitle_save = None;
                  runtime.persistence_uncertain = true;
-@@ -2829,6 +3601,10 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2829,6 +3611,10 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
              Job::FavoriteCommit(result) => favorites::finish(runtime, result),
              Job::FavoriteRecovery(result) => favorites_recovery::finish(runtime, result),
              Job::PlexPrepared(..) => { runtime.resolver_busy = false; }
@@ -92910,7 +93369,7 @@ index 9681ec31..8cb650c3 100644
              Job::Play(_, _, result) => {
                  runtime.resolver_busy = false;
                  if let Ok((_, ReadySource::External(_, _, Some(lease)))) = result {
-@@ -2848,9 +3624,11 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2848,9 +3634,11 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
      let started = ClockSample::capture_main(app.adapters.player.mt()).ok();
      Runtime::withdraw_reminder_ui(app);
      runtime.reminders.invalidate();
@@ -92922,7 +93381,7 @@ index 9681ec31..8cb650c3 100644
      // Stop native audio, reads and pending loads before waiting for remote
      // cleanup. Final firmware/SDL teardown remains in run::shutdown.
      playback::replace_player(
-@@ -2863,7 +3641,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2863,7 +3651,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
      transient::plex_remote::cancel_shutdown(&runtime);
      runtime.cancel_play_request();
      runtime.cancel_catalog();
@@ -92931,7 +93390,7 @@ index 9681ec31..8cb650c3 100644
      if let Some(lease) = runtime.active_lease.take() {
          lease.begin_release();
          leases.push(lease.into_lease());
-@@ -2920,8 +3698,18 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2920,8 +3708,18 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
          transient::revoke_unavailable_proofs(&runtime, &mut saved);
          kiosk_resume::merge(&mut saved, &runtime.checkpoints);
          kiosk_resume::sanitize(&mut saved);
@@ -92950,7 +93409,7 @@ index 9681ec31..8cb650c3 100644
      for lease in leases {
          if lease.finish_after_loop(remaining()).is_err() {
              plx_base::eventlog::log(
-@@ -2933,8 +3721,17 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2933,8 +3731,17 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
  
  /// Synchronous native-input handoff, after the media performer accepted it.
  pub(super) fn viewer_transport(app: &mut App) {
@@ -92969,7 +93428,7 @@ index 9681ec31..8cb650c3 100644
          app.ott = Some(runtime);
      }
  }
-@@ -2942,12 +3739,14 @@ pub(super) fn viewer_transport(app: &mut App) {
+@@ -2942,12 +3749,14 @@ pub(super) fn viewer_transport(app: &mut App) {
  pub(super) fn track_request(app: &mut App, request: plx_screens::registry::PlayerReq)
      -> Option<plx_screens::registry::PlayerReq>
  {
@@ -92986,7 +93445,7 @@ index 9681ec31..8cb650c3 100644
  }
  
  /// Validate queued remote track work before the native pump consumes it. The
-@@ -2963,6 +3762,16 @@ pub(super) fn before_playback_tick(app: &mut App) {
+@@ -2963,6 +3772,16 @@ pub(super) fn before_playback_tick(app: &mut App) {
  }
  
  pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSample) {
@@ -93003,7 +93462,7 @@ index 9681ec31..8cb650c3 100644
      let programme_changed = observe_programme(app, clock_sample.unix_ms());
      let Some(mut runtime) = app.ott.take() else {
          app.bridge.publish_ott_catalog_offer(None);
-@@ -2975,6 +3784,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -2975,6 +3794,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      parental_runtime::tick(&mut runtime, app);
      let before = runtime.revision;
      runtime.sync_source_lifecycle(app);
@@ -93011,7 +93470,7 @@ index 9681ec31..8cb650c3 100644
      runtime.consume_exit(app);
      runtime.reconcile_owner(app);
      runtime.reconcile_m3u_attachment(app);
-@@ -2982,19 +3792,26 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -2982,19 +3802,26 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          app.rec
              .refuse("Nondefault UI typography is not bound in this recording format");
      }
@@ -93039,7 +93498,7 @@ index 9681ec31..8cb650c3 100644
              Job::Parental(completion) => parental_runtime::completed(&mut runtime, app, completion),
              Job::Loaded(result) => {
                  runtime.kiosk_capture.cancel_unwritten();
-@@ -3004,16 +3821,21 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3004,16 +3831,21 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let browse = (runtime.page, runtime.provider);
                  match result {
                      Ok((saved, entropy)) => {
@@ -93062,7 +93521,7 @@ index 9681ec31..8cb650c3 100644
                              runtime.status = error.into();
                          }
                          if let Err(error) = runtime
-@@ -3028,6 +3850,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3028,6 +3860,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          } else {
                              runtime.plex_refresh_requested = true;
                              let kiosk_startup = runtime.stage_kiosk_startup(app);
@@ -93070,7 +93529,7 @@ index 9681ec31..8cb650c3 100644
                              if runtime.active().is_some() {
                                  if runtime.navigation_epoch == 0 {
                                      runtime.load_catalog();
-@@ -3080,9 +3903,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3080,9 +3913,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          (Err(Cow::Owned(save_error::message(error))), invocation, reload, response),
                      _ => unreachable!("matched settings write completion"),
                  };
@@ -93084,7 +93543,7 @@ index 9681ec31..8cb650c3 100644
                  // A UI-owned write remains durable after its screen leaves, but
                  // cannot activate playback from a retired or departing instance.
                  // Remote writes have no UI owner and retain their own authority.
-@@ -3102,7 +3929,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3102,7 +3939,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let usb_activation_ready = result.as_ref().is_ok_and(|candidate|
                      owner_current && runtime.save_playback_epoch == runtime.playback_epoch
                          && runtime.usb_save_ready(candidate));
@@ -93094,7 +93553,7 @@ index 9681ec31..8cb650c3 100644
                  let mut editor_error = None;
                  let setup_persisted = result.is_ok();
                  let capture_write=invocation.is_none() && runtime.kiosk_capture.pending();
-@@ -3126,10 +3954,20 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3126,10 +3964,20 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          if (source_changed && restore_allowed) || usb_ready {
                              runtime.invalidate_source(app);
                          }
@@ -93115,7 +93574,7 @@ index 9681ec31..8cb650c3 100644
                          runtime.usb_save_finished(usb_ready);
                          kiosk_resume::reconciled(&mut runtime);
                          runtime.parental_confirmed();
-@@ -3151,7 +3989,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3151,7 +3999,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                                      super::ott_import::register_verified(&source).map(|_| ())
                                  })
                              })
@@ -93125,7 +93584,7 @@ index 9681ec31..8cb650c3 100644
                          kiosk_settings_applied = applied.is_ok();
                          if let Err(error) = applied {
                              subtitle_outcome = TrackCommitOutcome::Rejected(TrackCommitFailure::Unavailable);
-@@ -3160,7 +3999,12 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3160,7 +4009,12 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                              editor_error = Some(format!("Saved, but could not apply settings: {error}"));
                              json!({"status":"rejected","data":{"saved":true,"reloaded":false,"error":error}})
                          } else {
@@ -93139,7 +93598,7 @@ index 9681ec31..8cb650c3 100644
                                  if restore_allowed {
                                      transient::cancel_play_candidate(&mut runtime,app);
                                      runtime.cancel_play_request();
-@@ -3176,7 +4020,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3176,7 +4030,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                                      } else {
                                          runtime.continuity.suppress_unrequested_start();
                                      }
@@ -93150,7 +93609,7 @@ index 9681ec31..8cb650c3 100644
                                  }
                              }
                              response
-@@ -3192,6 +4038,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3192,6 +4048,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          response
                      }
                  };
@@ -93158,7 +93617,7 @@ index 9681ec31..8cb650c3 100644
                  if let Some(startup) = usb_startup { runtime.finish_usb_startup(app, startup); }
                  if !may_navigate || usb_preserve_browse {
                      (runtime.page, runtime.provider) = browse;
-@@ -3204,6 +4051,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3204,6 +4061,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  }
                  transient::local_save_finished(&mut runtime, setup_persisted);
                  runtime.complete_setup(editor_error.is_none(), setup_persisted);
@@ -93166,7 +93625,7 @@ index 9681ec31..8cb650c3 100644
                  let category_saved = setup_persisted && editor_error.is_none();
                  let category_allowed = invocation.as_ref().is_none_or(|inv|
                      commands::category_select_completion_allowed(&runtime, inv));
-@@ -3235,10 +4083,16 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3235,10 +4093,16 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.remote.complete(invocation, response);
                  }
                  if let Some(pending) = subtitle_save { pending.finish(app, subtitle_outcome); }
@@ -93183,7 +93642,7 @@ index 9681ec31..8cb650c3 100644
                  runtime.kiosk_capture.cancel_unwritten();
                  let capture_write=invocation.is_none() && runtime.kiosk_capture.pending();
                  runtime.parental_uncertain();
-@@ -3248,6 +4102,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3248,6 +4112,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  runtime.m3u_attachments.invalidate_all();
                  runtime.save_navigation = SaveNavigation::Preserve;
                  runtime.save_ui_owner = None;
@@ -93191,7 +93650,7 @@ index 9681ec31..8cb650c3 100644
                  runtime.saving = false;
                  let subtitle_save = runtime.subtitle_save.take();
                  runtime.persistence_uncertain = true;
-@@ -3259,6 +4114,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3259,6 +4124,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  if let Some(saved) = visible {
                      // A visible but unverified image has no browse authority.
                      runtime.saved = saved;
@@ -93199,7 +93658,7 @@ index 9681ec31..8cb650c3 100644
                  }
                  if capture_write {kiosk_capture::settled(&mut runtime,app,kiosk_capture::Completion::Unknown);}
                  runtime.status = "Settings write needs reconciliation; restart the player".into();
-@@ -3316,6 +4172,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3316,6 +4182,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let navigation = std::mem::replace(&mut runtime.save_navigation, SaveNavigation::Preserve);
                  let playback_epoch = runtime.save_playback_epoch;
                  let ui_owner = runtime.save_ui_owner.take();
@@ -93207,7 +93666,7 @@ index 9681ec31..8cb650c3 100644
                  runtime.saving = false;
                  let prepared = (|| {
                      let verified = result?;
-@@ -3380,6 +4237,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3380,6 +4247,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.save_navigation = navigation;
                      runtime.save_playback_epoch = playback_epoch;
                      runtime.save_ui_owner = ui_owner;
@@ -93215,7 +93674,7 @@ index 9681ec31..8cb650c3 100644
                      runtime.verified_imports.push(verified);
                      Ok(())
                  })();
-@@ -3389,7 +4247,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3389,7 +4257,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.changed();
                  }
              }
@@ -93230,7 +93689,7 @@ index 9681ec31..8cb650c3 100644
                  runtime.restore_play_generation = None;
                  let superseded = runtime
                      .play_ticket
-@@ -3405,6 +4270,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3405,6 +4280,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      .or_else(|| (!playback_allowed(app)).then_some("policy_denied"));
                  let mut native_start=None;
                  let response = if superseded {
@@ -93238,7 +93697,7 @@ index 9681ec31..8cb650c3 100644
                      // A native retry also advances admission. Cancel the stale
                      // request without abandoning an unchanged owned source.
                      let retained = runtime
-@@ -3428,6 +4294,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3428,6 +4304,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.retire_result(result);
                      Err("M3U media attachment changed before playback")
                  } else if expired {
@@ -93246,7 +93705,7 @@ index 9681ec31..8cb650c3 100644
                      runtime.retire_result(result);
                      Err("Playback request expired")
                  } else if items_error.is_some() && runtime.pending_play.as_ref().is_some_and(|inv| inv.action == favorites_items::ACTION) {
-@@ -3444,17 +4311,41 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3444,17 +4321,41 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      Err("Playback is suspended")
                  } else {
                      result.and_then(|(entry, source)| {
@@ -93289,7 +93748,7 @@ index 9681ec31..8cb650c3 100644
                  // An exact kiosk target retains its source-owned retry policy.
                  // Observe it before generic exact-catalog failure retires the target.
                  let pinned_retry = response_failed && !expired && !superseded
-@@ -3527,7 +4418,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3527,7 +4428,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      }
      runtime.reconcile_m3u_attachment(app);
      let resolver_generation = runtime.play_generation;
@@ -93299,7 +93758,7 @@ index 9681ec31..8cb650c3 100644
          transient::plex_remote::resolver_failed(&mut runtime);
          // Synchronous resolver refusal has the same kiosk-before-catalog order.
          let pinned_retry = runtime.kiosk_resolve_failed(app, runtime.play_generation);
-@@ -3555,18 +4447,42 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3555,18 +4457,42 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      // immutable screen model. Large local folders must not rebuild the full list
      // once for every 64 files that arrived during the same frame.
      runtime.rearm_source_work(app);
@@ -93344,7 +93803,7 @@ index 9681ec31..8cb650c3 100644
              }
              CatalogEvent::Finished(generation, result) if generation == runtime.generation => {
                  runtime.catalog_warning = None;
-@@ -3581,22 +4497,42 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3581,22 +4507,42 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          }
      }
      transient::scan_result(&mut runtime,app,&mut incoming,&mut finished);
@@ -93390,7 +93849,7 @@ index 9681ec31..8cb650c3 100644
          runtime.status = result
              .err()
              .map(str::to_owned)
-@@ -3605,19 +4541,24 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3605,19 +4551,24 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  .map(|(_, warning)| warning.to_owned())
                  .unwrap_or_else(|| format!("{} videos", runtime.catalog.entries.len())));
          runtime.changed();
@@ -93416,7 +93875,7 @@ index 9681ec31..8cb650c3 100644
                  let Some(preview) = guide.into_preview(
                      runtime.metadata_generation,
                      runtime.metadata_target.as_ref(),
-@@ -3631,6 +4572,10 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3631,6 +4582,10 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  continue;
              }
          };
@@ -93427,7 +93886,7 @@ index 9681ec31..8cb650c3 100644
          if !runtime.metadata_attachment_current() { continue; }
          if let Some(binding)=runtime.metadata_local_selection.as_ref(){
              let current=runtime.saved.favorites.entries().iter().find(|f|event.entry_id==format!("favorite:{}",f.identity()));
-@@ -3653,6 +4598,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3653,6 +4608,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          let actual_playing = runtime.playing.as_ref()
              .filter(|playing| playing_matches(playing, app)).cloned();
          if !runtime.retain_selected_guide(selected_guide, actual_playing.as_ref()) { continue; }
@@ -93435,7 +93894,7 @@ index 9681ec31..8cb650c3 100644
          runtime.metadata_refresh_ms = runtime.now_ms().saturating_add(30000);
          let metadata_succeeded=event.result.is_ok();
          let mut source_entry = event.entry;
-@@ -3696,17 +4642,20 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3696,17 +4652,20 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      if updated != entry
                          && runtime
                              .catalog
@@ -93457,7 +93916,7 @@ index 9681ec31..8cb650c3 100644
          let enrich_playing = metadata_succeeded && runtime.metadata_playback_identity.as_ref().is_some_and(|identity|
              runtime.playing.as_ref().is_some_and(|playing| playing.identity.as_ref()==Some(identity)
                  && runtime.metadata_profile_matches(playing,&event.profile_id)
-@@ -3741,7 +4690,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3741,7 +4700,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      transient::cleanup_local_proofs(&mut runtime);
      transient::pending_tick(&mut runtime,app);
      runtime.poll_local_assets(app);
@@ -93466,7 +93925,7 @@ index 9681ec31..8cb650c3 100644
      if playback_allowed(app) {
          live_hud::rearm_player(&mut runtime, app);
          runtime.refresh_metadata();
-@@ -3765,6 +4714,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3765,6 +4724,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          };
          if let Some(request) = resume {
              let exact = !request.advance_on_failure;
@@ -93475,7 +93934,7 @@ index 9681ec31..8cb650c3 100644
              let result = if request.continuation.as_ref().is_some_and(|identity|
                  !plx_media::route::playback_identity_matches(&app.player.session, identity))
              {
-@@ -3776,6 +4727,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3776,6 +4737,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  runtime.play_request(request)
              };
              if result.is_ok() {
@@ -93483,7 +93942,7 @@ index 9681ec31..8cb650c3 100644
                  if let Some(attempt) = kiosk_source::admitted_pinned_request(&runtime) {
                      runtime.note_kiosk_attempt(attempt);
                  }
-@@ -3785,13 +4737,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3785,13 +4747,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.continuity.stop(runtime.generation);
                  }
                  runtime.play_target = None;
@@ -93500,7 +93959,7 @@ index 9681ec31..8cb650c3 100644
              let ids = runtime.ordered_ids();
              let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
              let decision = runtime.continuity.catalog_updated(
-@@ -3803,10 +4755,17 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3803,10 +4765,17 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          }
          runtime.checkpoint(app, false);
      }
@@ -93519,7 +93978,7 @@ index 9681ec31..8cb650c3 100644
      }
      for request in app.bridge.take_ott_reqs() {
          let source = match &request {
-@@ -3829,16 +4788,22 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3829,16 +4798,22 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          }
          match request {
              OttOut::Refresh { reply } => {
@@ -93545,7 +94004,7 @@ index 9681ec31..8cb650c3 100644
                      OttAction::EditSetting(key) if key == "local.usb" || key.starts_with("local.usb.select:")
                          || key.starts_with("local.usb.browse:") => false,
                      OttAction::Back if runtime.usb_browsing() => false,
-@@ -3850,36 +4815,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3850,36 +4825,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                              && matches!(editor.purpose, search::EditorPurpose::Search { .. })),
                      OttAction::CancelSetting { session } => runtime.edit_session.as_ref()
                          .is_some_and(|editor| editor.id == *session && editor.owner == reply),
@@ -93585,7 +94044,7 @@ index 9681ec31..8cb650c3 100644
                  if runtime.reply.is_none() { break; }
              }
          }
-@@ -3889,8 +4831,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3889,8 +4841,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      let state = state(app, &runtime);
      for invocation in runtime.remote.tick(now, state) {
          let response = if let Err(error) = input_policy::remote(&mut runtime, &invocation) {
@@ -93596,7 +94055,7 @@ index 9681ec31..8cb650c3 100644
          } else if matches!(
              invocation.action.as_str(),
              "native_companion" | "torrent_indexer"
-@@ -3901,6 +4843,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3901,6 +4853,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          } else {
              commands::command(&mut runtime, app, &invocation)
          };
@@ -93606,7 +94065,7 @@ index 9681ec31..8cb650c3 100644
          if let Some(response) = response {
              runtime.remote.complete(invocation, response);
          }
-@@ -3913,9 +4858,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3913,9 +4868,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          runtime.remote_snapshot = snapshot;
          runtime.changed();
      }
@@ -93621,7 +94080,7 @@ index 9681ec31..8cb650c3 100644
      // Consume failed-start deadlines only after viewer and remote commands, so
      // Stop/standby/source changes win even on the frame a retry becomes due.
      if playback_allowed(app) && runtime.play_work_allowed() && runtime.play_target.is_none()
-@@ -3936,61 +4886,173 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3936,61 +4896,173 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      if !plx_appkit::menu_visibility::projected().is_default() {
          app.rec.refuse("Nondefault menu visibility is not bound in this recording format");
      }
@@ -93804,7 +94263,7 @@ index 9681ec31..8cb650c3 100644
          OttAction::ShowFavorites => {
              runtime.save_category_choice(None)?;
              runtime.cancel_setup();
-@@ -4014,6 +5076,16 @@ fn handle_action(
+@@ -4014,7 +5086,20 @@ fn handle_action(
                  runtime.recover_plex_profiles(app, false)?;
              }
          }
@@ -93819,9 +94278,13 @@ index 9681ec31..8cb650c3 100644
 +            m3u_slots::open(runtime, app, profile)?;
 +        }
          OttAction::SelectProfile(id) => {
++            if runtime.saved.profiles.profiles.iter().any(|profile|
++                profile.id == id && profile.source.is_empty())
++            { return Err("Configure this profile before selecting it"); }
              let mut saved = runtime.saved.clone();
              saved.profiles.active_profile = Some(id);
-@@ -4038,12 +5110,16 @@ fn handle_action(
+ 
+@@ -4038,12 +5123,16 @@ fn handle_action(
                      .ok_or("Video not found")?;
                  let bindings=runtime.selection_bindings().map_err(|_|"Source inventory is invalid")?;
                  let owner=runtime.row_owner().ok_or("Select a provider profile")?;
@@ -93838,7 +94301,7 @@ index 9681ec31..8cb650c3 100644
          OttAction::Preview(id) => {
              if id.starts_with("favorite:") {
                  return runtime.request_favorite_metadata(&id);
-@@ -4060,13 +5136,27 @@ fn handle_action(
+@@ -4060,13 +5149,27 @@ fn handle_action(
                  }
              }
          }
@@ -93867,7 +94330,7 @@ index 9681ec31..8cb650c3 100644
              runtime.cancel_setup();
          }
          OttAction::Refresh => {
-@@ -4077,7 +5167,13 @@ fn handle_action(
+@@ -4077,7 +5180,13 @@ fn handle_action(
                  // Only this admitted viewer action may attribute cancellation to Refresh.
                  // Hold its diagnostic record away from generic source invalidation below.
                  let retry = runtime.continuity_retry_log.take();
@@ -93882,7 +94345,7 @@ index 9681ec31..8cb650c3 100644
                  if let Some(retry) = retry {
                      if runtime.continuity.pending_retry().is_some_and(|pending|
                          retry.catalog_generation == pending.generation
-@@ -4111,8 +5207,15 @@ fn handle_action(
+@@ -4111,8 +5220,15 @@ fn handle_action(
              // its older playback intent when the durable reply arrives.
              runtime.playback_epoch = runtime.playback_epoch.wrapping_add(1);
              runtime.cancel_play_request();
@@ -93899,7 +94362,7 @@ index 9681ec31..8cb650c3 100644
              runtime.status.clear();
              if leaving_setup || matches!(runtime.page, "channels" | "favorites") {
                  runtime.page = "profiles";
-@@ -4121,14 +5224,8 @@ fn handle_action(
+@@ -4121,14 +5237,8 @@ fn handle_action(
              } else if app.pages.nav.tabs.stack.depth() > 1 {
                  bridge::nav_pop(&mut app.pages);
              } else {
@@ -93916,7 +94379,7 @@ index 9681ec31..8cb650c3 100644
              }
          }
          OttAction::EditSetting(key) => {
-@@ -4202,25 +5299,7 @@ fn handle_action(
+@@ -4202,25 +5312,7 @@ fn handle_action(
              let mut actual_key = key.clone();
              let (title, value, secret, limit, text_policy) = match key.as_str() {
                  "profile.add" => {
@@ -93943,7 +94406,7 @@ index 9681ec31..8cb650c3 100644
                      if matches!(runtime.provider, ProviderKind::Xtream | ProviderKind::Stalker) {
                          let profile = runtime.edit_profile.take().expect("new profile draft");
                          return runtime.open_setup(profile, true);
-@@ -4279,6 +5358,10 @@ fn handle_action(
+@@ -4279,6 +5371,10 @@ fn handle_action(
                  }
                  "profile.history_hours" => ("Archive hours (0 uses playlist values)",
                      runtime.begin_archive_hours()?, false, 4, OttTextPolicy::Literal),
@@ -93954,7 +94417,7 @@ index 9681ec31..8cb650c3 100644
                  "uiFontScale" => ("Interface text scale (20–200%)",
                      runtime.font_scale_percent().to_string(), false, 3, OttTextPolicy::Literal),
                  "remote.address" => ("Remote control server", remote_settings::address_input(runtime), false, 2048, OttTextPolicy::Literal),
-@@ -4287,36 +5370,16 @@ fn handle_action(
+@@ -4287,36 +5383,16 @@ fn handle_action(
                  }
                  _ => return Err("Unknown setting"),
              };
@@ -94001,7 +94464,7 @@ index 9681ec31..8cb650c3 100644
          }
          OttAction::CancelSetting { session } => {
              if runtime.edit_session.as_ref().is_some_and(|current|
-@@ -4364,9 +5427,18 @@ fn handle_action(
+@@ -4364,9 +5440,18 @@ fn handle_action(
                      runtime.status.clear();
                      return Ok(true);
                  }
@@ -94021,7 +94484,7 @@ index 9681ec31..8cb650c3 100644
                  } else if key == "uiFontScale" {
                      let saved = runtime.font_scale_candidate(&value, session)?;
                      runtime.save(saved, None, false)?;
-@@ -4379,9 +5451,11 @@ fn handle_action(
+@@ -4379,9 +5464,11 @@ fn handle_action(
                      runtime.save(saved, None, true)?;
                  } else if key == "remote.address" {
                      let candidate = remote_settings::candidate(runtime, &value)?;
@@ -94036,7 +94499,7 @@ index 9681ec31..8cb650c3 100644
                  } else {
                      let mut profile = runtime.edit_profile.clone()
                          .ok_or("Profile editor is no longer active")?;
-@@ -4392,8 +5466,13 @@ fn handle_action(
+@@ -4392,8 +5479,13 @@ fn handle_action(
                      }
                      profile.validate().map_err(|_| "Invalid profile source or name")?;
                      let original = runtime.edit_profile_original.clone();
@@ -94052,7 +94515,7 @@ index 9681ec31..8cb650c3 100644
                  }
                  runtime.pending_editor_save = Some(request.clone());
                  Ok(false)
-@@ -4433,6 +5512,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4433,6 +5525,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
          app.ott = Some(runtime);
          return false;
      };
@@ -94065,7 +94528,7 @@ index 9681ec31..8cb650c3 100644
      if runtime.playing.as_ref().is_some_and(|playing| playing.archive.is_some()) {
          // An interval is one explicit selection. EOF cannot silently switch to
          // another channel or restart the live source. Preserve a newer candidate.
-@@ -4452,13 +5537,15 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4452,13 +5550,15 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
          app.ott = Some(runtime);
          return true;
      }
@@ -94082,7 +94545,7 @@ index 9681ec31..8cb650c3 100644
          let key = if current.starts_with("favorite:") {
              "favorites".into()
          } else {
-@@ -4479,12 +5566,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4479,12 +5579,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
      }
      let ids = runtime.ordered_ids();
      let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
@@ -94101,7 +94564,7 @@ index 9681ec31..8cb650c3 100644
      if let Some(playing) = runtime.playing.as_mut() {
          playing.advance_on_failure = true;
      }
-@@ -4569,8 +5656,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4569,8 +5669,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
      source: ReadySource,
      resources: &mut R,
  ) -> Result<(), &'static str> {
@@ -94116,7 +94579,7 @@ index 9681ec31..8cb650c3 100644
      if let Err(error) = runtime.validate_archive_admission(&request, &profile, &entry, &source) {
          runtime.retire_result(Ok((entry, source)));
          return Err(error);
-@@ -4601,10 +5694,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4601,10 +5707,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
      } else {
          plx_media::route::cancel_play(&mut app.player.session);
      }
@@ -94130,7 +94593,7 @@ index 9681ec31..8cb650c3 100644
      let advance_on_failure = request.advance_on_failure;
      let mut owned_source = None;
      match source {
-@@ -4668,12 +5764,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4668,12 +5777,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
              } else {
                  0
              };
@@ -94145,7 +94608,7 @@ index 9681ec31..8cb650c3 100644
                  None,
                  &mut app.pages,
                  &mut app.bridge,
-@@ -4713,8 +5810,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4713,8 +5823,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
              }
          }
      }
@@ -94160,7 +94623,7 @@ index 9681ec31..8cb650c3 100644
          kiosk_selection: request.kiosk_selection,
          archive: request.archive,
          identity: plx_media::route::playback_identity(&app.player.session),
-@@ -4727,10 +5830,20 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4727,10 +5843,20 @@ fn start_resolved_with<R: playback::PlaybackResources>(
          advance_on_failure,
          requires_server_lease,
      });
@@ -94181,7 +94644,7 @@ index 9681ec31..8cb650c3 100644
          if playing.archive.is_none() && transient::plex_remote::choice(runtime, &playing.entry.id).is_none() {
              if runtime.playing_attachment.is_some() && playing.selection_id.starts_with("favorite:") {
                  let _=runtime.request_favorite_metadata(&playing.selection_id);
-@@ -4738,6 +5851,9 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4738,6 +5864,9 @@ fn start_resolved_with<R: playback::PlaybackResources>(
                  runtime.request_metadata(playing.profile.clone(), playing.entry.clone());
              }
          }
@@ -94191,7 +94654,7 @@ index 9681ec31..8cb650c3 100644
          runtime.transient_checkpoint(&playing,position_ms);
      }
      Ok(())
-@@ -4830,7 +5946,13 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
+@@ -4830,7 +5959,13 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
      let start=playing.identity.as_ref().and_then(|identity|app.player.programme.started_at(identity));
      let next=if runtime.play_target.is_some() || runtime.transient.owns_playback() {None} else {
          let ids=runtime.ordered_ids();let refs:Vec<&str>=ids.iter().map(String::as_str).collect();
@@ -94206,7 +94669,7 @@ index 9681ec31..8cb650c3 100644
              let title=if let Some(identity)=id.strip_prefix("favorite:") {
                  runtime.saved.favorites.entries().iter().find(|favorite|favorite.identity()==identity).map(|favorite|favorite.title.clone())
              } else {runtime.catalog.entries.iter().find(|entry|entry.id==id).map(|entry|entry.title.clone())}?;
-@@ -4855,7 +5977,8 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
+@@ -4855,7 +5990,8 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
          entry_poster(entry).or_else(|| leaf_owner.and_then(|_|leaf.as_ref())
              .and_then(|leaf| programme_leaf_art(leaf, plx_media::route::cur_sid(&app.player.session))))
      };
@@ -94216,7 +94679,7 @@ index 9681ec31..8cb650c3 100644
      let mut now=leaf.unwrap_or_else(||NowPlaying {
          ott:None,is_episode:false,is_real_episode:false,title:entry.title.clone(),ep_title:String::new(),season:0,index:0,
          summary:entry.description.clone(),year:0,dur_ms:duration.unwrap_or(0),rating:String::new(),thumb:String::new(),detail_rk:String::new(),
-@@ -4873,6 +5996,105 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
+@@ -4873,6 +6009,105 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
      runtime.programme_metadata_generation=Some(app.bridge.metadata_mut().gen());
  }
  
@@ -94322,7 +94785,7 @@ index 9681ec31..8cb650c3 100644
  fn state(app: &App, runtime: &Runtime) -> Value {
      use plx_media::player::PlaybackState;
      let current = plx_media::player::state(&app.player.session);
-@@ -4958,6 +6180,12 @@ pub(super) fn foreign_content_allowed(app:&mut App)->bool {
+@@ -4958,6 +6193,12 @@ pub(super) fn foreign_content_allowed(app:&mut App)->bool {
  #[path = "ott_reminder_wiring_tests.rs"]
  mod reminder_wiring_tests;
  
@@ -96331,7 +96794,7 @@ index 00000000..cbc1a271
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/category_profile.rs b/rust-modules/src/app/ott_runtime_tests/category_profile.rs
-index daff27b3..1be1e40c 100644
+index daff27b3..cd20984d 100644
 --- a/rust-modules/src/app/ott_runtime_tests/category_profile.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/category_profile.rs
 @@ -45,7 +45,8 @@ fn stage(app: &mut App, action: OttAction) -> Saved {
@@ -96452,7 +96915,7 @@ index daff27b3..1be1e40c 100644
          .unwrap_or_else(|_| panic!("fixture catalogue receiver"));
      runtime_tick(&mut app);
      let r = app.ott.as_ref().unwrap();
-@@ -578,3 +660,268 @@ fn caption_projects_effective_category_all_and_favorites_without_relabeling_prof
+@@ -578,3 +660,361 @@ fn caption_projects_effective_category_all_and_favorites_without_relabeling_prof
      assert_eq!(r.view().category_label.as_deref(), Some("Favorites"));
      r.page = "profiles"; assert!(r.view().category_label.is_none());
  }
@@ -96719,6 +97182,99 @@ index daff27b3..1be1e40c 100644
 +        assert!(imported.category.is_empty(), "{change}");
 +        assert!(imported.favorites_selected, "{change}");
 +        assert_eq!(imported.favorites, before.favorites);
++    }
++}
++
++
++// Keep construction and restored Runtime in separate frames: no two App values
++// coexist. The Local root below is a synthetic owner input, never an opened path.
++fn mixed_favorites_restart_image() -> (Vec<u8>, Vec<String>) {
++    use crate::app::ott_local_session::{AuthorityRef, BoundSource, SourceKind};
++    let mut app = ready();
++    let r = app.ott.as_mut().unwrap();
++    let mut plex = profile("plex");
++    plex.kind = ProviderKind::Plex;
++    plex.source = "fixture-server".into();
++    let mut portal = profile("portal");
++    portal.kind = ProviderKind::VPortal;
++    portal.source = "portal::[key:fixture]https://media.invalid/api".into();
++    r.saved.profiles.profiles.extend([plex.clone(), portal.clone()]);
++    let mut row = entry("shared-row", "News");
++    row.title = "Same title".into();
++    row.provider_id = Some("42".into());
++    for id in ["A", "B"] {
++        r.saved.favorites.toggle(selection::capture(&profile(id), &row).unwrap()).unwrap();
++    }
++    let entries = r.saved.favorites.entries();
++    assert_eq!(entries[0].locator, entries[1].locator, "same tvg-id in two profiles");
++    assert_ne!(entries[0].identity(), entries[1].identity());
++    row.media = MediaLocator::Plex { server_id: plex.source.clone(), rating_key: "42".into() };
++    r.saved.favorites.toggle(selection::capture(&plex, &row).unwrap()).unwrap();
++    row.media = MediaLocator::VPortal { request: json!({"fid":"42"}) };
++    row.provider_id_field = Some("fid".into());
++    r.saved.favorites.toggle(selection::capture(&portal, &row).unwrap()).unwrap();
++    row.media = MediaLocator::Local { relative_path: "Series/film.mp4".into() };
++    let root = BoundSource { id: "temporary-root".into(), name: "Movies".into(),
++        kind: SourceKind::Folder, available: true, authority_ref: AuthorityRef(11),
++        generation: 7, canonical_path: Some("/fixture/temporary-movies".into()) };
++    let bindings = selection::SelectionBindings::new(&r.saved.profiles, [&root], 7).unwrap();
++    let local = selection::capture_bound(&bindings, selection::SelectionOwner::LocalRoot(&root), &row).unwrap();
++    r.saved.favorites.toggle(local).unwrap();
++    r.saved = r.category_choice_candidate(Some("News")).unwrap();
++    switch(r, "B");
++    r.saved = r.category_choice_candidate(Some("Movies")).unwrap();
++    switch(r, "A");
++    r.saved.favorites_selected = true;
++    r.saved.validate().unwrap();
++    let ids = r.saved.favorites.entries().iter()
++        .map(|favorite| format!("favorite:{}", favorite.identity())).collect();
++    (serde_json::to_vec(&r.saved).unwrap(), ids)
++}
++
++#[test]
++fn mixed_favorites_restart_preserves_profile_categories_and_requires_new_local_binding() {
++    let _serial = plx_base::testlock::serial();
++    let (image, ids) = mixed_favorites_restart_image();
++    let mut app = ready();
++    let r = app.ott.as_mut().unwrap();
++    r.saved = serde_json::from_slice(&image).unwrap();
++    r.saved.validate().unwrap();
++    r.catalog = Catalog::default();
++    r.catalog_revision = r.catalog_revision.wrapping_add(1);
++    r.page = "favorites";
++    assert!(r.transient.accepted.is_none() && r.local_inventory.sources.is_empty());
++    let document = r.saved.favorites.clone();
++    assert_eq!(document.entries().len(), 5);
++    assert_eq!(document.entries().iter().map(|f| f.origin.provider.as_str()).collect::<Vec<_>>(),
++        ["m3u", "m3u", "plex", "vportal", "local"]);
++    let generation = r.generation;
++    for (active, category) in [("A", "News"), ("B", "Movies"), ("portal", ""), ("plex", ""), ("A", "News")] {
++        switch(r, active);
++        r.sync_saved_context();
++        r.changed();
++        assert_eq!(r.saved.category, category, "category belongs to the selected profile");
++        assert!(r.saved.favorites_selected);
++        let view = r.view();
++        assert!(view.page_id.starts_with("favorites:"));
++        assert_eq!(view.rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>(), ids);
++        for row in &view.rows {
++            assert_eq!(row.content_title.as_deref(), Some("Same title"));
++            assert!(matches!(&row.action, OttAction::Play(id) if id == &row.id));
++        }
++        let bindings = r.selection_bindings().unwrap();
++        for (favorite, expected_owner) in r.saved.favorites.entries().iter()
++            .zip([Some("A"), Some("B"), Some("plex"), Some("portal"), None]) {
++            match expected_owner {
++                Some(expected) => assert!(matches!(bindings.resolve(favorite),
++                    Ok(selection::SelectionOwner::Profile(profile)) if profile.id == expected),
++                    "active profile must not retarget a mixed Favorite"),
++                None => assert!(matches!(bindings.resolve(favorite), Err(selection::BindingError::MissingProfile)),
++                    "a saved temporary Local favorite stays visible but carries no live root authority"),
++            }
++        }
++        assert_eq!(r.saved.favorites, document);
++        assert_eq!(r.generation, generation);
++        assert!(!r.saving && r.play_target.is_none() && r.resolver_next.is_none() && r.catalog_next.is_none());
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/classic_clock.rs b/rust-modules/src/app/ott_runtime_tests/classic_clock.rs
@@ -131405,6 +131961,28 @@ index e1298340..5102eb45 100644
          sid, rk: "old-rk".into(), show_rk: String::new(), kind: String::new(), audio: Vec::new(), subs: Vec::new(), video_fps: 0.0,
          width: 0, height: 0, bitrate: 0, dovi: Default::default(), markers: Vec::new(), chapters: Vec::new(), hdr: false,
      }))));
+diff --git a/rust-modules/src/bin/sim.rs b/rust-modules/src/bin/sim.rs
+index 6067c134..fe7d0b0e 100644
+--- a/rust-modules/src/bin/sim.rs
++++ b/rust-modules/src/bin/sim.rs
+@@ -53,7 +53,7 @@ fn main() {
+     let argv: Vec<String> = std::env::args().skip(1).collect();
+     // Opt-in before HUD/path initialization, plex_run, or any worker. This flag
+     // does not exist in packaged host builds or on televisions.
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     let argv = match plxnative_modules::port::activate_fixture(&argv) {
+         Ok(Some(rest)) => {
+             eprintln!("HOST FIXTURE: synthetic NONCONFIDENTIAL state; not device key protection");
+@@ -65,7 +65,7 @@ fn main() {
+             plx_base::process::exit_now(2)
+         }
+     };
+-    #[cfg(not(all(feature = "hostsim", feature = "devtriggers", target_os = "macos")))]
++    #[cfg(not(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux"))))]
+     if argv.iter().any(|arg| arg.starts_with("--fixture-")) {
+         eprintln!("host fixture unavailable in this build");
+         plx_base::process::exit_now(2);
 diff --git a/rust-modules/src/dev.rs b/rust-modules/src/dev.rs
 index 81a2cd4c..d77376bc 100644
 --- a/rust-modules/src/dev.rs
@@ -131591,7 +132169,7 @@ index 49278834..c313c72b 100644
              &mut app.pages,
              &mut app.bridge,
 diff --git a/rust-modules/src/port.rs b/rust-modules/src/port.rs
-index f7fbbbc7..f3e2e04d 100644
+index f7fbbbc7..027cd1d6 100644
 --- a/rust-modules/src/port.rs
 +++ b/rust-modules/src/port.rs
 @@ -14,8 +14,8 @@ const SINK: &dyn plx_platform::tv::sink::VideoSink = &plx_media::player::ffi_hos
@@ -131796,7 +132374,29 @@ index f7fbbbc7..f3e2e04d 100644
      plx_platform::tv::launch::offer(&raw);
  }
  
-@@ -95,3 +269,18 @@ fn open_named(namespace: plx_platform::tv::secure::Namespace, sealed: &plx_platf
+@@ -74,7 +248,7 @@ pub unsafe extern "C" fn plx_launch_args(json: *const c_char) {
+ fn seal_named(namespace: plx_platform::tv::secure::Namespace, plain: &[u8])
+     -> Result<plx_platform::tv::secure::Sealed, plx_platform::storage::wire::KeymanagerFailure>
+ {
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     if plx_platform::tv::secure::fixture::active() {
+         return plx_platform::tv::secure::fixture::seal(namespace, plain)
+             .ok_or_else(plx_platform::tv::secure::protection_unavailable);
+@@ -84,14 +258,29 @@ fn seal_named(namespace: plx_platform::tv::secure::Namespace, plain: &[u8])
+ fn open_named(namespace: plx_platform::tv::secure::Namespace, sealed: &plx_platform::tv::secure::Sealed)
+     -> Option<Vec<u8>>
+ {
+-    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
+     if plx_platform::tv::secure::fixture::active() {
+         return plx_platform::tv::secure::fixture::open(namespace, sealed);
+     }
+     plx_platform::keymanager::open_named(namespace, sealed)
+ }
+ 
+-#[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++#[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
  pub fn activate_fixture(args: &[String]) -> Result<Option<Vec<String>>, &'static str> {
      plx_platform::tv::secure::fixture::activate_from_args(args)
  }
@@ -131804,14 +132404,14 @@ index f7fbbbc7..f3e2e04d 100644
 +fn removable_snapshot(off: &plx_base::task::OffFrame, check: &mut dyn FnMut() -> bool)
 +    -> Result<Vec<plx_platform::tv::removable::MountCandidate>, plx_platform::tv::removable::ReadError>
 +{
-+    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
 +    if let Some(result) = plx_platform::tv::secure::fixture::local_mounts(off, check) { return result; }
 +    plx_platform::webos::removable::observe(off, check)
 +}
 +fn removable_identities(off: &plx_base::task::OffFrame, mounts: &[plx_platform::tv::removable::MountCandidate], check: &mut dyn FnMut() -> bool)
 +    -> Result<Vec<plx_platform::tv::removable::identity::IdentityObservation>, plx_platform::tv::removable::identity::IdentityError>
 +{
-+    #[cfg(all(feature = "hostsim", feature = "devtriggers", target_os = "macos"))]
++    #[cfg(all(feature = "hostsim", feature = "devtriggers", any(target_os = "macos", target_os = "linux")))]
 +    if let Some(result) = plx_platform::tv::secure::fixture::local_identities(off, mounts, check) { return result; }
 +    plx_platform::webos::removable_identity::identity_snapshot(off, mounts, check)
 +}
@@ -168051,6 +168651,672 @@ index 6a12e4e6..c7ff5f8e 100644
 +and Resolve replay modes with complete frame counts and zero differences. This
 +remains bounded synthetic navigation coverage; it does not prove television
 +rendering, live provider playback or all-domain replay support.
+diff --git a/tests/ott_classic_ui.py b/tests/ott_classic_ui.py
+new file mode 100644
+index 00000000..ba12d5e4
+--- /dev/null
++++ b/tests/ott_classic_ui.py
+@@ -0,0 +1,418 @@
++#!/usr/bin/env python3
++"""Capture ordinary Classic UI and actual category writes on a hosted Linux simulator.
++
++No replay, seeded Saved image, test-only UI action, or production account is used.
++The fixed 1920x1080 pointer locations come from the reviewed Classic fixture; state
++writes are checked independently. Images still REQUIRE VISUAL REVIEW. In particular,
++a focus element is not a page ID, and a valid PNG does not prove its contents.
++"""
++from __future__ import annotations
++
++import argparse
++from collections import Counter
++from datetime import datetime, timezone
++import hashlib
++from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
++import importlib.util
++import json
++import os
++from pathlib import Path
++import shutil
++import stat
++import subprocess
++import sys
++import threading
++import time
++from xml.sax.saxutils import escape
++
++from ott_fixture_read import exact, inspect_record, json_value, private_read
++from paging_link import SimRun
++
++ROOT = Path(__file__).resolve().parents[1]
++REQUIRED = ("category-all", "category-favorites", "category-nine")
++SUPPLEMENTARY = ("providers-classic", "profiles-classic", "channel-list-classic",
++                 "channel-browse", "category-picker", "search-editor", "search-results",
++                 "search-cancel", "profiles-return", "providers-return", "exit-prompt", "exit-cancel")
++ASSETS = ("appfont.ttf", "appfont-bold.ttf", "appfont-cjk.ttf", "appfont-emoji.ttf",
++          "appfont-arabic.ttf", "appfont-arabic-bold.ttf", "appfont-hebrew.ttf",
++          "appfont-hebrew-bold.ttf", "icon.png", "largeIcon.png", "splash.png",
++          "OFL.txt", "le-roots.pem", "libass-plx-host.so.0")
++FIRST_GROUP = "<News> / {category} & Music"
++# The flat M3U category identity from ott_catalog_organization::provider_id.
++# Display labels are deliberately not persisted as category IDs.
++NINTH_CATEGORY = "organization:provider:" + hashlib.sha256(b"Group 07").hexdigest()
++
++
++def sha(path):
++    digest = hashlib.sha256()
++    with path.open("rb") as stream:
++        for block in iter(lambda: stream.read(1024 * 1024), b""):
++            digest.update(block)
++    return digest.hexdigest()
++
++
++def png_reader():
++    # Reuse the existing CRC/chunk validator; no second PNG parser.
++    spec = importlib.util.spec_from_file_location("sim_smoke", ROOT / "tools/sim-smoke.py")
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    return module.png_size
++
++
++def git_value(*args):
++    return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True, timeout=5).strip()
++
++
++class Playlist(ThreadingHTTPServer):
++    # server_close joins active requests; each socket also has a finite read timeout.
++    daemon_threads = False
++
++    def __init__(self):
++        self.hits = Counter()
++        self.lock = threading.Lock()
++        self.started_at = int(time.time())
++        owner = self
++
++        class Handler(BaseHTTPRequestHandler):
++            def setup(self):
++                super().setup()
++                self.connection.settimeout(3)
++
++            def log_message(self, *_):
++                pass
++
++            def do_GET(self):
++                with owner.lock:
++                    owner.hits[self.path] += 1
++                if self.path == "/fixture.m3u":
++                    body, kind = owner.playlist(), "audio/x-mpegurl"
++                elif self.path == "/fixture.xml":
++                    body, kind = owner.guide(), "application/xml"
++                else:
++                    # UI-only fixture. Never imply a decoder or playback pass.
++                    self.send_error(404)
++                    return
++                self.send_response(200)
++                self.send_header("Content-Type", kind)
++                self.send_header("Content-Length", str(len(body)))
++                self.end_headers()
++                self.wfile.write(body)
++
++        super().__init__(("127.0.0.1", 0), Handler)
++        self.origin = f"http://127.0.0.1:{self.server_port}"
++        self.url = self.origin + "/fixture.m3u"
++        self.thread = threading.Thread(target=self.serve_forever, kwargs={"poll_interval": .1}, daemon=True)
++
++    def playlist(self):
++        lines = [f'#EXTM3U url-tvg="{self.origin}/fixture.xml"']
++        for number in range(1, 9):
++            group = FIRST_GROUP if number <= 2 else f"Group {number - 1:02}"
++            epg = "" if number in (2, 8) else f'tvg-id="visual-{number:02}" '
++            duration = 120 if number == 2 else -1
++            lines += [f'#EXTINF:{duration} {epg}group-title="{group}",Fixture Channel {number:02}',
++                      f"{self.origin}/unavailable/visual-{number:02}.ts"]
++        return ("\n".join(lines) + "\n").encode()
++
++    def guide(self):
++        def stamp(value):
++            return datetime.fromtimestamp(value, timezone.utc).strftime("%Y%m%d%H%M%S +0000")
++        start = self.started_at - 600
++        lines = ['<?xml version="1.0" encoding="UTF-8"?><tv>']
++        for number in (1, 3, 4, 5, 6, 7):
++            lines.append(f'<channel id="visual-{number:02}"><display-name>Fixture Channel {number:02}</display-name></channel>')
++        for number in (1, 3, 4, 5, 6, 7):
++            for offset, title in ((0, "Current"), (3600, "Next")):
++                lines.append(f'<programme channel="visual-{number:02}" start="{stamp(start + offset)}" stop="{stamp(start + offset + 3600)}">'
++                             f'<title>{title} Programme {number:02}</title><desc>{escape(f"Synthetic channel {number:02}. Current programme description for visual acceptance.")}</desc></programme>')
++        return ("\n".join(lines) + "\n</tv>\n").encode()
++
++    def counts(self):
++        with self.lock:
++            return dict(self.hits)
++
++
++class Scenario:
++    def __init__(self, sim, output, server, deadline, receipt):
++        self.sim, self.output, self.server = sim, output, server
++        self.deadline, self.receipt = deadline, receipt
++        self.png_size = png_reader()
++        self.nshot = 0
++
++    def remaining(self):
++        if self.sim.proc.poll() is not None:
++            raise RuntimeError(f"simulator exited: {self.sim.proc.returncode}")
++        left = self.deadline - time.monotonic()
++        if left <= 0:
++            raise TimeoutError("Classic UI scenario deadline exceeded")
++        return left
++
++    def wait(self, predicate, label, timeout=15):
++        until = time.monotonic() + min(timeout, self.remaining())
++        while time.monotonic() < until:
++            self.remaining()
++            value = predicate()
++            if value:
++                return value
++            time.sleep(.05)
++        raise TimeoutError(label)
++
++    def pause(self, seconds=.3):
++        time.sleep(min(seconds, self.remaining()))
++        self.remaining()
++
++    def focus(self):
++        latest = self.sim.latest(lambda _, line: line.startswith("focus route="))
++        if not latest:
++            return None
++        at, line = latest
++        # Do not search backwards for an older OTT focus when another route owns input.
++        return line if (line.startswith("focus route=ott ") and " press=0" in line
++                        and time.monotonic() - at >= .25) else None
++
++    def key(self, token):
++        self.remaining()
++        self.receipt["inputs"].append(token)
++        self.sim.key(token)
++        self.pause()
++
++    def saved(self):
++        try:
++            record = inspect_record(self.output / "state", "ott-state")
++        except FileNotFoundError:
++            return None
++        value = record["value"]
++        record["value"] = json_value(value) if isinstance(value, str) else value
++        return record
++
++    def saved_when(self, condition, label, after_revision=None):
++        def accepted():
++            record = self.saved()
++            return record if (record and (after_revision is None or record["record_revision"] > after_revision)
++                              and condition(record["value"])) else None
++        record = self.wait(accepted, label)
++        self.receipt["writes"].append({"label": label, "revision": record["record_revision"],
++                                      "sha256": record["record_sha256"]})
++        return record
++
++    def mode(self):
++        path = self.output / "state/records/ott-preferences.json"
++        try:
++            raw = private_read(path, 2 * 1024 * 1024)
++        except FileNotFoundError:
++            return None
++        record = json_value(raw)
++        exact(record, ("format", "domain", "key", "version", "revision", "state"))
++        if (record.get("format"), record.get("domain"), record.get("key"), record.get("version")) != (
++                "plxnative-record", "ott-preferences", "ott-preferences", 1):
++            raise ValueError("unexpected public preferences record")
++        if type(record["version"]) is not int or type(record["revision"]) is not int or record["revision"] <= 0:
++            raise ValueError("invalid public preference revision")
++        exact(record["state"], ("Data",))
++        exact(record["state"]["Data"], ("payload",))
++        value = json_value(record["state"]["Data"]["payload"])
++        exact(value, ("value", "revision", "epoch"))
++        if (type(value["revision"]) is not int or value["revision"] != record["revision"]
++                or type(value["epoch"]) is not int or not 0 < value["epoch"] < 2**64):
++            raise ValueError("public preference envelope and payload disagree")
++        preferences = value["value"]
++        if (not isinstance(preferences, dict) or set(preferences) - {"version", "device_id", "interface_mode"}
++                or type(preferences.get("version")) is not int or preferences["version"] != 1):
++            raise ValueError("unexpected preferences in fresh UI fixture")
++        mode = preferences.get("interface_mode")
++        if mode is None:
++            return None
++        if type(mode) is not int or mode not in (0, 1):
++            raise ValueError("invalid interface mode")
++        if mode != 0:
++            return None
++        return {"revision": record["revision"], "sha256": hashlib.sha256(raw).hexdigest(),
++                "interface_mode": 0, "scope": "ordinary public preference write, not sealed-state proof"}
++
++    def capture(self, name):
++        before = self.wait(self.focus, f"settled OTT focus before {name}")
++        self.nshot += 1
++        path = self.sim.dir / f"capture-{self.nshot}.png"
++        if path.exists():
++            raise ValueError("capture sequence was reused")
++        sent = self.sim.key("shot")
++        def written():
++            marker = self.sim.latest(lambda at, line: at >= sent and line == f"shot: wrote 1920x1080 to {path}")
++            return marker and path.is_file()
++        self.wait(written, f"fresh complete PNG {name}")
++        if self.png_size(path) != (1920, 1080):
++            raise ValueError("wrong capture geometry")
++        after = self.wait(self.focus, f"settled OTT focus after {name}")
++        if before != after:
++            raise ValueError(f"focus changed during {name}")
++        target = self.output / (name + ".png")
++        shutil.copyfile(path, target)
++        record = self.saved()
++        value = record["value"] if record else {}
++        self.receipt["captures"].append({"id": name, "path": target.name, "sha256": sha(target),
++            "focus_before": before, "focus_after": after, "visual_verdict": "NOT_REVIEWED",
++            "saved_selection": {"category": value.get("category"), "favorites_selected": value.get("favorites_selected"),
++                                "active_profile": value.get("profiles", {}).get("active_profile")},
++            "saved_revision": record["record_revision"] if record else None})
++        print(json.dumps({"captured": name, "visual_verdict": "NOT_REVIEWED"}), flush=True)
++
++    def select_category(self, digit, category, favorites, name):
++        self.key("k:0,489")  # existing Blue remote handler
++        self.capture(name + "-picker")
++        revision = self.saved()["record_revision"]
++        self.key(f"k:{48 + digit},{29 + digit}")
++        self.saved_when(lambda v: v.get("category") == category and v.get("favorites_selected") is favorites,
++                        f"category {digit} Saved acknowledgement", revision)
++        self.capture(name)
++
++    def run(self):
++        fifo = self.sim.dir / "plxnative-remote"
++        self.wait(lambda: fifo.exists() and stat.S_ISFIFO(fifo.lstat().st_mode), "remote FIFO ready")
++        self.capture("boot")
++        for token in ("ok", "ok", "ok", "txt:" + self.server.url, "down", "down", "ok"):
++            self.key(token)
++        def profile_matches(v):
++            profiles = v.get("profiles", {})
++            return profiles.get("active_profile") == "m3u-1" and any(
++                p.get("id") == "m3u-1" and p.get("source") == self.server.url and p.get("kind") == "m3u"
++                for p in profiles.get("profiles", []))
++        self.saved_when(profile_matches, "ordinary M3U profile Saved acknowledgement")
++        self.wait(lambda: self.server.counts().get("/fixture.m3u", 0) and self.server.counts().get("/fixture.xml", 0), "playlist and EPG requests")
++        self.capture("modern-channel-list")
++        # Previous actual fixture captures establish these Modern navigation points.
++        for token in ("back", "back", "ck:158,177", "ck:1120,606", "ck:1192,940", "up", "ok"):
++            self.key(token)
++        self.receipt["classic_preference"] = self.wait(self.mode, "ordinary Classic mode write")
++        self.capture("classic-selected")
++        self.key("back")
++        self.capture("settings-classic")
++        self.key("back")
++        self.capture("providers-classic")
++        self.key("ok")
++        self.capture("profiles-classic")
++        self.key("down")  # Classic's separate Load playlist row
++        self.key("ok")
++        self.capture("channel-list-classic")
++        self.key("ck:811,1023")
++        self.capture("channel-browse")
++        revision = self.saved()["record_revision"]
++        self.key("ck:1066,865")  # Add to Favorites in this eight-row fixture
++        def has_first(v):
++            entries = v.get("favorites", {}).get("entries", [])
++            return len(entries) == 1 and entries[0].get("locator") == {"kind": "channel", "channelId": "m3u-epg:visual-01"}
++        self.saved_when(has_first, "first channel favorite Saved acknowledgement", revision)
++        self.capture("favorite-added")
++        self.key("k:0,489")
++        self.capture("category-picker")
++        # Selecting a different category first makes even All require a new real write.
++        self.key("k:57,38")
++        self.saved_when(lambda v: v.get("category") == NINTH_CATEGORY and v.get("favorites_selected") is False,
++                        "ninth category setup")
++        self.select_category(1, "", False, "category-all")
++        self.select_category(2, "", True, "category-favorites")
++        self.select_category(9, NINTH_CATEGORY, False, "category-nine")
++        # Search is supplementary visual evidence; query one row then cancel it.
++        self.select_category(1, "", False, "all-before-search")
++        self.key("ck:811,1023")
++        self.key("ck:1100,505")
++        self.capture("search-editor")
++        self.key("ok")
++        self.key("txt:Fixture+Channel+08")
++        self.key("down")
++        self.key("down")
++        self.key("ok")
++        self.capture("search-results")
++        self.key("back")
++        self.capture("search-cancel")
++        self.key("back")
++        self.capture("profiles-return")
++        self.key("back")
++        self.capture("providers-return")
++        self.key("back")
++        self.capture("exit-prompt")
++        self.key("back")
++        self.capture("exit-cancel")
++        final = self.saved()
++        if not has_first(final["value"]):
++            raise ValueError("Favorites changed while navigating")
++        self.receipt["final_favorite"] = {"channelId": "m3u-epg:visual-01", "revision": final["record_revision"], "sha256": final["record_sha256"]}
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--sim", type=Path, required=True)
++    parser.add_argument("--assets", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--timeout", type=int, default=300)
++    args = parser.parse_args()
++    if sys.platform != "linux" or os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted":
++        parser.error("run only on a GitHub-hosted Linux runner")
++    if not 30 <= args.timeout <= 300:
++        parser.error("timeout must be between 30 and 300 seconds")
++    binary, source_assets = args.sim.resolve(strict=True), args.assets.resolve(strict=True)
++    output = args.output.resolve()
++    output.mkdir(mode=0o700, parents=True, exist_ok=False)
++    runtime, assets, state = (output / name for name in ("runtime", "assets", "state"))
++    for directory in (runtime, assets, state):
++        directory.mkdir(mode=0o700)
++    receipt = {"schema": 1, "status": "INCOMPLETE", "visual_verdict": "NOT_REVIEWED",
++        "scope": "normal OTT Classic UI with synthetic M3U; not TV, decoder, or full parity acceptance",
++        "source_commit": git_value("rev-parse", "HEAD"), "source_tree": git_value("rev-parse", "HEAD^{tree}"),
++        "source_diff_sha256": hashlib.sha256(subprocess.check_output(["git", "-C", str(ROOT), "diff", "HEAD", "--"], timeout=5)).hexdigest(),
++        "driver_sources": {name: sha(Path(__file__).parent / name) for name in (
++            "ott_classic_ui.py", "ott_fixture_read.py", "paging_link.py")},
++        "binary_sha256": sha(binary), "required_captures": list(REQUIRED), "supplementary_captures": list(SUPPLEMENTARY),
++        "inputs": [], "writes": [], "captures": [], "cleanup": {}}
++    server = sim = None
++    started = time.monotonic()
++    try:
++        for name in ASSETS:
++            path = source_assets / name
++            if path.is_file():
++                shutil.copyfile(path, assets / name)
++        for required in ("appfont.ttf", "appfont-bold.ttf", "libass-plx-host.so.0"):
++            if not (assets / required).is_file():
++                raise ValueError(f"missing renderer asset {required}")
++        receipt["assets"] = {p.name: sha(p) for p in sorted(assets.iterdir())}
++        server = Playlist()
++        server.thread.start()
++        receipt["fixture"] = {"origin": server.origin, "channels": 8, "categories_with_all_and_favorites": 9,
++                              "playlist_sha256": hashlib.sha256(server.playlist()).hexdigest(), "programme_origin": server.started_at}
++        env = {k: v for k, v in os.environ.items() if not k.startswith(("PLXNATIVE_", "OTTPLAY_", "OTTP_", "PLX_"))}
++        env.update(PLXNATIVE_RUNTIME_DIR=str(runtime), PLXNATIVE_APP_DIR=str(assets),
++                   PLXNATIVE_WIN="1920x1080", PLXNATIVE_SHOT=str(runtime / "capture.png"),
++                   LIBGL_ALWAYS_SOFTWARE="1", LC_ALL="C.UTF-8", LANG="C.UTF-8", LC_MESSAGES="C.UTF-8")
++        argv = [str(binary), "--fixture-state", str(state), "--fixture-create", "127.0.0.1", str(server.server_port)]
++        sim = SimRun(binary, server.server_port, {"plxnative-focus": ""}, runtime, token=None,
++                     argv=argv, environment=env, log_path=output / "process.log")
++        Scenario(sim, output, server, started + args.timeout - 15, receipt).run()
++        captured = {item["id"] for item in receipt["captures"]}
++        if not set(REQUIRED + SUPPLEMENTARY) <= captured:
++            raise ValueError("missing required capture")
++        receipt["status"] = "CAPTURED_REQUIRES_VISUAL_REVIEW"
++    except Exception as error:
++        receipt["error"] = f"{type(error).__name__}: {error}"
++    finally:
++        if sim is not None:
++            try:
++                sim.close()
++                receipt["cleanup"]["simulator_exited"] = sim.proc.poll() is not None
++                receipt["cleanup"]["log_reader_exited"] = not sim.thread.is_alive()
++            except Exception as error:
++                receipt["cleanup"]["error"] = str(error)
++        if server is not None:
++            receipt["http_requests"] = server.counts()
++            if server.thread.is_alive():
++                server.shutdown()
++                server.thread.join(3)
++            server.server_close()
++            receipt["cleanup"]["listener_exited"] = not server.thread.is_alive()
++        if not all(receipt["cleanup"].get(key) is True for key in ("simulator_exited", "log_reader_exited", "listener_exited")):
++            receipt["status"] = "INCOMPLETE"
++        receipt["elapsed_s"] = round(time.monotonic() - started, 3)
++        (output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
++    print(json.dumps({"status": receipt["status"], "receipt": str(output / "receipt.json"), "error": receipt.get("error")}), flush=True)
++    return 0 if receipt["status"] == "CAPTURED_REQUIRES_VISUAL_REVIEW" else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/tests/ott_fixture_read.py b/tests/ott_fixture_read.py
+new file mode 100644
+index 00000000..a2958ef5
+--- /dev/null
++++ b/tests/ott_fixture_read.py
+@@ -0,0 +1,126 @@
++#!/usr/bin/env python3
++"""Read-only HostFixture verifier derived from qualified native-local-m3u.py.
++Never writes fixture files. Never emits the plaintext value except to its caller.
++"""
++import base64
++import hashlib
++import hmac
++import json
++import os
++from pathlib import Path
++import stat
++import struct
++
++DOMAIN = b"ott-host-fixture-v1\0NONCONFIDENTIAL"
++
++
++def private_read(path: Path, limit: int) -> bytes:
++    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
++    try:
++        info = os.fstat(fd)
++        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
++            raise ValueError("fixture input must be our private regular file")
++        if info.st_size > limit:
++            raise ValueError("fixture input exceeds its size limit")
++        data = os.read(fd, limit + 1)
++        if len(data) > limit:
++            raise ValueError("fixture input grew past its size limit")
++        return data
++    finally:
++        os.close(fd)
++
++
++def private_directory(path: Path):
++    info = path.lstat()
++    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
++        raise ValueError("fixture directory must be our private 0700 directory")
++
++
++def frame(parts):
++    return b"".join(struct.pack(">Q", len(part)) + part for part in parts)
++
++
++def json_value(data):
++    def pairs(items):
++        result = {}
++        for key, value in items:
++            if key in result:
++                raise ValueError("duplicate fixture JSON field")
++            result[key] = value
++        return result
++    return json.loads(data, object_pairs_hook=pairs, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("non-finite fixture JSON")))
++
++
++def exact(obj, keys):
++    if not isinstance(obj, dict) or set(obj) != set(keys):
++        raise ValueError("unexpected fixture record shape")
++
++
++def canonical_base64(value, limit):
++    if not isinstance(value, str) or len(value) > 4 * ((limit + 2) // 3):
++        raise ValueError("invalid fixture base64 size")
++    result = base64.b64decode(value, validate=True)
++    if len(result) > limit or base64.b64encode(result).decode() != value:
++        raise ValueError("noncanonical fixture base64")
++    return result
++
++
++def inspect_record(root: Path, namespace="ott-control"):
++    if namespace not in {"ott-control", "ott-state"}:
++        raise ValueError("only explicit OTT fixture namespaces are accepted")
++    """Read ONLY explicit NONCONFIDENTIAL HostFixture records, authenticating before JSON parse."""
++    if not root.is_absolute() or root.resolve(strict=True) != root:
++        raise ValueError("fixture path is not canonical absolute")
++    private_directory(root)
++    private_directory(root / "records")
++    key = private_read(root / "key", 32)
++    marker = private_read(root / "marker", 8192)
++    if len(key) != 32 or len(marker) < 32:
++        raise ValueError("invalid synthetic fixture authority")
++    body, tag = marker[:-32], marker[-32:]
++    if not hmac.compare_digest(hmac.digest(key, body, "sha256"), tag):
++        raise ValueError("synthetic fixture marker authentication failed")
++    parts, offset = [], 0
++    while offset < len(body):
++        if offset + 8 > len(body):
++            raise ValueError("invalid fixture marker frame")
++        length = struct.unpack_from(">Q", body, offset)[0]
++        offset += 8
++        if length > len(body) - offset:
++            raise ValueError("invalid fixture marker length")
++        parts.append(body[offset:offset+length]); offset += length
++    if len(parts) != 4 or parts[:3] != [DOMAIN, b"marker", str(root).encode()]:
++        raise ValueError("not this explicit NONCONFIDENTIAL fixture root")
++    install = parts[3].decode("utf-8", "strict")
++    if not install or len(install) > 256 or any(ord(c) < 32 for c in install):
++        raise ValueError("invalid fixture install identity")
++    raw = private_read(root / "records" / (namespace + ".json"), 2 * 1024 * 1024)
++    record = json_value(raw)
++    exact(record, ["format", "version", "domain", "key", "revision", "state"])
++    if (record["format"] != "plxnative-record" or type(record["version"]) is not int or record["version"] != 1
++            or record["domain"] != namespace or record["key"] != namespace
++            or type(record["revision"]) is not int or record["revision"] < 1):
++        raise ValueError("unexpected OTT fixture record identity")
++    exact(record["state"], ["Data"])
++    exact(record["state"]["Data"], ["payload"])
++    payload = json_value(record["state"]["Data"]["payload"])
++    exact(payload, ["version", "sealed"])
++    sealed = payload["sealed"]
++    exact(sealed, ["backend", "key", "iv", "data"])
++    namespace_key = install + ".ott." + namespace[4:] + ".v1"
++    if (type(payload["version"]) is not int or payload["version"] != 1
++            or sealed["backend"] != "host_fixture" or sealed["key"] != namespace_key):
++        raise ValueError("refusing non-HostFixture or wrong-namespace record")
++    plain = canonical_base64(sealed["data"], 1024 * 1024)
++    tag = canonical_base64(sealed["iv"], 32)
++    authenticated = frame([DOMAIN, b"envelope", b"1", b"host_fixture", str(root).encode(),
++                           install.encode(), namespace_key.encode(), plain])
++    if not hmac.compare_digest(hmac.digest(key, authenticated, "sha256"), tag):
++        raise ValueError("synthetic fixture envelope authentication failed")
++    inner = json_value(plain)
++    exact(inner, ["version", "install", "namespace", "value"])
++    if (type(inner["version"]) is not int or inner["version"] != 1
++            or inner["install"] != install or inner["namespace"] != namespace):
++        raise ValueError("wrong inner fixture identity")
++    return {"value": inner["value"], "record_revision": record["revision"],
++            "record_sha256": hashlib.sha256(raw).hexdigest()}
+diff --git a/tests/paging_link.py b/tests/paging_link.py
+index 32346249..20392266 100644
+--- a/tests/paging_link.py
++++ b/tests/paging_link.py
+@@ -359,26 +359,49 @@ class SimRun:
+     """One simulator process in its own runtime dir; every event-log line is stamped with the
+     monotonic time THIS process first saw it (the log itself carries no clock)."""
+ 
+-    def __init__(self, binary, port, triggers, tmp, *, token="x"):
++    def __init__(self, binary, port, triggers, tmp, *, token="x", argv=None,
++                 environment=None, log_path=None):
+         self.dir = pathlib.Path(tmp)
+         self.lines = []  # (t, text)
+         self.lock = threading.Lock()
+         self.stop = threading.Event()
+-        if token is not None:
+-            (self.dir / "plxnative-token").write_text(token)
+-        for name, value in triggers.items():
+-            (self.dir / name).write_text(str(value))
+-        env = dict(os.environ, PLXNATIVE_RUNTIME_DIR=str(self.dir), PLXNATIVE_APP_DIR=str(ROOT / "pkg"))
+-        self.proc = subprocess.Popen([str(binary), "127.0.0.1", str(port)], env=env,
+-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+-        self.thread = threading.Thread(target=self._tail, daemon=True)
+-        self.thread.start()
+-        self.fifo = None
++        self.proc = self.thread = self.fifo = self.output = None
++        try:
++            if token is not None:
++                marker = self.dir / "plxnative-token"
++                marker.write_text(token)
++                marker.chmod(0o600)
++            for name, value in triggers.items():
++                marker = self.dir / name
++                marker.write_text(str(value))
++                marker.chmod(0o600)
++            if environment is None:
++                env = dict(os.environ, PLXNATIVE_APP_DIR=str(ROOT / "pkg"))
++            else:
++                # An explicit sanitized environment replaces inheritance, including
++                # its private asset directory. Only the runtime owner is enforced.
++                env = dict(environment)
++                env.setdefault("PLXNATIVE_APP_DIR", str(ROOT / "pkg"))
++            env["PLXNATIVE_RUNTIME_DIR"] = str(self.dir)
++            if log_path is not None:
++                self.output = pathlib.Path(log_path).open("wb")
++            command = [str(binary), "127.0.0.1", str(port)] if argv is None else list(argv)
++            self.proc = subprocess.Popen(command, env=env,
++                                         stdout=self.output if self.output is not None else subprocess.DEVNULL,
++                                         stderr=subprocess.STDOUT if self.output is not None else subprocess.DEVNULL)
++            self.thread = threading.Thread(target=self._tail, daemon=True)
++            self.thread.start()
++        except BaseException:
++            self.close()
++            raise
+ 
+     def _tail(self):
+         log = self.dir / "plxnative-events.log"
+-        while not log.exists() and not self.stop.is_set():
+-            time.sleep(0.01)
++        while not log.exists():
++            if self.stop.wait(0.01):
++                return
++        if self.stop.is_set():
++            return
+         buf = b""
+         with open(log, "rb") as f:
+             while not self.stop.is_set():
+@@ -422,13 +445,36 @@ class SimRun:
+ 
+     def close(self):
+         self.stop.set()
+-        self.proc.terminate()
+         try:
+-            self.proc.wait(5)
+-        except subprocess.TimeoutExpired:
+-            self.proc.kill()
+-        if self.fifo is not None:
+-            os.close(self.fifo)
++            if self.proc is not None:
++                if self.proc.poll() is None:
++                    try:
++                        self.proc.terminate()
++                    except ProcessLookupError:
++                        pass
++                try:
++                    self.proc.wait(5)
++                except subprocess.TimeoutExpired:
++                    try:
++                        self.proc.kill()
++                    except ProcessLookupError:
++                        pass
++                    self.proc.wait(5)
++        finally:
++            try:
++                if self.thread is not None and self.thread.ident is not None:
++                    self.thread.join(2)
++                    if self.thread.is_alive():
++                        raise RuntimeError("simulator event-log reader did not stop")
++            finally:
++                try:
++                    if self.fifo is not None:
++                        os.close(self.fifo)
++                        self.fifo = None
++                finally:
++                    if self.output is not None:
++                        self.output.close()
++                        self.output = None
+ 
+ 
+ def wire(base):
 diff --git a/tests/replay_fixtures.py b/tests/replay_fixtures.py
 index 875aaa86..223d616a 100644
 --- a/tests/replay_fixtures.py
