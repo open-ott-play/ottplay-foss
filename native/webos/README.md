@@ -10,7 +10,7 @@ build, not silently copied into the main player's source tree.
 
 The application ID is `com.openottplay.player.native`; the current display
 title is **OTTPlay**. This guide's examples target the **0.3.0 candidate**. The
-[0.3.0 preparation notes](releases/0.3.0.md) are not a publication or device-test
+[0.3.0 release notes](releases/0.3.0.md) are not a publication or device-test
 receipt: use these package filenames only after the matching release is available
 or a verified candidate has been supplied. The earlier
 [native-webos-v0.2.0-beta.1](https://github.com/open-ott-play/ottplay-foss/releases/tag/native-webos-v0.2.0-beta.1)
