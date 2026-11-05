@@ -2890,8 +2890,9 @@ export function applyAspectRatio(): void {
     var w = 0;
     var h = 0;
     if (measured) {
-        var scale =
-            contain ? Math.min(cw / vw, ch / vh) : Math.max(cw / vw, ch / vh);
+        var scale = contain
+            ? Math.min(cw / vw, ch / vh)
+            : Math.max(cw / vw, ch / vh);
         w = Math.max(1, Math.round(vw * scale));
         h = Math.max(1, Math.round(vh * scale));
     }
