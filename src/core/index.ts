@@ -1222,7 +1222,7 @@ interface CoreStreamAttempt {
     fail(kind: string, status?: number, position?: number): void;
     loading(): boolean;
     pause(): void;
-    progress(): void;
+    progress(resetRetryBudget?: boolean): void;
     resume(): boolean;
     state(): {
         pending: boolean;
@@ -1293,7 +1293,8 @@ function createCoreStreamAttempt(
     var timer: any = null,
         pending = false,
         disposed = false,
-        ended = false;
+        ended = false,
+        reportedLoading = false;
     function active(): boolean {
         if (disposed || session !== _playSession || (owner && !owner.active()))
             return false;
@@ -1316,6 +1317,7 @@ function createCoreStreamAttempt(
     }
     function loading(): boolean {
         if (!active()) return false;
+        reportedLoading = true;
         if (notify) notify("error");
         return active();
     }
@@ -1433,8 +1435,16 @@ function createCoreStreamAttempt(
         },
         loading: loading,
         pause: clear,
-        progress: function () {
-            if (active() && !pending && !ended) retries = 0;
+        progress: function (resetRetryBudget = true) {
+            if (!active() || pending || ended) return;
+            if (resetRetryBudget) retries = 0;
+            // A local decoder can recover before a queued retry. Its clock
+            // invalidates the retry intent without emitting another playing
+            // event, so retire only our own earlier loading notification.
+            if (reportedLoading && notify) {
+                reportedLoading = false;
+                notify("playing");
+            }
         },
         resume: function () {
             if (ended) return true;
@@ -1643,8 +1653,8 @@ function startCoreEngine(
                 // Brief reads from an unstable mount must not renew the retry
                 // budget. Count observed wall time, not seek/rate advancement.
                 progress = discontinuity ? 0 : progress + elapsed;
-                if (progress >= 10 && coreStreamAttempt)
-                    coreStreamAttempt.progress();
+                if (progress > 0 && coreStreamAttempt)
+                    coreStreamAttempt.progress(progress >= 10);
             } else {
                 progress = 0;
                 if (now - stalled >= 30000 && coreStreamAttempt) {
