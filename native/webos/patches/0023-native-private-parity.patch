@@ -72654,7 +72654,7 @@ index 66435554..78f1b041 100644
          assert!(app.ott.as_ref().unwrap().play_target.is_none());
          assert!(app.ott.as_ref().unwrap().resolver_next.is_none());
 diff --git a/rust-modules/src/app/ott_runtime_tests/lifecycle.rs b/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
-index 420bacc0..1d1d33a5 100644
+index 420bacc0..63a5a36a 100644
 --- a/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
 @@ -15,8 +15,8 @@ fn entry() -> CatalogEntry {
@@ -72686,6 +72686,24 @@ index 420bacc0..1d1d33a5 100644
      let mut app = prepared();
      let mut runtime = app.ott.take().unwrap();
      let mut source = profile();
+@@ -255,7 +255,7 @@ fn failed_pinned_request() -> App {
+     runtime.tx.send(Job::Saved(Ok(saved), None, false, json!({}))).unwrap();
+     app.ott = Some(runtime);
+     runtime_tick(&mut app);
+-    let mut runtime = app.ott.take().unwrap();
++    runtime = app.ott.take().unwrap();
+     // First admission queues behind the held existing slot, without starting IO.
+     runtime.resolver_busy = true;
+     let attempt = kiosk_source::activate(&mut runtime, &mut app, &prepared).unwrap().unwrap();
+@@ -328,7 +328,7 @@ fn initial_retry_cannot_cross_viewer_pause_or_standby() {
+     assert!(runtime.play_target.is_none());
+     app.ott = Some(runtime);
+     sleep(&mut app);
+-    let mut runtime = app.ott.take().unwrap();
++    runtime = app.ott.take().unwrap();
+     let suspended_generation = runtime.play_generation;
+     runtime.kiosk_recovery_tick_at(&mut app, now + 120_000);
+     assert_eq!(runtime.play_generation, suspended_generation);
 diff --git a/rust-modules/src/app/ott_runtime_tests/local_binding_cancel.rs b/rust-modules/src/app/ott_runtime_tests/local_binding_cancel.rs
 index a5671f27..59b4eeeb 100644
 --- a/rust-modules/src/app/ott_runtime_tests/local_binding_cancel.rs
@@ -95197,7 +95215,7 @@ index 11e0f760..9e71a63a 100644
      let body = d.nav.instance(owner)?;
      if body.staged { return None; }
 diff --git a/rust-modules/src/app/recorder.rs b/rust-modules/src/app/recorder.rs
-index dc129157..5374f864 100644
+index dc129157..5b68319a 100644
 --- a/rust-modules/src/app/recorder.rs
 +++ b/rust-modules/src/app/recorder.rs
 @@ -620,6 +620,10 @@ impl plx_ui::dispatch::Tap<super::bridge::AppHost> for Recplay {
@@ -95291,7 +95309,7 @@ index dc129157..5374f864 100644
              }
          }
          plx_machine::landgate::disarm();
-@@ -2724,6 +2765,24 @@ mod fixture_preflight_tests {
+@@ -2724,6 +2765,42 @@ mod fixture_preflight_tests {
          }
      }
  
@@ -95300,6 +95318,24 @@ index dc129157..5374f864 100644
 +        // The reviewed unused-type census migration applies only to the three
 +        // committed fixtures; the production parser must still reject old headers.
 +        const OLD: u64 = 0xbfe7_7a84_3543_6ff1;
++        assert_ne!(OLD, state_fp());
++        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/fixtures/replay");
++        for name in ["1-boot-home-chip-grid", "6-settings-family", "12-filmography-detail-return"] {
++            let dir = root.join(name);
++            let mut manifest: Value = serde_json::from_str(
++                &std::fs::read_to_string(dir.join("manifest.json")).unwrap()).unwrap();
++            manifest["state_fp"] = json!(OLD);
++            let segment = std::fs::read(dir.join("rec-0000.jsonl")).unwrap();
++            assert_eq!(Recording::parse(&manifest.to_string(), &[segment.as_slice()], state_fp()).err(),
++                Some(RecError::StateShape { theirs: OLD, ours: state_fp() }), "{name}");
++        }
++    }
++
++    #[test]
++    fn pre_ott_root_exit_recording_headers_remain_refused() {
++        // Only the three reviewed unused-OTT fixture headers are migrated.
++        // Arbitrary recordings with the predecessor census remain incompatible.
++        const OLD: u64 = 0xca98_abd7_4bf0_34fb;
 +        assert_ne!(OLD, state_fp());
 +        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/fixtures/replay");
 +        for name in ["1-boot-home-chip-grid", "6-settings-family", "12-filmography-detail-return"] {
@@ -99816,7 +99852,7 @@ index 83f1eef0..2fecaf60 100644
        "path": "/format",
        "rule": "format-newer-minor",
 diff --git a/tests/fixtures/replay/1-boot-home-chip-grid/manifest.json b/tests/fixtures/replay/1-boot-home-chip-grid/manifest.json
-index ed8161be..c91dd515 100644
+index ed8161be..5b960645 100644
 --- a/tests/fixtures/replay/1-boot-home-chip-grid/manifest.json
 +++ b/tests/fixtures/replay/1-boot-home-chip-grid/manifest.json
 @@ -172,7 +172,7 @@
@@ -99824,7 +99860,7 @@ index ed8161be..c91dd515 100644
   },
   "schema": 3,
 - "state_fp": 14247647043822449583,
-+ "state_fp": 14598607133301814523,
++ "state_fp": 16889980540990879211,
   "triggers": [
    "plxnative-app-init",
    "plxnative-rec",
@@ -107667,7 +107703,7 @@ index 31b12f76..e3aac6d2 100644
 +{"elem":4116,"entry":1,"f":538,"group":257,"t":"fo"}
 +{"f":538,"hash":15827955380437506484,"t":"st"}
 diff --git a/tests/fixtures/replay/12-filmography-detail-return/manifest.json b/tests/fixtures/replay/12-filmography-detail-return/manifest.json
-index 057205e7..a3b5354e 100644
+index 057205e7..cde2ffb8 100644
 --- a/tests/fixtures/replay/12-filmography-detail-return/manifest.json
 +++ b/tests/fixtures/replay/12-filmography-detail-return/manifest.json
 @@ -186,7 +186,7 @@
@@ -107675,7 +107711,7 @@ index 057205e7..a3b5354e 100644
   },
   "schema": 3,
 - "state_fp": 14247647043822449583,
-+ "state_fp": 14598607133301814523,
++ "state_fp": 16889980540990879211,
   "triggers": [
    "plxnative-app-init",
    "plxnative-rec",
@@ -121701,7 +121737,7 @@ index a716d9d6..2a85ab31 100644
 +{"elem":1,"entry":3,"f":1271,"group":0,"t":"fo"}
 +{"f":1271,"hash":4134604667706717895,"t":"st"}
 diff --git a/tests/fixtures/replay/6-settings-family/manifest.json b/tests/fixtures/replay/6-settings-family/manifest.json
-index 5bb9e110..787e88ff 100644
+index 5bb9e110..95472570 100644
 --- a/tests/fixtures/replay/6-settings-family/manifest.json
 +++ b/tests/fixtures/replay/6-settings-family/manifest.json
 @@ -173,7 +173,7 @@
@@ -121709,7 +121745,7 @@ index 5bb9e110..787e88ff 100644
   },
   "schema": 3,
 - "state_fp": 14247647043822449583,
-+ "state_fp": 14598607133301814523,
++ "state_fp": 16889980540990879211,
   "triggers": [
    "plxnative-app-init",
    "plxnative-rec",
@@ -131877,10 +131913,10 @@ index 2e603e35..eebd968d 100644
      "Review the privacy policy and manage data stored by OTTPlay Native on this television.",
      "Privacy policy and local data.",
 diff --git a/tests/fixtures/replay/README.md b/tests/fixtures/replay/README.md
-index 6a12e4e6..3ac3ec56 100644
+index 6a12e4e6..bf840afb 100644
 --- a/tests/fixtures/replay/README.md
 +++ b/tests/fixtures/replay/README.md
-@@ -150,6 +150,60 @@ All three migrated anchors must additionally pass the existing hosted Targets an
+@@ -150,6 +150,87 @@ All three migrated anchors must additionally pass the existing hosted Targets an
  replays with every difference counter zero. Source derivation alone is not replay acceptance;
  any navigation or rendering divergence remains a failure, not permission to change the grades.
  
@@ -131912,6 +131948,33 @@ index 6a12e4e6..3ac3ec56 100644
 +still pass Targets and Resolve with complete frame/grade counts and every
 +difference counter zero. Any actual behavior divergence remains a failure; no
 +parser exception, skipped fixture, rewritten grade or runtime fallback is added.
++
++**Unused OTT root-exit census migration (2026-11-04, source-only).** The
++owned root-exit prompt appends token, open/choice, scroll and return-focus state
++to `Ott::SHAPE` and its logical writer. Comparing the complete c5b896c7 and
++f21d4688 censuses changes only OTT (index 37 of 39 screen entries). App and wire
++shapes are unchanged. The screen-only fingerprint moves from
++`0x786fde9e61264338` to `0x91b3cc784c24f726`; the complete product fingerprint
++moves from `14598607133301814523` (`0xca98abd74bf034fb`) to
++`16889980540990879211` (`0xea6543d0a90575eb`). The latter belongs in `state_fp`.
++
++The unchanged current anchors have typed Home, Settings-root and synthetic
++Detail/Filmography initial inputs. Controlled boot creates `App::ott = None`
++and starts at Home; the controlled navigation codec rejects OTT arguments.
++Each segment contains only the recorded `root: home` navigation effect and
++respectively ten, 24 and ten owned key edges, with no direct token, text or
++pointer input. This describes these current segments, not the earlier pointer
++inventory above. They do not instantiate the changed OTT screen.
++
++Only the three manifest `state_fp` numbers change. Initial objects and hashes,
++all other manifest fields, complete segment bytes, measurements, effects,
++resolutions and frame grades stay exact. The existing f21 fixture preflight
++observed the predecessor `StateShape` refusal before this migration; the new
++pre-root-exit regression keeps old headers rejected by the production parser.
++There is no runtime compatibility exception. Recordings that instantiate OTT
++still require fresh capture. Replay validation for this migration is **NOT RUN**:
++all three anchors must pass both Targets and Resolve, with complete counts and
++zero differences, before this conditional source migration is accepted.
 +
 +**Settings capture refresh after the product-name change (2026-11-04).** The
 +Classic-column header-only migration above was conditional on complete runtime
