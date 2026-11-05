@@ -89,11 +89,16 @@ and identify the failed stage before changing the connection:
   write blocks further preference writes until the application restarts.
   Preference success does not complete pairing, verify protected storage or
   unlock access when prior kiosk or parental policy is unknown.
-- **Protected pairing-token Save:** with typed Control support, native ARM
-  encrypts credentials in the named helper. Host builds and legacy v1
-  read/migration still use application-side cryptography. A helper diagnostic
-  result of `complete` alone does not prove a durable credential write and
-  verified readback. If a diagnostic
+- **Protected pairing-token and player-state Save:** on native ARM, typed
+  Control and State requests keep encryption and decryption in the named
+  helper, using separate keys. Control stores pairing credentials; State
+  stores profiles, Favorites, playback positions and other saved settings.
+  Neither path has a plaintext or ACL-only fallback. Host and hostsim builds
+  retain application-side cryptography, as does decoding legacy v1 records
+  on ARM. Migration requires successful legacy decoding; a failure preserves
+  the ciphertext and remains a storage failure. A helper diagnostic result
+  of `complete`, including a successful synthetic key canary, does not prove
+  a durable Control or State write and verified readback. If a diagnostic
   reports `operation=seal stage=generate service_code=-1000`, the meaning of
   that numeric code is not yet established. It is not evidence of a missing
   server or wrong password, or proof that the connection was saved.
