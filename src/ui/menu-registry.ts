@@ -47,36 +47,29 @@ function createDesktopWindowControls(host: any) {
         }
     }
     function title(kind: string): string {
-        if (kind === "aspectLock")
-            return host._
-                ? host._("Lock window to 16:9")
-                : "Lock window to 16:9";
-        return kind === "fullscreen"
-            ? host._
-                ? host._("Full screen")
-                : "Full screen"
-            : host._
-              ? host._("Always on top")
-              : "Always on top";
+        var key =
+            kind === "aspectLock"
+                ? "Lock window to 16:9"
+                : kind === "fullscreen"
+                  ? "Full screen"
+                  : "Always on top";
+        return host._ ? host._(key) : key;
     }
     function notify(kind: string, state: boolean | "unsupported" | null): void {
         try {
-            var status =
+            var statusKey =
                 state === "unsupported"
-                    ? host._
-                        ? host._("Unavailable")
-                        : "Unavailable"
+                    ? "Unavailable"
                     : state === null
-                      ? host._
-                          ? host._("ERROR!")
-                          : "Error!"
+                      ? "ERROR!"
                       : state
-                        ? host._
-                            ? host._("on")
-                            : "on"
-                        : host._
-                          ? host._("off")
-                          : "off";
+                        ? "on"
+                        : "off";
+            var status = host._
+                ? host._(statusKey)
+                : state === null
+                  ? "Error!"
+                  : statusKey;
             if (typeof host.showPopup === "function")
                 host.showPopup(title(kind) + ": " + status);
         } catch (_) {}

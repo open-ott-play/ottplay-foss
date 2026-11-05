@@ -766,3 +766,34 @@ test("late unsupported capability cannot notify a replaced, closed or locked Men
         assert.deepEqual(f.messages, []);
     }
 });
+
+test("native window messages retain exact fallback text without a translator", async () => {
+    const f = fixture();
+    delete f.host._;
+    await f.action(f.open(), "fullscreen");
+    await f.action(f.open(), "fullscreen");
+    f.native.invoke = (command) => {
+        f.calls.push([command]);
+        return { active: false, enabled: false, ok: true, supported: false };
+    };
+    await f.action(f.open(), "aspectLock");
+    f.native.invoke = (command) => {
+        f.calls.push([command]);
+        return {};
+    };
+    await f.action(f.open(), "aspectLock");
+    assert.deepEqual(f.messages, [
+        "Full screen: on",
+        "Full screen: off",
+        "Lock window to 16:9: Unavailable",
+        "Lock window to 16:9: Error!",
+    ]);
+    assert.equal(
+        f.calls.filter(([command]) => command === "get_window_aspect_lock").length,
+        2
+    );
+    assert.equal(
+        f.calls.filter(([command]) => command === "set_window_aspect_lock").length,
+        0
+    );
+});
