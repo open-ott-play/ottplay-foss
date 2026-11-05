@@ -115,7 +115,7 @@ function createDesktopWindowControls(host: any) {
                         typeof current.enabled !== "boolean" ||
                         typeof current.active !== "boolean"
                     )
-                        throw new Error("Window aspect lock unavailable");
+                        throw new Error();
                     if (!admitted(context)) return null;
                     var desired = !current.enabled;
                     return Promise.resolve(
@@ -130,7 +130,7 @@ function createDesktopWindowControls(host: any) {
                             result.enabled !== desired ||
                             typeof result.active !== "boolean"
                         )
-                            throw new Error("Unconfirmed window aspect lock");
+                            throw new Error();
                         return result.enabled;
                     });
                 });
