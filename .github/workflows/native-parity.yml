@@ -56,11 +56,17 @@ jobs:
         with:
           shared-key: windows-installer-lifecycle
       - run: npm ci --ignore-scripts
+      - name: Test Windows native-check failure propagation and text encoding
+        timeout-minutes: 4
+        run: python tests/test_windows_native_checks.py
       - name: Check installer harness and native dependency constraints
         run: |
           python tests/test_windows_installers.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/check-updater-backport.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/check-updater-features.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Exercise updater ZIP extraction on Windows
         run: cargo test --locked --manifest-path tests/updater-zip-regression/Cargo.toml
       - name: Bundle MSI and NSIS without signing or publishing

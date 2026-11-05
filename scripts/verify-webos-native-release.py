@@ -346,7 +346,37 @@ def check_package(ipk, metadata):
     return rows, descriptor, content
 
 
+class IntegrationPatchSpool:
+    """One anonymous file for raw patch bytes, indexed after archive admission."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.offsets = {}
+
+    def get(self, key):
+        # index_archive calls this only after its path, type and size guards.
+        if not key.startswith(INTEGRATION_PREFIX + "patches/"):
+            return None
+        self.offsets[key] = self.stream.tell()
+        return self.stream
+
+    def update(self, digest, key, size):
+        self.stream.seek(self.offsets[key])
+        remaining = size
+        while remaining:
+            block = self.stream.read(min(remaining, 1024 * 1024))
+            require(block, "Truncated integration patch spool")
+            digest.update(block)
+            remaining -= len(block)
+
+
 def check_primary(path, metadata, receipt, package_rows, descriptor):
+    with tempfile.TemporaryFile() as stream:
+        return _check_primary_spooled(path, metadata, receipt, package_rows, descriptor,
+                                      IntegrationPatchSpool(stream))
+
+
+def _check_primary_spooled(path, metadata, receipt, package_rows, descriptor, patches):
     captures = {
         "SOURCE-MANIFEST.json",
         "ci/dependencies.json",
@@ -355,7 +385,12 @@ def check_primary(path, metadata, receipt, package_rows, descriptor):
         "pkg/appinfo.json",
         "rust-modules/rust-toolchain.toml",
     }
-    rows, content = index_archive(path, lambda key: key in captures or key.startswith(INTEGRATION_PREFIX))
+    rows, content = index_archive(
+        path,
+        lambda key: key in captures or (key.startswith(INTEGRATION_PREFIX)
+                                       and not key.startswith(INTEGRATION_PREFIX + "patches/")),
+        spools=patches,
+    )
     check_private_paths(rows, source=True)
     manifest = decode(content["SOURCE-MANIFEST.json"])
     require(
@@ -449,7 +484,11 @@ def check_primary(path, metadata, receipt, package_rows, descriptor):
     integration_hash = hashlib.sha256()
     for key in sorted(integration_names):
         integration_hash.update(key.encode() + b"\0")
-        integration_hash.update(content[INTEGRATION_PREFIX + key])
+        member = INTEGRATION_PREFIX + key
+        if key.startswith("patches/"):
+            patches.update(integration_hash, member, rows[member]["bytes"])
+        else:
+            integration_hash.update(content[member])
     require(integration_hash.hexdigest() == metadata["integration_sha256"], "Embedded integration digest mismatch")
     app = decode(content["pkg/appinfo.json"])
     require(

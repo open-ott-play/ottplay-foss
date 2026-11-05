@@ -231,6 +231,80 @@ class PngArchiveTests(unittest.TestCase):
             validator.assert_not_called()
 
 
+class IntegrationPatchSpoolTests(unittest.TestCase):
+    def test_spooled_patches_hash_raw_bytes_in_canonical_not_archive_order(self):
+        prefix = release.INTEGRATION_PREFIX
+        # Deliberately reverse canonical order and cross several read blocks.
+        files = {
+            prefix + "patches/z.patch": b"z" * (1024 * 1024 + 17),
+            prefix + "upstream.json": b"{}",
+            prefix + "patches/a.patch": b"a\0b\xff\n",
+        }
+        reads = []
+        with tempfile.TemporaryFile() as stream:
+            class BoundedReader:
+                def tell(self):
+                    return stream.tell()
+
+                def write(self, data):
+                    return stream.write(data)
+
+                def seek(self, offset):
+                    return stream.seek(offset)
+
+                def read(self, size):
+                    self_test.assertGreater(size, 0)
+                    self_test.assertLessEqual(size, 1024 * 1024)
+                    reads.append(size)
+                    return stream.read(size)
+
+            self_test = self
+            spool = release.IntegrationPatchSpool(BoundedReader())
+            rows, content = release.index_archive(
+                io.BytesIO(tar_bytes(files)), captures={prefix + "upstream.json"}, spools=spool
+            )
+            self.assertEqual(content, {prefix + "upstream.json": b"{}"})
+            self.assertEqual(set(spool.offsets), {key for key in files if "/patches/" in key})
+            self.assertEqual(stream.tell(), sum(len(files[key]) for key in spool.offsets))
+            actual, expected = hashlib.sha256(), hashlib.sha256()
+            for key in sorted(files):
+                name = key.removeprefix(prefix).encode() + b"\0"
+                actual.update(name)
+                expected.update(name + files[key])
+                if key in spool.offsets:
+                    spool.update(actual, key, rows[key]["bytes"])
+                else:
+                    actual.update(content[key])
+            self.assertEqual(actual.digest(), expected.digest())
+            self.assertGreater(len(reads), len(spool.offsets))
+        self.assertTrue(stream.closed)
+
+    def test_spooling_preserves_member_total_count_and_path_guards(self):
+        key = release.INTEGRATION_PREFIX + "patches/fixture.patch"
+        cases = (
+            ({key: b"1234"}, {"MEMBER_LIMIT": 3}, {}, "Expanded archive"),
+            ({key: b"1234"}, {}, {"total_limit": 3}, "Expanded archive"),
+            ({key: b"x", key + "2": b"y"}, {"FILE_COUNT_LIMIT": 1}, {}, "Too many archive"),
+            ({release.INTEGRATION_PREFIX + "patches/../escape": b"x"}, {}, {}, "Unsafe archive member"),
+        )
+        for files, limits, arguments, message in cases:
+            with self.subTest(message=message, limits=limits), tempfile.TemporaryFile() as stream:
+                spool = release.IntegrationPatchSpool(stream)
+                with patch.dict(vars(release), limits):
+                    with self.assertRaisesRegex(ValueError, message):
+                        release.index_archive(io.BytesIO(tar_bytes(files)), spools=spool, **arguments)
+                self.assertLessEqual(stream.tell(), 1)
+
+    def test_short_patch_spool_cannot_satisfy_indexed_size(self):
+        key = release.INTEGRATION_PREFIX + "patches/fixture.patch"
+        with tempfile.TemporaryFile() as stream:
+            spool = release.IntegrationPatchSpool(stream)
+            rows, _ = release.index_archive(io.BytesIO(tar_bytes({key: b"four"})), spools=spool)
+            stream.truncate(3)
+            with self.assertRaisesRegex(ValueError, "Truncated integration patch spool"):
+                spool.update(hashlib.sha256(), key, rows[key]["bytes"])
+
+
 class Bundle:
     """Small internally coherent release, with real IPK/tar and hash receipts."""
 
@@ -1347,6 +1421,67 @@ class CurrentNativeReleaseTests(unittest.TestCase):
             self.assertRaisesRegex(ValueError, "current checkout"),
         ):
             self.verify(check_checkout=True)
+
+    def large_integration_patch(self):
+        b = self.bundle
+        prefix = release.INTEGRATION_PREFIX
+        key = prefix + "patches/0001-fixture.patch"
+        b.source[key] = b"x" * (release.JSON_LIMIT + 17)
+        provenance = json.loads(b.source[prefix + "PROVENANCE.json"])
+        provenance["patches"]["0001-fixture.patch"] = digest(b.source[key])
+        b.source[prefix + "PROVENANCE.json"] = encoded(provenance)
+        self.refresh_source()
+        return key
+
+    def test_large_integration_patch_passes_current_checkout_with_unchanged_raw_digest(self):
+        self.large_integration_patch()
+        before = self.bundle.integration_hash
+        with (
+            patch.object(release.build, "manifest", return_value=self.bundle.upstream),
+            patch.object(release.build, "integration_digest", return_value=before),
+        ):
+            result = self.verify(check_checkout=True)
+        self.assertEqual(result["bundle_validation"], "PASS")
+        self.assertTrue(result["checkout_validated"])
+        self.assertEqual(self.bundle.integration_hash, before)
+
+    def test_large_patch_tamper_still_fails_raw_integration_digest(self):
+        key = self.large_integration_patch()
+        b = self.bundle
+        b.source[key] = b.source[key][:-1] + b"y"
+        provenance_key = release.INTEGRATION_PREFIX + "PROVENANCE.json"
+        provenance = json.loads(b.source[provenance_key])
+        provenance["patches"]["0001-fixture.patch"] = digest(b.source[key])
+        b.source[provenance_key] = encoded(provenance)
+        # Update the per-file envelope but retain the old raw integration digest.
+        for path in (key, provenance_key):
+            b.source_manifest["files"][path]["sha256"] = digest(b.source[path])
+        b.source_manifest["snapshot_sha256"] = digest(encoded(b.source_manifest["files"]))
+        b.source["SOURCE-MANIFEST.json"] = encoded(b.source_manifest)
+        with self.assertRaisesRegex(ValueError, "Embedded integration digest mismatch"):
+            self.verify()
+
+    def test_actual_json_remains_bounded_and_malformed_json_is_not_spooled(self):
+        cases = (
+            (encoded({"padding": "x" * release.JSON_LIMIT}), "Captured member exceeds size limit"),
+            (b"{", "Expecting property name"),
+        )
+        create = tempfile.TemporaryFile
+        for data, message in cases:
+            with self.subTest(message=message):
+                opened = []
+
+                def tracked_file(*args, **kwargs):
+                    stream = create(*args, **kwargs)
+                    opened.append(stream)
+                    return stream
+
+                self.bundle.source["SOURCE-MANIFEST.json"] = data
+                with patch.object(release.tempfile, "TemporaryFile", side_effect=tracked_file):
+                    with self.assertRaisesRegex(ValueError, message):
+                        self.verify()
+                self.assertEqual(len(opened), 1, "one anonymous patch spool, never one file per member")
+                self.assertTrue(opened[0].closed, "failure must close the patch spool")
 
 
     def test_current_checkout_rejects_discovery_shape_downgrade(self):
