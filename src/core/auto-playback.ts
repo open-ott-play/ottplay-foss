@@ -42,13 +42,22 @@ export function watchAutoNativePlayback(
         "resize",
     ];
 
-    function listen(enabled: boolean): void {
+    /** Keep listener identity and ordering identical for registration and retirement. */
+    function setEventListeners(
+        target: EventTarget,
+        events: string[],
+        handler: () => void,
+        enabled: boolean
+    ): void {
         var method: "addEventListener" | "removeEventListener" = enabled
             ? "addEventListener"
             : "removeEventListener";
-        for (var i = 0; i < events.length; i++)
-            media[method](events[i], inspect);
-        media[method]("error", onNativeError);
+        for (var i = 0; i < events.length; i++) target[method](events[i], handler);
+    }
+
+    function listen(enabled: boolean): void {
+        setEventListeners(media, events, inspect, enabled);
+        setEventListeners(media, ["error"], onNativeError, enabled);
     }
 
     function clearWaits(): void {
@@ -122,8 +131,11 @@ export function watchAutoNativePlayback(
             actionTimer = 0;
             // Test source ownership independently of the timing guard, which
             // can already have been reset by an event on the replacement.
-            var stillCurrent = active();
-            if (stillCurrent && initialGuard && !initialGuard()) {
+            if (!active()) {
+                cancel();
+                return;
+            }
+            if (initialGuard && !initialGuard()) {
                 // Pause, new frames or a changed source may arrive between the
                 // last sample and this deferred action. Do not reload playback.
                 decided = false;
@@ -143,11 +155,7 @@ export function watchAutoNativePlayback(
                     ? (media as any).videoTracks.length > 0
                     : media.videoWidth > 0);
             if (restoredVideo) useFallback = false;
-            if (
-                stillCurrent &&
-                !useFallback &&
-                (detectDrops || restoredVideo)
-            ) {
+            if (!useFallback && (detectDrops || restoredVideo)) {
                 // A late video track only resolves the audio-only probe. It
                 // does not prove that the native decoder displays its frames.
                 // Retire the previous observation before restoring the native source.
@@ -155,7 +163,6 @@ export function watchAutoNativePlayback(
                 stopProbe();
                 stopFrameWatch();
             } else cancel();
-            if (!stillCurrent) return;
             if (useFallback) options.fallback();
             else {
                 options.restore();
@@ -347,16 +354,10 @@ export function watchAutoNativePlayback(
             listen(false);
         }
         function listen(enabled: boolean): void {
-            var method: "addEventListener" | "removeEventListener" = enabled
-                ? "addEventListener"
-                : "removeEventListener";
-            for (var i = 0; i < resetEvents.length; i++)
-                media[method](resetEvents[i], reset);
-            if (initialEnabled) {
-                media[method]("play", resetInitial);
-                media[method]("seeked", resetInitial);
-            }
-            doc[method]("visibilitychange", reset);
+            setEventListeners(media, resetEvents, reset, enabled);
+            if (initialEnabled)
+                setEventListeners(media, ["play", "seeked"], resetInitial, enabled);
+            setEventListeners(doc, ["visibilitychange"], reset, enabled);
         }
 
         function markBaseline(): void {
