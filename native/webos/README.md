@@ -184,6 +184,72 @@ Catalogues currently have explicit 50,000-entry and 32 MiB model limits. A limit
 
 This remains an experimental target. Host and ARM checks do not establish physical-TV playback, video-plane composition or firmware compatibility. Device-specific acceptance and known limits must accompany each release; no performance result is inferred from the upstream application.
 
+### Post-admission playback failure diagnostics
+
+In builds providing this extension, authenticated `state` and `status` replies
+include `data.playback_failure`, beside `data.playback` and `data.preplay`.
+Older builds may omit it or return the version-1 object containing only
+`version`, `play_generation` and `code`. The current value is `null` or a
+version-2 object with these four fields:
+
+```json
+{"version":2,"play_generation":5,"code":"media_source","context":{"demux_exit":"https_open_failed","pipeline_error":0}}
+```
+
+`context` is `null` when no native details can be attributed to the failed
+attempt. Otherwise it contains exactly `demux_exit` and `pipeline_error`.
+`demux_exit` uses the closed `DemuxExitClass::code()` vocabulary in the
+native telemetry schema;
+`pipeline_error` is the signed 32-bit native callback error number. An observed
+`{"demux_exit":"none","pipeline_error":0}` means the matching Engine recorded
+neither detail. It differs from unavailable context and does not imply success.
+Clients should preserve unknown diagnostic versions and codes when forwarding
+JSON; do not interpret them as successful playback.
+
+`play_generation` is an unsigned 64-bit integer
+captured when that OTT request was admitted to native playback. It identifies
+the failed request, even if the current request counter has since advanced;
+do not substitute `data.preplay.attempt_generation`. Correlate it within the
+same player runtime, not across application restarts.
+
+The record captures the first typed error observed by the normal OTT
+owned-playback failure handler, before native cleanup. It survives that cleanup,
+`idle`, generic pending-request cancellation and subsequent reads. A newly
+accepted playback request clears it before resolution, and admission or an
+observed change to a different native playback owner also clears it. A queued
+replacement discards the outgoing source's diagnostic binding even if that
+source temporarily remains playing. The record is process-local and is not
+saved with settings.
+
+Native details are sampled before that cleanup only for the matching physical
+Load and active native epoch. If the failed Engine was already released, its
+details come from the snapshot retained with that session's failure before
+teardown. A new Load clears the native snapshot, including a retry of the same
+source. Status reads never replace a retained observation with later native
+signals. A refusal before an attributable Engine exists has `context: null`.
+
+During a same-source reload, the existing player may retain an earlier terminal
+verdict while a replacement Engine exists. This diagnostic extension preserves
+that error-code policy and returns `context: null` for the replacement, whether
+it is healthy or failed, instead of mixing the old code with new native details.
+A fresh playback request clears that retained verdict through the existing
+request lifecycle.
+
+This is not a history of every stop or end-of-stream. Existing guards exclude
+pending requests, unmatched playback owners and failures handled separately by
+kiosk or temporary-playback workflows. `null` means no retained matching
+observation; it does not establish healthy playback or decoded audio/video.
+
+The closed code vocabulary is `decision_refused`, `playback_policy`,
+`no_video_transcode_target`, `no_video_track`, `media_source`,
+`playback_interrupted`, `tv_pipeline`, `jail_missing_rtkmem`, `load_timeout`,
+`release_timeout`, `resolve_failed`, `preview_not_direct`, and `unspecified`.
+This vocabulary does not expand which failures the handler observes. Codes
+classify existing signals; they need not identify the underlying cause.
+
+The object contains no URL, credentials, media title or raw error text. It does
+not change periodic presence, existing playback fields, or playback decisions.
+
 ## Build on an Apple Silicon Mac or ARM Linux host
 
 Use Python 3.12+, Git, make, a C build environment and rustup. The pinned native
