@@ -26,7 +26,7 @@ import {
     interfaceDirection,
 } from "../localization";
 import { textBoundary } from "../localization/unicode";
-import { settings } from "../settings";
+import { epgTimeColorPair, epgTimeColors, settings } from "../settings";
 import { swopLoadValue } from "../swop";
 import {
     formatTwoDigits,
@@ -1003,6 +1003,15 @@ export function showPage(presentationOnly = false): void {
     var modernLayout = modern
         ? modern.prepare(dataArr, getListItemFn, listInElement)
         : null;
+    // Bind separators to this formatter, never to a previous list or its caption.
+    var rowFormatter = getListItemFn as any;
+    $(listInElement).toggleClass(
+        "content-list-rows",
+        !!(
+            rowFormatter &&
+            (rowFormatter.__ottContentRows || rowFormatter.__ottCatalog)
+        )
+    );
     var pageSz = modernLayout
         ? modernLayout.pageSize
         : listFitPageSize(settings.pageSize || 25);
@@ -1095,6 +1104,20 @@ export function showPage(presentationOnly = false): void {
                 ".ott-epg-current-title"
             ) as HTMLElement | null;
             if (currentTitle) currentTitle.style.color = curColor || "#fff";
+            var epgTime = row.querySelector(
+                ".ott-epg-time"
+            ) as HTMLElement | null;
+            if (epgTime) {
+                // Match setColor for new rows, including before CSS has loaded.
+                var epgColor = epgTimeColorPair(settings.epgTimeColor);
+                epgTime.style.color = epgColor
+                    ? "rgb(" +
+                      hsvToRgb(epgColor[0], epgColor[1], 100).join(",") +
+                      ")"
+                    : Number.isInteger(settings.epgTimeColor)
+                      ? epgTimeColors[settings.epgTimeColor] || "inherit"
+                      : "inherit";
+            }
         }
         var scrollbar = listInElement.querySelector(
             ".list-scroll"
@@ -1775,19 +1798,19 @@ export function updateChannelInfo(channelId: number): void {
     var t = (window as any).channels
         ? (window as any).channels[channelId]
         : undefined;
+    var channelPicon = t
+        ? metadataCssUrl(
+              typeof host.getChannelPicon === "function"
+                  ? host.getChannelPicon(channelId)
+                  : t.logo
+          )
+        : "";
     if (t) {
         if (channelNameEl) channelNameEl.textContent = t.channel_name || "";
         if (piconEl)
-            piconEl.style.backgroundImage =
-                typeof (window as any).getChannelPicon === "function"
-                    ? 'url("' +
-                      metadataCssUrl(
-                          (window as any).getChannelPicon(channelId)
-                      ) +
-                      '")'
-                    : t.logo
-                      ? 'url("' + metadataCssUrl(t.logo) + '")'
-                      : "";
+            piconEl.style.backgroundImage = channelPicon
+                ? 'url("' + channelPicon + '")'
+                : "";
     } else {
         if (channelNameEl)
             channelNameEl.innerHTML =
@@ -1839,9 +1862,15 @@ export function updateChannelInfo(channelId: number): void {
                 ")";
         }
         if (programDescrEl) {
+            // The footer already shows the channel logo. A guide can inherit
+            // that same icon; only distinct programme artwork belongs here.
+            var artwork = metadataCssUrl(t.icon);
             programDescrEl.innerHTML =
-                (typeof getThumbnail === "function"
-                    ? getThumbnail(t.icon || t.logo)
+                (artwork &&
+                artwork !== channelPicon &&
+                artwork !== metadataCssUrl(t.logo) &&
+                typeof getThumbnail === "function"
+                    ? getThumbnail(t.icon)
                     : "") + metadataHtml(t.descr);
         }
         // Next program
@@ -2951,7 +2980,7 @@ export function togglePip(closeOverlay = false): void {
  * @analysis All inputs are clamped to their valid range before conversion.
  */
 export function hsvToRgb(h: number, s: number, v: number): number[] {
-    h = Math.max(0, Math.min(360, h));
+    h = Math.max(0, Math.min(360, h)) % 360;
     s = Math.max(0, Math.min(100, s));
     v = Math.max(0, Math.min(100, v));
     s /= 100;
@@ -3008,7 +3037,8 @@ function bindColorDialogInput(
     saturation: number,
     value: number,
     cssProperty: string,
-    settingKey: string
+    settingKey: string,
+    allowDefault = false
 ): void {
     function preview(): void {
         var rgb = hsvToRgb(hue, saturation, value);
@@ -3020,6 +3050,10 @@ function bindColorDialogInput(
     (window as any).__ottClassicScreenPort.setOwnedCallback(
         "about",
         function (key: number): boolean {
+            if (allowDefault && key === keys.RED) {
+                (window as any)[settingKey] = "";
+                key = keys.RETURN;
+            }
             switch (key) {
                 case keys.UP:
                     saturation = Math.min(saturation + 5, 100);
@@ -3069,7 +3103,8 @@ function showColorDialog(
     fallback: string,
     caption: string,
     value: number,
-    foreground = false
+    foreground = false,
+    allowDefault = false
 ): void {
     var setting = (window as any)[settingKey] || fallback;
     var hue = Number.parseInt(setting.split(",")[0]);
@@ -3079,7 +3114,10 @@ function showColorDialog(
     if (listFooterElement)
         listFooterElement.innerHTML =
             renderButtonHint(keys.RETURN, strRETURN, "Close") +
-            renderButtonHint(keys.ENTER, strENTER, "Set");
+            renderButtonHint(keys.ENTER, strENTER, "Set") +
+            (allowDefault
+                ? renderButtonHint(keys.RED, "", "Player default")
+                : "");
     if (listDetailElement) listDetailElement.innerHTML = "";
     var preview = foreground
         ? '<span id="step" style="font-size: 150%;">&nbsp;1234567890&nbsp;<span style="background-color:' +
@@ -3133,13 +3171,26 @@ function showColorDialog(
         saturation,
         value,
         foreground ? "color" : "background-color",
-        settingKey
+        settingKey,
+        allowDefault
     );
 }
 
 /** Adjust foreground text color, stored in eSHLcolor. */
 export function colorDialog(): void {
     showColorDialog("eSHLcolor", "50,85", _("Color spectrum"), 100, true);
+}
+
+/** Edit only the EPG time color in the active settings draft. */
+export function epgTimeColorDialog(): void {
+    showColorDialog(
+        "eEpgTimeColor",
+        "50,85",
+        _("EPG") + ": " + _("Text color") + " (00:00)",
+        100,
+        true,
+        true
+    );
 }
 
 /** Adjust the selection background at HSV value 50, stored in eSHLcolSel. */

@@ -169,6 +169,7 @@ import {
     applyTimezoneSetting,
     beginSettingsDraft,
     defaultSettings,
+    epgTimeColorPair,
     epgTimeColors,
     exportSettings,
     importSettings,
@@ -277,6 +278,7 @@ import {
     confirmBox,
     editKey1,
     editKey2,
+    epgTimeColorDialog,
     exitPortal,
     formatSeekOffset,
     hideInfoBarWhenReady,
@@ -1306,6 +1308,10 @@ function setColor(): void {
     var studio = settings.interfaceTheme === 2;
     $("body").toggleClass("theme-pli-hd", pliHd);
     $("body").toggleClass("theme-studio", studio);
+    $("body").toggleClass(
+        "hide-list-separators",
+        settings.showListSeparators === 0
+    );
     bodyColor = studio ? "#f0f3f1" : "#f0f0f0";
     $("body").css("color", bodyColor);
     // PLi-HD's selectedFG / selectedBG. Keep the saved Classic palette intact.
@@ -1323,6 +1329,18 @@ function setColor(): void {
     window.curColor = curColor;
     // EPG nodes may already be visible when the theme changes.
     $(".ott-epg-current-title, .ott-epg-detail-title").css("color", curColor);
+    var epgColor = epgTimeColorPair(settings.epgTimeColor);
+    var epgTextColor = epgColor
+        ? "rgb(" + hsvToRgb(epgColor[0], epgColor[1], 100).join(",") + ")"
+        : Number.isInteger(settings.epgTimeColor)
+          ? epgTimeColors[settings.epgTimeColor] || "inherit"
+          : "inherit";
+    document.documentElement.style.setProperty(
+        "--ott-epg-time-color",
+        epgTextColor
+    );
+    // DOM properties remain usable when Classic has no CSS-variable support.
+    $(".ott-epg-time").css("color", epgTextColor);
     window.curColorB = curColorB;
     window.bodyColor = bodyColor;
 
@@ -4903,6 +4921,12 @@ window.settingsLists = function (): void {
                 w.sShowScroll,
                 noyes
             ),
+            choice(
+                label("Show list separators") + " (" + label("Classic") + ")",
+                "showListSeparators",
+                w.sShowListSeparators,
+                noyes
+            ),
         ])
     );
     page.attach();
@@ -4978,12 +5002,12 @@ window.settingsChannels = function (): void {
                 w.sEpgArchiveLabel,
                 noyes
             ),
-            choice(
-                label("EPG") + ": " + label("Text color") + " (00:00)",
-                "epgTimeColor",
-                w.sEpgTimeColor,
-                [label("Player default")].concat(epgTimeColors.slice(1))
-            ),
+            {
+                cur: label("select"),
+                name: label("EPG") + ": " + label("Text color") + " (00:00)",
+                settingId: "epgTimeColor",
+                values: epgTimeColorDialog,
+            },
             choice(
                 label("Show description"),
                 "showDescription",

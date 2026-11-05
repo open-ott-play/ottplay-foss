@@ -124,6 +124,7 @@ function fixture(
                 return elements.get(id);
             },
         },
+        epgTimeColorDialog() {},
         findOptionIndex() {
             return 0;
         },
@@ -2202,3 +2203,201 @@ for (const profile of ["server", "tauri", "capacitor-android"]) {
     }
 }
 console.log("PASS EPG presentation settings save/cancel/reload and defaults");
+
+for (const profile of [
+    "server",
+    "tauri",
+    "capacitor-android",
+    "capacitor-ios",
+]) {
+    const { w, typed, stored } = fixture(profile);
+    vm.runInContext(
+        compile(
+            fs.readFileSync(
+                path.join(root, "src/plugins/remote-settings.ts"),
+                "utf8"
+            )
+        ),
+        w
+    );
+    const remote = w.__ottPlayerSettingsFactory.create(
+        w,
+        () => "epg-color-test"
+    );
+    const request = (params) => {
+        let response;
+        remote.request(
+            {
+                action: "player_settings",
+                params: {
+                    runtime: "epg-color-test",
+                    ...params,
+                },
+            },
+            (result) => {
+                response = result;
+            }
+        );
+        return response;
+    };
+    const remoteSet = (value) => {
+        const current = request({ id: "epgTimeColor", op: "get" });
+        return request({
+            context: current.data.context.token,
+            id: "epgTimeColor",
+            op: "set",
+            revision: current.data.setting.revision,
+            value,
+        });
+    };
+    const descriptor = request({ id: "epgTimeColor", op: "get" }).data
+        .descriptor;
+    assert.equal(descriptor.type, "integer");
+    assert.equal(descriptor.default_value, 0);
+    assert.equal(descriptor.constraints.minimum, 0);
+    assert.equal(descriptor.constraints.maximum, 36466);
+    const theme = typed().interfaceTheme;
+    const foreground = typed().highlightColor;
+    const custom = 6 + 211 * 101 + 65;
+    w.settingsChannels();
+    assert.equal(
+        w.listArray.find((row) => row.settingId === "epgTimeColor").values,
+        w.epgTimeColorDialog,
+        "EPG time opens the shared spectrum picker"
+    );
+    assert.equal(w.eEpgTimeColor, "");
+    w.eEpgTimeColor = "211,65";
+    assert.equal(typed().epgTimeColor, 0, "Picker acceptance remains a draft");
+    assert.equal(stored.has("sEpgTimeColor"), false);
+    w.listKeyHandlerFn(w.keys.RETURN);
+    assert.equal(
+        typed().epgTimeColor,
+        0,
+        "Page Cancel discards the picker draft"
+    );
+    w.settingsChannels();
+    w.eEpgTimeColor = "211,65";
+    save(w);
+    vm.runInContext("loadSettings();", w);
+    assert.equal(typed().epgTimeColor, custom);
+    assert.equal(
+        stored.get("sEpgTimeColor"),
+        String(custom),
+        "Storage stays numeric"
+    );
+    assert.equal(
+        typed().interfaceTheme,
+        theme,
+        "EPG color does not select Classic theme"
+    );
+    assert.equal(
+        typed().highlightColor,
+        foreground,
+        "Other text colors are untouched"
+    );
+    w.settingsChannels();
+    assert.equal(
+        w.eEpgTimeColor,
+        "211,65",
+        "Reopen restores the exact hue/saturation"
+    );
+    for (const invalid of [
+        "361,50",
+        "30,101",
+        "-1,40",
+        "20,NaN",
+        "20,30;color:red",
+        20,
+    ]) {
+        w.eEpgTimeColor = invalid;
+        assert.equal(
+            w.eEpgTimeColor,
+            "211,65",
+            "Malformed picker values cannot change draft"
+        );
+    }
+    w.eEpgTimeColor = "";
+    w.listKeyHandlerFn(w.keys.RETURN);
+    assert.equal(typed().epgTimeColor, custom, "Reset is also cancelable");
+    w.settingsChannels();
+    w.eEpgTimeColor = "";
+    save(w);
+    vm.runInContext("loadSettings();", w);
+    assert.equal(typed().epgTimeColor, 0);
+    assert.equal(stored.get("sEpgTimeColor"), "0");
+    for (const legacy of [1, 2, 3, 4, 5]) {
+        stored.set("sEpgTimeColor", String(legacy));
+        vm.runInContext("loadSettings();", w);
+        w.settingsChannels();
+        assert.equal(typed().epgTimeColor, legacy);
+        save(w);
+        assert.equal(
+            stored.get("sEpgTimeColor"),
+            String(legacy),
+            "Unedited legacy colors survive Save"
+        );
+    }
+    w.settingsChannels();
+    for (const invalid of [-1, 36467, 6.5, NaN, "6"])
+        assert.equal(w.__ottSettingsEditor.set("epgTimeColor", invalid), false);
+    w.listKeyHandlerFn(w.keys.RETURN);
+    for (const value of [6, custom, 36466, 0]) {
+        const result = remoteSet(value);
+        assert.equal(result.status, "ok");
+        assert.equal(result.data.setting.persisted_value, value);
+        assert.equal(stored.get("sEpgTimeColor"), String(value));
+        vm.runInContext("loadSettings();", w);
+        assert.equal(typed().epgTimeColor, value);
+        assert.equal(
+            request({ id: "epgTimeColor", op: "get" }).data.setting.value,
+            value
+        );
+    }
+    for (const value of [-1, 36467, 6.5, "6"])
+        assert.equal(remoteSet(value).status, "rejected");
+}
+console.log("PASS EPG spectrum draft, numeric compatibility, reset and reload");
+
+{
+    const { w, typed } = fixture("server");
+    const properties = new Map();
+    const query = w.$;
+    w.$ = (selector) => {
+        const chain = query(selector);
+        chain.css = chain.toggleClass = () => chain;
+        return chain;
+    };
+    w.document.documentElement = {
+        style: {
+            setProperty: (name, value) => properties.set(name, value),
+        },
+    };
+    w.$tooltipSpan = null;
+    w.tooltip = null;
+    vm.runInContext(
+        compile(selectedSource("src/ui/index.ts", ["hsvToRgb"])),
+        w
+    );
+    vm.runInContext(
+        compile(
+            selectedSource("src/index.ts", ["classicColorRgb", "setColor"])
+        ),
+        w
+    );
+    w.settingsChannels();
+    w.eEpgTimeColor = "211,65";
+    save(w);
+    assert.equal(
+        properties.get("--ott-epg-time-color"),
+        "rgb(89,169,255)",
+        "Saving runs the real theme publication for already-visible EPG rows"
+    );
+    w.settingsChannels();
+    w.eEpgTimeColor = "";
+    save(w);
+    assert.equal(properties.get("--ott-epg-time-color"), "inherit");
+    assert.equal(typed().epgTimeColor, 0);
+}
+console.log(
+    "PASS EPG spectrum publishes and clears the shared CSS color on Save"
+);
