@@ -323,7 +323,8 @@ jobs:
           PLX_TEST_JOBS: "2"
         run: |
           set -euo pipefail
-          make sim-linux SIM_TDIR=rust-modules/target-sim-ci 2>&1 | tee "$RUNNER_TEMP/native-host-verification/simulator-build.log"
+          # Keep generated Cargo output outside the source tree later bundled for release.
+          make sim-linux SIM_TDIR="$RUNNER_TEMP/native-sim-target" 2>&1 | tee "$RUNNER_TEMP/native-host-verification/simulator-build.log"
       - name: Replay committed product recordings through the Linux renderer
         # Six current recordings/modes at up to 300 seconds each, with shutdown margin.
         # The unchanged 90-minute job limit still bounds the complete cold build.
@@ -340,7 +341,7 @@ jobs:
         run: |
           set -euo pipefail
           xvfb-run -a -s '-screen 0 1920x1080x24' python3 tests/replay_fixtures.py \
-            --sim "$PWD/rust-modules/target-sim-ci/release/plxnative-sim" \
+            --sim "$RUNNER_TEMP/native-sim-target/release/plxnative-sim" \
             --assets "$PWD/pkg" --window 960x540 --jobs 1 --timeout 300 \
             --output "$RUNNER_TEMP/native-host-verification/replay" \
             2>&1 | tee "$RUNNER_TEMP/native-host-verification/replay.log"

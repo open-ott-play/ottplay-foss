@@ -230,12 +230,15 @@ class NativeScopeTests(unittest.TestCase):
         for partial in ("make check-cargo-lint", "make check-cargo-unit-default",
                         "make check-cargo-unit-hostsim"):
             self.assertFalse(any(partial in command for command in commands), partial)
-        self.assertIn("SIM_TDIR=rust-modules/target-sim-ci", commands[indexes[3]])
+        self.assertIn('SIM_TDIR="$RUNNER_TEMP/native-sim-target"', commands[indexes[3]])
         replay = steps[indexes[4]]
         self.assertEqual(replay["env"]["LIBGL_ALWAYS_SOFTWARE"], "1")
-        for argument in ("xvfb-run", '"$PWD/rust-modules/target-sim-ci/release/plxnative-sim"',
+        for argument in ("xvfb-run", '"$RUNNER_TEMP/native-sim-target/release/plxnative-sim"',
                          '--assets "$PWD/pkg"', "--jobs 1", "--timeout 300"):
             self.assertIn(argument, replay["run"])
+        # The source bundle rejects untracked Cargo output under rust-modules.
+        for command in (commands[indexes[3]], replay["run"]):
+            self.assertNotIn("rust-modules/target-sim-ci", command)
         recheck = commands[indexes[5]]
         self.assertIn("native/webos/build.py prepare", recheck)
         self.assertIn("prepared-after.json", recheck)
