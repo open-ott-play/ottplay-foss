@@ -165,16 +165,19 @@ assert.equal(
     "allocate the maximum positive entry cost, not three copies or the overrun"
 );
 for (const [scope, name] of Object.entries({
-    entry: "BUDGET",
-    legacyTotal: "LEGACY_TOTAL_BUDGET",
     baseTotal: "BASE_TOTAL_BUDGET",
     completeTotal: "TOTAL_BUDGET",
+    entry: "BUDGET",
+    legacyTotal: "LEGACY_TOTAL_BUDGET",
 })) {
     assert.deepEqual(
         preRecoveryCaps[name],
         autoRecoveryEvidence.budget_before[scope]
     );
-    assert.deepEqual(latestCaps[name], autoRecoveryEvidence.budget_after[scope]);
+    assert.deepEqual(
+        latestCaps[name],
+        autoRecoveryEvidence.budget_after[scope]
+    );
     for (const metric of ["bytes", "gzipBytes"])
         assert.equal(
             latestCaps[name][metric] - preRecoveryCaps[name][metric],
@@ -183,9 +186,9 @@ for (const [scope, name] of Object.entries({
         );
 }
 for (const [name, recorded] of Object.entries({
-    PROVIDER_BUDGET: autoRecoveryEvidence.providerBudget,
     OPTIONAL_BUDGET: autoRecoveryEvidence.optionalBudget,
     OPTIONAL_BUDGETS: autoRecoveryEvidence.optionalBudgets,
+    PROVIDER_BUDGET: autoRecoveryEvidence.providerBudget,
 })) {
     const actual = require("../scripts/classic-size.cjs")[name];
     assert.deepEqual(actual, preRecoveryCaps[name]);
@@ -203,7 +206,10 @@ for (const entry of ARTIFACTS) {
             "providers"
         );
     for (const name of Object.keys(CLASSIC_OPTIONAL_BUNDLES))
-        recoveryAssetPaths.set(directory + "/" + name + ".js", "optionalAssets");
+        recoveryAssetPaths.set(
+            directory + "/" + name + ".js",
+            "optionalAssets"
+        );
 }
 assert.equal(recoveryAssetPaths.size, 72);
 assert.equal(autoRecoveryEvidence.unchangedAssets.length, 72);

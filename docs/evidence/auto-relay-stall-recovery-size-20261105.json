@@ -805,9 +805,7 @@
         "buildIds": [
           "bundle-d729ab24f6533a5a3849c8f54310aca5cbeb6fe19936c8a7c64eaf57278214a6"
         ],
-        "sourceRevisions": [
-          ""
-        ]
+        "sourceRevisions": [""]
       },
       {
         "path": "src-tauri/frontend/dist/player.js",
@@ -815,9 +813,7 @@
         "buildIds": [
           "bundle-d729ab24f6533a5a3849c8f54310aca5cbeb6fe19936c8a7c64eaf57278214a6"
         ],
-        "sourceRevisions": [
-          ""
-        ]
+        "sourceRevisions": [""]
       },
       {
         "path": "dist-mobile/dist/player.js",
@@ -825,9 +821,7 @@
         "buildIds": [
           "bundle-d729ab24f6533a5a3849c8f54310aca5cbeb6fe19936c8a7c64eaf57278214a6"
         ],
-        "sourceRevisions": [
-          ""
-        ]
+        "sourceRevisions": [""]
       }
     ],
     "B": [
@@ -837,9 +831,7 @@
         "buildIds": [
           "bundle-72618dc292ec4a3aec9c1d81a112007159eda7d6562518f6d592beee62ea7f97"
         ],
-        "sourceRevisions": [
-          ""
-        ]
+        "sourceRevisions": [""]
       },
       {
         "path": "src-tauri/frontend/dist/player.js",
@@ -847,9 +839,7 @@
         "buildIds": [
           "bundle-72618dc292ec4a3aec9c1d81a112007159eda7d6562518f6d592beee62ea7f97"
         ],
-        "sourceRevisions": [
-          ""
-        ]
+        "sourceRevisions": [""]
       },
       {
         "path": "dist-mobile/dist/player.js",
@@ -857,9 +847,7 @@
         "buildIds": [
           "bundle-72618dc292ec4a3aec9c1d81a112007159eda7d6562518f6d592beee62ea7f97"
         ],
-        "sourceRevisions": [
-          ""
-        ]
+        "sourceRevisions": [""]
       }
     ]
   },
@@ -868,64 +856,42 @@
       "commands": [
         {
           "name": "dependencies",
-          "argv": [
-            "npm",
-            "ci",
-            "--ignore-scripts"
-          ],
+          "argv": ["npm", "ci", "--ignore-scripts"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "media",
-          "argv": [
-            "npm",
-            "run",
-            "check:media"
-          ],
+          "argv": ["npm", "run", "check:media"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "auto-tests",
-          "argv": [
-            "node",
-            "tests/test_tauri_auto_playback.cjs"
-          ],
+          "argv": ["node", "tests/test_tauri_auto_playback.cjs"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "bitrate-tests",
-          "argv": [
-            "node",
-            "tests/test_stream_bitrate.cjs"
-          ],
+          "argv": ["node", "tests/test_stream_bitrate.cjs"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "build",
-          "argv": [
-            "npm",
-            "run",
-            "build"
-          ],
+          "argv": ["npm", "run", "build"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "size",
-          "argv": [
-            "npm",
-            "run",
-            "check:size"
-          ],
+          "argv": ["npm", "run", "check:size"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
@@ -939,64 +905,42 @@
       "commands": [
         {
           "name": "dependencies",
-          "argv": [
-            "npm",
-            "ci",
-            "--ignore-scripts"
-          ],
+          "argv": ["npm", "ci", "--ignore-scripts"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "media",
-          "argv": [
-            "npm",
-            "run",
-            "check:media"
-          ],
+          "argv": ["npm", "run", "check:media"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "auto-tests",
-          "argv": [
-            "node",
-            "tests/test_tauri_auto_playback.cjs"
-          ],
+          "argv": ["node", "tests/test_tauri_auto_playback.cjs"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "bitrate-tests",
-          "argv": [
-            "node",
-            "tests/test_stream_bitrate.cjs"
-          ],
+          "argv": ["node", "tests/test_stream_bitrate.cjs"],
           "exit_code": 0,
           "raw_returncode": 0,
           "timed_out": false
         },
         {
           "name": "build",
-          "argv": [
-            "npm",
-            "run",
-            "build"
-          ],
+          "argv": ["npm", "run", "build"],
           "exit_code": 1,
           "raw_returncode": 1,
           "timed_out": false
         },
         {
           "name": "size",
-          "argv": [
-            "npm",
-            "run",
-            "check:size"
-          ],
+          "argv": ["npm", "run", "check:size"],
           "exit_code": 1,
           "raw_returncode": 1,
           "timed_out": false
