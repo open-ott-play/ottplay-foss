@@ -175,5 +175,118 @@ class DesktopCaptureContracts(unittest.TestCase):
             self.assertIn("cleanup failed", runner.commands[0]["cleanup_error"])
 
 
+    def test_fixture_is_prepared_once_and_changed_reuse_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            output = Path(directory) / "owned"
+            (root / "diagnostics").mkdir(parents=True)
+            output.mkdir()
+            fixture = b"synthetic hash-bound fixture bytes"
+            (root / "diagnostics/av-v1.mp4").write_bytes(fixture)
+            with patch.object(MODULE, "FIXTURE_SHA", MODULE.hashlib.sha256(fixture).hexdigest()):
+                first, second = MODULE.fixture_files(root, output, create=True)
+                self.assertEqual(first.read_bytes(), fixture)
+                self.assertEqual(second.read_bytes(), fixture)
+                with patch.object(MODULE.shutil, "copyfile") as copy:
+                    self.assertEqual(MODULE.fixture_files(root, output), (first, second))
+                    copy.assert_not_called()
+                    first.write_bytes(b"changed after reveal")
+                    with self.assertRaisesRegex(RuntimeError, "missing or changed"):
+                        MODULE.fixture_files(root, output)
+                    copy.assert_not_called()
+                self.assertEqual(first.read_bytes(), b"changed after reveal")
+
+    def test_reveal_gate_requires_exact_path_action_and_route(self):
+        file = Path("/owned/fixtures/QA video Ω 01.mp4")
+        value = {"schema": 1, "action": "finder-reveal", "status": "ok",
+                 "selected_file": str(file), "route": "finder_reveal_exact_selection"}
+        self.assertIs(MODULE.validate_reveal(value, file), value)
+        for field, wrong in (("selected_file", "/other/QA video Ω 01.mp4"),
+                             ("route", "launchservices"), ("action", "finder-open"),
+                             ("status", "refused")):
+            with self.subTest(field=field), self.assertRaises(RuntimeError):
+                MODULE.validate_reveal(dict(value, **{field: wrong}), file)
+        with self.assertRaises(RuntimeError):
+            MODULE.validate_reveal(None, file)
+
+    def _mocked_preflight(self, fail_reveal):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            (root / "scripts").mkdir(parents=True)
+            script = root / "scripts/ci-macos-desktop.py"
+            script.write_text("synthetic controller")
+            (root / "tests/macos-desktop").mkdir(parents=True)
+            (root / "tests/macos-desktop/desktop-helper.swift").write_text("synthetic helper")
+            (root / "diagnostics").mkdir()
+            fixture = b"synthetic hash-bound fixture bytes"
+            (root / "diagnostics/av-v1.mp4").write_bytes(fixture)
+            temp = Path(directory) / "runner"
+            output = temp / "owned"
+            runner = Mock()
+            calls = []
+            def run(name, argv, **kwargs):
+                calls.append((name, argv, kwargs))
+                if name == "preflight-head":
+                    return "a" * 40
+                if name == "compile-gui-helper":
+                    (output / "macos-desktop-helper").write_bytes(b"synthetic binary")
+                return ""
+            def helper(name, executable, action, *args, **kwargs):
+                calls.append((name, action, kwargs))
+                if action == "preflight":
+                    return {"schema": 1, "action": action, "status": "ok"}
+                if action == "finder-reveal":
+                    self.assertEqual(args[0].read_bytes(), fixture)
+                    if fail_reveal:
+                        raise RuntimeError("synthetic reveal deadline")
+                    return {"schema": 1, "action": action, "status": "ok",
+                            "selected_file": str(args[0]), "route": "finder_reveal_exact_selection"}
+                self.assertEqual(action, "finder-diagnostic")
+                return {"schema": 1, "action": action, "status": "ok", "traversal_exhausted": False}
+            runner.run.side_effect = run
+            runner.helper.side_effect = helper
+            environment = {"GITHUB_EVENT_NAME": "workflow_dispatch", "DESKTOP_ACCEPTANCE": "true",
+                           "GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted",
+                           "RUNNER_TEMP": str(temp), "GITHUB_SHA": "a" * 40,
+                           "GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "1"}
+            with patch.object(MODULE, "__file__", str(script)), \
+                 patch.object(MODULE, "Runner", return_value=runner), \
+                 patch.object(MODULE, "FIXTURE_SHA", MODULE.hashlib.sha256(fixture).hexdigest()), \
+                 patch.object(MODULE.platform, "machine", return_value="arm64"), \
+                 patch.object(MODULE.sys, "platform", "darwin"), \
+                 patch.object(MODULE.sys, "argv", [str(script), "preflight", "--output", str(output)]), \
+                 patch.dict(os.environ, environment, clear=True), patch("builtins.print"):
+                result = MODULE.main()
+            return result, json.loads((output / "preflight.json").read_text()), calls
+
+    def test_early_reveal_failure_blocks_ready_without_build_or_retry(self):
+        result, receipt, calls = self._mocked_preflight(True)
+        self.assertEqual(result, 1)
+        self.assertEqual(receipt["status"], "FAILED")
+        self.assertIn("synthetic reveal deadline", receipt["error"])
+        names = [call[0] for call in calls]
+        self.assertEqual(names.count("finder-reveal"), 1)
+        self.assertEqual(names.count("finder-failure-state"), 1)
+        self.assertNotIn("build-package", names)
+        self.assertNotIn("finder_reveal", receipt)
+        self.assertFalse(receipt["playback_accepted"])
+        reveal = next(call for call in calls if call[0] == "finder-reveal")
+        self.assertEqual(reveal[2]["seconds"], 40)
+        diagnostic = next(call for call in calls if call[0] == "finder-failure-state")
+        self.assertEqual(diagnostic[2], {"seconds": 12, "cleanup": True})
+
+    def test_early_reveal_success_is_selection_evidence_only(self):
+        result, receipt, calls = self._mocked_preflight(False)
+        self.assertEqual(result, 0)
+        self.assertEqual(receipt["status"], "PREFLIGHT_READY")
+        self.assertEqual(receipt["finder_reveal"]["route"], "finder_reveal_exact_selection")
+        self.assertFalse(receipt["playback_accepted"])
+        self.assertIn("no Open With", receipt["finder_reveal_scope"])
+        names = [call[0] for call in calls]
+        self.assertLess(names.index("gui-preflight"), names.index("finder-reveal"))
+        self.assertNotIn("finder-failure-state", names)
+        self.assertNotIn("build-package", names)
+
+
 if __name__ == "__main__":
     unittest.main()

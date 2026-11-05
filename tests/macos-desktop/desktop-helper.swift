@@ -69,15 +69,25 @@ func observed<T>(_ operation: String, _ body: () throws -> T) throws -> T {
         throw error
     }
 }
-func pause(_ seconds: Double = 0.05) throws {
+enum PauseMode { case runLoop, polling }
+func pause(_ seconds: Double = 0.05, mode: PauseMode = .runLoop) throws {
+    switch mode {
+    case .runLoop:
+        try observed("RunLoop.pause") {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: seconds))
+        }
+    case .polling:
+        try observed("Thread.pollingPause") {
+            Thread.sleep(forTimeInterval: seconds)
+        }
+    }
     try tick()
-    RunLoop.current.run(until: Date(timeIntervalSinceNow: seconds))
 }
-func waitUntil(_ detail: String, seconds: Double = 5, _ body: () throws -> Bool) throws {
+func waitUntil(_ detail: String, seconds: Double = 5, mode: PauseMode = .runLoop, _ body: () throws -> Bool) throws {
     let end = ProcessInfo.processInfo.systemUptime + seconds
     repeat {
         if try body() { return }
-        try pause()
+        try pause(mode: mode)
     } while ProcessInfo.processInfo.systemUptime < end
     throw Refusal(code: "ui_not_ready", detail: detail)
 }
@@ -293,6 +303,9 @@ func selectedFileElements(_ root: AXUIElement, file: URL) throws -> [AXUIElement
             if !found.contains(where: { CFEqual($0, child) }) { found.append(child) }
         }
     }
+    try require(trace("selection", "Finder.selectedFileElements",
+                      status: "nodes=\(nodes.count);selected=\(selected.count);matches=\(found.count)"),
+                "trace_budget", "Selection trace unavailable")
     return found
 }
 func reveal(_ file: URL) throws -> NSRunningApplication {
@@ -303,7 +316,10 @@ func reveal(_ file: URL) throws -> NSRunningApplication {
         NSWorkspace.shared.activateFileViewerSelecting([file])
     }
     try front(app)
-    try waitUntil("Finder does not expose the exact selected fixture URL") {
+    // These observations address Finder directly through AX. Do not pump
+    // unrelated AppKit callbacks between selection polls. Lifecycle and
+    // ScreenCaptureKit waits retain the main-run-loop mode.
+    try waitUntil("Finder does not expose the exact selected fixture URL", mode: .polling) {
         try require(try finder().processIdentifier == app.processIdentifier, "finder_changed", "Finder changed during reveal")
         return try !selectedFileElements(ax(app.processIdentifier), file: file).isEmpty
     }
@@ -597,6 +613,15 @@ func main(_ args: [String]) throws -> [String: Any] {
     if args[0] == "finder-diagnostic" {
         try require(args.count == 1, "usage", "finder-diagnostic takes no arguments")
         return try finderDiagnostic()
+    }
+    if args[0] == "finder-reveal" {
+        try require(args.count == 2, "usage", "finder-reveal FILE")
+        _ = try prerequisites()
+        let file = try fixture(args[1])
+        try phase("finder_reveal")
+        let app = try reveal(file)
+        return ["selected_file": file.path, "route": "finder_reveal_exact_selection",
+                "source_pid": Int(app.processIdentifier)]
     }
     if args[0] == "handler" {
         try require(args.count == 2, "usage", "handler FILE")

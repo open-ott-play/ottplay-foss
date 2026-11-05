@@ -59,6 +59,31 @@ def validate_helper(value, action):
     return value
 
 
+def fixture_files(root, output, *, create=False):
+    """One hash-bound fixture set, prepared before build and reused without replacement."""
+    fixture = root / "diagnostics/av-v1.mp4"
+    require(sha(fixture) == FIXTURE_SHA, "synthetic fixture bytes changed")
+    files = output / "fixtures"
+    if create:
+        files.mkdir()
+    require(files.is_dir() and not files.is_symlink(), "fixture directory missing or replaced")
+    first, second = files / "QA video Ω 01.mp4", files / "QA video Ω 02.mp4"
+    for file in (first, second):
+        if create:
+            shutil.copyfile(fixture, file)
+        require(file.is_file() and not file.is_symlink() and sha(file) == FIXTURE_SHA,
+                "fixture copy missing or changed")
+    return first, second
+
+
+def validate_reveal(value, file):
+    validate_helper(value, "finder-reveal")
+    require(value.get("selected_file") == str(file)
+            and value.get("route") == "finder_reveal_exact_selection",
+            "missing exact Finder fixture-selection evidence")
+    return value
+
+
 def stop_owned(proc):
     """Only this Popen's private process group; never a name or discovered PID."""
     forced = False
@@ -282,13 +307,25 @@ def main():
                                              str(helper_source),
                                              "-o", str(helper)], seconds=90)
             value = runner.helper("gui-preflight", helper, "preflight", seconds=40)
-            receipt.update(status="PREFLIGHT_READY", helper_sha256=sha(helper), capabilities=value)
+            receipt.update(helper_sha256=sha(helper), capabilities=value)
+            first, second = fixture_files(root, output, create=True)
+            receipt["fixture"] = {"sha256": FIXTURE_SHA, "two_names_same_bytes": True, "duration_seconds": 8}
+            gui_attempted = True
+            selection = runner.helper("finder-reveal", helper, "finder-reveal", first, seconds=40)
+            receipt["finder_reveal"] = validate_reveal(selection, first)
+            receipt["finder_reveal_scope"] = "Exact Finder selection only; no Open With, application launch or playback acceptance"
+            receipt["status"] = "PREFLIGHT_READY"
         else:
             previous = json.loads((output / "preflight.json").read_text())
             require(previous["status"] == "PREFLIGHT_READY" and previous["source_commit"] == commit
                     and previous["helper_sha256"] == sha(helper)
                     and previous["helper_source_sha256"] == sha(helper_source)
                     and previous["controller_sha256"] == sha(Path(__file__)), "preflight binding changed")
+            first, second = fixture_files(root, output)
+            validate_reveal(previous.get("finder_reveal"), first)
+            require(previous.get("fixture", {}).get("sha256") == FIXTURE_SHA,
+                    "preflight fixture binding changed")
+            receipt["fixture"] = previous["fixture"]
             runner.helper("gui-recheck", helper, "preflight")
             config, env = generate_config(output, commit)
             receipt["cold_store_absent_before_build"] = not Path(env["OTTPLAY_DATA_DIR"]).exists()
@@ -299,15 +336,8 @@ def main():
                                          "--config", str(output / "tauri.qa.json"), "--", "--locked", "--jobs", "2"],
                        cwd=root, env=build_env, seconds=2700)
             app = qualify(runner, root, output, config, env)
-            fixture = root / "diagnostics/av-v1.mp4"
-            require(sha(fixture) == FIXTURE_SHA, "synthetic fixture bytes changed")
-            files = output / "fixtures"
-            files.mkdir()
-            first, second = files / "QA video Ω 01.mp4", files / "QA video Ω 02.mp4"
-            for file in (first, second):
-                shutil.copyfile(fixture, file)
-                require(sha(file) == FIXTURE_SHA, "fixture copy mismatch")
-            receipt["fixture"] = {"sha256": FIXTURE_SHA, "two_names_same_bytes": True, "duration_seconds": 8}
+            # Detect changes during the build without silently replacing the probed files.
+            fixture_files(root, output)
             original_handler = runner.helper("handler-before", helper, "handler", first)
             receipt["handler_before"] = original_handler
             registered = True  # Also unregister a partially successful registration.
