@@ -815,6 +815,16 @@ export function setInfoInteraction(value: boolean | null): void {
 }
 (window as any).__ottSetInfoInteraction = setInfoInteraction;
 
+/** Resolve the same saved color for existing and newly rendered EPG rows. */
+export function epgTimeCssColor(value: number): string {
+    var pair = epgTimeColorPair(value);
+    return pair
+        ? "rgb(" + hsvToRgb(pair[0], pair[1], 100).join(",") + ")"
+        : Number.isInteger(value)
+          ? epgTimeColors[value] || "inherit"
+          : "inherit";
+}
+
 /** Show timed information; true activates controls, false resets, null preserves intent. */
 export function showChannelInfo(
     timeoutSec: number,
@@ -848,6 +858,9 @@ export function showChannelInfo(
         );
         return;
     }
+    function onInfoShown(): void {
+        if (typeof w.scrollUpDescr === "function") w.scrollUpDescr();
+    }
     // Hide first for animated re-show (when timeoutSec is 1 or 2)
     if (timeoutSec) $infoBar.hide();
     $("#programm_descr").stop(true).css("margin-top", 0);
@@ -856,13 +869,9 @@ export function showChannelInfo(
         else $("#descr").show();
         updateCoreVideoInfo(true);
         if (w.sInfoSlide) {
-            $infoBar.slideDown(400, function () {
-                if (typeof w.scrollUpDescr === "function") w.scrollUpDescr();
-            });
+            $infoBar.slideDown(400, onInfoShown);
         } else {
-            $infoBar.show(0, function () {
-                if (typeof w.scrollUpDescr === "function") w.scrollUpDescr();
-            });
+            $infoBar.show(0, onInfoShown);
         }
         if (timeoutSec !== 2) {
             infoTimeout = setTimeout(
@@ -880,13 +889,9 @@ export function showChannelInfo(
             return;
         }
         if (w.sInfoSlide) {
-            $("#descr").slideDown(400, function () {
-                if (typeof w.scrollUpDescr === "function") w.scrollUpDescr();
-            });
+            $("#descr").slideDown(400, onInfoShown);
         } else {
-            $("#descr").show(0, function () {
-                if (typeof w.scrollUpDescr === "function") w.scrollUpDescr();
-            });
+            $("#descr").show(0, onInfoShown);
         }
     } else {
         infoBarHide();
@@ -1085,6 +1090,7 @@ export function showPage(presentationOnly = false): void {
     if (listInElement) {
         listInElement.scrollTop = 0;
         listInElement.innerHTML = html;
+        var epgTextColor: string | undefined;
         // Assign only app-owned geometry/theme properties. Tauri's style nonce
         // blocks attributes parsed from HTML but allows these DOM properties.
         for (var ri = pageStart; ri < pageEnd; ri++) {
@@ -1108,15 +1114,9 @@ export function showPage(presentationOnly = false): void {
                 ".ott-epg-time"
             ) as HTMLElement | null;
             if (epgTime) {
-                // Match setColor for new rows, including before CSS has loaded.
-                var epgColor = epgTimeColorPair(settings.epgTimeColor);
-                epgTime.style.color = epgColor
-                    ? "rgb(" +
-                      hsvToRgb(epgColor[0], epgColor[1], 100).join(",") +
-                      ")"
-                    : Number.isInteger(settings.epgTimeColor)
-                      ? epgTimeColors[settings.epgTimeColor] || "inherit"
-                      : "inherit";
+                if (epgTextColor === undefined)
+                    epgTextColor = epgTimeCssColor(settings.epgTimeColor);
+                epgTime.style.color = epgTextColor;
             }
         }
         var scrollbar = listInElement.querySelector(
@@ -2397,6 +2397,27 @@ export function scrollUp(el: string, px: number, delay: number): void {
  * Info displays
  * --------------------------------------------------------------------------- */
 
+/** Shared info chrome; key admission remains owned by each public info screen. */
+function infoSearchFooter(title: string): void {
+    if (listFooterElement) {
+        var extra = "";
+        if ((window as any).sArrowFun === 2) extra = strRIGHT;
+        else if ((window as any).sRewFun === 1) extra = strFF;
+        else if ((window as any).sPNFun === 1) extra = strNEXT;
+        listFooterElement.innerHTML =
+            renderButtonHint(keys.RETURN, strRETURN, "Close") +
+            (title && hasTmdbService()
+                ? renderButtonHint(keys.N2, strInfo, "TMDb", "2", extra)
+                : "");
+    }
+}
+
+function searchInfoTmdb(title: string): void {
+    var w = window as any;
+    if (hasTmdbService() && w.TMDb && typeof w.TMDb.search === "function")
+        w.TMDb.search(title);
+}
+
 /**
  * Show program info in the `#listAbout` overlay. Displays the title, description, and
  * buttons for TMDb search and close.
@@ -2414,17 +2435,7 @@ export function showProgramInfo(title: string): void {
     $("#listPopUp").hide();
     saveListPanelState();
     if (listCaptionElement) listCaptionElement.textContent = title;
-    if (listFooterElement) {
-        var extra = "";
-        if ((window as any).sArrowFun === 2) extra = strRIGHT;
-        else if ((window as any).sRewFun === 1) extra = strFF;
-        else if ((window as any).sPNFun === 1) extra = strNEXT;
-        listFooterElement.innerHTML =
-            renderButtonHint(keys.RETURN, strRETURN, "Close") +
-            (title && hasTmdbService()
-                ? renderButtonHint(keys.N2, strInfo, "TMDb", "2", extra)
-                : "");
-    }
+    infoSearchFooter(title);
     // Legacy stbPlayer.js:2251-2282 — TMDb keys search; any other key closes.
     (window as any).__ottClassicScreenPort.setOwnedCallback(
         "about",
@@ -2436,30 +2447,15 @@ export function showProgramInfo(title: string): void {
                     // fallthrough
                     case keys.N2:
                     case keys.INFO:
-                        if (
-                            hasTmdbService() &&
-                            (window as any).TMDb &&
-                            typeof (window as any).TMDb.search === "function"
-                        )
-                            (window as any).TMDb.search(title);
+                        searchInfoTmdb(title);
                         return true;
                     case keys.FF:
                         if ((window as any).sRewFun !== 1) break;
-                        if (
-                            hasTmdbService() &&
-                            (window as any).TMDb &&
-                            typeof (window as any).TMDb.search === "function"
-                        )
-                            (window as any).TMDb.search(title);
+                        searchInfoTmdb(title);
                         return true;
                     case keys.NEXT:
                         if ((window as any).sPNFun !== 1) break;
-                        if (
-                            hasTmdbService() &&
-                            (window as any).TMDb &&
-                            typeof (window as any).TMDb.search === "function"
-                        )
-                            (window as any).TMDb.search(title);
+                        searchInfoTmdb(title);
                         return true;
                 }
             }
@@ -2508,17 +2504,7 @@ export function infoMedia(): void {
     saveListPanelState();
     var t = la[si].title || "";
     if (listCaptionElement) listCaptionElement.textContent = t;
-    if (listFooterElement) {
-        var extra = "";
-        if ((window as any).sArrowFun === 2) extra = strRIGHT;
-        else if ((window as any).sRewFun === 1) extra = strFF;
-        else if ((window as any).sPNFun === 1) extra = strNEXT;
-        listFooterElement.innerHTML =
-            renderButtonHint(keys.RETURN, strRETURN, "Close") +
-            (t && hasTmdbService()
-                ? renderButtonHint(keys.N2, strInfo, "TMDb", "2", extra)
-                : "");
-    }
+    infoSearchFooter(t);
     (window as any).__ottClassicScreenPort.setOwnedCallback(
         "about",
         function (e: number): boolean {
@@ -2529,12 +2515,7 @@ export function infoMedia(): void {
                     // fallthrough
                     case keys.N2:
                     case keys.INFO:
-                        if (
-                            hasTmdbService() &&
-                            (window as any).TMDb &&
-                            typeof (window as any).TMDb.search === "function"
-                        )
-                            (window as any).TMDb.search(t);
+                        searchInfoTmdb(t);
                         return true;
                 }
             }

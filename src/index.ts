@@ -169,8 +169,6 @@ import {
     applyTimezoneSetting,
     beginSettingsDraft,
     defaultSettings,
-    epgTimeColorPair,
-    epgTimeColors,
     exportSettings,
     importSettings,
     installSettingsFacade,
@@ -279,6 +277,7 @@ import {
     editKey1,
     editKey2,
     epgTimeColorDialog,
+    epgTimeCssColor,
     exitPortal,
     formatSeekOffset,
     hideInfoBarWhenReady,
@@ -1329,12 +1328,7 @@ function setColor(): void {
     window.curColor = curColor;
     // EPG nodes may already be visible when the theme changes.
     $(".ott-epg-current-title, .ott-epg-detail-title").css("color", curColor);
-    var epgColor = epgTimeColorPair(settings.epgTimeColor);
-    var epgTextColor = epgColor
-        ? "rgb(" + hsvToRgb(epgColor[0], epgColor[1], 100).join(",") + ")"
-        : Number.isInteger(settings.epgTimeColor)
-          ? epgTimeColors[settings.epgTimeColor] || "inherit"
-          : "inherit";
+    var epgTextColor = epgTimeCssColor(settings.epgTimeColor);
     document.documentElement.style.setProperty(
         "--ott-epg-time-color",
         epgTextColor
@@ -3373,6 +3367,29 @@ function nativeMediaMetadata(): {
     return out;
 }
 
+/** Keep native media-session timer receivers and metadata identical across hosts. */
+function nativeMediaSessionOptions(
+    send: (action: string, metadata: any) => void
+): any {
+    return {
+        backend: (window as any).__ottCoreBackend(),
+        clearInterval: function (id: number) {
+            window.clearInterval(id);
+        },
+        clearTimeout: function (id: number) {
+            window.clearTimeout(id);
+        },
+        metadata: nativeMediaMetadata,
+        send: send,
+        setInterval: function (callback: () => void, delay: number) {
+            return window.setInterval(callback, delay);
+        },
+        setTimeout: function (callback: () => void, delay: number) {
+            return window.setTimeout(callback, delay);
+        },
+    };
+}
+
 // Capacitor Mode C: native media bridges (volume, PiP, fullscreen, standby).
 // Mirrors Tauri Mode B shims below; gates on window.Capacitor so Mode A stays untouched.
 if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
@@ -3456,16 +3473,8 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
         });
 
         // WKWebView timers require Window as their receiver, not the ports object.
-        (window as any).__ottOsMediaSession.create({
-            backend: (window as any).__ottCoreBackend(),
-            clearInterval: function (id: number) {
-                window.clearInterval(id);
-            },
-            clearTimeout: function (id: number) {
-                window.clearTimeout(id);
-            },
-            metadata: nativeMediaMetadata,
-            send: function (action: string, metadata: any) {
+        (window as any).__ottOsMediaSession.create(
+            nativeMediaSessionOptions(function (action: string, metadata: any) {
                 var method = {
                     pause: "pauseBackgroundAudio",
                     resume: "resumeBackgroundAudio",
@@ -3476,30 +3485,16 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                 (cap as any)[method!](metadata).catch(function (error: any) {
                     console.warn("[Capacitor] media session failed:", error);
                 });
-            },
-            setInterval: function (callback: () => void, delay: number) {
-                return window.setInterval(callback, delay);
-            },
-            setTimeout: function (callback: () => void, delay: number) {
-                return window.setTimeout(callback, delay);
-            },
-        });
+            })
+        );
     })();
 }
 
 // Tauri Mode B: OS MediaSession / MPRIS / Now Playing (souvlaki) — lock-screen style
 // transport + artwork/seek when souvlaki + duration allow. Cap path unchanged; Mode A unchanged.
 if (typeof window.__TAURI__ !== "undefined") {
-    (window as any).__ottOsMediaSession.create({
-        backend: (window as any).__ottCoreBackend(),
-        clearInterval: function (id: number) {
-            window.clearInterval(id);
-        },
-        clearTimeout: function (id: number) {
-            window.clearTimeout(id);
-        },
-        metadata: nativeMediaMetadata,
-        send: function (action: string, metadata: any) {
+    (window as any).__ottOsMediaSession.create(
+        nativeMediaSessionOptions(function (action: string, metadata: any) {
             var method = {
                 pause: "pause_media_session",
                 resume: "resume_media_session",
@@ -3510,14 +3505,8 @@ if (typeof window.__TAURI__ !== "undefined") {
             tauriInvoke<any>(method!, metadata).catch(function (error: any) {
                 console.warn("[Tauri] media session failed:", error);
             });
-        },
-        setInterval: function (callback: () => void, delay: number) {
-            return window.setInterval(callback, delay);
-        },
-        setTimeout: function (callback: () => void, delay: number) {
-            return window.setTimeout(callback, delay);
-        },
-    });
+        })
+    );
 }
 
 // Tauri Mode B: frameless window — JS whole-surface drag when overlays closed.

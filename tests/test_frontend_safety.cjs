@@ -586,6 +586,8 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
                 )
             ) +
                 variable("src/index.ts", "TMDb") +
+                func("src/ui/index.ts", "infoSearchFooter") +
+                func("src/ui/index.ts", "searchInfoTmdb") +
                 func("src/ui/index.ts", "showProgramInfo")
         );
         let calls = [];
@@ -613,6 +615,118 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
         assert.equal(calls.length, 2);
     } finally {
         w.close();
+    }
+});
+test("programme and media info keep distinct search shortcuts and late service state", () => {
+    for (const screen of ["programme", "media"]) {
+        for (const enabled of [false, true]) {
+            const w = fixture();
+            try {
+                let handler;
+                let restored = 0;
+                let service = enabled;
+                const searches = [];
+                const hints = [];
+                const title = "A title <unchanged>";
+                Object.assign(w, {
+                    __ottClassicScreenPort: {
+                        savedPanel: () => ({ ld: "Programme description" }),
+                        setOwnedCallback: (_owner, next) => {
+                            handler = next;
+                        },
+                    },
+                    getMediaDescr: () => "Media description",
+                    hasTmdbService: () => service,
+                    listArray: [{ title }],
+                    renderButtonHint: (...args) => {
+                        hints.push(args);
+                        return args[2];
+                    },
+                    restoreListPanelState: () => restored++,
+                    sArrowFun: 2,
+                    selIndex: 0,
+                    sPNFun: 1,
+                    sRewFun: 1,
+                    TMDb: { search: (value) => searches.push(value) },
+                });
+                w.eval(
+                    [
+                        "infoSearchFooter",
+                        "searchInfoTmdb",
+                        "showProgramInfo",
+                        "infoMedia",
+                    ]
+                        .map((name) => func("src/ui/index.ts", name))
+                        .join("\n")
+                );
+                function open() {
+                    if (screen === "programme") w.showProgramInfo(title);
+                    else w.infoMedia();
+                }
+                for (const key of [
+                    "N2",
+                    "INFO",
+                    "RIGHT",
+                    "FF",
+                    "NEXT",
+                    "RETURN",
+                ]) {
+                    restored = 0;
+                    searches.length = 0;
+                    hints.length = 0;
+                    open();
+                    assert.equal(w.listCaptionElement.textContent, title);
+                    assert.equal(
+                        hints.some((hint) => hint[2] === "TMDb"),
+                        enabled
+                    );
+                    if (enabled)
+                        assert.equal(
+                            hints.find((hint) => hint[2] === "TMDb")[4],
+                            w.strRIGHT
+                        );
+                    assert.equal(handler(w.keys[key]), true);
+                    const admitted =
+                        key !== "RETURN" &&
+                        (screen === "programme" ||
+                            (key !== "FF" && key !== "NEXT"));
+                    assert.deepEqual(
+                        searches,
+                        admitted && enabled ? [title] : []
+                    );
+                    assert.equal(restored, admitted ? 0 : 1);
+                }
+                for (const [key, setting] of [
+                    ["RIGHT", "sArrowFun"],
+                    ["FF", "sRewFun"],
+                    ["NEXT", "sPNFun"],
+                ]) {
+                    restored = 0;
+                    searches.length = 0;
+                    w[setting] = 0;
+                    open();
+                    handler(w.keys[key]);
+                    assert.deepEqual(searches, []);
+                    assert.equal(
+                        restored,
+                        1,
+                        "Unmapped shortcuts retain their close behavior"
+                    );
+                    w[setting] = setting === "sArrowFun" ? 2 : 1;
+                }
+                searches.length = 0;
+                open();
+                service = !enabled;
+                handler(w.keys.N2);
+                assert.deepEqual(
+                    searches,
+                    service ? [title] : [],
+                    "Search samples current service availability"
+                );
+            } finally {
+                w.close();
+            }
+        }
     }
 });
 const startupFailure = new Error(hostile + ' & "message"');
@@ -1057,6 +1171,7 @@ test("EPG color updates an already-rendered time row across default, custom and 
             variable("src/settings/index.ts", "epgTimeColors") +
                 func("src/settings/index.ts", "epgTimeColorPair") +
                 func("src/ui/index.ts", "hsvToRgb") +
+                func("src/ui/index.ts", "epgTimeCssColor") +
                 func("src/index.ts", "classicColorRgb") +
                 func("src/index.ts", "setColor") +
                 func("src/channels/index.ts", "formatEpgTime") +
@@ -1219,6 +1334,7 @@ test("EPG color paints current and future rows without CSS variables", () => {
             variable("src/settings/index.ts", "epgTimeColors") +
                 func("src/settings/index.ts", "epgTimeColorPair") +
                 func("src/ui/index.ts", "hsvToRgb") +
+                func("src/ui/index.ts", "epgTimeCssColor") +
                 func("src/index.ts", "classicColorRgb") +
                 func("src/index.ts", "setColor") +
                 func("src/channels/index.ts", "formatEpgTime") +
@@ -1309,6 +1425,29 @@ test("EPG color paints current and future rows without CSS variables", () => {
                 "Inherited color also survives a later render"
             );
         }
+        const originalPair = w.epgTimeColorPair;
+        let colorReads = 0;
+        w.epgTimeColorPair = (value) => {
+            colorReads++;
+            return originalPair(value);
+        };
+        w.listArray = w.listDataArray = [
+            programme,
+            { ...programme, programmeId: "second" },
+        ];
+        w.settings.epgTimeColor = 36466;
+        w.showPage();
+        assert.equal(list.querySelectorAll(".ott-epg-time").length, 2);
+        assert.equal(
+            colorReads,
+            1,
+            "Resolve the shared color once per painted page"
+        );
+        assert(
+            [...list.querySelectorAll(".ott-epg-time")].every(
+                (node) => node.style.color === "rgb(255, 0, 0)"
+            )
+        );
         assert.equal(w.settings.showListSeparators, 0);
     } finally {
         w.close();
