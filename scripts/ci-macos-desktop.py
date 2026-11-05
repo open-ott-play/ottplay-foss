@@ -59,6 +59,18 @@ def validate_helper(value, action):
     return value
 
 
+def validate_trace_contract(value):
+    validate_helper(value, "trace-contract")
+    for key, expected in (("routine_reads", 20000), ("routine_errors", 78),
+                          ("slow_reads", 20), ("critical_events", 2), ("trace_limit", 1048576)):
+        require(type(value.get(key)) is int and value[key] == expected,
+                "trace contract lost counters: " + key)
+    require(type(value.get("trace_bytes")) is int and 0 < value["trace_bytes"] <= 512 * 1024
+            and value.get("trace_unavailable") is False,
+            "trace contract exceeded its bounded output")
+    return value
+
+
 def fixture_files(root, output, *, create=False):
     """One hash-bound fixture set, prepared before build and reused without replacement."""
     fixture = root / "diagnostics/av-v1.mp4"
@@ -306,6 +318,8 @@ def main():
                                              "-target", host_architecture(platform.machine()) + "-apple-macosx14.0",
                                              str(helper_source),
                                              "-o", str(helper)], seconds=90)
+            contract = runner.helper("trace-contract", helper, "trace-contract", seconds=40)
+            receipt["trace_contract"] = validate_trace_contract(contract)
             value = runner.helper("gui-preflight", helper, "preflight", seconds=40)
             receipt.update(helper_sha256=sha(helper), capabilities=value)
             first, second = fixture_files(root, output, create=True)
@@ -321,6 +335,7 @@ def main():
                     and previous["helper_sha256"] == sha(helper)
                     and previous["helper_source_sha256"] == sha(helper_source)
                     and previous["controller_sha256"] == sha(Path(__file__)), "preflight binding changed")
+            validate_trace_contract(previous.get("trace_contract"))
             first, second = fixture_files(root, output)
             validate_reveal(previous.get("finder_reveal"), first)
             require(previous.get("fixture", {}).get("sha256") == FIXTURE_SHA,

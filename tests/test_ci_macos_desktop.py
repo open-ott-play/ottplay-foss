@@ -209,7 +209,7 @@ class DesktopCaptureContracts(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             MODULE.validate_reveal(None, file)
 
-    def _mocked_preflight(self, fail_reveal):
+    def _mocked_preflight(self, fail_reveal, fail_trace=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "repo"
             (root / "scripts").mkdir(parents=True)
@@ -233,6 +233,10 @@ class DesktopCaptureContracts(unittest.TestCase):
                 return ""
             def helper(name, executable, action, *args, **kwargs):
                 calls.append((name, action, kwargs))
+                if action == "trace-contract":
+                    if fail_trace:
+                        raise RuntimeError("synthetic trace contract failure")
+                    return self._trace_contract_result()
                 if action == "preflight":
                     return {"schema": 1, "action": action, "status": "ok"}
                 if action == "finder-reveal":
@@ -283,9 +287,41 @@ class DesktopCaptureContracts(unittest.TestCase):
         self.assertFalse(receipt["playback_accepted"])
         self.assertIn("no Open With", receipt["finder_reveal_scope"])
         names = [call[0] for call in calls]
+        self.assertLess(names.index("trace-contract"), names.index("gui-preflight"))
         self.assertLess(names.index("gui-preflight"), names.index("finder-reveal"))
         self.assertNotIn("finder-failure-state", names)
         self.assertNotIn("build-package", names)
+
+
+    def _trace_contract_result(self):
+        return {"schema": 1, "action": "trace-contract", "status": "ok",
+                "routine_reads": 20000, "routine_errors": 78, "slow_reads": 20,
+                "critical_events": 2, "trace_limit": 1048576,
+                "trace_bytes": 100000, "trace_unavailable": False}
+
+    def test_trace_contract_requires_complete_counts_and_bounded_output(self):
+        valid = self._trace_contract_result()
+        self.assertIs(MODULE.validate_trace_contract(valid), valid)
+        for key, wrong in (("routine_reads", 19999), ("routine_errors", 77),
+                           ("slow_reads", 19), ("critical_events", 1),
+                           ("trace_limit", 2097152), ("trace_bytes", 524289),
+                           ("trace_bytes", False), ("trace_unavailable", True)):
+            with self.subTest(key=key, wrong=wrong), self.assertRaises(RuntimeError):
+                MODULE.validate_trace_contract(dict(valid, **{key: wrong}))
+        with self.assertRaises(RuntimeError):
+            MODULE.validate_trace_contract(None)
+
+    def test_failed_trace_contract_stops_before_gui_and_finder(self):
+        result, receipt, calls = self._mocked_preflight(False, fail_trace=True)
+        self.assertEqual(result, 1)
+        self.assertEqual(receipt["status"], "FAILED")
+        self.assertIn("synthetic trace contract failure", receipt["error"])
+        names = [call[0] for call in calls]
+        self.assertEqual(names.count("trace-contract"), 1)
+        for skipped in ("gui-preflight", "finder-reveal", "finder-failure-state", "build-package"):
+            self.assertNotIn(skipped, names)
+        self.assertNotIn("fixture", receipt)
+        self.assertFalse(receipt["playback_accepted"])
 
 
 if __name__ == "__main__":

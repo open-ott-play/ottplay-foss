@@ -24,11 +24,12 @@ var traceUnavailable = false
 let traceLimit = 1024 * 1024
 // Only fixed operation names, statuses and timing: never AX values or file paths.
 @discardableResult
-func trace(_ event: String, _ operation: String, status: String = "") -> Bool {
+func rawTrace(_ event: String, _ operation: String, status: String = "", details: [String: Any] = [:]) -> Bool {
     guard !traceUnavailable else { return false }
-    let record: [String: Any] = ["schema": 1, "event": event, "phase": currentPhase,
+    var record: [String: Any] = ["schema": 1, "event": event, "phase": currentPhase,
         "operation": operation, "status": status,
         "elapsed_ms": Int((ProcessInfo.processInfo.systemUptime - started) * 1000)]
+    if !details.isEmpty { record["details"] = details }
     guard var data = try? JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]) else {
         traceUnavailable = true
         return false
@@ -41,8 +42,79 @@ func trace(_ event: String, _ operation: String, status: String = "") -> Bool {
     do { try FileHandle.standardError.write(contentsOf: data) }
     catch { traceUnavailable = true; return false }
     traceBytes += data.count
+    traceEvents[event + ":" + operation, default: 0] += 1
     return true
 }
+
+var traceEvents: [String: Int] = [:]
+let routineAttributes: Set<String> = ["AXChildren", "AXSelectedChildren", "AXSelected", "AXRole", "AXTitle"]
+struct ReadStats {
+    var calls = 0
+    var errors = 0
+    var slow = 0
+    var maxMilliseconds = 0
+    var results: [Int: Int] = [:]
+    var firstError: Int?
+    var lastError: Int?
+    mutating func add(_ result: Int, _ milliseconds: Int) {
+        calls += 1
+        results[result, default: 0] += 1
+        maxMilliseconds = max(maxMilliseconds, milliseconds)
+        if milliseconds >= 100 { slow += 1 }
+        if result != 0 {
+            errors += 1
+            if firstError == nil { firstError = result }
+            lastError = result
+        }
+    }
+    var json: [String: Any] {
+        var value: [String: Any] = ["calls": calls, "errors": errors, "slow": slow,
+            "max_ms": maxMilliseconds,
+            "results": Dictionary(uniqueKeysWithValues: results.map { (String($0.key), $0.value) })]
+        if let firstError { value["first_error"] = firstError }
+        if let lastError { value["last_error"] = lastError }
+        return value
+    }
+}
+var pendingReads: [String: ReadStats] = [:]
+var readTotals: [String: ReadStats] = [:]
+var pendingReadCount = 0
+var emittedReadCount = 0
+var emittedReadErrors = 0
+@discardableResult
+func flushReads() -> Bool {
+    if pendingReadCount == 0 { return !traceUnavailable }
+    let details = pendingReads.mapValues { $0.json }
+    guard rawTrace("summary", "AX.routineReads", details: ["calls": pendingReadCount, "reads": details]) else { return false }
+    emittedReadCount += pendingReadCount
+    emittedReadErrors += pendingReads.values.reduce(0) { $0 + $1.errors }
+    pendingReads.removeAll(keepingCapacity: true)
+    pendingReadCount = 0
+    return true
+}
+@discardableResult
+func trace(_ event: String, _ operation: String, status: String = "", details: [String: Any] = [:]) -> Bool {
+    guard flushReads() else { return false }
+    return rawTrace(event, operation, status: status, details: details)
+}
+func beginRoutineRead(_ operation: String) -> Bool {
+    if pendingReadCount == 0 {
+        return rawTrace("begin", "AX.routineReads", details: ["next_operation": operation])
+    }
+    return !traceUnavailable
+}
+func recordRoutineRead(_ operation: String, result: Int, milliseconds: Int) {
+    pendingReads[operation, default: ReadStats()].add(result, milliseconds)
+    readTotals[operation, default: ReadStats()].add(result, milliseconds)
+    pendingReadCount += 1
+    if milliseconds >= 100 {
+        rawTrace("slow", operation, status: String(result), details: ["elapsed_ms": milliseconds])
+    }
+    // A bounded progress interval, including every result code and all errors.
+    if pendingReadCount >= 64 { flushReads() }
+}
+var walkSequence = 0
+
 func observationAllowed() -> Bool {
     !traceUnavailable && ProcessInfo.processInfo.systemUptime - started < operationBudget
 }
@@ -53,6 +125,7 @@ func tick() throws {
 }
 func phase(_ name: String) throws {
     try tick()
+    try require(flushReads(), "trace_budget", "Progress trace unavailable")
     currentPhase = name
     try require(trace("phase", name), "trace_budget", "Progress trace unavailable")
 }
@@ -92,14 +165,20 @@ func waitUntil(_ detail: String, seconds: Double = 5, mode: PauseMode = .runLoop
     throw Refusal(code: "ui_not_ready", detail: detail)
 }
 func attr(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
-    // Also covers post-walk filters, which previously made unchecked AX calls.
     guard observationAllowed() else { return nil }
     let operation = "AXCopy." + name
     lastOperation = operation
-    guard trace("begin", operation) else { return nil }
+    let routine = routineAttributes.contains(name)
+    guard (routine ? beginRoutineRead(operation) : trace("begin", operation)) else { return nil }
+    let start = ProcessInfo.processInfo.systemUptime
     var value: CFTypeRef?
     let result = AXUIElementCopyAttributeValue(element, name as CFString, &value)
-    trace("end", operation, status: String(result.rawValue))
+    let elapsed = max(0, Int((ProcessInfo.processInfo.systemUptime - start) * 1000))
+    if routine {
+        recordRoutineRead(operation, result: Int(result.rawValue), milliseconds: elapsed)
+    } else {
+        trace("end", operation, status: String(result.rawValue), details: ["elapsed_ms": elapsed])
+    }
     return result == .success ? value : nil
 }
 func string(_ element: AXUIElement, _ name: String) -> String {
@@ -130,17 +209,67 @@ func rectJSON(_ rect: CGRect) -> [String: Double] {
     ["x": Double(rect.origin.x), "y": Double(rect.origin.y), "width": Double(rect.width), "height": Double(rect.height)]
 }
 func walk(_ root: AXUIElement) throws -> [AXUIElement] {
+    walkSequence += 1
+    let id = walkSequence
     var pending: [(AXUIElement, Int)] = [(root, 0)]
     var result: [AXUIElement] = []
-    while let (node, depth) = pending.popLast() {
-        try tick()
-        try require(result.count < 1400, "ax_tree_limit", "AX tree exceeded 1400 nodes")
-        result.append(node)
-        if depth < 14 {
-            for child in children(node).reversed() { pending.append((child, depth + 1)) }
-        }
+    var depths: [Int] = []
+    var seen: [CFHashCode: [Int]] = [:]
+    var rawVisits = 0, revisited = 0, comparisons = 0, work = 0
+    var depthLimited = 0, truncated = 0, reexpanded = 0, scheduled = 1
+    func details(_ outcome: String) -> [String: Any] {
+        ["id": id, "outcome": outcome, "raw_visits": rawVisits, "visited": result.count,
+         "revisited": revisited, "comparisons": comparisons, "work": work,
+         "depth_truncated": depthLimited, "work_truncated": truncated, "reexpanded": reexpanded,
+         "candidate_refs": scheduled]
     }
-    return result
+    try require(trace("begin", "AX.walk", details: ["id": id]), "trace_budget", "Walk trace unavailable")
+    do {
+        while let (node, depth) = pending.popLast() {
+            try tick()
+            rawVisits += 1
+            work += 1
+            if work > 1400 { truncated += pending.count + 1 }
+            try require(work <= 1400, "ax_tree_limit", "AX tree exceeded 1400 work units")
+            let hash = CFHash(node)
+            var match: Int?
+            for index in seen[hash] ?? [] {
+                comparisons += 1
+                work += 1
+                if work > 1400 { truncated += pending.count + 1 }
+                try require(work <= 1400, "ax_tree_limit", "AX identity comparisons exceeded 1400 work units")
+                if CFEqual(result[index], node) { match = index; break }
+            }
+            if let index = match {
+                revisited += 1
+                if depth >= depths[index] { continue }
+                // Preserve DFS ordering but expand a shallower route if the
+                // first encounter reached the depth boundary via another path.
+                depths[index] = depth
+                reexpanded += 1
+            } else {
+                seen[hash, default: []].append(result.count)
+                result.append(node)
+                depths.append(depth)
+            }
+            if depth < 14 {
+                let next = children(node)
+                if scheduled + next.count > 1400 {
+                    truncated += next.count
+                    throw Refusal(code: "ax_tree_limit", detail: "AX candidate work exceeded 1400 nodes")
+                }
+                scheduled += next.count
+                for child in next.reversed() { pending.append((child, depth + 1)) }
+            } else {
+                depthLimited += 1
+            }
+        }
+        try require(trace("end", "AX.walk", details: details("complete")), "trace_budget", "Walk trace unavailable")
+        return result
+    } catch {
+        trace("end", "AX.walk", details: details("failed"))
+        throw error
+    }
 }
 func unique(_ root: AXUIElement, role: String, titles: [String]) throws -> AXUIElement {
     let found = try walk(root).filter {
@@ -604,6 +733,38 @@ func finderDiagnostic() throws -> [String: Any] {
         "scope": "Read-only partial Finder AX state; unavailable attributes may be absent even when traversal is exhausted; no delivery or playback conclusion"]
 }
 
+
+func traceContract() throws -> [String: Any] {
+    try phase("trace_contract")
+    let operations = routineAttributes.sorted().map { "AXCopy." + $0 }
+    for index in 0..<20000 {
+        try tick()
+        let operation = operations[index % operations.count]
+        try require(beginRoutineRead(operation), "trace_contract", "Cannot begin synthetic routine read")
+        recordRoutineRead(operation, result: index % 257 == 0 ? -25204 : 0,
+                          milliseconds: index % 1000 == 0 ? 150 : 1)
+    }
+    // These use the same critical-event path as real mutations and flush all
+    // preceding routine counts into the actual bounded stderr stream.
+    try require(trace("begin", "TraceContract.critical"), "trace_contract", "Missing critical begin")
+    try require(trace("end", "TraceContract.critical", status: "returned"), "trace_contract", "Missing critical end")
+    let total = readTotals.values.reduce(0) { $0 + $1.calls }
+    let errors = readTotals.values.reduce(0) { $0 + $1.errors }
+    let slow = readTotals.values.reduce(0) { $0 + $1.slow }
+    let codes = readTotals.values.reduce(0) { $0 + ($1.results[-25204] ?? 0) }
+    try require(total == 20000 && emittedReadCount == total, "trace_contract", "Routine read counts were lost")
+    try require(errors == 78 && codes == errors && emittedReadErrors == errors,
+                "trace_contract", "Routine errors were lost")
+    try require(slow == 20 && traceEvents.filter { $0.key.hasPrefix("slow:AXCopy.") }.values.reduce(0, +) == slow,
+                "trace_contract", "Slow read evidence was lost")
+    try require(traceEvents["begin:TraceContract.critical"] == 1 && traceEvents["end:TraceContract.critical"] == 1,
+                "trace_contract", "Critical event pair was lost")
+    try require(traceBytes <= 512 * 1024 && !traceUnavailable, "trace_contract", "Routine tracing exceeded its regression bound")
+    return ["routine_reads": total, "routine_errors": errors, "slow_reads": slow,
+            "critical_events": 2, "trace_bytes": traceBytes, "trace_limit": traceLimit,
+            "scope": "Synthetic trace emitter contract only; no AX calls, GUI action or playback evidence"]
+}
+
 func main(_ args: [String]) throws -> [String: Any] {
     try require(!args.isEmpty, "usage", "Expected an action")
     if args[0] == "preflight" {
@@ -669,16 +830,22 @@ var output: [String: Any] = ["schema": 1, "action": args.first ?? ""]
 var status: Int32 = 0
 do {
     guard #available(macOS 14.0, *) else { throw Refusal(code: "macos_version", detail: "Helper requires macOS 14+") }
-    try phase("initialize")
-    // Per-element timeouts do not propagate to descendant or equal AX objects.
-    // This checked setting covers all AX messaging in this helper process only.
-    let timeout = try observed("AXGlobalMessagingTimeout") {
-        AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), 0.5)
+    if args.first == "trace-contract" {
+        try require(args.count == 1, "usage", "trace-contract takes no arguments")
+        output.merge(try traceContract()) { _, fresh in fresh }
+    } else {
+        try phase("initialize")
+        // Per-element timeouts do not propagate to descendant or equal AX objects.
+        // This checked setting covers all AX messaging in this helper process only.
+        let timeout = try observed("AXGlobalMessagingTimeout") {
+            AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), 0.5)
+        }
+        try require(timeout == .success, "ax_timeout", "Cannot set process-wide AX messaging timeout")
+        try observed("NSApplication.shared") { _ = NSApplication.shared }
+        try observed("NSApplication.activationPolicy") { _ = NSApp.setActivationPolicy(.prohibited) }
+        output.merge(try main(args)) { _, fresh in fresh }
     }
-    try require(timeout == .success, "ax_timeout", "Cannot set process-wide AX messaging timeout")
-    try observed("NSApplication.shared") { _ = NSApplication.shared }
-    try observed("NSApplication.activationPolicy") { _ = NSApp.setActivationPolicy(.prohibited) }
-    output.merge(try main(args)) { _, fresh in fresh }
+    try require(flushReads(), "trace_budget", "Final routine trace unavailable")
     // Diagnostic partial results explicitly report their own smaller deadline.
     if args.first != "finder-diagnostic" { try tick() }
     output["status"] = "ok"
@@ -691,6 +858,8 @@ do {
     output["error"] = ["code": "platform_error", "detail": String(describing: type(of: error))]
     status = 2
 }
+// Preserve the primary refusal even if its final read summary cannot be written.
+if status != 0 { _ = flushReads() }
 output["phase"] = currentPhase
 output["last_operation"] = lastOperation
 output["deadline_exceeded"] = ProcessInfo.processInfo.systemUptime - started >= operationBudget
