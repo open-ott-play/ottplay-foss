@@ -4,13 +4,17 @@ The optional main-window constraint requests 16:9 **content dimensions during in
 
 The native commands are `get_window_aspect_lock` and `set_window_aspect_lock({enabled})`. Their confirmed result is `{ok, supported, enabled, active}`. `enabled` is the requested preference; `active` means the native interactive constraint is armed/applicable now, not that current pixels are already 16:9. Fullscreen/maximize suspension retains the requested preference. Unsupported SET and native or persistence failures reject. A successful native mutation followed by a persistence failure is not silently rolled back. Main-only command authorization does not grant control over PiP or another window.
 
-Windows edits the native `WM_SIZING` proposal, keeping the opposite anchor and respecting real OS-initialized `WM_GETMINMAXINFO` bounds after Tao overrides. DPI/display changes invalidate cached bounds; no valid fresh bounds means ordinary OS handling. Content/frame insets are current physical pixels. Snap remains OS-owned. macOS uses AppKit content aspect constraints and restores prior aspect/increment settings when disabled. GTK X11 composes aspect and existing size hints. Wayland currently reports unsupported because its first fixed-state configure precedes the state callback used here; this is not a claim that GDK Wayland ignores aspect hints. See the [GTK 3.24.49 configure ordering](https://github.com/GNOME/gtk/blob/3.24.49/gdk/wayland/gdkwindow-wayland.c#L1678); GTK is a system dependency, so this inspected upstream source is not a pinned-runtime guarantee.
+Windows edits the native `WM_SIZING` proposal, keeping the opposite anchor and respecting real OS-initialized `WM_GETMINMAXINFO` bounds after Tao overrides. DPI/display changes invalidate cached bounds; no valid fresh bounds means ordinary OS handling. Content/frame insets are current physical pixels. Snap remains OS-owned. macOS uses AppKit content aspect constraints and restores prior aspect/increment settings when disabled.
 
-This implementation requires native acceptance before the issue can be closed. In particular [GTK's hint setter queues layout](https://github.com/GNOME/gtk/blob/3.24.49/gtk/gtkwindow.c#L3843), so unchanged initial X11 geometry has not yet been proved. The intended behavior preserves current/restored geometry on enable and constrains subsequent interactive sizing. A reviewed implementation and passing arithmetic tests do not establish every desktop/window-manager behavior.
+Linux X11 and Wayland report `{ok:true, supported:false, enabled:false, active:false}`. SET rejects with `Native aspect constraint is unavailable on this backend` and does not write preferences. Startup may read an existing preference, but does not apply hints or change the restored geometry. The saved preference is retained for a supported backend; the false response fields do not describe or overwrite its stored value.
+
+The no-initial-resize requirement is intentional. In hosted run [42078664064](https://github.com/open-ott-play/ottplay-foss/actions/runs/42078664064), the X11 fixture on GTK 3.24.41 / Openbox 3.6.1 observed its 640×400 client area become 640×360 after the first successful enable request. The exact tested source was merge `a28258b3079ee1008ee0f88a709413bf47703a80`. Both production-permission and preference-pin cases failed the unchanged-geometry assertion; the aspect hint itself was the correct 16:9 ratio.
+
+This is consistent with [GDK's geometry-hint contract](https://docs.gtk.org/gdk3/method.Window.set_geometry_hints.html), which also permits constraining the current size. Replacing the GTK setter with a direct GDK hint does not establish interactive-only behavior. The existing Tao resize entry points delegate to the window manager, without a qualified per-proposal constraint and completion boundary. Linux support requires a separately verified native path that preserves current/restored geometry, including on enable and fixed-state transitions. Resizing back after a snap or accepting the snapped initial size would not satisfy this contract.
 
 ## Existing Windows smoke gate
 
-The existing `window_controls_smoke` executable and `scripts/check-window-controls.py` exercise production handlers through WebView2 JavaScript IPC. They use only owned main/PiP fixture HWNDs, isolated data directories, the existing 30-second internal/40-second parent deadlines, and PID-scoped cleanup. No installed player, user profile, or network endpoint is used.
+The existing `window_controls_smoke` executable and `scripts/check-window-controls.py` exercise production handlers through WebView2 JavaScript IPC. They use only owned main/PiP fixture HWNDs, isolated data directories, the Windows 60-second startup and 30-second exercise/cleanup budgets with a 100-second parent deadline, and PID-scoped cleanup. No installed player, user profile, or network endpoint is used.
 
 The fixture starts with non-16:9 geometry and checks default-off state; repeated true/true/false/false SET; unchanged geometry; production versus missing permissions; denied PiP GET/SET; six native fullscreen/restore transitions; and three fresh-process preference phases. The runner requires exact confirmed replies and saved preference bytes, so incomplete native evidence cannot be reported as a pass.
 
@@ -57,6 +61,8 @@ complete native report, retained preference bytes and owned-process cleanup.
 This is constraint and programmatic native-transition evidence, not a physical
 drag, multi-monitor or pixel acceptance result. The macOS runner uses its own
 process session for bounded cleanup; Windows retains the owned-PID tree cleanup
-and its existing message-probe assertions. Linux remains outside this fixture:
-Wayland is explicitly unsupported, and the X11 initial-layout/WM acceptance gap
-described above remains open. A successful macOS run does not close those gaps.
+and its existing message-probe assertions. The Linux branch of this same fixture checks the unsupported capability,
+unchanged native client geometry and existing size hints, permission and PiP
+isolation, and preservation of a pre-existing saved preference. It does not claim
+interactive aspect-lock support. A successful macOS run does not establish Linux
+support.

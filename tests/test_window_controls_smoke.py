@@ -416,9 +416,14 @@ class RestorationTests(unittest.TestCase):
 
 
 def appkit_native(active=False, *, full=False, zoom=False):
-    return {"label": "main", "window_number": 42, "level": 0, "frame": [40.0, 40.0, 640.0, 428.0],
-            "content_size": [640.0, 400.0], "content_aspect": [16.0, 9.0] if active else [0.0, 0.0],
-            "resize_increments": [1.0, 1.0], "fullscreen": full, "zoomed": zoom, "miniaturized": False}
+    return {"label": "main", "window_number": 42, "level": 0,
+            "frame": [0.0, 0.0, 1024.0, 768.0] if full else [40.0, 40.0, 640.0, 428.0],
+            "screen_frame": [0.0, 0.0, 1024.0, 768.0],
+            "style_mask": 0 if full else 13, "presentation_options": 5 if full else 0,
+            "movable": not full, "content_size": [1024.0, 768.0] if full else [640.0, 400.0],
+            "content_aspect": [16.0, 9.0] if active else [0.0, 0.0],
+            "resize_increments": [1.0, 1.0], "fullscreen": False,
+            "zoomed": full or zoom, "miniaturized": False}
 
 
 def appkit_evidence(missing=False):
@@ -459,7 +464,7 @@ class AppKitEvidenceTests(unittest.TestCase):
             lambda r: r["set_sequence"][0]["native"].update(frame=[40, 40, 800, 450]),
             lambda r: r["transitions"].pop(),
             lambda r: r["transitions"][0]["state"].update(active=True),
-            lambda r: r["transitions"][0]["native"].update(fullscreen=False),
+            lambda r: r["transitions"][0]["native"].update(fullscreen=True),
             lambda r: r["transitions"][4]["native"].update(zoomed=False),
             lambda r: r["final"].update(resize_increments=[2, 2]),
             lambda r: r["final"].update(window_number=43),
@@ -477,6 +482,40 @@ class AppKitEvidenceTests(unittest.TestCase):
         report["denials"][0]["error"] = "IPC deadline"
         with self.assertRaises(RuntimeError):
             runner.validate_evidence(report, True, platform="macos")
+
+    def test_simple_fullscreen_requires_native_geometry_style_and_presentation(self):
+        mutations = [
+            lambda n: n.update(frame=[40, 40, 640, 400]),
+            lambda n: n.update(content_size=[640, 400]),
+            lambda n: n.update(style_mask=13),
+            lambda n: n.update(style_mask=1 << 14),
+            lambda n: n.update(movable=True),
+            lambda n: n.update(presentation_options=0),
+            lambda n: n.update(screen_frame=[0, 0, float("nan"), 768]),
+        ]
+        for mutate in mutations:
+            report = appkit_evidence()
+            mutate(report["transitions"][0]["native"])
+            with self.subTest(mutate=mutate), self.assertRaises(RuntimeError):
+                runner.validate_evidence(report, False, platform="macos")
+        # A maximized screen-sized window with normal presentation is not proof
+        # of simple fullscreen, even when its raw isZoomed property is true.
+        report = appkit_evidence()
+        report["transitions"][0]["native"].update(style_mask=13, movable=True, presentation_options=0)
+        with self.assertRaises(RuntimeError):
+            runner.validate_evidence(report, False, platform="macos")
+
+    def test_simple_fullscreen_exit_and_zoom_preserve_native_window_policy(self):
+        for index in [1, 3, 4, 5]:
+            for change in [{"style_mask": 0}, {"movable": False}, {"presentation_options": 5}]:
+                report = appkit_evidence()
+                report["transitions"][index]["native"].update(change)
+                with self.subTest(index=index, change=change), self.assertRaises(RuntimeError):
+                    runner.validate_evidence(report, False, platform="macos")
+        report = appkit_evidence()
+        report["final"].update(presentation_options=5)
+        with self.assertRaises(RuntimeError):
+            runner.validate_evidence(report, False, platform="macos")
 
     def test_appkit_restoration_is_fresh_native_evidence_not_a_requested_value(self):
         for phase in ["pin", "unpin", "verify-off"]:

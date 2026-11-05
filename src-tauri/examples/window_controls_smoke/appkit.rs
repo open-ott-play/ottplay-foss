@@ -2,7 +2,7 @@
 // Native snapshots use AppKit points and constraints, not video geometry or
 // an assertion that a physical interactive drag occurred.
 use objc2::{rc::Retained, MainThreadMarker};
-use objc2_app_kit::{NSWindow, NSWindowStyleMask};
+use objc2_app_kit::{NSApp, NSApplicationPresentationOptions, NSWindow, NSWindowStyleMask};
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 struct AppKitSnapshot {
@@ -10,6 +10,10 @@ struct AppKitSnapshot {
     window_number: isize,
     level: isize,
     frame: [f64; 4],
+    screen_frame: [f64; 4],
+    style_mask: usize,
+    presentation_options: usize,
+    movable: bool,
     content_size: [f64; 2],
     content_aspect: [f64; 2],
     resize_increments: [f64; 2],
@@ -33,8 +37,11 @@ fn appkit_native(window: &tauri::WebviewWindow) -> Result<Retained<NSWindow>, St
 }
 
 fn appkit_snapshot_now(window: &tauri::WebviewWindow) -> Result<AppKitSnapshot, String> {
+    let mtm = MainThreadMarker::new().ok_or("AppKit observation requires the main thread")?;
     let native = appkit_native(window)?;
     let frame = native.frame();
+    let screen = native.screen().ok_or("Owned AppKit window has no screen")?;
+    let screen_frame = screen.frame();
     let content = native.contentRectForFrameRect(frame);
     let aspect = native.contentAspectRatio();
     let increments = native.contentResizeIncrements();
@@ -43,6 +50,10 @@ fn appkit_snapshot_now(window: &tauri::WebviewWindow) -> Result<AppKitSnapshot, 
         window_number: native.windowNumber(),
         level: native.level(),
         frame: [frame.origin.x, frame.origin.y, frame.size.width, frame.size.height],
+        screen_frame: [screen_frame.origin.x, screen_frame.origin.y, screen_frame.size.width, screen_frame.size.height],
+        style_mask: native.styleMask().bits(),
+        presentation_options: NSApp(mtm).presentationOptions().bits(),
+        movable: native.isMovable(),
         content_size: [content.size.width, content.size.height],
         content_aspect: [aspect.width, aspect.height],
         resize_increments: [increments.width, increments.height],
@@ -75,11 +86,39 @@ fn appkit_geometry_equal(actual: &AppKitSnapshot, expected: &AppKitSnapshot) -> 
         && actual.content_size.iter().zip(expected.content_size).all(|(a, b)| (a - b).abs() <= 2.0)
 }
 
+// Production uses Tao simple fullscreen, not the Spaces FullScreen style bit.
+// Observe the native effects independently of the command acknowledgement.
+fn appkit_native_mode_matches(
+    value: &AppKitSnapshot,
+    baseline: &AppKitSnapshot,
+    simple_fullscreen: bool,
+) -> bool {
+    if value.fullscreen {
+        return false;
+    }
+    if simple_fullscreen {
+        let removed = NSWindowStyleMask::Titled
+            | NSWindowStyleMask::Miniaturizable | NSWindowStyleMask::Resizable;
+        let presentation = NSApplicationPresentationOptions::AutoHideDock
+            | NSApplicationPresentationOptions::AutoHideMenuBar;
+        value.style_mask == (baseline.style_mask & !removed.bits())
+            && value.presentation_options == presentation.bits()
+            && !value.movable
+            && value.frame.iter().zip(value.screen_frame).all(|(a, b)| (a - b).abs() <= 2.0)
+            && value.content_size.iter().zip(value.screen_frame[2..].iter())
+                .all(|(a, b)| (a - b).abs() <= 2.0)
+    } else {
+        value.style_mask == baseline.style_mask
+            && value.presentation_options == baseline.presentation_options
+            && value.movable == baseline.movable
+    }
+}
+
 async fn appkit_settled(
     window: &tauri::WebviewWindow,
     baseline: &AppKitSnapshot,
     active: bool,
-    fullscreen: bool,
+    simple_fullscreen: bool,
     zoomed: Option<bool>,
     original_geometry: bool,
 ) -> Result<AppKitSnapshot, String> {
@@ -92,7 +131,8 @@ async fn appkit_settled(
         let expected_aspect = if active { [16.0, 9.0] } else { baseline.content_aspect };
         let restored_increments = active || value.resize_increments == baseline.resize_increments;
         if value.content_aspect == expected_aspect && restored_increments
-            && value.fullscreen == fullscreen && !value.miniaturized
+            && appkit_native_mode_matches(&value, baseline, simple_fullscreen)
+            && !value.miniaturized
             && zoomed.map(|expected| value.zoomed == expected).unwrap_or(true)
             && (!original_geometry || appkit_geometry_equal(&value, baseline))
         {
@@ -104,7 +144,7 @@ async fn appkit_settled(
             previous = None;
         }
         if start.elapsed() >= Duration::from_secs(4) {
-            return Err(format!("AppKit native state did not settle: {value:?}"));
+            return Err(format!("AppKit native state did not settle (simple_fullscreen={simple_fullscreen}, active={active}, zoomed={zoomed:?}, original_geometry={original_geometry}): {value:?}"));
         }
         tokio::time::sleep(Duration::from_millis(25)).await;
     }

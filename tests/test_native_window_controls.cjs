@@ -635,11 +635,12 @@ test("aspect lock uses enabled preference while the native constraint is suspend
     assert.deepEqual(f.messages, ["Lock window to 16:9: off"]);
 });
 
-test("unsupported or malformed aspect state never dispatches a mutation", async () => {
+test("malformed aspect state never dispatches a mutation", async () => {
     for (const reply of [
         undefined,
         {},
-        { active: false, enabled: false, ok: true, supported: false },
+        { active: true, enabled: false, ok: true, supported: false },
+        { active: false, enabled: false, ok: true, supported: "false" },
         { active: false, enabled: "false", ok: true, supported: true },
         { enabled: false, ok: true, supported: true },
     ]) {
@@ -651,6 +652,35 @@ test("unsupported or malformed aspect state never dispatches a mutation", async 
         await f.action(f.open(), "aspectLock");
         assert.deepEqual(f.calls, [["get_window_aspect_lock"]]);
         assert.deepEqual(f.messages, ["Lock window to 16:9: ERROR!"]);
+    }
+});
+
+test("unsupported aspect capability is translated without dispatching a preference change", async () => {
+    for (const enabled of [false, true]) {
+        const f = fixture();
+        const preference = { enabled };
+        f.host._ = (key) => (key === "Unavailable" ? "No disponible" : key);
+        f.native.invoke = (command) => {
+            f.calls.push([command]);
+            return {
+                active: false,
+                enabled: preference.enabled,
+                ok: true,
+                supported: false,
+            };
+        };
+        const menu = f.open();
+        await f.action(menu, "aspectLock");
+        await f.action(menu, "aspectLock");
+        assert.deepEqual(f.calls, [
+            ["get_window_aspect_lock"],
+            ["get_window_aspect_lock"],
+        ]);
+        assert.equal(preference.enabled, enabled);
+        assert.deepEqual(f.messages, [
+            "Lock window to 16:9: No disponible",
+            "Lock window to 16:9: No disponible",
+        ]);
     }
 });
 
@@ -703,6 +733,33 @@ test("an aspect read cannot mutate after the menu loses ownership", async () => 
             enabled: false,
             ok: true,
             supported: true,
+        });
+        await pending;
+        assert.deepEqual(f.calls, [["get_window_aspect_lock"]]);
+        assert.deepEqual(f.messages, []);
+    }
+});
+
+test("late unsupported capability cannot notify a replaced, closed or locked Menu", async () => {
+    for (const leave of [
+        (f) => f.close(),
+        (f) => f.replace(),
+        (f) => f.lock(),
+    ]) {
+        const f = fixture();
+        const wait = deferred();
+        f.native.invoke = (command) => {
+            f.calls.push([command]);
+            return wait.promise;
+        };
+        const pending = f.action(f.open(), "aspectLock");
+        await Promise.resolve();
+        leave(f);
+        wait.resolve({
+            active: false,
+            enabled: false,
+            ok: true,
+            supported: false,
         });
         await pending;
         assert.deepEqual(f.calls, [["get_window_aspect_lock"]]);

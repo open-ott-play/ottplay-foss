@@ -515,6 +515,7 @@ mod smoke {
             .map_err(|_| "Sizing probe channel closed".to_owned())?
     }
 
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     async fn aspect(
         window: &tauri::WebviewWindow,
         enabled: Option<bool>,
@@ -536,6 +537,7 @@ mod smoke {
         }
         Ok(reply)
     }
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     async fn aspect_state(
         window: &tauri::WebviewWindow,
         enabled: bool,

@@ -156,7 +156,7 @@ def validate_restoration_evidence(report, phase, *, platform="windows"):
     validate_sizing_probe(report.get("aspect_sizing", {}), phase == "pin")
 
 
-def validate_appkit_snapshot(value, baseline, *, active, fullscreen=False,
+def validate_appkit_snapshot(value, baseline, *, active, simple_fullscreen=False,
                              zoomed=False, original_geometry=True):
     require(isinstance(value, dict) and value.get("label") == "main",
             "Missing owned AppKit main-window observation")
@@ -164,19 +164,35 @@ def validate_appkit_snapshot(value, baseline, *, active, fullscreen=False,
             and value["window_number"] == baseline.get("window_number"),
             "AppKit observation changed native window identity")
     require(type(value.get("level")) is int, "Missing AppKit window level")
-    for key, size in [("frame", 4), ("content_size", 2), ("content_aspect", 2),
+    for key, size in [("frame", 4), ("screen_frame", 4), ("content_size", 2), ("content_aspect", 2),
                       ("resize_increments", 2)]:
         items = value.get(key)
         require(isinstance(items, list) and len(items) == size
                 and all(type(v) in (int, float) and math.isfinite(v) for v in items),
                 f"Invalid AppKit {key}")
-    require(all(v > 0 for v in value["frame"][2:] + value["content_size"]),
+    require(all(v > 0 for v in value["frame"][2:] + value["screen_frame"][2:] + value["content_size"]),
             "Empty AppKit geometry")
-    for key in ["fullscreen", "zoomed", "miniaturized"]:
+    for key in ["fullscreen", "zoomed", "miniaturized", "movable"]:
         require(type(value.get(key)) is bool, f"Invalid AppKit {key}")
-    require(value["fullscreen"] is fullscreen and value["miniaturized"] is False
+    require(value["fullscreen"] is False and value["miniaturized"] is False
             and (zoomed is None or value["zoomed"] is zoomed),
             "Wrong native AppKit window state")
+    for key in ["style_mask", "presentation_options"]:
+        require(type(value.get(key)) is int and value[key] >= 0, f"Invalid AppKit {key}")
+    require(not value["style_mask"] & (1 << 14), "Unexpected AppKit Spaces fullscreen")
+    if simple_fullscreen:
+        # Tao removes Titled, Miniaturizable and Resizable; hides Dock/menu bar.
+        require(value["style_mask"] == baseline["style_mask"] & ~(1 | 4 | 8)
+                and value["presentation_options"] == (1 | 4) and value["movable"] is False,
+                "Missing native simple-fullscreen style or presentation")
+        require(all(abs(a - b) <= 2 for a, b in zip(value["frame"], value["screen_frame"]))
+                and all(abs(a - b) <= 2 for a, b in zip(value["content_size"], value["screen_frame"][2:])),
+                "Simple fullscreen did not fill the native screen")
+    else:
+        require(value["style_mask"] == baseline["style_mask"]
+                and value["presentation_options"] == baseline["presentation_options"]
+                and value["movable"] is baseline["movable"],
+                "Original AppKit style or presentation was not restored")
     require(value["content_aspect"] == ([16, 9] if active else baseline["content_aspect"]),
             "Native AppKit aspect readback disagrees")
     if not active:
@@ -219,7 +235,7 @@ def validate_appkit_evidence(report):
                 "Wrong AppKit transition order")
         validate_aspect_state(item.get("state"), True, not target)
         validate_appkit_snapshot(item.get("native"), baseline, active=not target,
-                                 fullscreen=target if kind != "zoom" else False,
+                                 simple_fullscreen=target if kind != "zoom" else False,
                                  zoomed=(None if target else False) if kind != "zoom" else target,
                                  original_geometry=not target)
     validate_aspect_state(report.get("final_state"), False, False)
@@ -269,28 +285,44 @@ def validate_x11_snapshot(value, baseline, *, active, fullscreen=False,
                 "X11 initial or saved-on layout changed requested content size")
 
 
+def validate_unsupported_aspect_state(value):
+    expected = {"ok": True, "supported": False, "enabled": False, "active": False}
+    require(isinstance(value, dict) and value.keys() == expected.keys()
+            and all(type(value[key]) is bool and value[key] is target for key, target in expected.items()),
+            "Wrong unsupported aspect capability")
+
+
+def validate_unsupported_aspect_rejection(value):
+    require(isinstance(value, dict) and value.keys() == {"ok", "error"}
+            and value["ok"] is False
+            and value["error"] == "Native aspect constraint is unavailable on this backend",
+            "Missing explicit unsupported aspect mutation rejection")
+
+
 def validate_x11_evidence(report):
     require(report.get("requested_content") == [640, 400], "Wrong X11 setup geometry")
     baseline = report.get("baseline")
     validate_x11_snapshot(baseline, baseline, active=False, startup=True)
-    validate_aspect_state(report.get("initial_state"), False, False)
+    validate_unsupported_aspect_state(report.get("initial_state"))
     require(report.get("aux_unchanged") is True, "Auxiliary X11 window changed")
     sequence = report.get("set_sequence", [])
     require(len(sequence) == 4, "Incomplete X11 on/off sequence")
     for row, enabled in zip(sequence, [True, True, False, False]):
-        validate_aspect_state(row.get("state"), enabled, enabled)
-        validate_x11_snapshot(row.get("native"), baseline, active=enabled)
+        require(row.get("requested") is enabled, "Wrong X11 mutation request")
+        validate_unsupported_aspect_rejection(row.get("rejection"))
+        validate_unsupported_aspect_state(row.get("state"))
+        validate_x11_snapshot(row.get("native"), baseline, active=False)
     transitions = report.get("transitions", [])
     expected = [(kind, target) for kind in ("toggle_fullscreen", "set_fullscreen", "maximize")
                 for target in (True, False)]
     require(len(transitions) == len(expected), "Incomplete X11 transition sequence")
     for row, (kind, target) in zip(transitions, expected):
         require(row.get("kind") == kind and row.get("target") is target, "Wrong X11 transition")
-        validate_aspect_state(row.get("state"), True, not target)
-        validate_x11_snapshot(row.get("native"), baseline, active=not target,
+        validate_unsupported_aspect_state(row.get("state"))
+        validate_x11_snapshot(row.get("native"), baseline, active=False,
                               fullscreen=kind != "maximize" and target,
                               maximized=kind == "maximize" and target, original_geometry=not target)
-    validate_aspect_state(report.get("final_state"), False, False)
+    validate_unsupported_aspect_state(report.get("final_state"))
     validate_x11_snapshot(report.get("final"), baseline, active=False)
 
 
@@ -302,9 +334,13 @@ def validate_x11_restoration(report, phase):
     require(report.get("requested_content") == [640, 400] and report.get("aux_unchanged") is True,
             "Wrong X11 requested geometry or changed PiP")
     initial = report.get("initial")
-    for name, enabled in (("initial", phase == "unpin"), ("final", phase == "pin")):
-        validate_aspect_state(report.get(name + "_state"), enabled, enabled)
-        validate_x11_snapshot(report.get(name), initial, active=enabled, startup=True)
+    for name in ("initial", "final"):
+        validate_unsupported_aspect_state(report.get(name + "_state"))
+        validate_x11_snapshot(report.get(name), initial, active=False, startup=True)
+    if phase == "verify-off":
+        require(report.get("set_rejection") is None, "Unexpected X11 verification mutation")
+    else:
+        validate_unsupported_aspect_rejection(report.get("set_rejection"))
 
 
 def stop_owned_process(process, *, platform="windows"):
@@ -357,6 +393,15 @@ def run_case(binary, output, missing, *, phase=None, preferences=None, platform=
         environment = os.environ.copy()
         environment["OTTPLAY_DATA_DIR"] = str(preferences if phase else directory / "preferences")
         environment.pop("OTTPLAY_INSTANCE", None)
+        if phase and platform == "linux":
+            # Arrange each unsupported-backend scenario before startup, using
+            # only this runner's owned temporary directory. The app must leave
+            # the exact saved bytes intact even when SET requests the opposite.
+            seeded = phase == "unpin"
+            aspect_stored = preferences / "window-aspect-lock"
+            require(not aspect_stored.is_symlink(), "Invalid fixture preference seed path")
+            aspect_stored.write_bytes(b"1\n" if seeded else b"0\n")
+            result["seeded_aspect_preference"] = seeded
         with (output / f"{name}.log").open("w", encoding="utf-8") as log:
             platform_options = {"start_new_session": True} if platform in {"macos", "linux"} else {}
             process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=environment, **platform_options)
@@ -379,14 +424,19 @@ def run_case(binary, output, missing, *, phase=None, preferences=None, platform=
                             "Confirmed preference bytes were not retained")
             aspect_stored = preferences / "window-aspect-lock"
             require(aspect_stored.is_file() and not aspect_stored.is_symlink(), "Aspect preference file is missing or invalid")
+            expected_aspect = (phase == "unpin") if platform == "linux" else (phase == "pin")
             with aspect_stored.open("rb") as stream:
-                require(stream.read(3) == (b"1\n" if phase == "pin" else b"0\n"),
+                require(stream.read(3) == (b"1\n" if expected_aspect else b"0\n"),
                         "Confirmed aspect preference bytes were not retained")
             if platform == "windows":
                 result["saved_preference"] = phase == "pin"
-            result["saved_aspect_preference"] = phase == "pin"
+            result["saved_aspect_preference"] = expected_aspect
         else:
             validate_evidence(result["native"], missing, platform=platform)
+            if platform == "linux":
+                aspect_stored = directory / "preferences" / "window-aspect-lock"
+                require(not aspect_stored.exists() and not aspect_stored.is_symlink(),
+                        "Unsupported aspect operation created a saved preference")
         result["status"] = "pass"
     except Exception as error:
         result["error"] = str(error)

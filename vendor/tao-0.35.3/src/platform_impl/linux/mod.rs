@@ -12,7 +12,6 @@ mod monitor;
 #[cfg(feature = "dbus")]
 mod portal;
 mod util;
-pub(crate) use util::set_content_aspect_lock;
 mod window;
 
 pub mod taskbar;

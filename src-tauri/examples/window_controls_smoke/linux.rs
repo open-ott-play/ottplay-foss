@@ -174,6 +174,24 @@ async fn denied(window: &tauri::WebviewWindow, command: &str, args: Value) -> Re
     Ok(json!({"window": window.label(), "command": command, "error": error}))
 }
 
+// Unsupported is a successful capability query, not a successful mutation.
+// Never call the shared supported-platform helper or accept an IPC timeout here.
+async fn unsupported_state(window: &tauri::WebviewWindow) -> Result<Value, String> {
+    let reply = allowed(window, "get_window_aspect_lock", json!({})).await?;
+    if reply != json!({"ok": true, "supported": false, "enabled": false, "active": false}) {
+        return Err(format!("Wrong unsupported X11 capability: {reply}"));
+    }
+    Ok(reply)
+}
+
+async fn unsupported_set(window: &tauri::WebviewWindow, enabled: bool) -> Result<Value, String> {
+    let reply = invoke(window, "set_window_aspect_lock", json!({"enabled": enabled})).await?;
+    if reply != json!({"ok": false, "error": "Native aspect constraint is unavailable on this backend"}) {
+        return Err(format!("Expected explicit unsupported X11 mutation: {reply}"));
+    }
+    Ok(reply)
+}
+
 async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, String> {
     let baseline = x11_settled(&main, false, false, false, None, true).await?;
     let aux = main.app_handle().get_webview_window("pip").ok_or("Auxiliary fixture missing")?;
@@ -192,59 +210,58 @@ async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, St
         ("get_window_aspect_lock", json!({})), ("set_window_aspect_lock", json!({"enabled": true}))] {
         denials.push(denied(&aux, command, args).await?);
     }
-    let initial_state = aspect_state(&main, false, false).await?;
+    let initial_state = unsupported_state(&main).await?;
     let mut sequence = Vec::new();
     for enabled in [true, true, false, false] {
-        let state = aspect(&main, Some(enabled), enabled).await?;
-        let native = x11_settled(&main, enabled, false, false, Some(baseline.rect), false).await?;
-        sequence.push(json!({"state": state, "native": native}));
+        let rejection = unsupported_set(&main, enabled).await?;
+        let native = x11_settled(&main, false, false, false, Some(baseline.rect), false).await?;
+        let state = unsupported_state(&main).await?;
+        sequence.push(json!({"requested": enabled, "rejection": rejection, "state": state, "native": native}));
     }
-    aspect(&main, Some(true), true).await?;
     let mut transitions = Vec::new();
     for explicit in [false, true] {
         for target in [true, false] {
             let reply = if explicit { allowed(&main, "set_fullscreen", json!({"fullscreen": target})).await? }
                 else { allowed(&main, "toggle_fullscreen", json!({})).await? };
             if reply != json!({"ok": true, "fullscreen": target}) { return Err("Unconfirmed fullscreen transition".into()); }
-            let native = x11_settled(&main, !target, target, false,
+            let native = x11_settled(&main, false, target, false,
                 if target { None } else { Some(baseline.rect) }, false).await?;
-            let state = aspect_state(&main, true, !target).await?;
+            let state = unsupported_state(&main).await?;
             transitions.push(json!({"kind": if explicit { "set_fullscreen" } else { "toggle_fullscreen" },
                 "target": target, "native": native, "state": state}));
         }
     }
     for target in [true, false] {
         (if target { main.maximize() } else { main.unmaximize() }).map_err(|e| e.to_string())?;
-        let native = x11_settled(&main, !target, false, target,
+        let native = x11_settled(&main, false, false, target,
             if target { None } else { Some(baseline.rect) }, false).await?;
-        let state = aspect_state(&main, true, !target).await?;
+        let state = unsupported_state(&main).await?;
         transitions.push(json!({"kind": "maximize", "target": target, "native": native, "state": state}));
     }
-    let final_state = aspect(&main, Some(false), false).await?;
     let final_native = x11_settled(&main, false, false, false, Some(baseline.rect), false).await?;
+    let final_state = unsupported_state(&main).await?;
     if x11_snapshot(&aux).await? != aux_before { return Err("Main changes altered the auxiliary X11 window".into()); }
     Ok(json!({"status": "pass", "platform": "linux-x11", "mode": "production-permissions",
         "requested_content": [640,400], "baseline": baseline, "initial_state": initial_state,
         "set_sequence": sequence, "transitions": transitions, "final": final_native,
         "final_state": final_state, "denials": denials, "aux_unchanged": true,
-        "observation": "owned X11 client geometry and WM_NORMAL_HINTS; no physical drag claim"}))
+        "observation": "unsupported aspect capability; owned X11 geometry and WM_NORMAL_HINTS remain unconstrained"}))
 }
 
 async fn exercise_preference(main: tauri::WebviewWindow, phase: PreferencePhase) -> Result<Value, String> {
-    let enabled = matches!(phase, PreferencePhase::Unpin);
-    // Production initialize still runs at its original setup point. This first
-    // native observation must retain requested size even when saved-on starts.
-    let initial = x11_settled(&main, enabled, false, false, None, true).await?;
+    // The parent seeds both saved-on and saved-off in its private directory.
+    // Production initialize must neither apply them nor alter their bytes.
+    let initial = x11_settled(&main, false, false, false, None, true).await?;
     let aux = main.app_handle().get_webview_window("pip").ok_or("Auxiliary fixture missing")?;
     let aux_before = x11_settled(&aux, false, false, false, None, true).await?;
-    let initial_state = aspect_state(&main, enabled, enabled).await?;
-    let target = matches!(phase, PreferencePhase::Pin);
-    if !matches!(phase, PreferencePhase::VerifyOff) { aspect(&main, Some(target), target).await?; }
-    let final_native = x11_settled(&main, target, false, false, Some(initial.rect), false).await?;
-    let final_state = aspect_state(&main, target, target).await?;
+    let initial_state = unsupported_state(&main).await?;
+    let rejection = if matches!(phase, PreferencePhase::VerifyOff) { None }
+        else { Some(unsupported_set(&main, matches!(phase, PreferencePhase::Pin)).await?) };
+    let final_native = x11_settled(&main, false, false, false, Some(initial.rect), false).await?;
+    let final_state = unsupported_state(&main).await?;
     if x11_snapshot(&aux).await? != aux_before { return Err("Saved state altered auxiliary X11 window".into()); }
     Ok(json!({"status": "pass", "platform": "linux-x11", "mode": "preference-restoration",
         "phase": phase.name(), "requested_content": [640,400], "initial": initial,
         "initial_state": initial_state, "final": final_native, "final_state": final_state,
-        "aux_unchanged": true}))
+        "set_rejection": rejection, "aux_unchanged": true}))
 }

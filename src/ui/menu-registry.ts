@@ -59,20 +59,24 @@ function createDesktopWindowControls(host: any) {
               ? host._("Always on top")
               : "Always on top";
     }
-    function notify(kind: string, state: boolean | null): void {
+    function notify(kind: string, state: boolean | "unsupported" | null): void {
         try {
             var status =
-                state === null
+                state === "unsupported"
                     ? host._
-                        ? host._("ERROR!")
-                        : "Error!"
-                    : state
+                        ? host._("Unavailable")
+                        : "Unavailable"
+                    : state === null
                       ? host._
-                          ? host._("on")
-                          : "on"
-                      : host._
-                        ? host._("off")
-                        : "off";
+                          ? host._("ERROR!")
+                          : "Error!"
+                      : state
+                        ? host._
+                            ? host._("on")
+                            : "on"
+                        : host._
+                          ? host._("off")
+                          : "off";
             if (typeof host.showPopup === "function")
                 host.showPopup(title(kind) + ": " + status);
         } catch (_) {}
@@ -111,12 +115,16 @@ function createDesktopWindowControls(host: any) {
                     if (
                         !current ||
                         current.ok !== true ||
-                        current.supported !== true ||
+                        typeof current.supported !== "boolean" ||
                         typeof current.enabled !== "boolean" ||
                         typeof current.active !== "boolean"
                     )
                         throw new Error();
                     if (!admitted(context)) return null;
+                    if (!current.supported) {
+                        if (current.active) throw new Error();
+                        return "unsupported";
+                    }
                     var desired = !current.enabled;
                     return Promise.resolve(
                         native.owner.invoke("set_window_aspect_lock", {
@@ -139,8 +147,7 @@ function createDesktopWindowControls(host: any) {
                 throw new Error();
             return Promise.resolve(native.current.isAlwaysOnTop()).then(
                 function (current: any) {
-                    if (typeof current !== "boolean")
-                        throw new Error();
+                    if (typeof current !== "boolean") throw new Error();
                     if (!admitted(context)) return null;
                     var desired = !current;
                     return Promise.resolve(
@@ -171,6 +178,7 @@ function createDesktopWindowControls(host: any) {
                 // a newer screen. The row never displays an optimistic checked state.
                 if (!admitted(context)) return;
                 notify(kind, state);
+                if (state === "unsupported") return;
                 try {
                     if (typeof host.closeList === "function") host.closeList();
                 } catch (_) {}
