@@ -82,8 +82,11 @@ and identify the failed stage before changing the connection:
   connection. The administrator must match the intended player's full identity
   and current displayed code using the [pairing procedure](remote-command-server.md).
   An empty pending list alone does not establish success.
-- **Preferences:** only the normalized HTTPS controller address, stable
-  installation device ID and Classic/Modern mode use the non-secret record.
+- **Preferences:** the normalized HTTPS controller address, stable installation
+  device ID, Classic/Modern mode and bounded temporary native-Plex browse
+  bookmarks use the non-secret record. Bookmarks retain source/category
+  fingerprints and a focus key; they do not contain credentials or grant source
+  access. Current account and source authorization is required before reuse.
   A genuinely absent configuration can save a disabled, tokenless identity
   without KeyManager. Wait for durable write/readback success; an uncertain
   write blocks further preference writes until the application restarts.

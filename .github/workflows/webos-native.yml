@@ -286,10 +286,10 @@ jobs:
                   or not isinstance(first["data"]["next_cursor"], str)
                   or second["data"]["next_cursor"] is not None
                   or first["data"]["context"] != second["data"]["context"]
-                  or [len(page["data"]["settings"]) for page in pages] != [20, 15]):
+                  or [len(page["data"]["settings"]) for page in pages] != [20, 19]):
               raise RuntimeError("Invalid actual schema page chain")
           ids = [row["id"] for page in pages for row in page["data"]["settings"]]
-          if len(ids) != len(set(ids)) or len(ids) != 35:
+          if len(ids) != len(set(ids)) or len(ids) != 39:
               raise RuntimeError("Schema export omitted or repeated descriptors")
           pages_path = evidence / "schema-pages.json"
           pages_path.write_text(json.dumps(pages, ensure_ascii=False, indent=2) + "\n")
@@ -297,7 +297,7 @@ jobs:
                          descriptor_count=len(ids), page_count=len(pages),
                          log_sha256=digest(log), pages_sha256=digest(pages_path))
           binding_path.write_text(json.dumps(binding, indent=2) + "\n")
-          print("Actual Native schema export: 1 passed; 0 failed; 0 ignored; 35 descriptors; 2 pages")
+          print("Actual Native schema export: 1 passed; 0 failed; 0 ignored; 39 descriptors; 2 pages")
           PY
       - name: Build the native Linux renderer
         timeout-minutes: 30

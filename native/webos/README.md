@@ -66,11 +66,11 @@ artifacts, including profile changes and removal.
 
 ### Connect the player
 
-Open **Browse → Settings**. Browse is in the bottom bar in **Classic** and the
-top header in **Modern**; close an open editor or Description view to return to
-it. **Find command server** is a separate Settings action alongside the manual
-**Remote control server** editor. If that editor is open, choose **Cancel** to
-return to Settings before choosing Find. Builds containing the first-run
+Open **Browse → Settings → Remote control**. Browse is in the bottom bar in
+**Classic** and the top header in **Modern**; close an open editor or Description
+view to return to it. **Find command server** is a separate action in that group,
+alongside the manual **Remote control server** editor. If that editor is open,
+choose **Cancel** to return to the group before choosing Find. Builds containing the first-run
 shortcut also show **Settings** as the last row of **Providers** and **Profiles**
 while no saved profile is enabled. This shortcut does not appear in
 channel/video lists.
@@ -103,9 +103,10 @@ See the [command-server discovery guide](../../docs/remote-command-server.md#loo
 for other players and deployment setup. The explicit Native Find action and
 its three-second UI deadline are described above.
 
-Only the normalized HTTPS controller address, interface mode and stable
-installation device ID use typed non-secret preferences through the storage
-helper. A genuinely absent configuration can establish a durable, disabled
+The normalized HTTPS controller address, interface mode, stable installation
+device ID and bounded temporary native-Plex browse bookmarks use typed
+non-secret preferences through the storage helper. These bookmarks hold
+source/category fingerprints and a focus key; they do not grant source access. A genuinely absent configuration can establish a durable, disabled
 identity without a token or KeyManager. An actual pairing token still requires
 a successful protected, durable write before the new connection can be
 activated. Saving preferences does not prove pairing or protected storage
@@ -151,7 +152,7 @@ record its exact text, the action and the application version for the
 maintainer. Fully close and reopen the application to check that the mode was
 retained; closing and reopening Settings alone does not test persistence.
 
-M3U, Xtream, Stalker, VPortal, local folders and Plex use provider profiles, a channel/video list and categories, with descriptions and artwork where the source supplies them. Saved profiles, selection, Favorites and playback position use the protected native store. Local files are read from their source, without an import copy. These are source-reviewed behaviors; the release audit keeps device acceptance separate.
+M3U, Xtream, Stalker, VPortal, local folders and Plex use provider profiles, a channel/video list and categories, with descriptions and artwork where the source supplies them. Saved provider profiles, their remembered categories, global Favorites and playback positions use the protected native store. Temporary native-Plex category and focus hints use the separate non-secret bookmark record and are reused only after current account and source authorization. Local files are read from their source, without an import copy. These are source-reviewed behaviors; the release audit keeps device acceptance separate.
 
 Global Favorites can mix providers and profiles. Their portable identities bind to the receiving player's own matching profiles, source aliases and paths; credentials are not copied through a Favorite. Missing or ambiguous bindings are reported instead of choosing an unrelated source. An M3U profile can retain a private media attachment for matching VPortal Favorites; configure that attachment separately on each receiving player. An attached-media Favorite can be pinned as a single kiosk item with its exact M3U parent and attachment binding. Playback still requires current source authority and parental authorization; changing the source configuration invalidates the pin. Mixed attached-media kiosk queues are not supported.
 

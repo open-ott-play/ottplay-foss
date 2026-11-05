@@ -727,6 +727,27 @@ class NativeCompanionBuildTests(unittest.TestCase):
             evidence = metadata['build']['compilation'][field]
             self.assertEqual(build.sha256(self.args.output / evidence['file']), evidence['sha256'])
 
+    def test_package_output_can_share_work_directory_without_recopied_evidence(self):
+        self.build_candidate()
+        self.args.base_url = None
+        (self.source / 'pkg/icon.png').write_bytes(b'fixture icon')
+        receipt = json.loads((self.root / 'built.json').read_text())
+        evidence = [self.root / receipt['compilation'][field]['file'] for field in ('cargo', 'make')]
+        before = [(path.read_bytes(), path.stat().st_ino, path.stat().st_mtime_ns) for path in evidence]
+        alias = self.root / 'canonical-alias'
+        alias.mkdir()
+        for output in (self.root, alias / '..'):
+            with self.subTest(output=output):
+                self.args.output = output
+                with patch.object(build, 'check_source', return_value=self.source):
+                    build.package(self.args, self.spec)
+                name = build.output_name(self.spec)
+                metadata = json.loads((output / (name + '.json')).read_text())
+                self.assertEqual(build.sha256(output / (name + '.ipk')), build.sha256(self.ipk))
+                self.assertEqual(metadata['build']['compilation'], receipt['compilation'])
+                for path, expected in zip(evidence, before):
+                    self.assertEqual((path.read_bytes(), path.stat().st_ino, path.stat().st_mtime_ns), expected)
+
     def test_package_rejects_symlinked_outputs_before_writing_any_file(self):
         self.build_candidate()
         self.args.output = self.root / 'dist'

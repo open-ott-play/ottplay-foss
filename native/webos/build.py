@@ -858,7 +858,9 @@ def package(args, spec):
         if (args.output / filename).is_symlink():
             fail("Native package destination must not be a symlink")
     for evidence in evidence_files:
-        shutil.copy2(evidence, args.output / evidence.name)
+        target = args.output / evidence.name
+        if evidence.resolve() != target.resolve():
+            shutil.copy2(evidence, target)
     destination = args.output / (output_name(spec) + ".ipk")
     shutil.copy2(built, destination)
     shutil.copy2(source / "pkg/icon.png", args.output / "ottplay-native-webos-icon.png")
