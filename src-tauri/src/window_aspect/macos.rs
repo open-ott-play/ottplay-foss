@@ -84,10 +84,11 @@ pub fn apply(window: &tauri::Window, enabled: Option<bool>) -> Result<(bool, boo
                 },
             )
         });
-        let dispatcher = window.clone();
         window.on_window_event(move |event| {
             let destroyed = matches!(event, tauri::WindowEvent::Destroyed);
-            let _ = dispatcher.run_on_main_thread(move || {
+            // Tauri runs main-thread tasks inline. Defer native state observation
+            // until the current callback returns instead of refreshing inside it.
+            dispatch2::DispatchQueue::main().exec_async(move || {
                 if destroyed {
                     WINDOWS.with(|all| all.borrow_mut().remove(&key));
                 } else if let Err(error) = refresh(key) {

@@ -159,7 +159,7 @@ function fixture() {
         context
     );
     vm.runInContext(
-        compile(selected("src/ui/index.ts", ["showPage"])),
+        compile(selected("src/ui/index.ts", ["epgTimeCssColor", "showPage"])),
         context
     );
     vm.runInContext(
