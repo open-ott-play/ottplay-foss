@@ -254,8 +254,48 @@ class NativeScopeTests(unittest.TestCase):
         stem = "${{ runner.temp }}/native-host-verification/"
         self.assertEqual(set(evidence["with"]["path"].splitlines()), {
             stem + suffix for suffix in ("*.log", "*.json", "rust-toolchain.txt",
-                                        "replay/**/plxnative-events.log", "replay/**/sim.out")
+                                        "replay/**/plxnative-events.log", "replay/**/sim.out", "classic-ui/**")
         })
+
+    def test_classic_ui_capture_is_mandatory_and_uses_the_qualified_renderer(self):
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        job = workflow["jobs"]["native-candidate"]
+        steps = job["steps"]
+        matches = [step for step in steps if "python3 tests/ott_classic_ui.py" in step.get("run", "")]
+        self.assertEqual(len(matches), 1)
+        step = matches[0]
+        self.assertEqual(step["name"], "Capture Classic UI through the Linux renderer")
+        self.assertNotIn("if", step)
+        self.assertNotIn("continue-on-error", step)
+        self.assertEqual(step["timeout-minutes"], "7")
+        self.assertLessEqual(int(step["timeout-minutes"]), int(job["timeout-minutes"]))
+        self.assertEqual(step["working-directory"], "build/native-webos/source")
+        self.assertEqual(step["shell"], "bash")
+        replay = next(item for item in steps if "python3 tests/replay_fixtures.py" in item.get("run", ""))
+        self.assertEqual(step["env"], replay["env"])
+        self.assertEqual(step["env"]["LIBGL_ALWAYS_SOFTWARE"], "1")
+        build = next(item for item in steps if "make sim-linux" in item.get("run", ""))
+        recheck = next(item for item in steps if "source-recheck.log" in item.get("run", ""))
+        arm = next(item for item in steps if "native/webos/build.py all" in item.get("run", ""))
+        self.assertLess(steps.index(build), steps.index(replay))
+        self.assertLess(steps.index(replay), steps.index(step))
+        self.assertLess(steps.index(step), steps.index(recheck))
+        self.assertLess(steps.index(recheck), steps.index(arm))
+        self.assertEqual(step["run"], "\n".join((
+            "set -euo pipefail",
+            "xvfb-run -a -s '-screen 0 1920x1080x24' python3 tests/ott_classic_ui.py \\",
+            '  --sim "$RUNNER_TEMP/native-sim-target/release/plxnative-sim" \\',
+            '  --assets "$PWD/pkg" --output "$RUNNER_TEMP/native-host-verification/classic-ui" \\',
+            '  --timeout 300 \\',
+            '  2>&1 | tee "$RUNNER_TEMP/native-host-verification/classic-ui.log"',
+            "",
+        )))
+        evidence = next(item for item in steps if item.get("with", {}).get("name", "").startswith(
+            "ottplay-native-host-verification-"))
+        self.assertEqual(evidence["if"], "always()")
+        self.assertIn("${{ runner.temp }}/native-host-verification/classic-ui/**",
+                      evidence["with"]["path"].splitlines())
 
     def schema_export_step(self):
         workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
