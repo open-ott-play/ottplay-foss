@@ -82132,10 +82132,10 @@ index 00000000..7affef25
 +}
 diff --git a/rust-modules/src/app/ott_numeric_input_tests.rs b/rust-modules/src/app/ott_numeric_input_tests.rs
 new file mode 100644
-index 00000000..32dbb86c
+index 00000000..97f82a82
 --- /dev/null
 +++ b/rust-modules/src/app/ott_numeric_input_tests.rs
-@@ -0,0 +1,1025 @@
+@@ -0,0 +1,1035 @@
 +//! Numeric keys enter through the real application queue; fixtures perform no media IO.
 +use super::*;
 +use crate::app::events;
@@ -83028,6 +83028,37 @@ index 00000000..32dbb86c
 +}
 +
 +
++// Keep whole-Runtime move temporaries out of the test frame while its nested
++// App fixture is constructed, as in lifecycle::assert_initial_retry_stays_blocked.
++#[inline(never)]
++fn seed_numeric_category_favorites(app: &mut App) {
++    let mut runtime = app.ott.take().unwrap();
++    let profile = runtime.saved.profiles.profiles[0].clone();
++    let local = selection::capture(&profile, &runtime.catalog.entries[0]).unwrap();
++    let other_provider = Favorite {
++        title: "Library film".into(),
++        origin: plx_data::ott::favorites::Origin { provider: "plex".into(),
++            profile: "Library".into(), subprofile: None, source_alias: "Server".into() },
++        locator: plx_data::ott::favorites::Locator::Plex {
++            server_id: "synthetic-server".into(), rating_key: "42".into() },
++    };
++    runtime.saved.favorites.toggle(local).unwrap();
++    runtime.saved.favorites.toggle(other_provider).unwrap();
++    runtime.changed();
++    runtime.publish(app);
++    app.ott = Some(runtime);
++    settle_pages(app);
++}
++
++#[inline(never)]
++fn reopen_numeric_categories(app: &mut App) {
++    let mut runtime = app.ott.take().unwrap();
++    apply_ui_action(&mut runtime, app, OttAction::ShowCategories, true, false, false);
++    runtime.publish(app);
++    app.ott = Some(runtime);
++    settle_pages(app);
++}
++
 +/// Model only the existing Saved-success settlement boundary. The real writer
 +/// remains revoked: this test does not claim a durable write. Hosted coverage
 +/// must separately accept an actual writer result and reopen persisted state.
@@ -83035,24 +83066,7 @@ index 00000000..32dbb86c
 +fn modeled_successful_save_settles_classic_category_digits_and_global_favorites() {
 +    let _serial = plx_base::testlock::serial();
 +    let mut app = classic_categories();
-+    {
-+        let mut runtime = app.ott.take().unwrap();
-+        let profile = runtime.saved.profiles.profiles[0].clone();
-+        let local = selection::capture(&profile, &runtime.catalog.entries[0]).unwrap();
-+        let other_provider = Favorite {
-+            title: "Library film".into(),
-+            origin: plx_data::ott::favorites::Origin { provider: "plex".into(),
-+                profile: "Library".into(), subprofile: None, source_alias: "Server".into() },
-+            locator: plx_data::ott::favorites::Locator::Plex {
-+                server_id: "synthetic-server".into(), rating_key: "42".into() },
-+        };
-+        runtime.saved.favorites.toggle(local).unwrap();
-+        runtime.saved.favorites.toggle(other_provider).unwrap();
-+        runtime.changed();
-+        runtime.publish(&mut app);
-+        app.ott = Some(runtime);
-+        settle_pages(&mut app);
-+    }
++    seed_numeric_category_favorites(&mut app);
 +    let runtime = app.ott.as_ref().unwrap();
 +    let profiles = runtime.saved.profiles.clone();
 +    let favorites = runtime.saved.favorites.clone();
@@ -83073,11 +83087,7 @@ index 00000000..32dbb86c
 +    // Ninth -> Favorites -> All makes every committed transition observable.
 +    // All/Favorites occupy the first two visible rows in this default fixture.
 +    for digit in [b'9', b'2', b'1'] {
-+        let mut runtime = app.ott.take().unwrap();
-+        apply_ui_action(&mut runtime, &mut app, OttAction::ShowCategories, true, false, false);
-+        runtime.publish(&mut app);
-+        app.ott = Some(runtime);
-+        settle_pages(&mut app);
++        reopen_numeric_categories(&mut app);
 +        let runtime = app.ott.as_ref().unwrap();
 +        let view = runtime.view();
 +        assert_eq!(runtime.page, "categories");

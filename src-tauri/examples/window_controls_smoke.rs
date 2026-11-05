@@ -8,6 +8,7 @@ mod smoke {
     use serde_json::{json, Value};
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicBool, AtomicI32, AtomicUsize, Ordering};
+    use std::sync::{mpsc, OnceLock};
     use std::time::{Duration, Instant};
     use tauri::{Listener, Manager};
 
@@ -15,6 +16,62 @@ mod smoke {
     static STARTED: AtomicBool = AtomicBool::new(false);
     static REQUEST: AtomicUsize = AtomicUsize::new(0);
     static EXIT_CODE: AtomicI32 = AtomicI32::new(1);
+    static START_TIME: OnceLock<Instant> = OnceLock::new();
+    static PHASE: AtomicUsize = AtomicUsize::new(0);
+
+    // Startup allowance is independent of the unchanged exercise/cleanup budget.
+    // It is a bounded fixture tolerance, not an assertion about the cause of a stall.
+    const STARTUP_BUDGET: Duration = Duration::from_secs(60);
+    const EXERCISE_BUDGET: Duration = Duration::from_secs(30);
+
+    enum WatchdogEvent {
+        ExerciseStarted(Instant),
+        Finished(Instant),
+    }
+
+    fn phase_name() -> &'static str {
+        match PHASE.load(Ordering::SeqCst) {
+            1 => "building-main",
+            2 => "building-pip",
+            3 => "exercise",
+            4 => "cleanup",
+            5 => "report",
+            6 => "exit-requested",
+            7 => "event-loop-returned",
+            8 => "awaiting-page-loads",
+            _ => "startup",
+        }
+    }
+
+    fn trace(event: &str, detail: Value) {
+        eprintln!("WINDOW_CONTROLS_TRACE {}", json!({
+            "event": event, "detail": detail, "phase": phase_name(),
+            "elapsed_ms": START_TIME.get().map(|start| start.elapsed().as_millis()),
+            "loaded_mask": LOADED.load(Ordering::SeqCst),
+            "request_count": REQUEST.load(Ordering::SeqCst),
+        }));
+    }
+
+    fn wait_for_completion(
+        receiver: mpsc::Receiver<WatchdogEvent>,
+        started: Instant,
+    ) -> Result<(), &'static str> {
+        let startup_deadline = started + STARTUP_BUDGET;
+        let ready = match receiver.recv_timeout(
+            startup_deadline.saturating_duration_since(Instant::now()),
+        ) {
+            Ok(WatchdogEvent::ExerciseStarted(at)) if at <= startup_deadline => at,
+            _ => return Err("startup did not complete within 60 seconds"),
+        };
+        // Use the event's original instant, not a renewed budget at dequeue.
+        let exercise_deadline = ready + EXERCISE_BUDGET;
+        match receiver.recv_timeout(
+            exercise_deadline.saturating_duration_since(Instant::now()),
+        ) {
+            Ok(WatchdogEvent::Finished(at)) if at <= exercise_deadline => Ok(()),
+            _ => Err("exercise and cleanup did not complete within 30 seconds"),
+        }
+    }
 
     #[repr(C)]
     #[derive(Default)]
@@ -46,6 +103,7 @@ mod smoke {
     }
 
     fn snapshot(window: &tauri::WebviewWindow) -> Result<Snapshot, String> {
+        trace("snapshot-start", json!({"window": window.label()}));
         let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
         let mut pid = 0;
         let mut rect = Rect::default();
@@ -64,12 +122,14 @@ mod smoke {
             if GetWindowRect(hwnd, &mut rect) == 0 {
                 return Err("GetWindowRect failed".into());
             }
-            Ok(Snapshot {
+            let state = Snapshot {
                 fullscreen: window.is_fullscreen().map_err(|e| e.to_string())?,
                 topmost: window.is_always_on_top().map_err(|e| e.to_string())?,
                 win32_topmost: style & 0x8 != 0, // WS_EX_TOPMOST
                 rect: [rect.left, rect.top, rect.right, rect.bottom],
-            })
+            };
+            trace("snapshot-finished", json!({"window": window.label()}));
+            Ok(state)
         }
     }
 
@@ -78,6 +138,7 @@ mod smoke {
         command: &str,
         args: Value,
     ) -> Result<Value, String> {
+        trace("invoke", json!({"window": window.label(), "command": command}));
         let event = format!(
             "window-controls-smoke-{}",
             REQUEST.fetch_add(1, Ordering::SeqCst)
@@ -97,12 +158,14 @@ mod smoke {
             window.unlisten(listener);
             return Err(error.to_string());
         }
+        trace("await-ipc", json!({"window": window.label(), "command": command}));
         let result = tokio::time::timeout(Duration::from_secs(4), receiver).await;
         window.unlisten(listener);
         let reply = result
             .map_err(|_| format!("{command}: IPC deadline"))?
             .map_err(|_| "IPC reply channel closed".to_string())?
             .map_err(|e| e.to_string())?;
+        trace("ipc-reply", json!({"window": window.label(), "command": command, "ok": reply["ok"]}));
         // Keep IPC rejection structured: a timeout or script failure is never an ACL pass.
         if reply["ok"].is_boolean() {
             Ok(reply)
@@ -332,13 +395,24 @@ mod smoke {
             }),
             _ => return Err("Unsupported fixture arguments".into()),
         };
-        let (done, deadline) = std::sync::mpsc::channel();
+        let started = Instant::now();
+        let _ = START_TIME.set(started);
+        trace("startup", json!({"missing_permission": missing}));
+        let (done, deadline) = mpsc::channel();
+        let exercise_started = done.clone();
         let deadline_output = output.clone();
         let watchdog = std::thread::spawn(move || {
-            if deadline.recv_timeout(Duration::from_secs(30)).is_err() {
+            if let Err(error) = wait_for_completion(deadline, started) {
+                let failure = json!({"status": "fail", "error": error,
+                    "phase": phase_name(), "elapsed_ms": started.elapsed().as_millis(),
+                    "loaded_mask": LOADED.load(Ordering::SeqCst),
+                    "request_count": REQUEST.load(Ordering::SeqCst)});
+                trace("watchdog", failure.clone());
+                // Keep timeout evidence separate from any earlier assertion report.
+                // The parent treats this marker as failure even if result.json says pass.
                 let _ = std::fs::write(
-                    deadline_output.join("result.json"),
-                    "{\"status\":\"fail\",\"error\":\"30-second internal deadline\"}",
+                    deadline_output.join("watchdog.json"),
+                    serde_json::to_vec_pretty(&failure).unwrap(),
                 );
                 // Exit only this isolated process. Windows destroys its owned HWNDs.
                 // The parent runner subsequently removes its private WebView data.
@@ -362,6 +436,8 @@ mod smoke {
             ])
             .setup(move |app| {
                 for label in ["main", "pip"] {
+                    PHASE.store(if label == "main" { 1 } else { 2 }, Ordering::SeqCst);
+                    trace("window-build-start", json!({"window": label}));
                     std::fs::create_dir_all(data.join(label))?;
                     tauri::WebviewWindowBuilder::new(
                         app,
@@ -380,7 +456,11 @@ mod smoke {
                     .incognito(true)
                     .data_directory(data.join(label))
                     .build()?;
+                    trace("window-build-finished", json!({"window": label}));
                 }
+                // A page callback can already have admitted exercise; never overwrite it.
+                let _ = PHASE.compare_exchange(2, 8, Ordering::SeqCst, Ordering::SeqCst);
+                trace("setup-finished", json!({}));
                 Ok(())
             })
             .on_page_load(move |view, payload| {
@@ -392,11 +472,15 @@ mod smoke {
                     "pip" => 2,
                     _ => return,
                 };
-                if LOADED.fetch_or(bit, Ordering::SeqCst) | bit != 3
-                    || STARTED.swap(true, Ordering::SeqCst)
-                {
+                let loaded = LOADED.fetch_or(bit, Ordering::SeqCst) | bit;
+                trace("page-finished", json!({"window": view.label()}));
+                if loaded != 3 || STARTED.swap(true, Ordering::SeqCst) {
                     return;
                 }
+                let ready_at = Instant::now();
+                PHASE.store(3, Ordering::SeqCst);
+                trace("exercise-started", json!({}));
+                let _ = exercise_started.send(WatchdogEvent::ExerciseStarted(ready_at));
                 let handle = view.app_handle().clone();
                 let main = handle
                     .get_webview_window("main")
@@ -408,12 +492,15 @@ mod smoke {
                     } else {
                         exercise(main, missing).await
                     };
+                    trace("exercise-finished", json!({"ok": result.is_ok()}));
+                    PHASE.store(4, Ordering::SeqCst);
                     let mut code = if result.is_ok() { 0 } else { 1 };
                     let mut report =
                         result.unwrap_or_else(|error| json!({"status": "fail", "error": error}));
                     let mut cleanup = Vec::new();
                     for label in ["pip", "main"] {
                         if let Some(window) = handle.get_webview_window(label) {
+                            trace("window-destroy", json!({"window": label}));
                             if let Err(error) = window.destroy() {
                                 cleanup.push(format!("{label}: {error}"));
                             }
@@ -425,6 +512,8 @@ mod smoke {
                     }
                     report["cleanup_errors"] = json!(cleanup);
                     report["owned_labels"] = json!(["main", "pip"]);
+                    PHASE.store(5, Ordering::SeqCst);
+                    trace("report", json!({"exit_code": code}));
                     if std::fs::write(
                         output.join("result.json"),
                         serde_json::to_vec_pretty(&report).unwrap(),
@@ -435,6 +524,8 @@ mod smoke {
                     }
                     println!("{report}");
                     EXIT_CODE.store(code, Ordering::SeqCst);
+                    PHASE.store(6, Ordering::SeqCst);
+                    trace("exit-requested", json!({"exit_code": code}));
                     handle.exit(code);
                 });
             })
@@ -448,10 +539,59 @@ mod smoke {
                 api.prevent_exit();
             }
         });
+        let finished_at = Instant::now();
+        PHASE.store(7, Ordering::SeqCst);
         let code = EXIT_CODE.load(Ordering::SeqCst);
-        let _ = done.send(());
+        trace("event-loop-returned", json!({"exit_code": code}));
+        let _ = done.send(WatchdogEvent::Finished(finished_at));
         let _ = watchdog.join();
         Ok(code)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn watchdog_uses_captured_phase_instants_without_renewing_queued_budget() {
+            let now = Instant::now();
+            let started = now - Duration::from_secs(100);
+            let ready = started + Duration::from_secs(40);
+            let (sender, receiver) = mpsc::channel();
+            sender.send(WatchdogEvent::ExerciseStarted(ready)).unwrap();
+            sender.send(WatchdogEvent::Finished(ready + Duration::from_secs(20))).unwrap();
+            assert_eq!(wait_for_completion(receiver, started), Ok(()));
+        }
+
+        #[test]
+        fn watchdog_rejects_late_start_even_with_a_queued_completion() {
+            let started = Instant::now() - Duration::from_secs(100);
+            let ready = started + Duration::from_secs(61);
+            let (sender, receiver) = mpsc::channel();
+            sender.send(WatchdogEvent::ExerciseStarted(ready)).unwrap();
+            sender.send(WatchdogEvent::Finished(ready)).unwrap();
+            assert_eq!(wait_for_completion(receiver, started),
+                Err("startup did not complete within 60 seconds"));
+        }
+
+        #[test]
+        fn watchdog_rejects_late_completion_after_timely_start() {
+            let started = Instant::now() - Duration::from_secs(100);
+            let ready = started + Duration::from_secs(59);
+            let (sender, receiver) = mpsc::channel();
+            sender.send(WatchdogEvent::ExerciseStarted(ready)).unwrap();
+            sender.send(WatchdogEvent::Finished(ready + Duration::from_secs(31))).unwrap();
+            assert_eq!(wait_for_completion(receiver, started),
+                Err("exercise and cleanup did not complete within 30 seconds"));
+        }
+
+        #[test]
+        fn watchdog_rejects_expired_startup_without_a_ready_event() {
+            let started = Instant::now() - Duration::from_secs(61);
+            let (_sender, receiver) = mpsc::channel();
+            assert_eq!(wait_for_completion(receiver, started),
+                Err("startup did not complete within 60 seconds"));
+        }
     }
 }
 

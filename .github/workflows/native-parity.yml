@@ -83,6 +83,8 @@ jobs:
         run: cargo test --locked -p ottplay-tauri fullscreen_confirmation_tests
       - name: Check owned-window smoke runner
         run: python tests/test_window_controls_smoke.py
+      - name: Test Windows fixture watchdog deadlines
+        run: cargo test --locked -p ottplay-tauri --example window_controls_smoke
       - name: Build isolated window controls fixture
         run: cargo build --locked -p ottplay-tauri --example window_controls_smoke
       - name: Verify isolated fixture manifest before launch

@@ -127,7 +127,7 @@ class EvidenceTests(unittest.TestCase):
             def __init__(self, command, **kwargs):
                 captured.append(Path(command[1]))
             def wait(self, timeout):
-                if timeout == 40:
+                if timeout == runner.PROCESS_TIMEOUT_SECONDS:
                     raise subprocess.TimeoutExpired("fixture.exe", timeout)
                 self.done = True
                 return -9
@@ -140,6 +140,61 @@ class EvidenceTests(unittest.TestCase):
             self.assertTrue(result["private_data_removed"])
             self.assertFalse(captured[0].exists())
             self.assertEqual(kill.call_args.args[0], ["taskkill.exe", "/PID", "45680", "/T", "/F"])
+
+    def test_watchdog_marker_overrides_a_pass_report_and_survives_private_cleanup(self):
+        for marker in [json.dumps({"status": "fail", "phase": "exit-requested"}), "incomplete-json"]:
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory() as directory:
+                captured = []
+                class Process:
+                    pid = 45683
+                    def __init__(self, command, **kwargs):
+                        private = Path(command[1])
+                        captured.append(private)
+                        (private / "result.json").write_text(json.dumps(evidence(True)))
+                        (private / "watchdog.json").write_text(marker)
+                    def wait(self, timeout):
+                        return 0
+                    def poll(self):
+                        return 0
+                with patch.object(runner.subprocess, "Popen", Process):
+                    result = runner.run_case(Path("fixture.exe"), Path(directory), True)
+                self.assertEqual(result["status"], "fail")
+                self.assertEqual(result["native"]["status"], "pass")
+                if marker != "incomplete-json":
+                    self.assertEqual(result["watchdog"]["phase"], "exit-requested")
+                else:
+                    self.assertIn("watchdog_error", result)
+                self.assertFalse(captured[0].exists())
+                saved = json.loads((Path(directory) / "missing-permission.json").read_text())
+                self.assertEqual(saved, result)
+
+    def test_outer_deadline_retains_native_phase_and_log_evidence(self):
+        captured = []
+        class Process:
+            pid = 45684
+            done = False
+            def __init__(self, command, **kwargs):
+                private = Path(command[1])
+                captured.append(private)
+                (private / "result.json").write_text(json.dumps({"status": "fail", "phase": "building-main"}))
+                kwargs["stdout"].write('WINDOW_CONTROLS_TRACE {"event":"window-build-start"}\n')
+            def wait(self, timeout):
+                if timeout == runner.PROCESS_TIMEOUT_SECONDS:
+                    raise subprocess.TimeoutExpired("fixture.exe", timeout)
+                self.done = True
+                return -9
+            def poll(self):
+                return -9 if self.done else None
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            with patch.object(runner.subprocess, "Popen", Process), patch.object(runner.subprocess, "run") as kill:
+                result = runner.run_case(Path("fixture.exe"), output, True)
+            self.assertEqual(runner.PROCESS_TIMEOUT_SECONDS, 100)
+            self.assertEqual(result["status"], "fail")
+            self.assertEqual(result["native"]["phase"], "building-main")
+            self.assertIn("window-build-start", (output / "missing-permission.log").read_text())
+            self.assertFalse(captured[0].exists())
+            self.assertEqual(kill.call_args.args[0], ["taskkill.exe", "/PID", "45684", "/T", "/F"])
 
     def test_spawn_failure_is_recorded_without_termination(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -174,7 +229,7 @@ def restoration_process(captured, *, wrong_initial=None, skip_write=None, timeou
             self.initial = self.stored.exists() and self.stored.read_bytes() == b"1\n"
 
         def wait(self, timeout):
-            if self.phase == timeout_phase and timeout == 40:
+            if self.phase == timeout_phase and timeout == runner.PROCESS_TIMEOUT_SECONDS:
                 raise subprocess.TimeoutExpired("fixture.exe", timeout)
             self.done = True
             final = self.phase == "pin"

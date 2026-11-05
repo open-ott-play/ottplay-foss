@@ -10,6 +10,10 @@ import tempfile
 import time
 
 
+# Native startup (60s) plus exercise/cleanup (30s), with a bounded outer margin.
+PROCESS_TIMEOUT_SECONDS = 100
+
+
 def require(condition, message):
     if not condition:
         raise RuntimeError(message)
@@ -99,7 +103,7 @@ def run_case(binary, output, missing, *, phase=None, preferences=None):
             process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=environment)
             result["pid"] = process.pid
             try:
-                result["exit_code"] = process.wait(timeout=40)
+                result["exit_code"] = process.wait(timeout=PROCESS_TIMEOUT_SECONDS)
             finally:
                 stop_owned_process(process)
         native = directory / "result.json"
@@ -129,6 +133,14 @@ def run_case(binary, output, missing, *, phase=None, preferences=None):
         try:
             if process is not None:
                 stop_owned_process(process)
+            watchdog = directory / "watchdog.json"
+            if watchdog.is_file():
+                result["status"] = "fail"
+                result["error"] = "Native watchdog terminated the fixture"
+                try:
+                    result["watchdog"] = json.loads(watchdog.read_text(encoding="utf-8"))
+                except (OSError, ValueError) as error:
+                    result["watchdog_error"] = str(error)
             remove_private_data(directory)
             result["private_data_removed"] = True
         except Exception as error:
