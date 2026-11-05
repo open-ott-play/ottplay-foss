@@ -73221,7 +73221,7 @@ index 66435554..78f1b041 100644
          assert!(app.ott.as_ref().unwrap().play_target.is_none());
          assert!(app.ott.as_ref().unwrap().resolver_next.is_none());
 diff --git a/rust-modules/src/app/ott_runtime_tests/lifecycle.rs b/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
-index 420bacc0..63a5a36a 100644
+index 420bacc0..6e68e825 100644
 --- a/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/lifecycle.rs
 @@ -15,8 +15,8 @@ fn entry() -> CatalogEntry {
@@ -73262,15 +73262,49 @@ index 420bacc0..63a5a36a 100644
      // First admission queues behind the held existing slot, without starting IO.
      runtime.resolver_busy = true;
      let attempt = kiosk_source::activate(&mut runtime, &mut app, &prepared).unwrap().unwrap();
-@@ -328,7 +328,7 @@ fn initial_retry_cannot_cross_viewer_pause_or_standby() {
-     assert!(runtime.play_target.is_none());
+@@ -312,6 +312,18 @@ fn initial_retry_cannot_cross_a_changed_source() {
      app.ott = Some(runtime);
+ }
+ 
++// Keep whole-Runtime move temporaries out of the test frame while constructing
++// the nested App fixture. Both calls still exercise the real retry boundary.
++#[inline(never)]
++fn assert_initial_retry_stays_blocked(app: &mut App, at_ms: u64) {
++    let mut runtime = app.ott.take().unwrap();
++    let generation = runtime.play_generation;
++    runtime.kiosk_recovery_tick_at(app, at_ms);
++    assert_eq!(runtime.play_generation, generation);
++    assert!(runtime.play_target.is_none());
++    app.ott = Some(runtime);
++}
++
+ #[test]
+ fn initial_retry_cannot_cross_viewer_pause_or_standby() {
+     let _serial = plx_base::testlock::serial();
+@@ -320,20 +332,10 @@ fn initial_retry_cannot_cross_viewer_pause_or_standby() {
+     // Real inert native actuator supplies an accepted Pause; no decoder starts.
+     app.adapters.player.install(plx_media::player::engine::engine_after_reload_for_test());
+     assert!(plx_media::player::pause(&mut app.adapters.player));
+-    let mut runtime = app.ott.take().unwrap();
+-    let generation = runtime.play_generation;
+-    let now = runtime.now_ms();
+-    runtime.kiosk_recovery_tick_at(&mut app, now + 60_000);
+-    assert_eq!(runtime.play_generation, generation);
+-    assert!(runtime.play_target.is_none());
+-    app.ott = Some(runtime);
++    let now = app.ott.as_ref().unwrap().now_ms();
++    assert_initial_retry_stays_blocked(&mut app, now + 60_000);
      sleep(&mut app);
 -    let mut runtime = app.ott.take().unwrap();
-+    runtime = app.ott.take().unwrap();
-     let suspended_generation = runtime.play_generation;
-     runtime.kiosk_recovery_tick_at(&mut app, now + 120_000);
-     assert_eq!(runtime.play_generation, suspended_generation);
+-    let suspended_generation = runtime.play_generation;
+-    runtime.kiosk_recovery_tick_at(&mut app, now + 120_000);
+-    assert_eq!(runtime.play_generation, suspended_generation);
+-    assert!(runtime.play_target.is_none());
+-    app.ott = Some(runtime);
++    assert_initial_retry_stays_blocked(&mut app, now + 120_000);
+ }
+ 
+ #[test]
 diff --git a/rust-modules/src/app/ott_runtime_tests/local_binding_cancel.rs b/rust-modules/src/app/ott_runtime_tests/local_binding_cancel.rs
 index a5671f27..59b4eeeb 100644
 --- a/rust-modules/src/app/ott_runtime_tests/local_binding_cancel.rs
