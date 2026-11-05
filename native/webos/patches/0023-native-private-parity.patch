@@ -24317,7 +24317,7 @@ index 1dc12f74..99cdcba0 100644
          OttGuideProgramme { title: title.into(), description: String::new(), start_s, end_s }
      }
 diff --git a/rust-modules/screens/src/ott/input_tests.rs b/rust-modules/screens/src/ott/input_tests.rs
-index e59cfa3d..add31d76 100644
+index e59cfa3d..102b7815 100644
 --- a/rust-modules/screens/src/ott/input_tests.rs
 +++ b/rust-modules/screens/src/ott/input_tests.rs
 @@ -1,6 +1,6 @@
@@ -24531,7 +24531,7 @@ index e59cfa3d..add31d76 100644
              let page = d.nav.top_page().unwrap();
              let screen = page.inst.as_ref().unwrap().screen.as_any().unwrap().downcast_ref::<OttScreen>().unwrap();
              assert!(!screen.browse);
-@@ -889,3 +895,789 @@ fn remote_editor_keyboard_back_dismisses_before_a_second_back_cancels() {
+@@ -889,3 +895,792 @@ fn remote_editor_keyboard_back_dismisses_before_a_second_back_cancels() {
  mod literal_fields {
      include!("literal_fields_tests.rs");
  }
@@ -25110,6 +25110,9 @@ index e59cfa3d..add31d76 100644
 +
 +    for mode in [UiMode::Classic, UiMode::Modern] {
 +        let mut view = (*classic_arrow_view(2, true)).clone();
++        // This fixture tests shortcut dispatch, independently of deferred preview.
++        // Keep exact action assertions instead of ignoring extra playback actions.
++        view.preview_context = None;
 +        view.rows.truncate(1);
 +        view.rows[0].guide_available = false;
 +        let (mut d, mut rig) = mount_snapshot_in_mode(Arc::new(view.clone()), mode);
