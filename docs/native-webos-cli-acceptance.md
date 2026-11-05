@@ -135,8 +135,13 @@ successful observation. A presence sequence advancing proves a new publication,
 not a new decoded frame. Repeated reads of an unchanged cached record cannot
 substitute for independent correlated replies.
 
-The native application's existing event log has additional diagnostic fields,
-but the CLI status response does not contain them:
+The native application's event log has additional diagnostics that are not
+exposed under their log field names in CLI status replies. Builds providing
+`data.video_evidence` also expose an attributed native position-callback count
+and, when available, the latest raw sink-counter callback report. Its window
+flag describes permission to present, not physical visibility. These observations
+do not establish decoded or displayed frames, panel power, or a moving picture.
+The following fields describe the event log, not the new status object's schema:
 
 - `loop` counts main-loop iterations. It is application liveness evidence.
 - Lowercase `fps` counts actual GL swaps of the application's graphics plane.

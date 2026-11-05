@@ -1046,10 +1046,10 @@ index 58c21931..b998be2d 100644
  and the panel is **OFF by default for every device run, `--fps*` and `profile-tv` included** (the set
 diff --git a/docs/classic-list-settings.md b/docs/classic-list-settings.md
 new file mode 100644
-index 00000000..d01a14df
+index 00000000..c3db3469
 --- /dev/null
 +++ b/docs/classic-list-settings.md
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,158 @@
 +# Classic list and numeric playback settings
 +
 +## Choose Classic and navigate back
@@ -1185,6 +1185,11 @@ index 00000000..d01a14df
 +Temporary media sessions retain their separate lifecycle and source checks.
 +
 +## Existing profiles and remote changes
++
++Renaming a saved profile, including through an import, preserves its remembered
++category when every other profile field is unchanged. This also applies to an
++inactive profile. A changed source, profile identity, alias or enabled state does
++not inherit that category history. The global Favorites selection is unchanged.
 +
 +The settings schema exposes the four list/playback keys and five display flags
 +above. Remote callers should discover the schema, read the current context and
@@ -2188,6 +2193,76 @@ index 5c0c7935..587f3c9b 100644
  ## Local videos on a USB drive or SSD
  
  The native local-folder adapter reads files visible to the application on the
+diff --git a/docs/ott-video-evidence.md b/docs/ott-video-evidence.md
+new file mode 100644
+index 00000000..2ac8a316
+--- /dev/null
++++ b/docs/ott-video-evidence.md
+@@ -0,0 +1,64 @@
++# Native video evidence in OTT status
++
++`status` and `state` add `data.video_evidence` to successful replies. Existing
++empty parameters and `playback_failure_version: 2` or `3` keep their meaning;
++there is no new request parameter and no change to the failure object. Older
++consumers can ignore this independent object. No controller upgrade is required.
++
++The object has exactly three required members:
++
++- `version`: integer `1`.
++- `window_present_allowed`: boolean from the application window gate. It starts
++  `true`; SDL WILL/DID background events set it false and DID foreground sets it
++  true. It describes permission to present the UI, not whether the panel is on,
++  the application is physically visible, or video has been displayed.
++- `native`: `null`, or the current attributed native observation described below.
++
++A non-null `native` has two required members:
++
++- `position_callbacks`: unsigned 32-bit count of accepted type-0 native position
++  callbacks. This is not a count of decoded frames, shown frames, or audio frames.
++- `sink_report`: `null` until a recognized sink-counter callback arrives; then an
++  object containing exactly `callback_type`, `callback_count`, `firmware_major`
++  and `raw_value`.
++
++The report preserves the latest callback's numeric payload without interpreting
++it as proof of a picture. `raw_value` is the exact signed 64-bit integer encoded
++as a decimal string (1–20 ASCII characters), so JavaScript cannot round it. Zero
++and negative reports are retained, not converted to absence. `callback_count`
++counts recognized report arrivals, not frames; it is in `1..4294967295` and
++saturates at the upper bound while the raw report continues to update.
++`callback_type` is `47` for firmware major less than 5, or `49` for major 5 and
++later. `firmware_major` is unsigned 32-bit; zero means unknown and uses the
++existing older-firmware mapping. That fallback is not verified firmware identity.
++A missing report means unavailable evidence, not zero displayed frames.
++
++## Ownership and reset
++
++The application includes native evidence only for a tagged matching OTT playback
++with no replacement request pending. Missing or mismatched OTT ownership yields
++`native: null`, including native playback outside this OTT owner. The media
++reader independently requires the current physical Load attempt and active native
++callback epoch. A retained logical identity or Engine object is insufficient.
++Release, abandoned and stale epochs cannot supply observations. The application
++window permission remains available independently of media ownership.
++
++A single existing native-session lock covers callback tuple writes, the snapshot
++and reset. The read does not call the sink, consume a presentation event, drain
++heartbeat counters, start a worker, change playback or inspect remote devices.
++No URLs, titles, file paths, credentials or private owner identifiers are included.
++
++Counters reset on native-session reset, including a new physical Load or teardown.
++An in-place seek does not reset these session counters; a seek that reloads can.
++`position_callbacks` retains unsigned 32-bit wrapping behavior. Consequently,
++clients must not treat decreases as playback failure or compare these samples as
++lifetime counters; this contract has no public physical-session token. It does not
++promise a frame rate or a reliable cross-Load delta. A repeated last sink value may
++simply mean that no further callback has arrived.
++
++## Verification limits
++
++Host tests exercise callback ingress, exact ownership rejection, reset,
++saturation, JSON string precision, passive reads, the actual SDL permission gate
++and status parsing. They do not establish physical display, decoding correctness,
++audio output, panel power or video motion. Those require separate device evidence.
 diff --git a/docs/playback-navigation.md b/docs/playback-navigation.md
 index a931aa76..2b8912e1 100644
 --- a/docs/playback-navigation.md
@@ -22238,7 +22313,7 @@ index 68ff404c..fd567e80 100644
  `curlio::abort_active()` at the curl source's wake pipe, since a thread parked in `curl_multi_wait`
  is not one any `shutdown(2)` of ours can reach. Exactly one of the two ever has anything to do. Ours ships beside the binary as `libav*-plx.so.*`, is `dlopen`'d by absolute path
 diff --git a/rust-modules/media/src/player/engine.rs b/rust-modules/media/src/player/engine.rs
-index 89261b42..41e12b9d 100644
+index 89261b42..a92999fa 100644
 --- a/rust-modules/media/src/player/engine.rs
 +++ b/rust-modules/media/src/player/engine.rs
 @@ -565,7 +565,7 @@ fn run_release_effects(
@@ -22611,7 +22686,7 @@ index 89261b42..41e12b9d 100644
                                                                                      // Installing a SEGMENT is not acceptance of the AU which establishes it. Keep
                                                                                      // callbacks fenced across BufferFull/error and arm only below, after this exact
                                                                                      // retained keyframe has returned `O` from sf_feed.
-@@ -6362,6 +6465,97 @@ mod off_frame_release_tests {
+@@ -6362,6 +6465,204 @@ mod off_frame_release_tests {
          crate::player::adapter::PlayerAdapter::new(unsafe { MainThread::assume() })
      }
  
@@ -22629,6 +22704,113 @@ index 89261b42..41e12b9d 100644
 +        assert_eq!(ready_now(), 0, "inert fixture must not create a native object");
 +        SHARED.pb_state.store(super::super::PlaybackState::Error as u8, Ordering::Relaxed);
 +        epoch
++    }
++
++    #[test]
++    fn video_evidence_keeps_raw_reports_separate_from_position_callbacks() {
++        use super::super::report::{video_evidence_now, NativeSinkReport, NativeVideoEvidence};
++        let _serial = plx_base::testlock::serial();
++        let mut ps = crate::route::PlaybackSession::IDLE;
++        let mut pa = arm(&ps);
++        let _cleanup = Cleanup;
++        TX.reset();
++        let epoch = diagnostic_engine(&mut ps, &mut pa);
++        SHARED.pb_state.store(super::super::PlaybackState::Playing as u8, Ordering::Relaxed);
++        assert_eq!(video_evidence_now(&ps, &mut pa), Some(NativeVideoEvidence {
++            position_callbacks: 0, sink_report: None,
++        }));
++        super::super::sf_on_event(epoch, 0, 0, std::ptr::null());
++        let major = plx_platform::tv::device::info().major;
++        let ty = super::super::displayed_counter_type(major);
++        super::super::sf_on_event(epoch, ty - 1, 900, std::ptr::null());
++        assert_eq!(video_evidence_now(&ps, &mut pa), Some(NativeVideoEvidence {
++            position_callbacks: 1, sink_report: None,
++        }), "a position callback and a dropped-counter callback are not a displayed-counter report");
++        for (index, raw_value) in [0, i64::MAX, i64::MIN].into_iter().enumerate() {
++            super::super::sf_on_event(epoch, ty, raw_value, std::ptr::null());
++            let expected = Some(NativeVideoEvidence {
++                position_callbacks: 1,
++                sink_report: Some(NativeSinkReport {
++                    callback_count: index as u32 + 1, raw_value,
++                    callback_type: ty, firmware_major: major,
++                }),
++            });
++            let heartbeat_count = SHARED.dg_vpres_ct.load(Ordering::Relaxed);
++            assert_eq!(video_evidence_now(&ps, &mut pa), expected);
++            assert_eq!(video_evidence_now(&ps, &mut pa), expected, "reading does not drain evidence");
++            assert_eq!(SHARED.dg_vpres_ct.load(Ordering::Relaxed), heartbeat_count);
++            assert_eq!(SHARED.pb_state.load(Ordering::Relaxed), super::super::PlaybackState::Playing as u8);
++        }
++        SHARED.with_native_session(epoch, super::super::shared::NativeEventClass::Other, 0, || {
++            SHARED.dg_sink_displayed_cb.store(u32::MAX, Ordering::Relaxed);
++        }).expect("current epoch");
++        super::super::sf_on_event(epoch, ty, 17, std::ptr::null());
++        let report = video_evidence_now(&ps, &mut pa).unwrap().sink_report.unwrap();
++        assert_eq!(report.callback_count, u32::MAX, "presence must not wrap to absent");
++        assert_eq!(report.raw_value, 17, "a saturated count still keeps the latest raw value");
++        suspend_bufferfeed(&mut ps, &mut pa);
++        TX.reset();
++    }
++
++    #[test]
++    fn video_evidence_rejects_replaced_attempt_and_pre_engine_refusal() {
++        use super::super::report::video_evidence_now;
++        let _serial = plx_base::testlock::serial();
++        let mut ps = crate::route::PlaybackSession::IDLE;
++        let mut pa = arm(&ps);
++        let _cleanup = Cleanup;
++        TX.reset();
++        assert_eq!(video_evidence_now(&ps, &mut pa), None);
++        let epoch = diagnostic_engine(&mut ps, &mut pa);
++        super::super::sf_on_event(epoch, 0, 1, std::ptr::null());
++        assert!(video_evidence_now(&ps, &mut pa).is_some(), "an owned Error can still report live evidence");
++        ps.jail_load_blocked = true;
++        assert_eq!(video_evidence_now(&ps, &mut pa), None);
++        ps.jail_load_blocked = false;
++        let original = pa.engine().unwrap().route_start;
++        crate::route::clear_engine_error_details(&mut ps);
++        assert_eq!(video_evidence_now(&ps, &mut pa), None, "request admission clears outgoing attribution");
++        crate::route::note_engine_error_attempt(&mut ps, original);
++        crate::route::fail_current_engine();
++        let transaction = crate::route::begin_route_start().expect("replacement route");
++        let next = crate::route::claim_route_start_attempt(transaction).expect("replacement Load");
++        assert!(crate::route::settle_route_start(&mut ps, next, crate::route::RouteStartResult::Started));
++        assert_eq!(video_evidence_now(&ps, &mut pa), None, "a new Load cannot borrow the outgoing Engine's counters");
++        suspend_bufferfeed(&mut ps, &mut pa);
++        TX.reset();
++    }
++
++    #[test]
++    fn video_evidence_resets_and_rejects_retired_callback_epochs() {
++        use super::super::report::video_evidence_now;
++        let _serial = plx_base::testlock::serial();
++        let mut ps = crate::route::PlaybackSession::IDLE;
++        let mut pa = arm(&ps);
++        let _cleanup = Cleanup;
++        TX.reset();
++        let epoch = diagnostic_engine(&mut ps, &mut pa);
++        let ty = super::super::displayed_counter_type(plx_platform::tv::device::info().major);
++        super::super::sf_on_event(epoch, ty, 71, std::ptr::null());
++        assert!(video_evidence_now(&ps, &mut pa).unwrap().sink_report.is_some());
++        assert!(SHARED.retire_native_session(epoch));
++        assert_eq!(video_evidence_now(&ps, &mut pa), None);
++        SHARED.reset_session();
++        assert_eq!(SHARED.dg_sink_displayed_cb.load(Ordering::Relaxed), 0);
++        assert_eq!(SHARED.dg_sink_report_value.load(Ordering::Relaxed), 0);
++        assert_eq!(SHARED.dg_sink_report_type.load(Ordering::Relaxed), 0);
++        assert_eq!(SHARED.dg_sink_report_major.load(Ordering::Relaxed), 0);
++        let next_epoch = SHARED.begin_native_session().expect("new native epoch");
++        super::super::sf_on_event(epoch, ty, 99, std::ptr::null());
++        super::super::sf_on_event(epoch, 0, 99, std::ptr::null());
++        assert_eq!(SHARED.dg_sink_displayed_cb.load(Ordering::Relaxed), 0);
++        assert_eq!(SHARED.dg_pos_ticks.load(Ordering::Relaxed), 0);
++        super::super::sf_on_event(next_epoch, ty, 82, std::ptr::null());
++        assert_eq!(SHARED.dg_sink_displayed_cb.load(Ordering::Relaxed), 1);
++        assert_eq!(SHARED.dg_sink_report_value.load(Ordering::Relaxed), 82);
++        assert_eq!(video_evidence_now(&ps, &mut pa), None, "old Engine cannot read the new epoch");
++        assert!(SHARED.retire_native_session(next_epoch));
++        suspend_bufferfeed(&mut ps, &mut pa);
++        TX.reset();
 +    }
 +
 +    #[test]
@@ -22709,7 +22891,7 @@ index 89261b42..41e12b9d 100644
      #[test]
      fn a_stop_returns_before_the_unload_and_the_next_start_is_deferred_until_its_tail_ran() {
          let mut ps = crate::route::PlaybackSession::IDLE;
-@@ -7504,7 +7698,7 @@ mod load_in_flight_tests {
+@@ -7504,7 +7805,7 @@ mod load_in_flight_tests {
          let start = crate::route::begin_route_start().expect("a completed stop grants a start owner");
          // No URL is set, so an unguarded start would answer `NoRoute`; `StartFailed` is the refusal.
          assert_eq!(
@@ -22718,7 +22900,7 @@ index 89261b42..41e12b9d 100644
              Some(crate::route::RouteStartResult::StartFailed),
              "a later playback must not be handed the object an abandoned Load still owns"
          );
-@@ -8753,6 +8947,50 @@ mod native_seek_tests {
+@@ -8753,6 +9054,50 @@ mod native_seek_tests {
          assert_eq!(crate::player::seek_mode(), SeekMode::NativeSeek);
      }
  
@@ -22769,7 +22951,7 @@ index 89261b42..41e12b9d 100644
      #[test]
      fn a_pre_zero_keyframe_seeks_to_zero_not_negative() {
          let _serial = plx_base::testlock::serial();
-@@ -9459,3 +9697,49 @@ mod pcm_sink_lead_tests {
+@@ -9459,3 +9804,49 @@ mod pcm_sink_lead_tests {
          );
      }
  }
@@ -23056,7 +23238,7 @@ index 19866942..e40fc686 100644
 +    }
 +}
 diff --git a/rust-modules/media/src/player/mod.rs b/rust-modules/media/src/player/mod.rs
-index 059ba39d..b88d56aa 100644
+index 059ba39d..93ec41ca 100644
 --- a/rust-modules/media/src/player/mod.rs
 +++ b/rust-modules/media/src/player/mod.rs
 @@ -691,6 +691,40 @@ pub fn video_viewport(width: i32, height: i32) -> video_geometry::Viewport {
@@ -23100,7 +23282,26 @@ index 059ba39d..b88d56aa 100644
  pub fn playpos_ns() -> i64 {
      SHARED.playpos_ns.load(Relaxed)
  }
-@@ -3380,7 +3414,7 @@ mod tests {
+@@ -2594,9 +2628,16 @@ fn sf_on_event_inner(ty: c_int, num: i64, s: *const c_char, scope: shared::Event
+         // callback numbering shifts by two between webOS 4 and 5+ (`docs/webos5-port.md` §5):
+         // 46/47 on this set are 48/49 on a webOS 5+ set. The harness reads THIS line, never
+         // the raw type.
+-        match sink_counter_kind(ty, plx_platform::tv::device::info().major) {
++        let firmware_major = plx_platform::tv::device::info().major;
++        match sink_counter_kind(ty, firmware_major) {
+             Some(SinkCounter::Displayed) => {
+-                SHARED.dg_sink_displayed_cb.fetch_add(1, Relaxed);
++                // The callback gate holds native_session through this whole tuple.
++                // Retain the raw report, not a decoded/displayed-frame assertion.
++                SHARED.dg_sink_report_value.store(num, Relaxed);
++                SHARED.dg_sink_report_type.store(ty, Relaxed);
++                SHARED.dg_sink_report_major.store(firmware_major, Relaxed);
++                let count = SHARED.dg_sink_displayed_cb.load(Relaxed).saturating_add(1);
++                SHARED.dg_sink_displayed_cb.store(count, Relaxed);
+                 log(&format!("sink: displayed={num} (type={ty})"));
+             }
+             Some(SinkCounter::Dropped) => log(&format!("sink: dropped={num} (type={ty})")),
+@@ -3380,7 +3421,7 @@ mod tests {
          assert_eq!(
              line,
              format!(
@@ -23385,10 +23586,10 @@ index c7add836..bcb503be 100644
  
      fn run(m: &mut NativeRelease, ev: ReleaseEvent) -> Vec<ReleaseEffect> {
 diff --git a/rust-modules/media/src/player/report.rs b/rust-modules/media/src/player/report.rs
-index 512682ee..8fadfe97 100644
+index 512682ee..a797c368 100644
 --- a/rust-modules/media/src/player/report.rs
 +++ b/rust-modules/media/src/player/report.rs
-@@ -609,6 +609,92 @@ fn transport_classes(
+@@ -609,6 +609,152 @@ fn transport_classes(
      (class, TransferAgeClass::from_ms(age_ms))
  }
  
@@ -23413,6 +23614,66 @@ index 512682ee..8fadfe97 100644
 +    pub fn source_io(rc: i32, reopen_failed: bool) -> Self {
 +        Self::SourceIo { transport: transport_classes(rc, -1, reopen_failed).0 }
 +    }
++}
++
++/// Passive evidence from the current physical native Load, not proof of a picture.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct NativeVideoEvidence {
++    /// Accepted type-0 position callbacks in this native session, not video frames.
++    pub position_callbacks: u32,
++    /// Latest callback recognized by the existing firmware-era displayed-counter map.
++    /// Absence means no such callback was observed; it does not mean zero frames.
++    pub sink_report: Option<NativeSinkReport>,
++}
++
++/// Raw numeric callback evidence. The value is deliberately not named a frame count.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct NativeSinkReport {
++    /// Callback arrivals, saturated at u32::MAX; reset for each native session.
++    pub callback_count: u32,
++    pub raw_value: i64,
++    pub callback_type: i32,
++    /// Zero means unknown; the existing callback map then assumes pre-webOS-5 numbering.
++    pub firmware_major: u32,
++}
++
++/// Main-thread read of existing diagnostics, without native calls or draining counters.
++/// A retained logical identity alone is not enough: require this session's exact
++/// physical Load and its still-active native epoch. A new request clears the Load
++/// attribution before resolving, and retired/releasing epochs cannot enter the read.
++/// Position callbacks retain their existing u32 wrapping behavior; they are not
++/// a lifetime frame counter. The optional sink report uses a saturated presence count.
++pub fn video_evidence_now(
++    ps: &crate::route::PlaybackSession,
++    pa: &mut super::adapter::PlayerAdapter,
++) -> Option<NativeVideoEvidence> {
++    if ps.jail_load_blocked || ps.native_start_refused.is_some()
++        || crate::route::play_refused(ps) || crate::route::play_resolution_failed(ps)
++        || crate::route::engine_failure(ps).is_some()
++    {
++        return None;
++    }
++    let engine = pa.engine()?;
++    if !crate::route::engine_error_attempt_matches(ps, engine.route_start) {
++        return None;
++    }
++    // Other does not consume/arm a presentation. This same lock excludes callback
++    // tuple updates, reset and epoch retirement until the complete copy is made.
++    super::SHARED.with_native_session(
++        engine.native_epoch, super::shared::NativeEventClass::Other, 0,
++        || {
++            let count = super::SHARED.dg_sink_displayed_cb.load(Relaxed);
++            NativeVideoEvidence {
++                position_callbacks: super::SHARED.dg_pos_ticks.load(Relaxed),
++                sink_report: (count != 0).then(|| NativeSinkReport {
++                    callback_count: count,
++                    raw_value: super::SHARED.dg_sink_report_value.load(Relaxed),
++                    callback_type: super::SHARED.dg_sink_report_type.load(Relaxed),
++                    firmware_major: super::SHARED.dg_sink_report_major.load(Relaxed),
++                }),
++            }
++        },
++    )
 +}
 +
 +/// Closed, source-free details of one attributed native error observation.
@@ -23481,7 +23742,7 @@ index 512682ee..8fadfe97 100644
  fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
      let delivery = delivery_class(ps);
      let selected = selected_quality_class(crate::route::quality());
-@@ -628,6 +714,13 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
+@@ -628,6 +774,13 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
      };
      let http_status = super::SHARED.dg_http_status.load(Relaxed);
      let (attempt_origin, attempt_ordinal) = attempt_snapshot();
@@ -23495,7 +23756,7 @@ index 512682ee..8fadfe97 100644
      let context = PlaybackErrorContext {
          delivery,
          selected,
-@@ -640,7 +733,7 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
+@@ -640,7 +793,7 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
          buffer: BufferClass::from_ms(super::SHARED.dg_abr_buffer_ms.load(Relaxed)),
          transport,
          transfer_age,
@@ -23504,7 +23765,7 @@ index 512682ee..8fadfe97 100644
          started: SAW_START.load(Relaxed),
          // A refusal names the route it asked the server for; else the route a noted switch is
          // opening; else the session's own, which is also the attempt's when nothing was switched.
-@@ -649,7 +742,7 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
+@@ -649,7 +802,7 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
          attempt_origin,
          attempt_ordinal,
          http_status: HttpClass::exact_status(http_status),
@@ -23514,10 +23775,23 @@ index 512682ee..8fadfe97 100644
      };
      if crate::route::preview_request(ps) {
 diff --git a/rust-modules/media/src/player/shared.rs b/rust-modules/media/src/player/shared.rs
-index 7b665dc8..df510eff 100644
+index 7b665dc8..30951f28 100644
 --- a/rust-modules/media/src/player/shared.rs
 +++ b/rust-modules/media/src/player/shared.rs
-@@ -909,6 +909,9 @@ pub struct Shared {
+@@ -860,6 +860,12 @@ pub struct Shared {
+     /// 46 to 49 that it did not name (the other era's numbers). Unlike `frames`, a seek leaves them.
+     pub dg_pos_ticks: AtomicU32,
+     pub dg_sink_displayed_cb: AtomicU32,
++    /// Latest recognized displayed-counter callback, not interpreted frame counts.
++    /// All writes, resets and reads are under `native_session`; the existing
++    /// callback count is the presence flag and saturates instead of wrapping to zero.
++    pub dg_sink_report_value: AtomicI64,
++    pub dg_sink_report_type: AtomicI32,
++    pub dg_sink_report_major: AtomicU32,
+     pub dg_sink_other_cb: AtomicU32,
+     /// Why the VIDEO feeder is where it is, taken at each of `feed_stream`'s exit points.
+     /// 0 none yet · 1 accepting · 2 BufferFull · 3 refused · 4 waiting for a frame (feed-ahead
+@@ -909,6 +915,9 @@ pub struct Shared {
      /// teardown cascade that follows it must not overwrite it. Read by the handled playback error
      /// as a class. Cleared per session beside the other `dg_*` latches.
      pub dg_demux_exit: AtomicU8,
@@ -23527,7 +23801,7 @@ index 7b665dc8..df510eff 100644
      /// SDL ticks when `loadCompleted` landed, and when `frames` last CHANGED. A photograph has no
      /// time axis: "Load completed, 0 frames" is innocent at 2 s and damning at 4 minutes, and the
      /// panel cannot tell the difference without these. Stamped in the pump, never in `app::diagnostics` —
-@@ -1037,6 +1040,24 @@ impl Shared {
+@@ -1037,6 +1046,24 @@ impl Shared {
              .compare_exchange(0, exit.latch(), Ordering::AcqRel, Ordering::Relaxed);
      }
  
@@ -23552,7 +23826,17 @@ index 7b665dc8..df510eff 100644
      /// Raise `demux_failed` AND name the exit that raised it (first wins, see `note_demux_exit`).
      /// The one way the demuxer or the Load builder fails the session through that flag.
      pub fn fail_demux(&self, exit: plx_telemetry::telemetry::classes::DemuxExitClass) {
-@@ -1069,6 +1090,7 @@ impl Shared {
+@@ -1058,6 +1085,9 @@ impl Shared {
+             dg_cb_count: AtomicU32::new(0),
+             dg_pos_ticks: AtomicU32::new(0),
+             dg_sink_displayed_cb: AtomicU32::new(0),
++            dg_sink_report_value: AtomicI64::new(0),
++            dg_sink_report_type: AtomicI32::new(0),
++            dg_sink_report_major: AtomicU32::new(0),
+             dg_sink_other_cb: AtomicU32::new(0),
+             dg_feed_state: AtomicU8::new(0),
+             dg_cb_err: AtomicI32::new(0),
+@@ -1069,6 +1099,7 @@ impl Shared {
              dg_transport_age_ms: AtomicI64::new(-1),
              dg_transport_reopen_failed: AtomicBool::new(false),
              dg_demux_exit: AtomicU8::new(0),
@@ -23560,7 +23844,7 @@ index 7b665dc8..df510eff 100644
              dg_net_rx: AtomicI64::new(0),
              side_anchor: Mutex::new(None),
              side_subs_owner: AtomicBool::new(false),
-@@ -1187,6 +1209,7 @@ impl Shared {
+@@ -1187,6 +1218,7 @@ impl Shared {
              return None;
          }
          let epoch = state.next();
@@ -23568,7 +23852,17 @@ index 7b665dc8..df510eff 100644
          state.phase = NativeSessionPhase::Active {
              epoch,
              presentation_gate: NativePresentationGate::Armed,
-@@ -1786,6 +1809,7 @@ impl Shared {
+@@ -1773,6 +1805,9 @@ impl Shared {
+         self.dg_cb_count.store(0, Ordering::Relaxed);
+         self.dg_pos_ticks.store(0, Ordering::Relaxed);
+         self.dg_sink_displayed_cb.store(0, Ordering::Relaxed);
++        self.dg_sink_report_value.store(0, Ordering::Relaxed);
++        self.dg_sink_report_type.store(0, Ordering::Relaxed);
++        self.dg_sink_report_major.store(0, Ordering::Relaxed);
+         self.dg_sink_other_cb.store(0, Ordering::Relaxed);
+         self.dg_feed_state.store(0, Ordering::Relaxed);
+         // A latched error MUST be cleared here, or one bad session paints every later healthy
+@@ -1786,6 +1821,7 @@ impl Shared {
          self.dg_transport_age_ms.store(-1, Ordering::Relaxed);
          self.dg_transport_reopen_failed.store(false, Ordering::Relaxed);
          self.dg_demux_exit.store(0, Ordering::Relaxed);
@@ -59749,10 +60043,10 @@ index 00000000..986e54e8
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_category_state.rs b/rust-modules/src/app/ott_category_state.rs
-index 0a83dd17..d0d6548a 100644
+index 0a83dd17..366d2f0a 100644
 --- a/rust-modules/src/app/ott_category_state.rs
 +++ b/rust-modules/src/app/ott_category_state.rs
-@@ -15,6 +15,20 @@ fn invalid<T>(result: Result<T, category_preferences::Error>) -> Result<T, &'sta
+@@ -15,6 +15,55 @@ fn invalid<T>(result: Result<T, category_preferences::Error>) -> Result<T, &'sta
      result.map_err(|_| "Invalid category preferences")
  }
  
@@ -59770,10 +60064,62 @@ index 0a83dd17..d0d6548a 100644
 +        &saved.category, saved.favorites_selected))?.category)
 +}
 +
++/// Rebind only presentation metadata when a saved profile is renamed. The
++/// shared full fingerprint remains unchanged for source/authority consumers.
++/// Category history follows the same source through a display-name-only edit.
++fn preserve_renamed_categories(before: &Saved, candidate: &Saved, preferences: &mut Preferences)
++    -> Result<bool, &'static str>
++{
++    let mut changed = false;
++    for old in &before.profiles.profiles {
++        let Some(new) = candidate.profiles.profiles.iter().find(|new| new.id == old.id) else { continue; };
++        if old.name == new.name { continue; }
++        let mut renamed = old.clone();
++        renamed.name = new.name.clone();
++        if &renamed != new { continue; }
++        let fingerprint = profile_fingerprint(new);
++        let new_source = Source { profile_id: &new.id, fingerprint: &fingerprint };
++        // A caller may already have prepared this candidate or deliberately
++        // selected its category; never replace that exact after-image.
++        if invalid(preferences.remembered(new_source))?.is_some() { continue; }
++        let old_fingerprint = profile_fingerprint(old);
++        let old_source = Source { profile_id: &old.id, fingerprint: &old_fingerprint };
++        let category = if before.profiles.active_profile.as_ref() == Some(&old.id) {
++            // Reuse legacy seeding and stale-fingerprint refusal; a label edit
++            // cannot resurrect history already belonging to another source.
++            invalid(preferences.switch_source(Some(old_source), Some(old_source),
++                &before.category, before.favorites_selected))?.category
++        } else {
++            let Some(category) = invalid(preferences.remembered(old_source))? else { continue; };
++            category.to_owned()
++        };
++        invalid(preferences.choose_category(new_source, &category))?;
++        changed = true;
++    }
++    Ok(changed)
++}
++
  /// This runs on every candidate before the existing writer is admitted, so UI,
  /// remote profile selection, profile edits, import and offline binding agree.
  pub(super) fn prepare_profile_change(before: &Saved, candidate: &mut Saved) -> Result<(), &'static str> {
-@@ -49,10 +63,23 @@ pub(super) struct Pending {
+@@ -22,6 +71,7 @@ pub(super) fn prepare_profile_change(before: &Saved, candidate: &mut Saved) -> R
+     let old = profile(before);
+     let new = profile(candidate);
+     let mut preferences = invalid(Preferences::read(&candidate.settings))?;
++    let renamed = preserve_renamed_categories(before, candidate, &mut preferences)?;
+     let changed = old != new;
+     if changed {
+         let selection = invalid(preferences.switch_source(source(&old), source(&new),
+@@ -30,7 +80,7 @@ pub(super) fn prepare_profile_change(before: &Saved, candidate: &mut Saved) -> R
+         candidate.favorites_selected = selection.favorites_selected;
+     }
+     let pruned = invalid(preferences.prune_deleted(&candidate.profiles))?;
+-    if changed || pruned != 0 { invalid(preferences.write_into(&mut candidate.settings))?; }
++    if changed || renamed || pruned != 0 { invalid(preferences.write_into(&mut candidate.settings))?; }
+     let mut organization = catalog_organization::Document::read(&candidate.settings).map_err(|error| error.message())?;
+     if organization.prune_deleted(&candidate.profiles).map_err(|error| error.message())? != 0 {
+         organization.write_into(&mut candidate.settings).map_err(|error| error.message())?;
+@@ -49,10 +99,23 @@ pub(super) struct Pending {
      source_context: String,
  }
  
@@ -59798,7 +60144,7 @@ index 0a83dd17..d0d6548a 100644
          let value = json!([
              self.remote.runtime(), self.generation,
              self.active(), self.effective_profile(), self.provider,
-@@ -72,9 +99,10 @@ impl Runtime {
+@@ -72,9 +135,10 @@ impl Runtime {
          if let Some(projection) = self.organization_projection() {
              return match projection.selection_id(remembered) { Some("") | None => "", Some(_) => remembered };
          }
@@ -59812,7 +60158,7 @@ index 0a83dd17..d0d6548a 100644
      }
  
      pub(super) fn category_choice_candidate(&self, category: Option<&str>) -> Result<Saved, &'static str> {
-@@ -82,17 +110,19 @@ impl Runtime {
+@@ -82,17 +146,19 @@ impl Runtime {
          saved.favorites_selected = category.is_none();
          if let Some(category) = category {
              if category.len() > 4096 { return Err("Category is too long"); }
@@ -59840,7 +60186,7 @@ index 0a83dd17..d0d6548a 100644
                  }
              }
          }
-@@ -111,17 +141,20 @@ impl Runtime {
+@@ -111,17 +177,20 @@ impl Runtime {
      fn save_category_choice_with_reply(&mut self, category: Option<String>,
          reply: Option<(Invocation, Value)>) -> Result<(), &'static str> {
          let saved = self.category_choice_candidate(category.as_deref())?;
@@ -59872,7 +60218,7 @@ index 0a83dd17..d0d6548a 100644
          }
          self.pending_category_choice = Some(pending);
          Ok(())
-@@ -147,6 +180,11 @@ impl Runtime {
+@@ -147,6 +216,11 @@ impl Runtime {
          { return false; }
          if pending.owner.is_some() {
              transient::set_view(self, &pending.category, pending.favorites);
@@ -61336,10 +61682,10 @@ index 00000000..e49c5e6a
 +    Ok(true)
 +}
 diff --git a/rust-modules/src/app/ott_commands.rs b/rust-modules/src/app/ott_commands.rs
-index 4ee617b9..f832eaa5 100644
+index 4ee617b9..8f9666f3 100644
 --- a/rust-modules/src/app/ott_commands.rs
 +++ b/rust-modules/src/app/ott_commands.rs
-@@ -4,9 +4,40 @@ use super::*;
+@@ -4,9 +4,42 @@ use super::*;
  #[path = "ott_catalog_remote.rs"]
  mod catalog_remote;
  #[path = "ott_media_tracks.rs"]
@@ -61347,6 +61693,8 @@ index 4ee617b9..f832eaa5 100644
 +pub(super) mod media_tracks;
  #[path = "ott_controls.rs"]
  mod controls;
++#[path = "ott_video_evidence.rs"]
++mod video_evidence;
 +
 +pub(super) fn restartable(runtime: &Runtime, app: &App) -> bool {
 +    controls::restartable(runtime, app)
@@ -61381,7 +61729,7 @@ index 4ee617b9..f832eaa5 100644
  #[path = "ott_commands_offline.rs"]
  mod offline;
  #[path = "ott_provider_settings.rs"]
-@@ -52,6 +83,12 @@ fn supersede_deferred(runtime: &mut Runtime) {
+@@ -52,6 +85,12 @@ fn supersede_deferred(runtime: &mut Runtime) {
      }
  }
  
@@ -61394,7 +61742,7 @@ index 4ee617b9..f832eaa5 100644
  /// Explicit playback exit must retire a channel still waiting for its first
  /// catalogue batch as well as the receipt for a previously admitted start.
  pub(super) fn cancel_pending_play(runtime: &mut Runtime) {
-@@ -159,6 +196,30 @@ fn wire_provider(kind: ProviderKind) -> &'static str {
+@@ -159,6 +198,30 @@ fn wire_provider(kind: ProviderKind) -> &'static str {
          kind.canonical_id()
      }
  }
@@ -61425,7 +61773,7 @@ index 4ee617b9..f832eaa5 100644
  fn provider_kind(value: &str) -> Option<ProviderKind> {
      match value {
          "m3u" => Some(ProviderKind::M3u),
-@@ -208,6 +269,11 @@ fn text(value: &Value, limit: usize, empty: bool) -> Option<&str> {
+@@ -208,6 +271,11 @@ fn text(value: &Value, limit: usize, empty: bool) -> Option<&str> {
  fn unsupported(message: &str) -> Value {
      json!({"status":"unsupported","data":{"error":message}})
  }
@@ -61437,7 +61785,7 @@ index 4ee617b9..f832eaa5 100644
  fn profile_index(saved: &Saved, kind: ProviderKind, number: usize) -> Option<usize> {
      saved
          .profiles
-@@ -217,15 +283,20 @@ fn profile_index(saved: &Saved, kind: ProviderKind, number: usize) -> Option<usi
+@@ -217,15 +285,20 @@ fn profile_index(saved: &Saved, kind: ProviderKind, number: usize) -> Option<usi
          .filter(|(_, p)| p.kind == kind)
          .enumerate()
          .find(|(legacy, (_, profile))| {
@@ -61464,7 +61812,7 @@ index 4ee617b9..f832eaa5 100644
  fn number(params: &Value) -> Result<usize, &'static str> {
      params["number"]
          .as_u64()
-@@ -511,7 +582,7 @@ fn provider_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+@@ -511,7 +584,7 @@ fn provider_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
              || text(&settings["vportal"], 8192, true).is_none()
              || settings
                  .get("name")
@@ -61473,7 +61821,7 @@ index 4ee617b9..f832eaa5 100644
              || (!compare && settings.get("profile").is_none())
          {
              return Some(rejected("Unsupported VPortal settings fields"));
-@@ -700,6 +771,9 @@ fn plex_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+@@ -700,6 +773,9 @@ fn plex_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
  pub(super) fn offline_rows(runtime: &Runtime) -> Vec<(usize, String)> {
      offline::unbound_rows(&runtime.saved)
  }
@@ -61483,7 +61831,7 @@ index 4ee617b9..f832eaa5 100644
  pub(super) fn bind_local(
      runtime: &Runtime,
      number: usize,
-@@ -785,7 +859,7 @@ pub(super) fn kiosk_pending(runtime: &Runtime) -> bool { kiosk::pending(runtime)
+@@ -785,7 +861,7 @@ pub(super) fn kiosk_pending(runtime: &Runtime) -> bool { kiosk::pending(runtime)
  pub(super) fn kiosk_settled(runtime: &mut Runtime, app: &mut App, invocation: &Invocation, outcome: KioskSettlement) -> Option<Value> {
      kiosk::settled(runtime, app, invocation, outcome)
  }
@@ -61492,7 +61840,7 @@ index 4ee617b9..f832eaa5 100644
      settings::after_saved(runtime, app)
  }
  fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> Option<Value> {
-@@ -877,7 +951,7 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
+@@ -877,7 +953,7 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
          };
          let position = target.clamp(0.0, duration as f64 / 1e9);
          playback::commit_seek((position * 1e9) as i64);
@@ -61501,7 +61849,7 @@ index 4ee617b9..f832eaa5 100644
          let mut data = json!({"dispatched":true,"operation":operation,"position":position});
          if operation == "seek_relative" {
              data["from"] = json!(from);
-@@ -891,6 +965,10 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
+@@ -891,6 +967,10 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
  
  /// Keep individual-setting failures inside their existing typed wire contract.
  /// Other command families retain their own response shapes.
@@ -61512,7 +61860,7 @@ index 4ee617b9..f832eaa5 100644
  pub(super) fn settings_failure(inv: &Invocation, reason: &str) -> Option<Value> {
      (inv.action == "player_settings").then(|| settings::failure(&inv.params, reason))
  }
-@@ -912,6 +990,14 @@ fn media_tracks_failure(
+@@ -912,6 +992,14 @@ fn media_tracks_failure(
  }
  
  pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
@@ -61527,7 +61875,7 @@ index 4ee617b9..f832eaa5 100644
      if let Some(response) = media_tracks_failure(
          inv,
          crate::app::ott_remote::media_tracks::Error::Restricted,
-@@ -926,11 +1012,18 @@ pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
+@@ -926,11 +1014,18 @@ pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
  }
  
  pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> Option<Value> {
@@ -61546,7 +61894,7 @@ index 4ee617b9..f832eaa5 100644
      if runtime.now_ms() >= inv.deadline_ms {
          if inv.action == favorites_items::ACTION { return Some(favorites_items::error(inv, "expired")); }
          return Some(category_select_rejection(runtime, inv, "unavailable")
-@@ -939,6 +1032,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -939,6 +1034,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
              .unwrap_or_else(|| rejected("Request expired")));
      }
      if let Err(error) = super::input_policy::remote(runtime, inv) {
@@ -61555,7 +61903,7 @@ index 4ee617b9..f832eaa5 100644
          return Some(category_select_rejection(runtime, inv, "restricted")
              .unwrap_or_else(|| policy_rejection(inv, error)));
      }
-@@ -947,13 +1042,24 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -947,13 +1044,24 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
          favorites_items::ACTION => favorites_items::command(runtime, app, inv),
          "kiosk" => kiosk::command(runtime, app, inv),
          "media_tracks" => media_tracks::command(runtime,app,inv,Runtime::track_selection_kiosk),
@@ -61583,7 +61931,7 @@ index 4ee617b9..f832eaa5 100644
              value["uuid"] = json!(runtime.remote.device_id());
              if value.get("provider").is_none() {
                  value["provider"] = json!(wire_provider(runtime.effective_provider()));
-@@ -962,11 +1068,20 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -962,11 +1070,21 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
                  runtime.loaded && (!runtime.catalog_loading || !runtime.catalog.entries.is_empty())
              );
              value["channels"] = json!(runtime.catalog.entries.len());
@@ -61596,6 +61944,7 @@ index 4ee617b9..f832eaa5 100644
 +                playback_failure::Version::V2 => runtime.playback_failure.snapshot(),
 +                playback_failure::Version::V3 => runtime.playback_failure.snapshot_version(version),
 +            });
++            value["video_evidence"] = json!(video_evidence::snapshot(runtime, app));
              Some(ok(value))
          }
          "capabilities" => {
@@ -61606,7 +61955,7 @@ index 4ee617b9..f832eaa5 100644
                      .iter()
                      .any(|key| p.get(*key).is_some_and(|value| value.as_bool() != Some(true)))
              {
-@@ -987,12 +1102,18 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -987,12 +1105,18 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
                  "vportal_settings":{"version":1},"player_settings":{"version":1,"operations":["schema","get","set"],"max_page_size":20},
                  "favorites_global":plx_data::ott::favorites_wire::Protocol::capability(),
                  "favorites_global_items":{"version":1}});
@@ -61625,7 +61974,7 @@ index 4ee617b9..f832eaa5 100644
              data["plex_library"] = crate::app::ott_plex_queue::library_capability();
              data["plex_library_truncation"] = json!({"version":1});
              if media_tracks::supports_current(runtime, app, Runtime::track_selection_kiosk) {
-@@ -1274,11 +1395,21 @@ pub(super) fn track_request_pending(runtime: &Runtime) -> bool {
+@@ -1274,11 +1398,21 @@ pub(super) fn track_request_pending(runtime: &Runtime) -> bool {
      media_tracks::has_pending(runtime)
  }
  
@@ -61647,7 +61996,7 @@ index 4ee617b9..f832eaa5 100644
      let now = runtime.now_ms();
      media_tracks::poll_pending(runtime, app, Runtime::track_selection_kiosk, Some(now));
      media_tracks::retire_stale(runtime,app,Runtime::track_selection_kiosk);
-@@ -1509,6 +1640,95 @@ mod tests {
+@@ -1509,6 +1643,95 @@ mod tests {
              .to_string()
              .contains("fixture"));
      }
@@ -61743,7 +62092,7 @@ index 4ee617b9..f832eaa5 100644
      #[test]
      fn invalid_source_is_atomic_and_sparse_slots_keep_their_numbers() {
          let mut saved = Saved::default();
-@@ -1587,3 +1807,7 @@ pub(super) fn category_select_settled(runtime: &Runtime, inv: &Invocation, saved
+@@ -1587,3 +1810,7 @@ pub(super) fn category_select_settled(runtime: &Runtime, inv: &Invocation, saved
      applied: bool, response: Value) -> Value {
      catalog_remote::select_settled(runtime, inv, saved, applied, response)
  }
@@ -92294,7 +92643,7 @@ index 00000000..cbc1a271
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/category_profile.rs b/rust-modules/src/app/ott_runtime_tests/category_profile.rs
-index daff27b3..886a55a4 100644
+index daff27b3..1be1e40c 100644
 --- a/rust-modules/src/app/ott_runtime_tests/category_profile.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/category_profile.rs
 @@ -45,7 +45,8 @@ fn stage(app: &mut App, action: OttAction) -> Saved {
@@ -92415,7 +92764,7 @@ index daff27b3..886a55a4 100644
          .unwrap_or_else(|_| panic!("fixture catalogue receiver"));
      runtime_tick(&mut app);
      let r = app.ott.as_ref().unwrap();
-@@ -578,3 +660,166 @@ fn caption_projects_effective_category_all_and_favorites_without_relabeling_prof
+@@ -578,3 +660,268 @@ fn caption_projects_effective_category_all_and_favorites_without_relabeling_prof
      assert_eq!(r.view().category_label.as_deref(), Some("Favorites"));
      r.page = "profiles"; assert!(r.view().category_label.is_none());
  }
@@ -92581,6 +92930,108 @@ index daff27b3..886a55a4 100644
 +    assert_eq!(r.view().selected_row.as_deref(), Some(second.as_str()));
 +    assert!(r.saved.resume.is_empty());
 +    assert!(r.play_target.is_none() && r.resolver_next.is_none() && r.playing.is_none());
++}
++
++#[test]
++fn home_display_name_import_preserves_category_and_global_favorites() {
++    for remembered in [false, true] {
++        for favorites in [false, true] {
++            let mut before = Saved::default();
++            before.profiles.profiles = vec![profile("A")];
++            before.profiles.active_profile = Some("A".into());
++            before.category = "News".into();
++            before.favorites_selected = favorites;
++            before.favorites.toggle(selection::capture(&profile("A"), &entry("news", "News")).unwrap()).unwrap();
++            if remembered {
++                let fingerprint = profile_fingerprint(&before.profiles.profiles[0]);
++                let mut preferences = category_preferences::Preferences::default();
++                preferences.choose_category(category_preferences::Source {
++                    profile_id: "A", fingerprint: &fingerprint,
++                }, "News").unwrap();
++                preferences.write_into(&mut before.settings).unwrap();
++            }
++            let original = serde_json::to_value(&before).unwrap();
++            let mut imported = before.clone();
++            imported.profiles.profiles[0].name = "Home".into();
++            category_state::prepare_profile_change(&before, &mut imported).unwrap();
++            assert_eq!(imported.category, "News", "remembered={remembered}");
++            let prepared = serde_json::to_value(&imported).unwrap();
++            category_state::prepare_profile_change(&before, &mut imported).unwrap();
++            assert_eq!(serde_json::to_value(&imported).unwrap(), prepared,
++                "preparing an existing after-image must be idempotent");
++            assert_eq!(imported.favorites_selected, favorites);
++            assert_eq!(imported.favorites, before.favorites);
++            assert_eq!(serde_json::to_value(&before).unwrap(), original);
++            let restored: Saved = serde_json::from_slice(&serde_json::to_vec(&imported).unwrap()).unwrap();
++            assert_eq!(category_state::remembered_category(&restored, &restored.profiles.profiles[0]).unwrap(), "News");
++            assert_eq!(restored.favorites, before.favorites);
++        }
++    }
++}
++
++#[test]
++fn inactive_display_name_import_keeps_its_category_without_changing_active_selection() {
++    let mut before = Saved::default();
++    before.profiles.profiles = vec![profile("A"), profile("B")];
++    before.profiles.active_profile = Some("B".into());
++    before.category = "Movies".into();
++    before.favorites_selected = true;
++    let mut preferences = category_preferences::Preferences::default();
++    let fingerprint = profile_fingerprint(&before.profiles.profiles[0]);
++    preferences.choose_category(category_preferences::Source {
++        profile_id: "A", fingerprint: &fingerprint,
++    }, "News").unwrap();
++    preferences.write_into(&mut before.settings).unwrap();
++    let mut imported = before.clone();
++    imported.profiles.profiles[0].name = "Home".into();
++    category_state::prepare_profile_change(&before, &mut imported).unwrap();
++    assert_eq!(imported.category, "Movies");
++    assert!(imported.favorites_selected);
++    assert_eq!(imported.profiles.active_profile.as_deref(), Some("B"));
++    let mut switched = imported.clone();
++    switched.profiles.active_profile = Some("A".into());
++    category_state::prepare_profile_change(&imported, &mut switched).unwrap();
++    assert_eq!(switched.category, "News");
++    assert!(switched.favorites_selected);
++}
++
++#[test]
++fn profile_name_change_never_rebinds_a_changed_source_or_stale_category_fingerprint() {
++    for change in ["source", "alias", "enabled", "stale"] {
++        let mut before = Saved::default();
++        before.profiles.profiles = vec![profile("A")];
++        before.profiles.active_profile = Some("A".into());
++        before.category = "News".into();
++        before.favorites_selected = true;
++        let mut preferences = category_preferences::Preferences::default();
++        let fingerprint = if change == "stale" { "a".repeat(64) }
++            else { profile_fingerprint(&before.profiles.profiles[0]) };
++        preferences.choose_category(category_preferences::Source {
++            profile_id: "A", fingerprint: &fingerprint,
++        }, "News").unwrap();
++        preferences.write_into(&mut before.settings).unwrap();
++        let mut imported = before.clone();
++        let next = &mut imported.profiles.profiles[0];
++        next.name = "Home".into();
++        match change {
++            "source" => next.source = "https://other.invalid/changed.m3u".into(),
++            "alias" => next.source_alias = "Different source".into(),
++            "enabled" => next.enabled = false,
++            "stale" => {},
++            _ => unreachable!(),
++        }
++        let proposed = serde_json::to_value(&imported).unwrap();
++        let result = category_state::prepare_profile_change(&before, &mut imported);
++        if change == "enabled" {
++            assert!(result.is_err(), "a disabled active profile is invalid");
++            assert_eq!(serde_json::to_value(&imported).unwrap(), proposed);
++            continue;
++        }
++        result.unwrap();
++        assert!(imported.category.is_empty(), "{change}");
++        assert!(imported.favorites_selected, "{change}");
++        assert_eq!(imported.favorites, before.favorites);
++    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/classic_clock.rs b/rust-modules/src/app/ott_runtime_tests/classic_clock.rs
 new file mode 100644
@@ -99662,10 +100113,10 @@ index 00000000..8f87ff06
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/playback_diagnostics.rs b/rust-modules/src/app/ott_runtime_tests/playback_diagnostics.rs
 new file mode 100644
-index 00000000..dfa0d7c9
+index 00000000..450b3083
 --- /dev/null
 +++ b/rust-modules/src/app/ott_runtime_tests/playback_diagnostics.rs
-@@ -0,0 +1,583 @@
+@@ -0,0 +1,586 @@
 +//! Post-admission evidence through real admission, failure cleanup and status ingress.
 +//! Only decoder resources and terminal native signals are modeled. No resolver,
 +//! decoder, network, protected writer or device operation is started.
@@ -100249,6 +100700,9 @@ index 00000000..dfa0d7c9
 +
 +#[path = "playback_eof_priority.rs"]
 +mod eof_priority;
++
++#[path = "playback_video_evidence.rs"]
++mod video_evidence;
 diff --git a/rust-modules/src/app/ott_runtime_tests/playback_eof_priority.rs b/rust-modules/src/app/ott_runtime_tests/playback_eof_priority.rs
 new file mode 100644
 index 00000000..b9ca9ae6
@@ -100436,6 +100890,95 @@ index 00000000..b9ca9ae6
 +    assert_eq!(runtime.play_target.as_ref().unwrap().id, "second");
 +    assert_eq!(runtime.playing.as_ref().unwrap().selection_id, "first");
 +    assert!(runtime.playback_failure.snapshot().is_none());
++}
+diff --git a/rust-modules/src/app/ott_runtime_tests/playback_video_evidence.rs b/rust-modules/src/app/ott_runtime_tests/playback_video_evidence.rs
+new file mode 100644
+index 00000000..07366710
+--- /dev/null
++++ b/rust-modules/src/app/ott_runtime_tests/playback_video_evidence.rs
+@@ -0,0 +1,83 @@
++//! Actual callback ingress to the authenticated status reply. The inert Engine
++//! supplies ownership only; no device, decoder or producer is started.
++use super::*;
++
++fn evidence(reply: &Value) -> &Value {
++    reply["data"].get("video_evidence").expect("required additive diagnostic")
++}
++
++#[test]
++fn video_evidence_reports_permission_without_claiming_visibility() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = fixture();
++    assert_eq!(evidence(&read(&mut app, "status", 1)), &json!({
++        "version":1, "window_present_allowed":true, "native":null,
++    }));
++    for (index, (event, allowed)) in [(0x103, false), (0x104, false),
++        (0x105, false), (0x106, true)].into_iter().enumerate() {
++        app.window_activity.event(event);
++        assert_eq!(evidence(&read(&mut app, "state", index as u64 + 2)), &json!({
++            "version":1, "window_present_allowed":allowed, "native":null,
++        }));
++    }
++}
++
++#[test]
++fn video_evidence_keeps_position_callbacks_and_raw_sink_reports_distinct() {
++    use plx_media::player;
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = fixture();
++    admit(&mut app, "first");
++    let epoch = install_owned_engine(&mut app);
++    player::swap_state_for_test(PlaybackState::Playing);
++    player::sf_on_event(epoch, 0, 1_000_000_000, std::ptr::null());
++    assert_eq!(evidence(&read(&mut app, "status", 1))["native"], json!({
++        "position_callbacks":1, "sink_report":null,
++    }));
++    let major = plx_platform::tv::device::info().major;
++    let ty = if major < 5 { 47 } else { 49 };
++    // Negative and zero values must survive verbatim, not become absence or a
++    // manufactured count of decoded/displayed frames.
++    for (index, raw) in [i64::MIN, 0, i64::MAX].into_iter().enumerate() {
++        player::sf_on_event(epoch, ty, raw, std::ptr::null());
++        let expected = json!({"version":1, "window_present_allowed":true,
++            "native":{"position_callbacks":1, "sink_report":{
++                "callback_type":ty, "callback_count":index + 1,
++                "firmware_major":major, "raw_value":raw.to_string(),
++            }}});
++        for (offset, params) in [json!({}), json!({"playback_failure_version":2}),
++            json!({"playback_failure_version":3})].into_iter().enumerate() {
++            let reply = read_params(&mut app, "status", 10 + index as u64 * 3 + offset as u64, params);
++            assert_eq!(evidence(&reply), &expected);
++            assert!(failure(&reply).is_null());
++        }
++    }
++    // A live native Engine cannot lend its observations to a missing OTT owner.
++    let playing = app.ott.as_mut().unwrap().playing.take();
++    assert!(evidence(&read(&mut app, "state", 30))["native"].is_null());
++    app.ott.as_mut().unwrap().playing = playing;
++    // The physical epoch is independently authoritative even with the same
++    // logical source and an installed Engine left behind after reset.
++    player::SHARED.reset_session();
++    player::sf_on_event(epoch, ty, 999, std::ptr::null());
++    assert!(evidence(&read(&mut app, "status", 31))["native"].is_null());
++}
++
++#[test]
++fn video_evidence_does_not_attribute_outgoing_engine_to_pending_request() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = fixture();
++    admit(&mut app, "first");
++    install_owned_engine(&mut app);
++    plx_media::player::swap_state_for_test(PlaybackState::Playing);
++    assert!(evidence(&read(&mut app, "status", 1))["native"].is_object());
++    let outgoing = app.ott.as_ref().unwrap().playing.as_ref().unwrap().identity.clone();
++    queue(&mut app, "second");
++    assert!(app.adapters.player.is_live(), "outgoing native Engine still exists");
++    assert!(app.ott.as_ref().unwrap().playing.as_ref().unwrap().identity == outgoing);
++    assert!(app.ott.as_ref().unwrap().play_target.is_some());
++    assert!(evidence(&read(&mut app, "status", 2))["native"].is_null());
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs b/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs
 index f1433df1..0db8fb8a 100644
@@ -121705,6 +122248,65 @@ index bdc21dfe..fbe0b77d 100644
 +    assert_eq!(choice.saved_relative_folder(&binding).unwrap(), "夏");
 +    let outside = UsbBinding::from_observed("ext4", "fixture-uuid", "/", "Other/夏").unwrap();
 +    assert!(choice.saved_relative_folder(&outside).is_err(), "never substitute the mount root");
++}
+diff --git a/rust-modules/src/app/ott_video_evidence.rs b/rust-modules/src/app/ott_video_evidence.rs
+new file mode 100644
+index 00000000..1566c28c
+--- /dev/null
++++ b/rust-modules/src/app/ott_video_evidence.rs
+@@ -0,0 +1,53 @@
++//! Passive observations from the current native attempt. No value here proves
++//! decoded frames, audible output, a powered-on panel, or physical visibility.
++use super::{playing_matches, App, Runtime};
++use plx_media::player::report;
++use serde::Serialize;
++
++#[derive(Serialize)]
++pub(super) struct Snapshot {
++    version: u8,
++    window_present_allowed: bool,
++    native: Option<NativeSnapshot>,
++}
++
++#[derive(Serialize)]
++struct NativeSnapshot {
++    position_callbacks: u32,
++    sink_report: Option<SinkReport>,
++}
++
++#[derive(Serialize)]
++struct SinkReport {
++    callback_type: i32,
++    callback_count: u32,
++    firmware_major: u32,
++    // A decimal string preserves all signed 64-bit values in JavaScript clients.
++    raw_value: String,
++}
++
++pub(super) fn snapshot(runtime: &Runtime, app: &mut App) -> Snapshot {
++    // Identity alone survives some stops. The media getter additionally checks
++    // the exact physical attempt and samples inside the active epoch's lock.
++    let owns_playback = runtime.play_target.is_none() && runtime.playing.as_ref().is_some_and(|playing|
++        playing.identity.is_some() && playing_matches(playing, app));
++    let native = if owns_playback {
++        report::video_evidence_now(&app.player.session, &mut app.adapters.player)
++    } else {
++        None
++    };
++    Snapshot {
++        version: 1,
++        // Initialized true at boot: this is permission, not an observed screen state.
++        window_present_allowed: app.window_activity.allow_present(true),
++        native: native.map(|value| NativeSnapshot {
++            position_callbacks: value.position_callbacks,
++            sink_report: value.sink_report.map(|report| SinkReport {
++                callback_type: report.callback_type,
++                callback_count: report.callback_count,
++                firmware_major: report.firmware_major,
++                raw_value: report.raw_value.to_string(),
++            }),
++        }),
++    }
 +}
 diff --git a/rust-modules/src/app/ott_viewport_runtime_tests.rs b/rust-modules/src/app/ott_viewport_runtime_tests.rs
 index bbeaf180..68b74707 100644
