@@ -42832,10 +42832,10 @@ index 00000000..d3d24b55
 +}
 diff --git a/rust-modules/src/app/ott_classic_navigation.rs b/rust-modules/src/app/ott_classic_navigation.rs
 new file mode 100644
-index 00000000..30bbd930
+index 00000000..544a744b
 --- /dev/null
 +++ b/rust-modules/src/app/ott_classic_navigation.rs
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,199 @@
 +//! Reversible Classic catalogue presentation over the existing navigation owner.
 +//! Authentication, consent, modal and playback routes retain their lifetimes.
 +use super::*;
@@ -42844,6 +42844,7 @@ index 00000000..30bbd930
 +#[derive(Default)]
 +pub(super) struct State {
 +    origin: Option<Origin>,
++    startup_considered: bool,
 +}
 +#[derive(Clone, Copy)]
 +struct Origin {
@@ -42900,8 +42901,27 @@ index 00000000..30bbd930
 +        && app.pages.nav.input_owner() == Some(InputOwner::Entry(ott))
 +}
 +
++// A saved provider is boot intent; an incidental native Home is not a new
++// selection of Plex. The App boot/input stamps already distinguish real input.
++fn startup_provider(runtime: &Runtime) -> Option<ProviderKind> {
++    runtime.active().map(|profile| profile.kind).or_else(|| {
++        match runtime.saved.settings.get("selectedProvider").and_then(Value::as_str) {
++            Some("m3u") => Some(ProviderKind::M3u),
++            Some("xtream") => Some(ProviderKind::Xtream),
++            Some("stalker") => Some(ProviderKind::Stalker),
++            Some("vportal") => Some(ProviderKind::VPortal),
++            Some("local" | "offline") => Some(ProviderKind::Local),
++            _ => None,
++        }
++    }).filter(|provider| *provider != ProviderKind::Plex)
++}
++
 +pub(super) fn reconcile(runtime: &mut Runtime, app: &mut App) -> bool {
 +    observe(runtime, app);
++    // Input while state/auth is still loading also retires this one-shot claim.
++    if app.last_input != app.t0 || runtime.navigation_epoch != 0 {
++        runtime.classic_navigation.startup_considered = true;
++    }
 +    let mode = app.bridge.ui_mode();
 +    if runtime.interface_mode() != mode
 +        || !runtime.loaded || runtime.persistence_uncertain
@@ -42916,19 +42936,46 @@ index 00000000..30bbd930
 +        || app.pages.nav.tabs.stack.is_pending()
 +        || app.pages.nav.tabs.stack.transition.in_flight()
 +    { return false; }
++    let Some(entry) = app.pages.nav.top_page() else { return false; };
++    if entry.inst.as_ref().is_none_or(|body| body.staged)
++        || app.pages.nav.input_owner() != Some(InputOwner::Entry(entry.id))
++    { return false; }
++    let native = entry.id;
++    let owner = entry.inst.as_ref().expect("checked mounted page").id;
++    let root_home = matches!(entry.arg, AppArg::Home)
++        && app.pages.nav.tabs.stack.depth() == 1;
++    let native_catalogue = catalogue_page(&entry.arg);
++    let startup_route_ready = native_catalogue || matches!(entry.arg, AppArg::Ott | AppArg::Player);
++    if !runtime.classic_navigation.startup_considered && startup_route_ready {
++        runtime.classic_navigation.startup_considered = true;
++        if root_home && runtime.transient.accepted.is_none()
++            && managed::profile(runtime).is_none() && classic_source::profile(runtime).is_none()
++        {
++            if let Some(provider) = startup_provider(runtime) {
++                // A configured provider may already own a running/progressive
++                // catalogue. Projection preserves its generation, selection,
++                // playback and queued reads; it grants no new source authority.
++                runtime.provider = provider;
++                if runtime.active().is_none() {
++                    runtime.page = if runtime.saved.favorites_selected { "favorites" } else { "profiles" };
++                }
++                runtime.reply = None;
++                runtime.changed();
++                // This is the initial application route, not a reversible
++                // projection of a user-opened native Plex page. Keeping Home
++                // underneath would make Modern Back expose the wrong provider.
++                app.pages.request(MachineId::Instance(owner), NavOp::Root(AppArg::Ott));
++                return true;
++            }
++        }
++    }
 +    if mode == UiMode::Modern {
 +        if !owned_top(runtime, app) { return false; }
 +        let owner = app.pages.top_page().expect("owned mounted page");
 +        app.pages.request(MachineId::Instance(owner), NavOp::Pop);
 +        return true;
 +    }
-+    let Some(entry) = app.pages.nav.top_page() else { return false; };
-+    if !catalogue_page(&entry.arg)
-+        || entry.inst.as_ref().is_none_or(|body| body.staged)
-+        || app.pages.nav.input_owner() != Some(InputOwner::Entry(entry.id))
-+    { return false; }
-+    let native = entry.id;
-+    let owner = entry.inst.as_ref().expect("checked mounted page").id;
++    if !native_catalogue { return false; }
 +    let categories = runtime.page == "categories";
 +    // Source admission sees the unchanged typed route and stages a fresh read
 +    // for its current session. It never selects/saves a profile or starts video.
@@ -43303,7 +43350,7 @@ index 00000000..e49c5e6a
 +    Ok(true)
 +}
 diff --git a/rust-modules/src/app/ott_commands.rs b/rust-modules/src/app/ott_commands.rs
-index 4ee617b9..0387543d 100644
+index 4ee617b9..7edb8023 100644
 --- a/rust-modules/src/app/ott_commands.rs
 +++ b/rust-modules/src/app/ott_commands.rs
 @@ -4,9 +4,23 @@ use super::*;
@@ -43331,7 +43378,38 @@ index 4ee617b9..0387543d 100644
  #[path = "ott_commands_offline.rs"]
  mod offline;
  #[path = "ott_provider_settings.rs"]
-@@ -226,6 +240,16 @@ fn profile_index(saved: &Saved, kind: ProviderKind, number: usize) -> Option<usi
+@@ -159,6 +173,30 @@ fn wire_provider(kind: ProviderKind) -> &'static str {
+         kind.canonical_id()
+     }
+ }
++/// Current in-memory Saved and source ownership, not a storage read or a new
++/// durability proof. Only closed provider names and presence flags leave here.
++fn provider_context(runtime: &Runtime) -> Value {
++    let selected = runtime.saved.settings.get("selectedProvider")
++        .and_then(Value::as_str)
++        .and_then(provider_kind);
++    json!({
++        "loaded": runtime.loaded,
++        "write_permit_valid": runtime.write_permit.is_valid(),
++        "state_load": match runtime.state_load {
++            StateLoad::Idle => "idle",
++            StateLoad::Loading => "loading",
++            StateLoad::Failed(_) => "failed",
++        },
++        "selected_provider": selected.map(wire_provider),
++        "saved_active_profile_present": runtime.saved.profiles.active_profile.is_some(),
++        "saved_active_profile_kind": runtime.active().map(|profile| wire_provider(profile.kind)),
++        "runtime_provider": wire_provider(runtime.provider),
++        "effective_provider": wire_provider(runtime.effective_provider()),
++        "managed_active": managed::profile(runtime).is_some(),
++        "classic_active": classic_source::profile(runtime).is_some(),
++    })
++}
++
+ fn provider_kind(value: &str) -> Option<ProviderKind> {
+     match value {
+         "m3u" => Some(ProviderKind::M3u),
+@@ -226,6 +264,16 @@ fn profile_index(saved: &Saved, kind: ProviderKind, number: usize) -> Option<usi
          })
          .map(|(_, (index, _))| index)
  }
@@ -43348,7 +43426,7 @@ index 4ee617b9..0387543d 100644
  fn number(params: &Value) -> Result<usize, &'static str> {
      params["number"]
          .as_u64()
-@@ -511,7 +535,7 @@ fn provider_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+@@ -511,7 +559,7 @@ fn provider_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
              || text(&settings["vportal"], 8192, true).is_none()
              || settings
                  .get("name")
@@ -43357,7 +43435,7 @@ index 4ee617b9..0387543d 100644
              || (!compare && settings.get("profile").is_none())
          {
              return Some(rejected("Unsupported VPortal settings fields"));
-@@ -700,6 +724,9 @@ fn plex_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
+@@ -700,6 +748,9 @@ fn plex_settings(runtime: &mut Runtime, inv: &Invocation) -> Option<Value> {
  pub(super) fn offline_rows(runtime: &Runtime) -> Vec<(usize, String)> {
      offline::unbound_rows(&runtime.saved)
  }
@@ -43367,7 +43445,7 @@ index 4ee617b9..0387543d 100644
  pub(super) fn bind_local(
      runtime: &Runtime,
      number: usize,
-@@ -785,7 +812,7 @@ pub(super) fn kiosk_pending(runtime: &Runtime) -> bool { kiosk::pending(runtime)
+@@ -785,7 +836,7 @@ pub(super) fn kiosk_pending(runtime: &Runtime) -> bool { kiosk::pending(runtime)
  pub(super) fn kiosk_settled(runtime: &mut Runtime, app: &mut App, invocation: &Invocation, outcome: KioskSettlement) -> Option<Value> {
      kiosk::settled(runtime, app, invocation, outcome)
  }
@@ -43376,7 +43454,7 @@ index 4ee617b9..0387543d 100644
      settings::after_saved(runtime, app)
  }
  fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> Option<Value> {
-@@ -877,7 +904,7 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
+@@ -877,7 +928,7 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
          };
          let position = target.clamp(0.0, duration as f64 / 1e9);
          playback::commit_seek((position * 1e9) as i64);
@@ -43385,7 +43463,7 @@ index 4ee617b9..0387543d 100644
          let mut data = json!({"dispatched":true,"operation":operation,"position":position});
          if operation == "seek_relative" {
              data["from"] = json!(from);
-@@ -891,6 +918,10 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
+@@ -891,6 +942,10 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
  
  /// Keep individual-setting failures inside their existing typed wire contract.
  /// Other command families retain their own response shapes.
@@ -43396,7 +43474,7 @@ index 4ee617b9..0387543d 100644
  pub(super) fn settings_failure(inv: &Invocation, reason: &str) -> Option<Value> {
      (inv.action == "player_settings").then(|| settings::failure(&inv.params, reason))
  }
-@@ -912,6 +943,14 @@ fn media_tracks_failure(
+@@ -912,6 +967,14 @@ fn media_tracks_failure(
  }
  
  pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
@@ -43411,7 +43489,7 @@ index 4ee617b9..0387543d 100644
      if let Some(response) = media_tracks_failure(
          inv,
          crate::app::ott_remote::media_tracks::Error::Restricted,
-@@ -926,11 +965,18 @@ pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
+@@ -926,11 +989,18 @@ pub(super) fn policy_rejection(inv: &Invocation, error: &str) -> Value {
  }
  
  pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> Option<Value> {
@@ -43430,7 +43508,7 @@ index 4ee617b9..0387543d 100644
      if runtime.now_ms() >= inv.deadline_ms {
          if inv.action == favorites_items::ACTION { return Some(favorites_items::error(inv, "expired")); }
          return Some(category_select_rejection(runtime, inv, "unavailable")
-@@ -939,6 +985,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -939,6 +1009,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
              .unwrap_or_else(|| rejected("Request expired")));
      }
      if let Err(error) = super::input_policy::remote(runtime, inv) {
@@ -43439,7 +43517,7 @@ index 4ee617b9..0387543d 100644
          return Some(category_select_rejection(runtime, inv, "restricted")
              .unwrap_or_else(|| policy_rejection(inv, error)));
      }
-@@ -947,6 +995,7 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -947,6 +1019,7 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
          favorites_items::ACTION => favorites_items::command(runtime, app, inv),
          "kiosk" => kiosk::command(runtime, app, inv),
          "media_tracks" => media_tracks::command(runtime,app,inv,Runtime::track_selection_kiosk),
@@ -43447,15 +43525,16 @@ index 4ee617b9..0387543d 100644
          "local_media" => super::transient::command(runtime,app,inv),
          "plex_queue" | "plex_library" => super::transient::plex_remote::command(runtime, app, inv),
          "state" | "status" => {
-@@ -954,6 +1003,7 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -954,6 +1027,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
                  return Some(rejected("The state query accepts no parameters"));
              }
              let mut value = state(app, runtime);
 +            value["row_guide"] = runtime.row_guide_diagnostics();
++            value["provider_context"] = provider_context(runtime);
              value["uuid"] = json!(runtime.remote.device_id());
              if value.get("provider").is_none() {
                  value["provider"] = json!(wire_provider(runtime.effective_provider()));
-@@ -965,8 +1015,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -965,8 +1040,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
              Some(ok(value))
          }
          "capabilities" => {
@@ -43466,7 +43545,7 @@ index 4ee617b9..0387543d 100644
                      .iter()
                      .any(|key| p.get(*key).is_some_and(|value| value.as_bool() != Some(true)))
              {
-@@ -988,11 +1038,16 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -988,11 +1063,16 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
                  "favorites_global":plx_data::ott::favorites_wire::Protocol::capability(),
                  "favorites_global_items":{"version":1}});
              data["favorites_global_recovery"] = favorites_recovery::capability();
@@ -43483,7 +43562,7 @@ index 4ee617b9..0387543d 100644
              data["plex_library"] = crate::app::ott_plex_queue::library_capability();
              data["plex_library_truncation"] = json!({"version":1});
              if media_tracks::supports_current(runtime, app, Runtime::track_selection_kiosk) {
-@@ -1274,11 +1329,21 @@ pub(super) fn track_request_pending(runtime: &Runtime) -> bool {
+@@ -1274,11 +1354,21 @@ pub(super) fn track_request_pending(runtime: &Runtime) -> bool {
      media_tracks::has_pending(runtime)
  }
  
@@ -43505,7 +43584,7 @@ index 4ee617b9..0387543d 100644
      let now = runtime.now_ms();
      media_tracks::poll_pending(runtime, app, Runtime::track_selection_kiosk, Some(now));
      media_tracks::retire_stale(runtime,app,Runtime::track_selection_kiosk);
-@@ -1509,6 +1574,95 @@ mod tests {
+@@ -1509,6 +1599,95 @@ mod tests {
              .to_string()
              .contains("fixture"));
      }
@@ -43601,7 +43680,7 @@ index 4ee617b9..0387543d 100644
      #[test]
      fn invalid_source_is_atomic_and_sparse_slots_keep_their_numbers() {
          let mut saved = Saved::default();
-@@ -1587,3 +1741,7 @@ pub(super) fn category_select_settled(runtime: &Runtime, inv: &Invocation, saved
+@@ -1587,3 +1766,7 @@ pub(super) fn category_select_settled(runtime: &Runtime, inv: &Invocation, saved
      applied: bool, response: Value) -> Value {
      catalog_remote::select_settled(runtime, inv, saved, applied, response)
  }
@@ -68453,7 +68532,7 @@ index 9681ec31..1c208a5d 100644
  pub(super) fn desktop_key(app: &mut App) -> bool {
      desktop_input::ingest(app)
 diff --git a/rust-modules/src/app/ott_runtime_tests.rs b/rust-modules/src/app/ott_runtime_tests.rs
-index 0ce913a3..a0e11031 100644
+index 0ce913a3..c036e23c 100644
 --- a/rust-modules/src/app/ott_runtime_tests.rs
 +++ b/rust-modules/src/app/ott_runtime_tests.rs
 @@ -8,6 +8,9 @@ mod favorites_items_capability;
@@ -68493,7 +68572,7 @@ index 0ce913a3..a0e11031 100644
  #[path = "ott_runtime_tests/local_scan_completion.rs"]
  mod local_scan_completion;
  
-@@ -433,3 +442,41 @@ mod favorites_recovery;
+@@ -433,3 +442,44 @@ mod favorites_recovery;
  
  #[path = "ott_runtime_tests/continuity_diagnostics.rs"]
  mod continuity_diagnostics_runtime;
@@ -68535,6 +68614,9 @@ index 0ce913a3..a0e11031 100644
 +
 +#[path = "ott_runtime_tests/classic_clock.rs"]
 +mod classic_clock_runtime;
++
++#[path = "ott_runtime_tests/provider_context.rs"]
++mod provider_context;
 diff --git a/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs b/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs
 index 2dd650a1..2c6c6b9c 100644
 --- a/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs
@@ -68901,10 +68983,10 @@ index 00000000..3f6959fc
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/classic_navigation.rs b/rust-modules/src/app/ott_runtime_tests/classic_navigation.rs
 new file mode 100644
-index 00000000..c8beb133
+index 00000000..dc9e41cb
 --- /dev/null
 +++ b/rust-modules/src/app/ott_runtime_tests/classic_navigation.rs
-@@ -0,0 +1,485 @@
+@@ -0,0 +1,772 @@
 +//! Existing catalogue and navigation owners; only synthetic, already-admitted state.
 +//! No source load, credential IO, renderer or decoder is started by these fixtures.
 +use super::*;
@@ -69112,6 +69194,9 @@ index 00000000..c8beb133
 +    for refused in [false, true] {
 +        let mut app = ready();
 +        mount(&mut app, AppArg::Home);
++        // Exercise an explicit native source request, not saved-provider boot.
++        bridge::nav_push(&mut app.pages, AppArg::Library);
++        settle_pages(&mut app);
 +        let runtime = app.ott.as_mut().unwrap();
 +        if refused {
 +            let profile = synthetic_profile();
@@ -69134,7 +69219,7 @@ index 00000000..c8beb133
 +        let playback = plx_media::route::playback_identity(&app.player.session);
 +        assert_eq!(reconcile_classic_navigation(&mut app), !refused);
 +        settle_pages(&mut app);
-+        assert!(app.route() == if refused { AppArg::Home } else { AppArg::Ott });
++        assert!(app.route() == if refused { AppArg::Library } else { AppArg::Ott });
 +        let runtime = app.ott.as_ref().unwrap();
 +        assert_eq!(runtime.page, if refused { "channels" } else { "providers" });
 +        assert!(!runtime.status.is_empty());
@@ -69145,6 +69230,44 @@ index 00000000..c8beb133
 +        assert!(runtime.catalog_next.is_none() && runtime.play_target.is_none() && !runtime.saving);
 +        assert_eq!(plx_media::route::playback_identity(&app.player.session), playback);
 +    }
++}
++
++#[test]
++fn saved_startup_displays_normal_kiosk_source_without_replacement_authority() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    let mut app = ready();
++    mount(&mut app, AppArg::Home);
++    let runtime = app.ott.as_mut().unwrap();
++    let profile = synthetic_profile();
++    runtime.saved.profiles.active_profile = Some(profile.id.clone());
++    runtime.saved.profiles.profiles = vec![profile];
++    runtime.catalog.entries = vec![synthetic_entry()];
++    runtime.provider = ProviderKind::VPortal;
++    let origin = json!({"provider":"m3u","profile":"Home","subprofile":null,"sourceAlias":"Local"});
++    runtime.saved.settings.insert("nativeKiosk".into(), json!({"version":1,"strict":false,"origin":origin,
++        "target":{"kind":"item","entry":{"title":"Fixture","origin":origin,"locator":{"kind":"channel","channelId":"fixture-1"}}}}));
++    assert!(crate::app::ott_runtime::input_policy::navigation(runtime).is_ok());
++    assert!(crate::app::ott_runtime::input_policy::replace_source(runtime).is_err());
++    let saved = serde_json::to_value(&runtime.saved).unwrap();
++    let catalog = runtime.catalog.clone();
++    let generation = runtime.generation;
++    let selected = runtime.selected.clone();
++    let playback = plx_media::route::playback_identity(&app.player.session);
++    assert!(reconcile_classic_navigation(&mut app));
++    settle_pages(&mut app);
++    assert!(app.route() == AppArg::Ott);
++    assert_eq!(app.pages.nav.tabs.stack.depth(), 1);
++    let runtime = app.ott.as_ref().unwrap();
++    assert_eq!(runtime.effective_provider(), ProviderKind::VPortal);
++    assert!(classic_source::profile(runtime).is_none());
++    assert!(crate::app::ott_runtime::input_policy::replace_source(runtime).is_err());
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
++    assert_eq!(runtime.catalog, catalog);
++    assert_eq!(runtime.generation, generation);
++    assert_eq!(runtime.selected, selected);
++    assert!(runtime.catalog_next.is_none() && runtime.play_target.is_none() && !runtime.saving);
++    assert_eq!(plx_media::route::playback_identity(&app.player.session), playback);
 +}
 +
 +#[test]
@@ -69388,6 +69511,252 @@ index 00000000..c8beb133
 +            assert!(!app.bridge.take_reqs().iter().any(|request|
 +                matches!(request, plx_screens::registry::LoopReq::BackAtRoot)));
 +        }
++    }
++}
++
++
++// A cold native Home is a startup route, not a new user choice of Plex.
++// Keep the same admitted session/held worker slots as the surrounding fixtures.
++fn cold_home_with_provider_choice(choice: Option<&str>) -> App {
++    let mut app = ready();
++    let runtime = app.ott.as_mut().unwrap();
++    runtime.saved.profiles.active_profile = None;
++    runtime.saved.profiles.profiles.clear();
++    runtime.saved.settings.remove("selectedProvider");
++    if let Some(choice) = choice {
++        runtime.saved.settings.insert("selectedProvider".into(), json!(choice));
++    }
++    runtime.catalog = Catalog::default();
++    runtime.selected = None;
++    runtime.page = "profiles";
++    runtime.sync_saved_context();
++    assert_eq!(runtime.navigation_epoch, 0);
++    assert_eq!(runtime.playback_epoch, 0);
++    assert_eq!(runtime.generation, 0);
++    assert!(runtime.playing.is_none() && runtime.transient.accepted.is_none());
++    assert!(classic_source::profile(runtime).is_none() && managed::profile(runtime).is_none());
++    assert!(runtime.catalog_next.is_none() && runtime.play_target.is_none());
++    mount(&mut app, AppArg::Home);
++    app
++}
++
++#[test]
++fn classic_cold_home_preserves_explicit_m3u_without_a_profile() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    let mut app = cold_home_with_provider_choice(Some("m3u"));
++    let before = serde_json::to_value(&app.ott.as_ref().unwrap().saved).unwrap();
++    let last_input = app.last_input;
++    let playback = plx_media::route::playback_identity(&app.player.session);
++
++    // The real per-frame coordinator must not turn an incidental native Home
++    // into a temporary Plex source that hides the explicit persisted provider.
++    let projected = reconcile_classic_navigation(&mut app);
++    let runtime = app.ott.as_ref().unwrap();
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), before);
++    assert_eq!(runtime.effective_provider(), ProviderKind::M3u,
++        "cold Classic Home must respect the explicit saved provider");
++    assert!(classic_source::profile(runtime).is_none());
++    assert!(runtime.catalog_next.is_none() && runtime.play_target.is_none() && !runtime.saving);
++    assert_eq!(app.last_input, last_input, "no input was supplied");
++    assert_eq!(plx_media::route::playback_identity(&app.player.session), playback);
++    assert!(projected, "the saved provider still needs its Classic UI");
++    settle_pages(&mut app);
++    assert!(app.route() == AppArg::Ott);
++    assert_eq!(app.pages.nav.tabs.stack.depth(), 1);
++    assert_eq!(app.ott.as_ref().unwrap().page, "profiles");
++}
++
++#[test]
++fn classic_cold_home_retains_plex_bootstrap_without_a_non_plex_choice() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    for choice in [None, Some("plex")] {
++        let mut app = cold_home_with_provider_choice(choice);
++        let before = serde_json::to_value(&app.ott.as_ref().unwrap().saved).unwrap();
++        assert!(reconcile_classic_navigation(&mut app));
++        let runtime = app.ott.as_ref().unwrap();
++        assert_eq!(runtime.effective_provider(), ProviderKind::Plex);
++        assert!(classic_source::profile(runtime).is_some());
++        assert!(runtime.catalog_next.is_some() && runtime.play_target.is_none() && !runtime.saving);
++        assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), before);
++    }
++}
++
++#[test]
++fn classic_explicit_native_library_remains_available_after_saved_m3u_choice() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    let mut app = cold_home_with_provider_choice(Some("m3u"));
++    bridge::nav_push(&mut app.pages, AppArg::Library);
++    settle_pages(&mut app);
++    let before = serde_json::to_value(&app.ott.as_ref().unwrap().saved).unwrap();
++    assert!(reconcile_classic_navigation(&mut app));
++    let runtime = app.ott.as_ref().unwrap();
++    assert_eq!(runtime.effective_provider(), ProviderKind::Plex);
++    assert!(classic_source::profile(runtime).is_some());
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), before);
++    assert!(runtime.play_target.is_none() && !runtime.saving);
++}
++
++
++#[test]
++fn modern_cold_home_opens_saved_m3u_and_does_not_pop_it_on_the_next_frame() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    let mut app = cold_home_with_provider_choice(Some("m3u"));
++    modern(&mut app);
++    let before = serde_json::to_value(&app.ott.as_ref().unwrap().saved).unwrap();
++    assert!(reconcile_classic_navigation(&mut app));
++    settle_pages(&mut app);
++    let owner = app.pages.top_page();
++    assert!(app.route() == AppArg::Ott);
++    assert!(!reconcile_classic_navigation(&mut app));
++    assert_eq!(app.pages.top_page(), owner);
++    let runtime = app.ott.as_ref().unwrap();
++    assert_eq!(runtime.effective_provider(), ProviderKind::M3u);
++    assert_eq!(runtime.page, "profiles");
++    assert!(runtime.catalog_next.is_none() && !runtime.saving);
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), before);
++    for (setting, mode) in [(0, UiMode::Classic), (1, UiMode::Modern)] {
++        app.ott.as_mut().unwrap().saved.settings.insert("interfaceMode".into(), json!(setting));
++        app.bridge.apply_ui_mode(mode);
++        assert!(!reconcile_classic_navigation(&mut app));
++        assert_eq!(app.pages.top_page(), owner, "saved-provider startup survives mode toggles");
++        assert!(app.route() == AppArg::Ott);
++    }
++}
++
++#[test]
++fn startup_projection_preserves_configured_m3u_catalogue_with_nonzero_generation() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    for (use_modern, legacy) in [(false, false), (true, false), (false, true), (true, true)] {
++        let mut app = cold_home_with_provider_choice(if legacy { None } else { Some("m3u") });
++        if use_modern { modern(&mut app); }
++        let runtime = app.ott.as_mut().unwrap();
++        let profile = ProviderProfile { id: "m3u-kept".into(), name: "Kept".into(),
++            kind: ProviderKind::M3u, source: "https://catalogue.invalid/live.m3u".into(),
++            source_alias: String::new(), enabled: true };
++        runtime.saved.profiles.active_profile = Some(profile.id.clone());
++        runtime.saved.profiles.profiles.push(profile);
++        runtime.generation = 17;
++        let mut row = synthetic_entry();
++        row.id = "kept-selection".into();
++        row.media = MediaLocator::Http { url: "https://media.invalid/kept.m3u8".into() };
++        runtime.catalog.entries.push(row);
++        runtime.selected = Some("kept-selection".into());
++        runtime.page = "channels";
++        let saved = serde_json::to_value(&runtime.saved).unwrap();
++        let catalog = runtime.catalog.clone();
++        let playback = plx_media::route::playback_identity(&app.player.session);
++        assert!(reconcile_classic_navigation(&mut app));
++        let runtime = app.ott.as_ref().unwrap();
++        assert_eq!(runtime.generation, 17);
++        assert_eq!(runtime.catalog, catalog);
++        assert_eq!(runtime.selected.as_deref(), Some("kept-selection"));
++        assert_eq!(runtime.page, "channels");
++        assert_eq!(runtime.effective_provider(), ProviderKind::M3u);
++        assert!(classic_source::profile(runtime).is_none());
++        assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
++        assert_eq!(plx_media::route::playback_identity(&app.player.session), playback);
++    }
++}
++
++#[test]
++fn later_provider_choice_does_not_reclaim_home_after_an_owned_modern_return() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    let mut app = cold_home_with_provider_choice(None);
++    let home = app.pages.top_page();
++    assert!(reconcile_classic_navigation(&mut app));
++    settle_pages(&mut app);
++    assert!(!reconcile_classic_navigation(&mut app));
++    app.ott.as_mut().unwrap().saved.settings.insert("selectedProvider".into(), json!("m3u"));
++    modern(&mut app);
++    assert!(reconcile_classic_navigation(&mut app));
++    settle_pages(&mut app);
++    assert_eq!(app.pages.top_page(), home);
++    assert!(app.route() == AppArg::Home);
++    assert!(!reconcile_classic_navigation(&mut app));
++    assert!(!app.pages.has_pending_navigation());
++}
++
++#[test]
++fn input_before_private_load_settles_retires_saved_startup_projection() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    let mut app = cold_home_with_provider_choice(Some("m3u"));
++    modern(&mut app);
++    app.ott.as_mut().unwrap().loaded = false;
++    app.last_input = app.t0.wrapping_add(1);
++    assert!(!reconcile_classic_navigation(&mut app));
++    app.ott.as_mut().unwrap().loaded = true;
++    assert!(!reconcile_classic_navigation(&mut app));
++    assert!(app.route() == AppArg::Home);
++    assert!(!app.pages.has_pending_navigation());
++}
++
++
++#[test]
++fn saved_startup_waits_for_private_public_and_session_readiness() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    for gate in ["private", "public", "session"] {
++        let mut app = cold_home_with_provider_choice(Some("m3u"));
++        let ready_session = app.bridge.snapshot_session_init();
++        match gate {
++            "private" => app.ott.as_mut().unwrap().loaded = false,
++            "public" => app.ott.as_mut().unwrap().public_preferences = Default::default(),
++            "session" => {
++                let mut init = ready_session.clone();
++                init.phase = plx_session::auth::Phase::Profiles;
++                app.bridge = bridge::Bridge::for_session_test(init);
++                app.bridge.apply_ui_mode(UiMode::Classic);
++            },
++            _ => unreachable!(),
++        }
++        assert!(!reconcile_classic_navigation(&mut app), "{gate}");
++        assert!(!app.pages.has_pending_navigation());
++        match gate {
++            "private" => app.ott.as_mut().unwrap().loaded = true,
++            "public" => app.ott.as_mut().unwrap().public_preferences.accept(None),
++            "session" => {
++                app.bridge = bridge::Bridge::for_session_test(ready_session);
++                app.bridge.apply_ui_mode(UiMode::Classic);
++            },
++            _ => unreachable!(),
++        }
++        assert!(reconcile_classic_navigation(&mut app), "{gate}");
++        let runtime = app.ott.as_ref().unwrap();
++        assert_eq!(runtime.effective_provider(), ProviderKind::M3u);
++        assert!(classic_source::profile(runtime).is_none());
++    }
++}
++
++
++#[test]
++fn saved_startup_provider_root_back_never_reveals_native_plex_home() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    for use_modern in [false, true] {
++        let mut app = cold_home_with_provider_choice(Some("m3u"));
++        if use_modern { modern(&mut app); }
++        assert!(reconcile_classic_navigation(&mut app));
++        settle_pages(&mut app);
++        assert!(app.route() == AppArg::Ott);
++        assert_eq!(app.pages.nav.tabs.stack.depth(), 1);
++        let owner = app.pages.top_page();
++        let mut runtime = app.ott.take().unwrap();
++        runtime.page = "providers";
++        runtime.reply = owner;
++        handle_action(&mut runtime, &mut app, OttAction::Back).unwrap();
++        app.ott = Some(runtime);
++        settle_pages(&mut app);
++        assert_eq!(app.pages.top_page(), owner);
++        assert_eq!(app.pages.nav.tabs.stack.depth(), 1);
++        assert!(app.bridge.take_reqs().iter().any(|request|
++            matches!(request, plx_screens::registry::LoopReq::BackAtRoot)));
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/classic_settings.rs b/rust-modules/src/app/ott_runtime_tests/classic_settings.rs
@@ -69770,10 +70139,10 @@ index 00000000..093093de
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/classic_source.rs b/rust-modules/src/app/ott_runtime_tests/classic_source.rs
 new file mode 100644
-index 00000000..8d1c5471
+index 00000000..d79354ea
 --- /dev/null
 +++ b/rust-modules/src/app/ott_runtime_tests/classic_source.rs
-@@ -0,0 +1,543 @@
+@@ -0,0 +1,584 @@
 +//! Source-only regression inputs. Held existing worker slots prevent network IO.
 +use super::*;
 +
@@ -70316,6 +70685,47 @@ index 00000000..8d1c5471
 +    assert_eq!(snapshot.category, before.category);
 +    assert_eq!(snapshot.settings, before.settings);
 +    assert!(classic_source::binding_profile(&runtime).is_some());
++}
++
++#[test]
++fn provider_context_reports_temporary_classic_source_without_changing_saved() {
++    let _serial = plx_base::testlock::serial();
++    let _registry = Registry::new();
++    server();
++    let (mut app, mut runtime) = fixture();
++    // Admit the established explicit Classic fixture, then model a different
++    // Saved selection. This tests diagnostics, not automatic startup routing.
++    assert!(classic_source::ensure_catalog(&mut runtime, &mut app).unwrap());
++    runtime.saved.settings.insert("selectedProvider".into(), json!("m3u"));
++    runtime.saved.profiles.profiles.push(ProviderProfile {
++        id: "saved-m3u-canary".into(), name: "Private profile canary".into(),
++        kind: ProviderKind::M3u, source: "https://private.invalid/list?token=private-canary".into(),
++        source_alias: "Private alias canary".into(), enabled: true,
++    });
++    runtime.saved.profiles.active_profile = Some("saved-m3u-canary".into());
++    let saved = serde_json::to_value(&runtime.saved).unwrap();
++    runtime.sync_saved_context();
++    assert!(classic_source::profile(&runtime).is_some());
++    assert!(runtime.catalog_next.is_some(), "existing held worker keeps the request staged");
++    app.ott = Some(runtime);
++    let response = super::provider_context::read_status(&mut app, "status", 1);
++    assert_eq!(response["data"]["provider_context"], json!({
++        "loaded":true, "write_permit_valid":true, "state_load":"idle",
++        "selected_provider":"m3u", "saved_active_profile_present":true,
++        "saved_active_profile_kind":"m3u", "runtime_provider":"plex",
++        "effective_provider":"plex", "managed_active":false, "classic_active":true
++    }));
++    for private in ["saved-m3u-canary", "Private profile canary", "Private alias canary",
++        "private.invalid", "private-canary", "classic-fixture-machine", "synthetic-token"] {
++        assert!(!response.to_string().contains(private));
++    }
++    let runtime = app.ott.as_mut().unwrap();
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
++    classic_source::release(runtime);
++    let response = super::provider_context::read_status(&mut app, "state", 2);
++    assert_eq!(response["data"]["provider_context"]["classic_active"], false);
++    assert_eq!(response["data"]["provider_context"]["effective_provider"], "m3u");
++    assert_eq!(serde_json::to_value(&app.ott.as_ref().unwrap().saved).unwrap(), saved);
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/erasure.rs b/rust-modules/src/app/ott_runtime_tests/erasure.rs
 index 3c8cc0d2..084254a2 100644
@@ -77623,6 +78033,168 @@ index 5b441688..439de183 100644
                  app.bridge.apply_ui_mode(mode);
                  open_more(&mut app);
                  choose_catalog(&mut app);
+diff --git a/rust-modules/src/app/ott_runtime_tests/provider_context.rs b/rust-modules/src/app/ott_runtime_tests/provider_context.rs
+new file mode 100644
+index 00000000..95d14097
+--- /dev/null
++++ b/rust-modules/src/app/ott_runtime_tests/provider_context.rs
+@@ -0,0 +1,156 @@
++//! Closed diagnostics through existing status ingress. Fixtures only populate
++//! memory; status must not read storage, launch source work or expose its inputs.
++use super::*;
++
++const PRIVATE_ID: &str = "private-profile-id-canary";
++const PRIVATE_NAME: &str = "private-profile-name-canary";
++const PRIVATE_ALIAS: &str = "private-profile-alias-canary";
++const PRIVATE_SOURCE: &str = "https://private-user:private-password@source.invalid/private-path?token=private-token";
++const PRIVATE_FAILURE: &str = "private-load-error-canary";
++
++fn private_profile(kind: ProviderKind) -> ProviderProfile {
++    ProviderProfile {
++        id: PRIVATE_ID.into(), name: PRIVATE_NAME.into(), kind,
++        source: PRIVATE_SOURCE.into(), source_alias: PRIVATE_ALIAS.into(), enabled: true,
++    }
++}
++
++pub(super) fn read_status(app: &mut App, action: &str, serial: u64) -> Value {
++    let mut runtime = app.ott.take().unwrap();
++    let saved = serde_json::to_value(&runtime.saved).unwrap();
++    let source = (runtime.provider, runtime.generation, runtime.catalog_revision,
++        runtime.navigation_epoch, runtime.saving, runtime.catalog_loading);
++    assert!(runtime.resolver_next.is_none());
++    let now = runtime.now_ms();
++    let body = json!({"commands":[], "server_time":1000, "requests":[{
++        "id":format!("{serial:032x}"), "action":action, "params":{}, "expires_at":1020
++    }]}).to_string();
++    let mut incoming = runtime.remote.raw_poll_for_test(&body, now);
++    assert_eq!(incoming.len(), 1);
++    let invocation = incoming.pop().unwrap();
++    assert!(runtime.remote.invocation_is_current(&invocation));
++    let response = commands::command(&mut runtime, app, &invocation)
++        .expect("status returns synchronously without a worker");
++    assert_eq!(response["status"], "ok");
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
++    assert_eq!((runtime.provider, runtime.generation, runtime.catalog_revision,
++        runtime.navigation_epoch, runtime.saving, runtime.catalog_loading), source);
++    assert!(runtime.resolver_next.is_none());
++    let text = response.to_string();
++    for secret in [PRIVATE_ID, PRIVATE_NAME, PRIVATE_ALIAS, PRIVATE_SOURCE,
++        "private-user", "private-password", "private-path", "private-token", PRIVATE_FAILURE] {
++        assert!(!text.contains(secret), "status exposed private fixture input");
++    }
++    runtime.remote.complete(invocation, response.clone());
++    app.ott = Some(runtime);
++    response
++}
++
++#[test]
++fn provider_context_distinguishes_saved_m3u_from_effective_plex() {
++    let _serial = plx_base::testlock::serial();
++    let mut app = Box::new(app_fixture());
++    let runtime = app.ott.as_mut().unwrap();
++    runtime.loaded = true;
++    runtime.provider = ProviderKind::Plex;
++    runtime.saved.settings.insert("selectedProvider".into(), json!("m3u"));
++    runtime.saved.profiles.profiles = vec![private_profile(ProviderKind::M3u)];
++    for (serial, action) in [(1, "state"), (2, "status")] {
++        let response = read_status(&mut app, action, serial);
++        assert_eq!(response["data"]["provider"], "plex");
++        assert_eq!(response["data"]["provider_context"], json!({
++            "loaded":true, "write_permit_valid":true, "state_load":"idle",
++            "selected_provider":"m3u", "saved_active_profile_present":false,
++            "saved_active_profile_kind":null, "runtime_provider":"plex",
++            "effective_provider":"plex", "managed_active":false, "classic_active":false
++        }));
++    }
++}
++
++#[test]
++fn provider_context_distinguishes_absent_from_unresolved_saved_profile() {
++    let _serial = plx_base::testlock::serial();
++    let mut app = Box::new(app_fixture());
++    let mut expected = json!({
++        "loaded":false, "write_permit_valid":true, "state_load":"idle",
++        "selected_provider":null, "saved_active_profile_present":false,
++        "saved_active_profile_kind":null, "runtime_provider":"m3u",
++        "effective_provider":"m3u", "managed_active":false, "classic_active":false
++    });
++    assert_eq!(read_status(&mut app, "status", 1)["data"]["provider_context"], expected);
++    app.ott.as_mut().unwrap().loaded = true;
++    app.ott.as_mut().unwrap().saved.profiles.active_profile = Some(PRIVATE_ID.into());
++    expected["loaded"] = json!(true);
++    expected["saved_active_profile_present"] = json!(true);
++    assert_eq!(read_status(&mut app, "status", 2)["data"]["provider_context"], expected);
++}
++
++#[test]
++fn provider_context_resolves_saved_profile_kind_without_private_values() {
++    let _serial = plx_base::testlock::serial();
++    let mut app = Box::new(app_fixture());
++    let runtime = app.ott.as_mut().unwrap();
++    runtime.loaded = true;
++    runtime.provider = ProviderKind::Plex;
++    runtime.saved.settings.insert("selectedProvider".into(), json!("plex"));
++    runtime.saved.profiles.active_profile = Some(PRIVATE_ID.into());
++    runtime.saved.profiles.profiles = vec![private_profile(ProviderKind::M3u)];
++    let response = read_status(&mut app, "status", 1);
++    assert_eq!(response["data"]["provider"], "m3u");
++    assert_eq!(response["data"]["provider_context"], json!({
++        "loaded":true, "write_permit_valid":true, "state_load":"idle",
++        "selected_provider":"plex", "saved_active_profile_present":true,
++        "saved_active_profile_kind":"m3u", "runtime_provider":"plex",
++        "effective_provider":"m3u", "managed_active":false, "classic_active":false
++    }));
++}
++
++#[test]
++fn provider_context_normalizes_only_known_provider_ids() {
++    let _serial = plx_base::testlock::serial();
++    let mut app = Box::new(app_fixture());
++    let mut expected = json!({
++        "loaded":false, "write_permit_valid":true, "state_load":"idle",
++        "selected_provider":null, "saved_active_profile_present":false,
++        "saved_active_profile_kind":null, "runtime_provider":"m3u",
++        "effective_provider":"m3u", "managed_active":false, "classic_active":false
++    });
++    let cases = [
++        (json!("m3u"), json!("m3u")), (json!("xtream"), json!("xtream")),
++        (json!("stalker"), json!("stalker")), (json!("vportal"), json!("vportal")),
++        (json!("local"), json!("offline")), (json!("offline"), json!("offline")),
++        (json!("plex"), json!("plex")), (json!(PRIVATE_SOURCE), Value::Null),
++        (json!("M3U"), Value::Null), (json!(" m3u"), Value::Null),
++        (json!(""), Value::Null), (json!(false), Value::Null), (json!(1), Value::Null),
++        (json!({"private":PRIVATE_SOURCE}), Value::Null),
++        (json!([PRIVATE_SOURCE]), Value::Null), (Value::Null, Value::Null),
++    ];
++    for (index, (stored, selected)) in cases.into_iter().enumerate() {
++        app.ott.as_mut().unwrap().saved.settings.insert("selectedProvider".into(), stored);
++        expected["selected_provider"] = selected;
++        assert_eq!(read_status(&mut app, "status", index as u64 + 1)["data"]["provider_context"], expected);
++    }
++}
++
++#[test]
++fn provider_context_reports_load_and_permit_without_error_details() {
++    let _serial = plx_base::testlock::serial();
++    let mut app = Box::new(app_fixture());
++    let mut expected = json!({
++        "loaded":false, "write_permit_valid":true, "state_load":"idle",
++        "selected_provider":null, "saved_active_profile_present":false,
++        "saved_active_profile_kind":null, "runtime_provider":"m3u",
++        "effective_provider":"m3u", "managed_active":false, "classic_active":false
++    });
++    for (index, (load, wire)) in [(StateLoad::Idle, "idle"),
++        (StateLoad::Loading, "loading"), (StateLoad::Failed(PRIVATE_FAILURE), "failed")]
++        .into_iter().enumerate()
++    {
++        app.ott.as_mut().unwrap().state_load = load;
++        expected["state_load"] = json!(wire);
++        assert_eq!(read_status(&mut app, "status", index as u64 + 1)["data"]["provider_context"], expected);
++    }
++    app.ott.as_ref().unwrap().write_permit.revoke();
++    expected["write_permit_valid"] = json!(false);
++    assert_eq!(read_status(&mut app, "status", 4)["data"]["provider_context"], expected);
++}
 diff --git a/rust-modules/src/app/ott_runtime_tests/records.rs b/rust-modules/src/app/ott_runtime_tests/records.rs
 new file mode 100644
 index 00000000..02c11d05

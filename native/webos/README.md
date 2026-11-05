@@ -160,6 +160,22 @@ Older local Favorites that retained only a filename can have lost their parent f
 
 Command-server discovery and pairing use this installation's own device identity. The native command adapter implements profile and provider selection, global Favorites transfer, playback, validated individual settings and Standby. Async operations report completion after the relevant work; a queued command cannot silently act after its deadline or a change of source. Interface font scale is adjustable from 20 to 200 percent, with 100 percent as the default.
 
+The authenticated `state` and `status` replies include `provider_context`, a
+snapshot of the current in-memory Runtime and Saved image, not a physical
+storage read or proof of a new durable write. `loaded` and `state_load`
+(`idle`, `loading`, `failed`) describe the current load state;
+`write_permit_valid` describes lifetime write authority, not storage-service
+availability. `selected_provider` is the saved choice, or null if absent or
+unrecognized. `saved_active_profile_present` reports whether a saved reference
+exists; `saved_active_profile_kind` is its resolved kind or null.
+`runtime_provider` and `effective_provider` distinguish the current runtime
+selection from source precedence. `managed_active` and `classic_active` report
+the corresponding generation-matched in-memory source bindings; neither proves
+new playback or a persistence change. Provider values are limited to `m3u`,
+`xtream`, `stalker`, `vportal`, `offline` and `plex`; the stored `local` alias
+normalizes to `offline`. These diagnostic fields contain no profile identifiers,
+names, URLs, paths, credentials or load-error text.
+
 The original native Plex library views remain available. Plex playback uses the existing server session and conversion path. Direct Local/HTTP playback uses the bundled FFmpeg probe and the television's decoder. The ordinary multiplexed HLS path supports unencrypted MPEG-TS H.264/AAC streams, VOD seeking and live refresh, with a 64 MiB limit per segment. Encrypted HLS, fMP4, byte ranges, LL-HLS and adaptive variant switching are not implemented in this path. A separate bounded VOD path supports H.264 video with external AAC audio renditions; see [native HLS audio renditions](../../docs/native-hls-audio-renditions.md) for its stricter playlist requirements and track-selection limits. Container recognition does not guarantee codec support: an AVI containing MPEG4/Xvid still needs a compatible conversion.
 
 The optional packaged companion runs as a separately supervised process on an authenticated loopback endpoint, with an ephemeral token, bounded sessions and bounded disk usage. Its configuration is separate from the native provider profiles. An absent helper or unsupported capability is reported explicitly. A companion-enabled package requires the helper's verified binary, linker evidence and corresponding source; a local-source-only receipt is insufficient for publication.
