@@ -11751,6 +11751,25 @@ index 8bce6dd0..ea433674 100644
              }
          }
          Handled::Yes
+diff --git a/rust-modules/gfx/src/text.rs b/rust-modules/gfx/src/text.rs
+index d117a9a8..9ec5d9ed 100644
+--- a/rust-modules/gfx/src/text.rs
++++ b/rust-modules/gfx/src/text.rs
+@@ -1422,6 +1422,14 @@ fn effective_tracking(s: &str, letter_spacing: f32) -> f32 {
+     }
+ }
+ 
++/// Whether splitting this string into independently shaped runs could change
++/// its bidi context. Unlike `is_rtl_paragraph`, inspect the whole string, not
++/// just its first strong character. Include explicit LTR/isolate controls too.
++pub fn needs_bidi_context(s: &str) -> bool {
++    s.chars().any(|c| crate::rtl::may_be_rtl(c as u32)
++        || matches!(c as u32, 0x200E | 0x202A..=0x202E | 0x2066..=0x2069))
++}
++
+ /// **Does the paragraph `s` read right to left?** Its first strong character decides (UAX #9
+ /// rules P2 and P3): an Arabic or Hebrew letter, or a right-to-left mark, makes it right to left;
+ /// any other letter, or no letter at all, left to right. Pure and cheap (it stops at the first
 diff --git a/rust-modules/media/src/ff.rs b/rust-modules/media/src/ff.rs
 index 03ceb88a..ebf44b56 100644
 --- a/rust-modules/media/src/ff.rs
@@ -28999,10 +29018,10 @@ index 1d08b1a9..31ca146b 100644
              page_id: "channels:fixture".into(), revision: 1, title: msg::ott_channel_list().into(),
              description: String::new(), status: String::new(), selected_row: None,
 diff --git a/rust-modules/screens/src/ott/classic.rs b/rust-modules/screens/src/ott/classic.rs
-index 1dc12f74..b3d4fea8 100644
+index 1dc12f74..df8cd5af 100644
 --- a/rust-modules/screens/src/ott/classic.rs
 +++ b/rust-modules/screens/src/ott/classic.rs
-@@ -4,9 +4,72 @@ use super::{OttNowNext, OttPoster, OttRow};
+@@ -4,9 +4,81 @@ use super::{OttNowNext, OttPoster, OttRow};
  use plx_machine::machine::Measure;
  use plx_ui::{classic::Layout, theme, Painter, Rect};
  use plx_ui::text_view::TextView;
@@ -29036,6 +29055,15 @@ index 1dc12f74..b3d4fea8 100644
 +        if let Some(current) = current { parts.push(current); }
 +    }
 +    parts.join("  ")
++}
++
++/// The secondary run is derived from the same name/visibility projection as
++/// `list_label`; it never parses server-provided punctuation or changes identity.
++pub(super) fn list_secondary_start(row: &OttRow, preferences: plx_appkit::classic_settings::Preferences, label: &str) -> Option<usize> {
++    if !preferences.show_program() || !live_guide(row) { return None; }
++    let name = row.content_title.as_deref().filter(|name| !name.is_empty()).unwrap_or(&row.title);
++    let at = if preferences.show_name() { name.len() + 2 } else { 0 };
++    (at < label.len() && label.is_char_boundary(at)).then_some(at)
 +}
 +
 +/// Interval only: the shared table paints it against the latest addressed UTC
@@ -29076,7 +29104,7 @@ index 1dc12f74..b3d4fea8 100644
  #[derive(Default)]
  pub(super) struct GuideClock {
      sample: Option<i64>,
-@@ -41,46 +104,108 @@ impl GuideClock {
+@@ -41,46 +113,108 @@ impl GuideClock {
  }
  
  
@@ -29209,7 +29237,7 @@ index 1dc12f74..b3d4fea8 100644
      if let Some(poster) = &row.poster {
          let width = (body.w * 0.24).min(body.h * 2.0 / 3.0);
          if width > 0.0 {
-@@ -94,19 +219,63 @@ pub(super) fn paint_left(p: Painter, layout: Layout, row: &OttRow, status: &str,
+@@ -94,19 +228,63 @@ pub(super) fn paint_left(p: Painter, layout: Layout, row: &OttRow, status: &str,
              body.w = (body.w - width - theme::space::MD).max(0.0);
          }
      }
@@ -30619,7 +30647,7 @@ index 3373f881..7a485cfa 100644
              .with_measure(measure).draw(p,rect);
      }
 diff --git a/rust-modules/screens/src/ott/mod.rs b/rust-modules/screens/src/ott/mod.rs
-index 18f8dbba..7b96b66f 100644
+index 18f8dbba..dcaec0ab 100644
 --- a/rust-modules/screens/src/ott/mod.rs
 +++ b/rust-modules/screens/src/ott/mod.rs
 @@ -2,6 +2,7 @@
@@ -30898,7 +30926,7 @@ index 18f8dbba..7b96b66f 100644
          };
          if retired_reader {
              // An open description belongs to one enabled item. Returning to Browse
-@@ -393,33 +478,70 @@ impl OttScreen {
+@@ -393,33 +478,74 @@ impl OttScreen {
          // Allocate this small stable key vocabulary once even when a capability is absent.
          // Availability is checked against the current selected row, never a stale action cache.
          for id in navigation::CONTEXT_IDS { self.row_key(id); }
@@ -30937,6 +30965,10 @@ index 18f8dbba..7b96b66f 100644
 +                classic::list_label(row, snapshot.classic_preferences, self.guide_clock.now_for(row.guide.as_ref()))
 +            } else { row.title.clone() }).server_label()
 +                .detail(if classic_catalogue { String::new() } else { row.detail.clone() }).server_detail().checked(row.favorite);
++            if catalogue_item {
++                presentation.set_secondary_label_start(classic::list_secondary_start(row,
++                    snapshot.classic_preferences, &presentation.label));
++            }
 +            if classic_choices {
 +                // Values share the title's row. Explanatory text stays in the
 +                // selected item's narrative; no binding or draft is replaced.
@@ -30980,7 +31012,7 @@ index 18f8dbba..7b96b66f 100644
                  _ => false,
              });
          let mut footer = FormSection::new("");
-@@ -428,14 +550,20 @@ impl OttScreen {
+@@ -428,14 +554,20 @@ impl OttScreen {
                  FormAction::Forward(OttAction::Refresh), Row::new(msg::browse_home_refresh()));
          }
          if !owner_back {
@@ -31007,7 +31039,7 @@ index 18f8dbba..7b96b66f 100644
              else { Form::new().section(content).section(footer) };
          let page_action = match snapshot.page_id.split(':').next().unwrap_or("") {
              "profiles" | "usb-folders" => "nav:profiles", "channels" => "nav:catalog", "categories" => "nav:categories",
-@@ -492,6 +620,17 @@ impl OttScreen {
+@@ -492,6 +624,17 @@ impl OttScreen {
          }
          self.snapshot = snapshot;
          self.form.table.set_classic_catalogue(classic_catalogue);
@@ -31025,7 +31057,7 @@ index 18f8dbba..7b96b66f 100644
      }
  
      fn grid_active(&self) -> bool {
-@@ -522,9 +661,13 @@ impl OttScreen {
+@@ -522,9 +665,13 @@ impl OttScreen {
          self.classic_mode = classic;
          self.form.table.set_classic(classic);
          self.classic_layout.set(Some(plx_ui::classic::Layout::new(Rect::FULL, measure,
@@ -31040,7 +31072,7 @@ index 18f8dbba..7b96b66f 100644
      }
  
      fn header_scroll(&self) -> f32 {
-@@ -545,15 +688,35 @@ impl OttScreen {
+@@ -545,15 +692,35 @@ impl OttScreen {
          if self.editor.is_some() || self.reading { RouteLayout::screen() } else { navigation::route() }
      }
  
@@ -31078,7 +31110,7 @@ index 18f8dbba..7b96b66f 100644
              for (key_id, label) in &controls {
                  key_id.hash(&mut key); label.hash(&mut key);
                  measure.width_str(label, theme::size::BODY, false).to_bits().hash(&mut key);
-@@ -561,7 +724,7 @@ impl OttScreen {
+@@ -561,7 +728,7 @@ impl OttScreen {
              msg::ott_browse_c().to_bytes().hash(&mut key);
              measure.width(msg::ott_browse_c(), theme::size::BODY, false).to_bits().hash(&mut key);
              return Some(self.header_cache.get(key.finish(), ||
@@ -31087,7 +31119,7 @@ index 18f8dbba..7b96b66f 100644
          }
          // Empty catalogues keep the full recovery form. Its Search row must not
          // also appear under the same focus identity in the header group.
-@@ -580,6 +743,37 @@ impl OttScreen {
+@@ -580,6 +747,39 @@ impl OttScreen {
              navigation::header(measure, Rect::FULL.w, browse, search, description, self.browse, &caption)))
      }
  
@@ -31100,6 +31132,7 @@ index 18f8dbba..7b96b66f 100644
 +        if !matches!(row.action, OttAction::Play(_)) { return; }
 +        let now = self.guide_clock.now_for(row.guide.as_ref());
 +        let label = classic::list_label(row, self.snapshot.classic_preferences, now);
++        let secondary = classic::list_secondary_start(row, self.snapshot.classic_preferences, &label);
 +        let progress = self.snapshot.classic_preferences.show_progress()
 +            .then(|| classic::list_progress_interval(row, now)).flatten();
 +        let Some(key) = self.keys.get(&format!("item:{}", row.id)) else { return; };
@@ -31109,13 +31142,14 @@ index 18f8dbba..7b96b66f 100644
 +        if self.form.key_at(index) != Some(RowKey(*key)) { return; }
 +        let mut offset = index;
 +        let changed = self.form.table.sections.iter().find_map(|section| {
-+            if offset < section.rows.len() { Some(section.rows[offset].label != label || section.rows[offset].progress_bounds() != progress) }
++            if offset < section.rows.len() { Some(section.rows[offset].label != label || section.rows[offset].progress_bounds() != progress || section.rows[offset].secondary_label_start() != secondary) }
 +            else { offset -= section.rows.len(); None }
 +        }).unwrap_or(false);
 +        if changed {
 +            if let Ok(index) = i32::try_from(index) {
 +                if let Some(row) = self.form.table.row_mut(index) {
 +                    row.label = label;
++                    row.set_secondary_label_start(secondary);
 +                    row.set_progress_interval(progress);
 +                }
 +            }
@@ -31125,7 +31159,7 @@ index 18f8dbba..7b96b66f 100644
      fn open_browse<H: AppLike>(&mut self, fx: &mut Effects<'_, H>) {
          if self.browse { self.close_browse(fx); return; }
          self.browse_return = self.form.selected_id().cloned();
-@@ -601,6 +795,7 @@ impl OttScreen {
+@@ -601,6 +801,7 @@ impl OttScreen {
  
      fn editor_form(&mut self, opening: bool) {
          self.form.table.set_classic_catalogue(false);
@@ -31133,7 +31167,7 @@ index 18f8dbba..7b96b66f 100644
          let Some(editor) = &self.editor else { return; };
          let pending = editor.pending;
          let search = editor.spec.kind == OttEditorKind::Search;
-@@ -652,7 +847,10 @@ impl OttScreen {
+@@ -652,7 +853,10 @@ impl OttScreen {
              TextEdit::Commit(text) if editor.spec.text_policy == OttTextPolicy::Literal => next.insert(text),
              _ => next.edit(edit),
          }
@@ -31145,7 +31179,7 @@ index 18f8dbba..7b96b66f 100644
              editor.draft = next;
              self.editor_form(false);
              fx.invalidate(plx_machine::present::Provenance::Input);
-@@ -674,13 +872,19 @@ impl OttScreen {
+@@ -674,13 +878,19 @@ impl OttScreen {
          controls.measured_width(measure)
      }
  
@@ -31169,7 +31203,7 @@ index 18f8dbba..7b96b66f 100644
          let (title, copy) = if self.editor.is_none() && self.browse { (msg::ott_browse(), msg::ott_intro()) } else { (title, copy) };
          let (title, copy) = if self.editor.is_none() && !self.browse && self.media.is_some() { ("", "") } else { (title, copy) };
          let crumb = if self.editor.is_none() && !self.browse && self.media.is_some() { None } else { Some(msg::ott_brand()) };
-@@ -708,8 +912,7 @@ impl OttScreen {
+@@ -708,8 +918,7 @@ impl OttScreen {
      }
  
      fn description<'a>(&self, row: &'a OttRow) -> &'a str {
@@ -31179,7 +31213,7 @@ index 18f8dbba..7b96b66f 100644
      }
  
      fn has_description(&self) -> bool {
-@@ -753,13 +956,22 @@ impl OttScreen {
+@@ -753,13 +962,22 @@ impl OttScreen {
          }
      }
  
@@ -31207,7 +31241,7 @@ index 18f8dbba..7b96b66f 100644
          let Some(item) = actions.into_iter().find(|item| item.id == id) else { return false; };
          self.restore_memory = None;
          match item.action {
-@@ -778,6 +990,10 @@ impl OttScreen {
+@@ -778,6 +996,10 @@ impl OttScreen {
  
      fn activate<H: AppLike>(&mut self, key: u32, favorite: bool, fx: &mut Effects<'_, H>) {
          self.restore_memory = None;
@@ -31218,7 +31252,7 @@ index 18f8dbba..7b96b66f 100644
          if self.editor.is_none() && !self.reading && !favorite {
              if self.keys.get("nav:browse") == Some(&key) { self.open_browse(fx); return; }
              if !self.classic_mode && !self.browse && self.snapshot.search.is_some() && self.keys.get("nav:search") == Some(&key) {
-@@ -842,7 +1058,20 @@ impl OttScreen {
+@@ -842,7 +1064,20 @@ impl OttScreen {
  impl<H: AppLike<Memory = PageMemory>> Machine<H> for OttScreen {
      type Ev = ScreenEvent<H>;
      fn step(&mut self, ev: &Self::Ev, cx: &Cx<'_, H>, fx: &mut Effects<'_, H>) -> Handled {
@@ -31239,7 +31273,7 @@ index 18f8dbba..7b96b66f 100644
          self.refresh_viewport(cx.measure);
          let viewport = self.viewport_event(ev, fx);
          self.sync_viewport(fx);
-@@ -852,8 +1081,9 @@ impl<H: AppLike<Memory = PageMemory>> Machine<H> for OttScreen {
+@@ -852,8 +1087,9 @@ impl<H: AppLike<Memory = PageMemory>> Machine<H> for OttScreen {
  impl OttScreen {
      fn step_inner<H: AppLike<Memory = PageMemory>>(&mut self, ev: &ScreenEvent<H>, cx: &Cx<'_, H>, fx: &mut Effects<'_, H>) -> Handled {
          self.refresh_presentation(H::ui_mode(&cx.views), cx.measure);
@@ -31250,7 +31284,7 @@ index 18f8dbba..7b96b66f 100644
              let listed = self.form.index_of_key(RowKey(self.keys["nav:description"])).is_some();
              let wanted = self.menu_visibility.navigation("nav:description") && self.has_description();
              if listed != wanted {
-@@ -863,13 +1093,14 @@ impl OttScreen {
+@@ -863,13 +1099,14 @@ impl OttScreen {
                  fx.invalidate(plx_machine::present::Provenance::Resource(plx_machine::present::ResourceKind::Text));
              }
          }
@@ -31267,7 +31301,7 @@ index 18f8dbba..7b96b66f 100644
              if let Some(handled) = self.remote_input(input, cx, fx) { return handled; }
          }
          if !matches!(ev, ScreenEvent::App(AppMsg::OttSnapshot(_))) {
-@@ -957,6 +1188,10 @@ impl OttScreen {
+@@ -957,6 +1194,10 @@ impl OttScreen {
                  Handled::Yes
              }
              ScreenEvent::Tick(tick) => {
@@ -31278,7 +31312,7 @@ index 18f8dbba..7b96b66f 100644
                  if let Some(header) = self.header(cx.measure) {
                      header.step(self.entry, cx.focus.current, &mut self.header_capsules, &mut self.header_pop, tick.dt());
                  }
-@@ -993,6 +1228,14 @@ impl OttScreen {
+@@ -993,6 +1234,14 @@ impl OttScreen {
                  if let Some(index) = self.media_keys.get(&to.elem) {
                      self.media = self.snapshot.rows[*index].enabled.then_some(*index);
                  }
@@ -31293,7 +31327,7 @@ index 18f8dbba..7b96b66f 100644
                  self.preview_focus(to.elem);
                  self.form.note_engine_key(Some(RowKey(to.elem)));
                  if let Some(index) = self.form.index_of_key(RowKey(to.elem)) { self.form.table.sel = index as i32; }
-@@ -1077,7 +1320,7 @@ impl<H: AppLike<Memory = PageMemory>> Focusable<H> for OttScreen {
+@@ -1077,7 +1326,7 @@ impl<H: AppLike<Memory = PageMemory>> Focusable<H> for OttScreen {
      fn press_kind(&self, key: &u32, _cx: &Cx<'_, H>) -> Option<ElemKind> {
          if self.reading || self.editor.is_some() || self.browse { return None; }
          self.media_keys.get(key).and_then(|index| self.snapshot.rows.get(*index))
@@ -31302,7 +31336,7 @@ index 18f8dbba..7b96b66f 100644
      }
      fn neighbour(&self, key: FocusKey<u32>, dir: Dir, cx: &Cx<'_, H>) -> Step<u32> {
          if let Some(header) = self.header(cx.measure) {
-@@ -1115,8 +1358,13 @@ impl LogicalState for OttScreen {
+@@ -1115,8 +1364,13 @@ impl LogicalState for OttScreen {
          self.guide_clock.write(out);
          self.viewport.write(out);
          out.option(self.snapshot.category_label.as_ref(), |out, label| { out.str(label); });
@@ -31317,7 +31351,7 @@ index 18f8dbba..7b96b66f 100644
          out.option(self.snapshot.preview_context.as_ref(), |out, context| { out.str(context); });
          out.option(self.snapshot.random_context.as_ref(), |out, context| { out.str(context); });
          out.option(self.snapshot.order_context.as_ref(), |out, context| { out.str(context); });
-@@ -1144,6 +1392,8 @@ impl LogicalState for OttScreen {
+@@ -1144,6 +1398,8 @@ impl LogicalState for OttScreen {
          self.header_pop.write_motion(out);
          self.card_stack.write(out);
          out.option(self.restore_memory.as_ref(), |out, memory| memory.write(out));
@@ -31326,7 +31360,7 @@ index 18f8dbba..7b96b66f 100644
      }
      fn probe(&self, out: &mut String) { out.push_str("ott"); }
  }
-@@ -1157,21 +1407,23 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
+@@ -1157,21 +1413,23 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
      fn crumb(&self, _cx: &Cx<'_, H>) -> Option<Cow<'_, str>> { Some(Cow::Borrowed("OTTPlay")) }
      fn prepare(&mut self, _budget: &mut Budget, _cx: &Cx<'_, H>) {}
      fn draw(&mut self, frame: &mut DrawFrame<'_, '_, H>) {
@@ -31354,7 +31388,7 @@ index 18f8dbba..7b96b66f 100644
                  let rect = self.document_frame();
                  let body = self.description(row);
                  Part::<H>::draw(&mut DocumentPart { reader: &mut self.reader, frame: rect, body,
-@@ -1196,7 +1448,12 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
+@@ -1196,7 +1454,12 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
                      .phase(frame.cx.tick.ms).draw(&plx_ui::Env::inert(), frame.painter);
              }
              if self.grid_active() { Part::<H>::draw(&mut self.grid_view(), frame, self.route().content); }
@@ -31368,7 +31402,7 @@ index 18f8dbba..7b96b66f 100644
              if let Some(header) = self.header(frame.measure) {
                  header.draw(frame.painter, self.header_scroll(), &self.header_capsules, self.header_pop.scale_with(0, frame.press.scale), None);
                  if frame.records_stops() {
-@@ -1212,22 +1469,26 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
+@@ -1212,22 +1475,26 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
                  }
              }
              if self.classic_mode && self.snapshot.page_id != "loading" && (self.editor.is_some() || self.browse || self.media.is_none()) {
@@ -31403,7 +31437,7 @@ index 18f8dbba..7b96b66f 100644
      }
      fn links(&self, out: &mut Vec<Link>) {
          if self.editor.is_none() && !self.reading {
-@@ -1238,6 +1499,11 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
+@@ -1238,6 +1505,11 @@ impl<H: AppLike<Memory = PageMemory>> Screen<H> for OttScreen {
      fn render(&self) -> RenderStrategy { RenderStrategy::Page }
      fn focus_source(&self) -> FocusSource { FocusSource::Engine }
      fn hit_source(&self) -> HitSource { HitSource::Engine }
@@ -31415,7 +31449,7 @@ index 18f8dbba..7b96b66f 100644
      fn as_any(&self) -> Option<&dyn std::any::Any> { Some(self) }
      fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> { Some(self) }
  }
-@@ -1267,9 +1533,13 @@ mod tests {
+@@ -1267,9 +1539,13 @@ mod tests {
      mod media;
      mod editor_layout;
      mod classic_presentation;
@@ -31429,7 +31463,7 @@ index 18f8dbba..7b96b66f 100644
      use super::*;
      use plx_machine::machine::{Host, Stamped};
      struct TestHost;
-@@ -1282,6 +1552,27 @@ mod tests {
+@@ -1282,6 +1558,27 @@ mod tests {
          type Init = crate::registry::AppArg;
          type Memory = PageMemory;
      }
@@ -31457,7 +31491,7 @@ index 18f8dbba..7b96b66f 100644
      fn effects(run: impl FnOnce(&mut Effects<'_, TestHost>)) -> Vec<Stamped<TestHost>> {
          let mut output = Vec::new();
          let mut present = plx_machine::present::Present::new();
-@@ -1311,12 +1602,53 @@ mod tests {
+@@ -1311,12 +1608,53 @@ mod tests {
              kind: InputKind::Key { key, sym: 0, wcode: 0, edge: Edge::Down, at_edge: true } })
      }
      fn snapshot(revision: u64, ids: &[&str]) -> Arc<OttView> {
@@ -31513,7 +31547,7 @@ index 18f8dbba..7b96b66f 100644
      #[test]
      fn favorites_is_always_reachable_even_without_a_provider() {
          let screen = OttScreen::new(EntryId(1), InstanceId(1));
-@@ -1389,6 +1721,52 @@ mod tests {
+@@ -1389,6 +1727,52 @@ mod tests {
          assert_eq!(screen.snapshot.rows.len(), 1);
          assert!(!screen.handles_private_text());
      }
@@ -31566,7 +31600,7 @@ index 18f8dbba..7b96b66f 100644
      #[test]
      fn editor_pending_result_retains_draft_and_allows_retry_after_error() {
          let mut screen = OttScreen::new(EntryId(1), InstanceId(1));
-@@ -1708,7 +2086,7 @@ mod menu_header_tests {
+@@ -1708,7 +2092,7 @@ mod menu_header_tests {
          let mut screen = OttScreen::new(EntryId(92), InstanceId(92));
          let mut view = OttView { revision: 1, page_id: "channels".into(),
              search: Some(OttSearch { query: String::new(), scope: "Home".into() }),
@@ -31575,7 +31609,7 @@ index 18f8dbba..7b96b66f 100644
                  description: "Details".into(), poster: None, action: OttAction::Play("film".into()),
                  enabled: true, favorite: false }], ..Default::default() };
          screen.install(Arc::new(view.clone()));
-@@ -1741,3 +2119,7 @@ mod order_tests;
+@@ -1741,3 +2125,7 @@ mod order_tests;
  #[cfg(test)]
  #[path = "usb_folder_tests.rs"]
  mod usb_folder_tests;
@@ -32678,7 +32712,7 @@ index 00000000..61a559d9
 +        "compact data is used only in the absence of a full selected guide");
 +}
 diff --git a/rust-modules/screens/src/ott/tests/classic_presentation.rs b/rust-modules/screens/src/ott/tests/classic_presentation.rs
-index f9c66174..e0c7db1a 100644
+index f9c66174..60415022 100644
 --- a/rust-modules/screens/src/ott/tests/classic_presentation.rs
 +++ b/rust-modules/screens/src/ott/tests/classic_presentation.rs
 @@ -136,13 +136,29 @@ fn idle_visible_guide_repaints_on_seconds_and_expiry_but_hidden_or_expired_does_
@@ -32726,7 +32760,7 @@ index f9c66174..e0c7db1a 100644
      assert_eq!(row.stops.len(), 1); assert_eq!(row.stops[0].0, 777);
  }
  
-@@ -293,3 +310,99 @@ fn classic_header_focus_restores_the_selected_media_behind_it() {
+@@ -293,3 +310,120 @@ fn classic_header_focus_restores_the_selected_media_behind_it() {
      assert_eq!(fresh.focus_request, Some(categories));
      assert!(fresh.header(&measure).unwrap().stops.iter().any(|(key,_)| *key == categories));
  }
@@ -32825,6 +32859,27 @@ index f9c66174..e0c7db1a 100644
 +    assert!(!screen.form.table.is_classic_catalogue());
 +    assert!(!screen.form.table.is_classic_choices());
 +    assert!(screen.form.table.classic_page_rows().is_none());
++}
++
++#[test]
++fn classic_programme_tone_boundary_tracks_visibility_without_changing_row_identity() {
++    let mut view = (*snapshot(1, &["live"])).clone();
++    let row = &mut view.rows[0];
++    row.title = "1  ČT".into();
++    row.content_title = Some("ČT".into());
++    row.current_programme = Some(plx_data::ott::guide::rows::CurrentProgramme { title: "Zprávy".into(), start_s: 10, end_s: 20 });
++    row.guide = None;
++    row.guide_available = true;
++    let original_id = row.id.clone();
++    for (name, programme, expected) in [(1, 1, Some(5)), (0, 1, Some(0)), (1, 0, None), (0, 0, None)] {
++        let prefs = view.classic_preferences.with_channel_display(1, name, programme, 1).unwrap();
++        let label = crate::ott::classic::list_label(row, prefs, Some(15));
++        assert_eq!(crate::ott::classic::list_secondary_start(row, prefs, &label), expected);
++    }
++    let label = crate::ott::classic::list_label(row, view.classic_preferences, Some(20));
++    assert_eq!(label, "ČT");
++    assert_eq!(crate::ott::classic::list_secondary_start(row, view.classic_preferences, &label), None);
++    assert_eq!(row.id, original_id);
 +}
 diff --git a/rust-modules/screens/src/ott/tests/classic_settings_list.rs b/rust-modules/screens/src/ott/tests/classic_settings_list.rs
 new file mode 100644
@@ -54337,10 +54392,10 @@ index 00000000..31d3b19d
 +}
 diff --git a/rust-modules/src/app/ott_managed.rs b/rust-modules/src/app/ott_managed.rs
 new file mode 100644
-index 00000000..19fdea4d
+index 00000000..4526f4e4
 --- /dev/null
 +++ b/rust-modules/src/app/ott_managed.rs
-@@ -0,0 +1,585 @@
+@@ -0,0 +1,597 @@
 +//! App-owned runner for the one configured, previously verified Plex candidate.
 +//! SessionMachine remains the authority owner. This runner holds real proof and
 +//! projects temporary row contexts; no candidate is inserted into Saved.
@@ -54704,11 +54759,14 @@ index 00000000..19fdea4d
 +    runtime.changed();
 +}
 +
-+/// A settled catalogue only needs resource teardown. Preserve the existing
-+/// return policy for mounted Player or navigation already queued/in progress.
++/// A catalogue only needs resource teardown, including its first pending root.
++/// Preserve the existing return policy for Player and other queued navigation.
 +pub(super) fn retire_for_catalog(app: &mut App) {
-+    if bridge::player(&app.pages).is_some() || app.pages.has_pending_navigation()
-+        || app.pages.nav.tabs.stack.is_pending() {
++    let initial_ott = app.pages.top_arg().is_none()
++        && matches!(app.pages.top_or_mounting_arg()
++            .or_else(|| app.pages.nav.tabs.stack.pending_dest()), Some(AppArg::Ott));
++    if bridge::player(&app.pages).is_some() || (!initial_ott
++        && (app.pages.has_pending_navigation() || app.pages.nav.tabs.stack.is_pending())) {
 +        playback::replace_player(&mut app.player, &mut app.adapters.player, &mut app.repause_at,
 +            &mut app.refresh_hubs, &mut app.pages);
 +    } else {
@@ -54899,12 +54957,21 @@ index 00000000..19fdea4d
 +    if state.pending.is_none() && state.active.is_none() && runtime.page == "profiles" && runtime.provider == ProviderKind::Plex {
 +        if state.list(runtime, app).is_err() { state.row = None; }
 +    }
-+    let auto = state.automatic && state.candidate.is_some() && runtime.loaded && !runtime.persistence_uncertain
++    // A persisted provider choice remains an intent even before its first profile
++    // is configured. Missing selection is the initial-install Plex bootstrap case;
++    // do not infer a choice from Runtime's default M3U presentation.
++    let provider_allows_automatic = !matches!(
++        runtime.saved.settings.get("selectedProvider").and_then(Value::as_str),
++        Some("m3u" | "vportal" | "local" | "offline" | "xtream" | "stalker")
++    );
++    let auto = state.automatic && provider_allows_automatic
++        && state.candidate.is_some() && runtime.loaded && !runtime.persistence_uncertain
 +        && runtime.remote.configuration_load_settled()
 +        && runtime.saved.profiles.active_profile.is_none() && !runtime.saved.favorites_selected
 +        && runtime.generation == 0 && runtime.navigation_epoch == 0 && runtime.playback_epoch == 0
 +        && runtime.playing.is_none() && runtime.transient.accepted.is_none() && app.last_input == state.initial_input;
-+    let original_intent = runtime.saved.profiles.active_profile.is_none() && !runtime.saved.favorites_selected
++    let original_intent = provider_allows_automatic
++        && runtime.saved.profiles.active_profile.is_none() && !runtime.saved.favorites_selected
 +        && runtime.generation == 0 && runtime.navigation_epoch == 0 && runtime.playback_epoch == 0
 +        && runtime.playing.is_none() && runtime.transient.accepted.is_none() && app.last_input == state.initial_input;
 +    if state.automatic && runtime.loaded && !original_intent { state.automatic = false; }
@@ -56326,10 +56393,10 @@ index 00000000..1217760e
 +}
 diff --git a/rust-modules/src/app/ott_managed_startup_tests.rs b/rust-modules/src/app/ott_managed_startup_tests.rs
 new file mode 100644
-index 00000000..2a16efdc
+index 00000000..c7d3d07b
 --- /dev/null
 +++ b/rust-modules/src/app/ott_managed_startup_tests.rs
-@@ -0,0 +1,157 @@
+@@ -0,0 +1,334 @@
 +//! Scheduling through the real managed tick and Remote load completion. Only
 +//! external verification and the final selection dispatch are held by the test.
 +use super::*;
@@ -56353,7 +56420,7 @@ index 00000000..2a16efdc
 +    }
 +}
 +
-+fn fixture() -> (App, Runtime, Session, Sender<CandidateResult>) {
++fn fixture(initial: Saved) -> (App, Runtime, Session, Sender<CandidateResult>) {
 +    let mut app = crate::app::run::lifecycle_regression_tests::app();
 +    app.running = true;
 +    let mut runtime = Runtime::unloaded(crate::app::ott_companion::Supervisor::inert_for_test());
@@ -56362,7 +56429,7 @@ index 00000000..2a16efdc
 +    // Establish ordinary empty OTT readiness through its actual result handler.
 +    for ready in [false, true] {
 +        if ready {
-+            app.ott.as_ref().unwrap().tx.send(Job::Loaded(Ok((Saved::default(), [1; 16]))))
++            app.ott.as_ref().unwrap().tx.send(Job::Loaded(Ok((initial.clone(), [1; 16]))))
 +                .unwrap_or_else(|_| panic!("fixture state receiver disappeared"));
 +        }
 +        let sample = plx_base::task::time::ClockSample::capture_main(app.adapters.player.mt()).unwrap();
@@ -56411,7 +56478,7 @@ index 00000000..2a16efdc
 +fn managed_first_waits_for_real_control_load_before_minting_automatic_context() {
 +    let _serial = plx_base::testlock::serial();
 +    let _reset = RegistryReset::new();
-+    let (mut app, mut runtime, saved, sender) = fixture();
++    let (mut app, mut runtime, saved, sender) = fixture(Saved::default());
 +    let before = runtime.remote.authority_generation();
 +    deliver(&saved, sender);
 +    assert!(pump(&mut runtime, &mut app).is_empty(), "must not dispatch before the initial load");
@@ -56433,7 +56500,7 @@ index 00000000..2a16efdc
 +fn control_first_dispatches_when_the_verified_candidate_arrives() {
 +    let _serial = plx_base::testlock::serial();
 +    let _reset = RegistryReset::new();
-+    let (mut app, mut runtime, saved, sender) = fixture();
++    let (mut app, mut runtime, saved, sender) = fixture(Saved::default());
 +    complete_load(&mut runtime, Ok(()));
 +    assert!(pump(&mut runtime, &mut app).is_empty());
 +    deliver(&saved, sender);
@@ -56444,7 +56511,7 @@ index 00000000..2a16efdc
 +fn failed_control_load_settles_without_granting_or_blocking_managed_authority() {
 +    let _serial = plx_base::testlock::serial();
 +    let _reset = RegistryReset::new();
-+    let (mut app, mut runtime, saved, sender) = fixture();
++    let (mut app, mut runtime, saved, sender) = fixture(Saved::default());
 +    deliver(&saved, sender);
 +    assert!(pump(&mut runtime, &mut app).is_empty());
 +    let before = runtime.remote.authority_generation();
@@ -56462,7 +56529,7 @@ index 00000000..2a16efdc
 +fn later_control_authority_change_still_rejects_the_original_context() {
 +    let _serial = plx_base::testlock::serial();
 +    let _reset = RegistryReset::new();
-+    let (mut app, mut runtime, saved, sender) = fixture();
++    let (mut app, mut runtime, saved, sender) = fixture(Saved::default());
 +    complete_load(&mut runtime, Ok(()));
 +    deliver(&saved, sender);
 +    let selected = pump(&mut runtime, &mut app);
@@ -56478,7 +56545,7 @@ index 00000000..2a16efdc
 +fn explicit_intent_while_control_load_waits_cannot_be_rearmed_by_its_completion() {
 +    let _serial = plx_base::testlock::serial();
 +    let _reset = RegistryReset::new();
-+    let (mut app, mut runtime, saved, sender) = fixture();
++    let (mut app, mut runtime, saved, sender) = fixture(Saved::default());
 +    deliver(&saved, sender);
 +    assert!(pump(&mut runtime, &mut app).is_empty());
 +    navigation(&mut runtime.managed);
@@ -56486,6 +56553,183 @@ index 00000000..2a16efdc
 +    assert!(pump(&mut runtime, &mut app).is_empty());
 +    assert!(!runtime.managed.automatic);
 +    assert!(runtime.managed.pending.is_none());
++}
++
++#[test]
++fn accepted_managed_completion_preserves_the_unmounted_initial_ott_root() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = RegistryReset::new();
++    let mut owned_app = Box::new(crate::app::run::lifecycle_regression_tests::app());
++    let app = owned_app.as_mut();
++    app.running = true;
++    let disk = Session { client_id: "managed-boot-install".into(), ..Default::default() };
++    app.bridge = bridge::Bridge::for_session_test(plx_session::auth::SessionInit::captured(disk.clone()));
++    assert!(app.boot_initial.is_none(), "ordinary owner, not controlled record/replay boot");
++    assert!(app.pages.top_arg().is_none());
++    // Ordinary boot's root stays pending across the owner/adapter drain.
++    bridge::nav_root(&mut app.pages, AppArg::Ott);
++    assert!(app.pages.has_pending_navigation());
++    assert!(app.pages.top_or_mounting_arg() == Some(&AppArg::Ott));
++
++    let mut runtime = Runtime::unloaded(crate::app::ott_companion::Supervisor::inert_for_test());
++    let sample = plx_base::task::time::ClockSample::capture_main(app.adapters.player.mt()).unwrap();
++    runtime.clock_anchor = Some(sample);
++    runtime.clock_sample = Some(sample);
++    runtime.wall_clock_ms = sample.unix_ms();
++    runtime.remote = Remote::disabled_for_test("dev_fixture", "managed-boot-runtime");
++    runtime.loaded = true;
++    runtime.entropy = Some([1; 16]);
++    runtime.write_permit.revoke();
++    runtime.catalog_done.store(false, Ordering::Release);
++    runtime.metadata_done.store(false, Ordering::Release);
++    runtime.resolver_busy = true;
++    let source = SourceRef { machine_id: SERVER.into(), name: "Fixture Plex".into(),
++        address: "127.0.0.1".into(), port: 32499, origin_url: "http://127.0.0.1:32499".into(),
++        token: "synthetic-pms-token".into(), tier: Some(plex::probe::Location::Local), ..Default::default() };
++    let candidate = managed_candidate_for_test(&disk, source.clone());
++    let authority = Authority::capture(app);
++    let activation = ManagedActivation { operation: 17, expected_epoch: authority.epoch,
++        expected_runtime: authority.credentials.clone(), expected_disk: authority.disk.clone(),
++        credentials: candidate.credentials.clone() };
++    let now = runtime.now_ms();
++    let remote_runtime = runtime.remote.runtime().to_owned();
++    let deadline = now + 60_000;
++    let command_deadline = sample.deadline_at_unix_ms(deadline);
++    let context_deadline = sample.deadline_at_unix_ms(now + 120_000);
++    let cancel = Arc::new(AtomicBool::new(false));
++    let binding = runtime.managed.binding(&runtime);
++    runtime.managed.offers.list(now, binding, &remote_runtime, SERVER, "boot-context").unwrap();
++    runtime.managed.offers.admit(now, binding, &remote_runtime, SERVER,
++        "boot-context", 17, deadline).unwrap();
++    app.bridge.prepare_managed(activation.clone(), source, candidate.verified.proof.clone(),
++        command_deadline.on_main(app.adapters.player.mt()), context_deadline.on_main(app.adapters.player.mt()),
++        cancel.clone()).unwrap();
++    runtime.managed.authority = Some(authority);
++    runtime.managed.pending = Some(Pending { operation: 17, deadline, command_deadline, context_deadline,
++        navigation: runtime.navigation_epoch, expected_epoch: activation.expected_epoch,
++        generation: runtime.generation, source: candidate, binding, server_id: SERVER.into(),
++        context: "boot-context".into(), invocation: None, request: None, cancel, worker: None, staged: true });
++    bridge::execute_session_command(&mut app.pages, plx_session::auth::SessionCmd::ActivateManaged(activation));
++    let parts = app.pages.parts(plx_machine::machine::Tick::default());
++    app.pages.drain(&mut app.bridge, &parts, 128, &mut plx_ui::dispatch::FrameReport::default(),
++        &mut plx_ui::dispatch::NoTap);
++    assert!(app.bridge.managed_active_current(17), "the real owner and adapter accepted publication");
++    assert!(plex::id_of_machine(SERVER).is_some());
++    assert!(app.pages.top_arg().is_none(), "the initial root is still pending");
++    assert!(app.pages.top_or_mounting_arg() == Some(&AppArg::Ott));
++    let owner = serde_json::to_value(app.bridge.snapshot_session_init()).unwrap();
++    let saved = serde_json::to_value(&runtime.saved).unwrap();
++    let epochs = (runtime.generation, runtime.navigation_epoch, runtime.playback_epoch);
++    assert_eq!(epochs, (0, 0, 0));
++
++    tick(&mut runtime, app);
++
++    assert!(runtime.managed.pending.is_none());
++    assert!(runtime.managed.active.as_ref().is_some_and(|active| active.operation == 17));
++    assert!(runtime.catalog_next.as_ref().is_some_and(|profile| profile.source == SERVER));
++    assert!(runtime.generation > epochs.0, "accepted source owns a new catalogue generation");
++    assert_eq!(runtime.navigation_epoch, epochs.1, "no viewer navigation was synthesized");
++    assert_eq!(runtime.playback_epoch, epochs.2 + 1, "source replacement retires the prior playback epoch once");
++    assert!(!app.refresh_hubs, "no Player was exited and Home must not acquire a refresh");
++    assert!(app.player.pending_exit.is_none());
++    assert!(app.pages.top_or_mounting_arg() == Some(&AppArg::Ott), "do not replace the boot request with Home");
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
++    assert_eq!(serde_json::to_value(app.bridge.snapshot_session_init()).unwrap(), owner);
++    assert!(app.bridge.take_managed_completion().is_none(), "one completion was consumed");
++    app.ott = Some(runtime);
++    for step in 1..=24 {
++        bridge::frame(&mut app.pages, &mut app.bridge,
++            plx_machine::machine::Tick { ms: step * 16, dt_us: 16_000 }, Vec::new());
++    }
++    assert!(app.route() == AppArg::Ott);
++    assert!(app.pages.top_page().is_some(), "the real OTT screen mounted");
++    assert!(bridge::player(&app.pages).is_none());
++    assert!(!app.pages.has_pending_navigation() && !app.pages.nav.tabs.stack.is_pending());
++}
++
++
++/// Exercise the same serialized key written by the provider command. This does
++/// not substitute Runtime.provider for persisted intent or manufacture a profile.
++fn persisted_choice(choice: Option<&str>) -> Saved {
++    let mut saved = Saved::default();
++    if let Some(choice) = choice {
++        saved.settings.insert("selectedProvider".into(), json!(choice));
++    }
++    let restored: Saved = serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
++    restored.validate().unwrap();
++    restored
++}
++
++#[test]
++fn persisted_non_plex_provider_without_profile_prevents_automatic_plex() {
++    let _serial = plx_base::testlock::serial();
++    for choice in ["m3u", "vportal", "local", "offline", "xtream", "stalker"] {
++        let _reset = RegistryReset::new();
++        let initial = persisted_choice(Some(choice));
++        let before = serde_json::to_value(&initial).unwrap();
++        let (mut app, mut runtime, saved, sender) = fixture(initial);
++        assert!(runtime.saved.profiles.active_profile.is_none());
++        assert!(runtime.saved.profiles.profiles.is_empty());
++        assert_eq!((runtime.generation, runtime.navigation_epoch, runtime.playback_epoch), (0, 0, 0));
++        complete_load(&mut runtime, Ok(()));
++        deliver(&saved, sender);
++        assert!(pump(&mut runtime, &mut app).is_empty(), "persisted {choice} must prevent Plex dispatch");
++        assert!(!runtime.managed.automatic);
++        assert!(runtime.managed.pending.is_none());
++        assert!(runtime.managed.active.is_none());
++        assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), before);
++        assert!(plex::id_of_machine(SERVER).is_none());
++    }
++}
++
++#[test]
++fn absent_provider_and_explicit_plex_keep_initial_automatic_selection() {
++    let _serial = plx_base::testlock::serial();
++    for choice in [None, Some("plex")] {
++        let _reset = RegistryReset::new();
++        let initial = persisted_choice(choice);
++        assert_eq!(initial.settings.get("selectedProvider").and_then(Value::as_str), choice);
++        let before = serde_json::to_value(&initial).unwrap();
++        let (mut app, mut runtime, saved, sender) = fixture(initial);
++        complete_load(&mut runtime, Ok(()));
++        deliver(&saved, sender);
++        let selected = pump(&mut runtime, &mut app);
++        assert_eq!(selected.len(), 1);
++        assert_eq!(selected[0].0, SERVER);
++        assert!(pump(&mut runtime, &mut app).is_empty(), "dispatch remains one-shot");
++        assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), before);
++    }
++}
++
++#[test]
++fn persisted_m3u_without_candidate_does_not_fall_back_to_plex_login() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = RegistryReset::new();
++    let (mut app, mut runtime, saved, sender) = fixture(persisted_choice(Some("m3u")));
++    assert!(!saved.can_go_local(), "fixture must exercise the login-fallback condition");
++    complete_load(&mut runtime, Ok(()));
++    let before = serde_json::to_value(&runtime.saved).unwrap();
++    let epoch = app.bridge.auth_read().0.flow_epoch;
++    assert!(sender.send(Ok(None)).is_ok());
++    assert!(pump(&mut runtime, &mut app).is_empty());
++    assert!(runtime.managed.startup_settled);
++    // Drain any real queued Session command through the existing held test rig.
++    // Before the fix StartLogin is emitted here and advances its flow epoch.
++    app.pages.frame_with(&mut app.bridge, plx_machine::machine::Tick::default(),
++        Vec::new(), Vec::new(), &mut plx_ui::dispatch::NoTap, false);
++    assert_eq!(app.bridge.auth_read().0.flow_epoch, epoch);
++    assert_eq!(runtime.provider, ProviderKind::M3u);
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), before);
++}
++
++#[test]
++fn legacy_saved_default_does_not_synthesize_provider_intent() {
++    let restored: Saved = serde_json::from_value(json!({"version":1})).unwrap();
++    restored.validate().unwrap();
++    assert!(!restored.settings.contains_key("selectedProvider"));
++    assert!(restored.profiles.active_profile.is_none());
++    let restored: Saved = serde_json::from_slice(&serde_json::to_vec(&restored).unwrap()).unwrap();
++    assert!(!restored.settings.contains_key("selectedProvider"));
 +}
 diff --git a/rust-modules/src/app/ott_media_tracks.rs b/rust-modules/src/app/ott_media_tracks.rs
 index 7cb47407..44a7ca64 100644
@@ -95832,7 +96076,7 @@ index bbd1c521..f7c65b0b 100644
      /// pointer move, click and drag addressed to it BEFORE hit resolution, so none of them is ever
      /// a hit, a hover or a MISS (and so never an `OnMiss::Dismiss`), and a hit map built from
 diff --git a/rust-modules/ui/src/table.rs b/rust-modules/ui/src/table.rs
-index b04416e3..38893d34 100644
+index b04416e3..81fa111b 100644
 --- a/rust-modules/ui/src/table.rs
 +++ b/rust-modules/ui/src/table.rs
 @@ -4,7 +4,8 @@
@@ -95845,26 +96089,29 @@ index b04416e3..38893d34 100644
  //! same widget serves the in-player track menu and the Settings, Privacy and Legal surfaces.
  #![allow(dead_code)]
  use crate::fit;
-@@ -56,6 +57,9 @@ pub enum Origin {
+@@ -56,6 +57,11 @@ pub enum Origin {
  
  pub struct Row {
      pub label: String,
 +    /// Display ordinal only; never a row key, selection index or playback identity.
 +    catalogue_number: Option<String>,
 +    progress_interval: Option<(i64, i64)>,
++    // Derived presentation only; no row identity or additional text storage.
++    secondary_label_start: Option<usize>,
      pub label_origin: Origin,
      pub detail: String, // optional sub-line ("" = none)
      pub detail_origin: Origin,
-@@ -105,6 +109,8 @@ impl Row {
+@@ -105,6 +111,9 @@ impl Row {
      pub fn new(label: impl Into<String>) -> Self {
          Self {
              label: label.into(),
 +            catalogue_number: None,
 +            progress_interval: None,
++            secondary_label_start: None,
              label_origin: Origin::default(),
              detail: String::new(),
              detail_origin: Origin::default(),
-@@ -123,6 +129,37 @@ impl Row {
+@@ -123,6 +132,46 @@ impl Row {
              note_leading: std::cell::Cell::new(NOTE_LEADING),
          }
      }
@@ -95874,6 +96121,15 @@ index b04416e3..38893d34 100644
 +        let value = value.into();
 +        self.catalogue_number = (!value.is_empty() && value.bytes().all(|b| b.is_ascii_digit())).then_some(value);
 +        self
++    }
++
++    /// Optional secondary suffix of a single-line Classic catalogue label.
++    /// Byte boundaries are checked again on read because labels may be replaced.
++    pub fn set_secondary_label_start(&mut self, start: Option<usize>) {
++        self.secondary_label_start = start.filter(|at| *at < self.label.len() && self.label.is_char_boundary(*at));
++    }
++    pub fn secondary_label_start(&self) -> Option<usize> {
++        self.secondary_label_start.filter(|at| *at < self.label.len() && self.label.is_char_boundary(*at))
 +    }
 +
 +    /// An accepted interval, drawn only by an explicitly opted-in Classic
@@ -95902,7 +96158,7 @@ index b04416e3..38893d34 100644
      /// A [`Row::note`]: `sep` with text (a bare `sep` is the hairline).
      pub fn is_note(&self) -> bool {
          self.sep && !self.label.is_empty()
-@@ -503,26 +540,48 @@ fn ticon_slot_w(icon: crate::icons::Icon) -> f32 {
+@@ -503,26 +552,48 @@ fn ticon_slot_w(icon: crate::icons::Icon) -> f32 {
  /// without one. The width the label may not use ([`trailing_reserved`]), where each run stands
  /// ([`trailing_stack`] at `text_right`) and the tests' read-out edge all read these items, so
  /// they cannot disagree.
@@ -95947,14 +96203,14 @@ index b04416e3..38893d34 100644
 +    }
 +    if split < bar.x + bar.w {
 +        let _clip = crate::screen::ClipScope::open_in(p, Rect::new(split, bar.y, bar.x + bar.w - split, bar.h));
-+        p.rrect(bar, theme::space::XS.min(bar.h * 0.5), theme::space::XS.min(bar.h * 0.5), theme::with_a(ink, 0.2));
++        p.rrect(bar, theme::space::XS.min(bar.h * 0.5), theme::space::XS.min(bar.h * 0.5), theme::CLASSIC_PROGRESS_TRACK);
 +    }
 +}
 +
  /// The badges of a row's trailing run, [`BADGE_GAP`] apart from `x` on: each with the span it
  /// draws. The ONE place the run is laid out — its width ([`badge_run_w`]) and where each chip is
  /// painted are both read off it, so they cannot disagree.
-@@ -581,9 +640,10 @@ struct TableMetrics {
+@@ -581,9 +652,10 @@ struct TableMetrics {
      tall: f32,
      art: f32,
      header: f32,
@@ -95966,7 +96222,7 @@ index b04416e3..38893d34 100644
  }
  
  pub struct TableView {
-@@ -611,6 +671,9 @@ pub struct TableView {
+@@ -611,6 +683,9 @@ pub struct TableView {
      /// Presentation only; one measured geometry still owns paint, hit, focus and scroll.
      classic: std::cell::Cell<bool>,
      classic_catalogue: std::cell::Cell<bool>,
@@ -95976,7 +96232,7 @@ index b04416e3..38893d34 100644
      /// see [`TableView::tall_rows`]
      tall: bool,
      /// Semantic ink for section labels. Ambient routes can raise this role for contrast without
-@@ -635,6 +698,9 @@ pub struct TableView {
+@@ -635,6 +710,9 @@ pub struct TableView {
      rev: u32,
      metrics: std::cell::Cell<TableMetrics>,
      measure_rev: std::cell::Cell<u32>,
@@ -95986,7 +96242,7 @@ index b04416e3..38893d34 100644
      /// Observational work counter for host regression tests; not shipped or canonical state.
      #[cfg(any(test, feature = "test-support"))]
      row_visits: std::cell::Cell<usize>,
-@@ -648,15 +714,18 @@ const WALK_TITLE: i32 = -3;
+@@ -648,15 +726,18 @@ const WALK_TITLE: i32 = -3;
  /// The glyph that opens a page title: the drill-in's "back" mark, the mirror of a row's chevron.
  const TITLE_BACK_GLYPH: &str = "\u{2039}";
  impl TableView {
@@ -96008,7 +96264,7 @@ index b04416e3..38893d34 100644
          for component in header_ink { c.f32(*component); }
          for spring in [hl_top, hl_bot, scroll] { c.f32(spring.pos).f32(spring.vel); }
      }
-@@ -684,11 +753,43 @@ impl TableView {
+@@ -684,11 +765,43 @@ impl TableView {
      pub fn set_classic_catalogue(&self, enabled: bool) { self.classic_catalogue.set(enabled); }
      pub fn is_classic_catalogue(&self) -> bool { self.classic.get() && self.classic_catalogue.get() }
  
@@ -96053,7 +96309,7 @@ index b04416e3..38893d34 100644
          let mut first = None; let mut last = None; let mut before = None; let mut after = None;
          let mut nearest: Option<(f32, i32)> = None;
          self.walk(|top, index, _, row| {
-@@ -706,21 +807,54 @@ impl TableView {
+@@ -706,21 +819,54 @@ impl TableView {
  
      pub fn is_classic(&self) -> bool { self.classic.get() }
  
@@ -96112,7 +96368,7 @@ index b04416e3..38893d34 100644
          if self.metrics.replace(metrics) != metrics {
              self.measure_rev.set(next_rev());
          }
-@@ -733,6 +867,9 @@ impl TableView {
+@@ -733,6 +879,9 @@ impl TableView {
              compact: false,
              classic: std::cell::Cell::new(false),
              classic_catalogue: std::cell::Cell::new(false),
@@ -96122,7 +96378,7 @@ index b04416e3..38893d34 100644
              tall: false,
              header_ink: theme::TEXT_TERTIARY,
              min_panel_w: MENU_MIN_W,
-@@ -743,6 +880,7 @@ impl TableView {
+@@ -743,6 +892,7 @@ impl TableView {
              rev: 0,
              metrics: std::cell::Cell::new(TableMetrics::DEFAULT),
              measure_rev: std::cell::Cell::new(0),
@@ -96130,7 +96386,7 @@ index b04416e3..38893d34 100644
              #[cfg(any(test, feature = "test-support"))]
              row_visits: std::cell::Cell::new(0),
          }
-@@ -766,6 +904,9 @@ impl TableView {
+@@ -766,6 +916,9 @@ impl TableView {
          t.compact = self.compact;
          t.classic.set(self.classic.get());
          t.classic_catalogue.set(self.classic_catalogue.get());
@@ -96140,7 +96396,7 @@ index b04416e3..38893d34 100644
          t.tall = self.tall;
          t.header_ink = self.header_ink;
          t.min_panel_w = self.min_panel_w;
-@@ -788,8 +929,9 @@ impl TableView {
+@@ -788,8 +941,9 @@ impl TableView {
      /// Answers `None` for a header, a hairline, or a row scrolled out of the frame — all three are
      /// cases where there is nothing on screen to anchor to.
      pub fn row_rect(&self, frame: Rect, i: i32) -> Option<Rect> {
@@ -96151,7 +96407,7 @@ index b04416e3..38893d34 100644
      }
  
      /// Row `i`'s frame under the live scroll WHETHER OR NOT it is inside the viewport — the one
-@@ -808,8 +950,8 @@ impl TableView {
+@@ -808,8 +962,8 @@ impl TableView {
      }
  
      fn frame_at(&self, frame: Rect, content_y: f32, row: &Row) -> Rect {
@@ -96162,7 +96418,7 @@ index b04416e3..38893d34 100644
      }
  
      /// Drain actual row visits so host tests can bound work through draw and focus,
-@@ -832,8 +974,9 @@ impl TableView {
+@@ -832,8 +986,9 @@ impl TableView {
      /// a catalog-sized hit map. Partially visible rows retain their full geometry;
      /// the caller clips their hit region to the same viewport.
      pub fn for_each_visible_row(&self, frame: Rect, mut visit: impl FnMut(i32, Rect)) {
@@ -96173,7 +96429,7 @@ index b04416e3..38893d34 100644
                  visit(gi, rect);
              }
          });
-@@ -864,7 +1007,9 @@ impl TableView {
+@@ -864,7 +1019,9 @@ impl TableView {
          self.settle_sel(i)
      }
      pub fn hit_row(&self, frame: Rect, mx: f32, my: f32) -> Option<i32> {
@@ -96184,7 +96440,7 @@ index b04416e3..38893d34 100644
          let mut hit = None;
          self.walk(|cy, gi, _, row| {
              let Some(row) = row.filter(|row| !row.sep) else { return; };
-@@ -892,8 +1037,8 @@ impl TableView {
+@@ -892,8 +1049,8 @@ impl TableView {
          self.title = title;
          if moved && self.n_rows() > 0 {
              let top = self.row_top(self.sel);
@@ -96195,7 +96451,7 @@ index b04416e3..38893d34 100644
          }
      }
  
-@@ -950,9 +1095,9 @@ impl TableView {
+@@ -950,9 +1107,9 @@ impl TableView {
          self.sel = if n == 0 { 0 } else { self.settle_sel(sel) };
          if !slide {
              let top = self.row_top(self.sel);
@@ -96207,7 +96463,7 @@ index b04416e3..38893d34 100644
              self.scroll.jump(0.0);
          }
      }
-@@ -1017,7 +1162,7 @@ impl TableView {
+@@ -1017,7 +1174,7 @@ impl TableView {
          if self.n_rows() == 0 {
              return 120.0;
          }
@@ -96216,7 +96472,7 @@ index b04416e3..38893d34 100644
      }
  
      /// Intrinsic panel width: the width at which EVERY header, label, sub-line and trailing value
-@@ -1061,8 +1206,8 @@ impl TableView {
+@@ -1061,8 +1218,8 @@ impl TableView {
                      Some(value) => primary + ROW_VALUE_GAP + value / h,
                      None => primary,
                  };
@@ -96227,7 +96483,7 @@ index b04416e3..38893d34 100644
              }
          }
          width.ceil()
-@@ -1170,7 +1315,7 @@ impl TableView {
+@@ -1170,7 +1327,7 @@ impl TableView {
                      out.push(FitIssue { role: FitRole::Detail, origin: row.detail_origin, text: row.detail.clone(), natural: dw, budget: label_budget });
                  }
                  if let Some(value) = row.readout() {
@@ -96236,7 +96492,7 @@ index b04416e3..38893d34 100644
                      let value_w = self.row_columns_under(row, frame_w, measure, headroom).value_w;
                      if value_w + FIT_EPS < value_nat / headroom {
                          out.push(FitIssue { role: FitRole::Value, origin: row.readout_origin(), text: value.to_string(), natural: value_nat, budget: value_w });
-@@ -1208,7 +1353,7 @@ impl TableView {
+@@ -1208,7 +1365,7 @@ impl TableView {
      /// the panel's left, the same [`trailing_stack`] edge the draw uses.
      #[cfg(any(test, feature = "test-support"))]
      fn value_right_edge(&self, row: &Row, frame_w: f32) -> f32 {
@@ -96245,7 +96501,7 @@ index b04416e3..38893d34 100644
          frame_w - SIDE - CONTENT_PAD - trailing_reserved(&items)
      }
  
-@@ -1242,9 +1387,74 @@ impl TableView {
+@@ -1242,9 +1399,74 @@ impl TableView {
      }
  
      fn label_style(&self) -> (std::os::raw::c_int, bool) {
@@ -96320,7 +96576,7 @@ index b04416e3..38893d34 100644
      /// The same label budget used by rendering and intrinsic-width checks.
      pub fn label_width(&self, row: &Row, frame_w: f32, measure: &dyn plx_machine::machine::Measure) -> f32 {
          self.row_columns(row, frame_w, measure).label_w
-@@ -1265,8 +1475,8 @@ impl TableView {
+@@ -1265,8 +1487,8 @@ impl TableView {
      /// [`Self::fit_report`] passes the device's headroom to model glyphs wider than the measure.
      /// The label is hugged with [`fit::HUG_MARGIN`] before dividing.
      fn row_columns_under(&self, row: &Row, frame_w: f32, measure: &dyn plx_machine::machine::Measure, headroom: f32) -> RowColumns {
@@ -96331,7 +96587,7 @@ index b04416e3..38893d34 100644
          let (label, value) = self.row_runs(row, measure);
          let Some(value) = value else {
              return RowColumns { label_w: span, value_w: 0.0 };
-@@ -1286,7 +1496,7 @@ impl TableView {
+@@ -1286,7 +1508,7 @@ impl TableView {
          let (size, bold) = self.label_style();
          (
              (measure.width_str(&row.label, size, bold) * fit::HUG_MARGIN).ceil(),
@@ -96340,7 +96596,7 @@ index b04416e3..38893d34 100644
          )
      }
  
-@@ -1372,7 +1582,7 @@ impl TableView {
+@@ -1372,7 +1594,7 @@ impl TableView {
          if !self.list_focused {
              return 0.0;
          }
@@ -96349,7 +96605,7 @@ index b04416e3..38893d34 100644
          let (top, bot) = (cy + inset, cy + h - inset);
          if bot <= top {
              return 0.0;
-@@ -1498,17 +1708,25 @@ impl TableView {
+@@ -1498,17 +1720,25 @@ impl TableView {
      }
  
      /// `frame_h` is the SAME rect height passed to [`Self::draw`]/[`Self::hit_row`] — this
@@ -96379,7 +96635,7 @@ index b04416e3..38893d34 100644
          // keep the selection (plus a row of context) inside the viewport
          let content_h = self.content_h();
          let max_scroll = (content_h - visible_h).max(0.0);
-@@ -1578,11 +1796,19 @@ impl TableView {
+@@ -1578,11 +1808,19 @@ impl TableView {
      }
  
      fn draw_in(&self, p: Painter, frame: Rect, page: bool, measure: &dyn plx_machine::machine::Measure) {
@@ -96400,7 +96656,7 @@ index b04416e3..38893d34 100644
              )
              .h(HAlign::Center)
              .draw(p, frame);
-@@ -1598,21 +1824,18 @@ impl TableView {
+@@ -1598,21 +1836,18 @@ impl TableView {
          let clip = if page && !self.classic.get() {
              Rect::new(frame.x, frame.y, frame.w, (crate::consts::SCR_H - frame.y).max(frame.h))
          } else {
@@ -96426,7 +96682,7 @@ index b04416e3..38893d34 100644
  
          // ---- sliding pill (under the rows) — warm off-white; top/bottom edges morph independently ----
          // It follows its GROUP's dim: the focused row of an unreachable server must not be the one
-@@ -1620,20 +1843,21 @@ impl TableView {
+@@ -1620,20 +1855,21 @@ impl TableView {
          let py0 = top0 + self.hl_top.pos - scroll;
          let py1 = top0 + self.hl_bot.pos - scroll;
          let pill = Rect::new(
@@ -96452,7 +96708,7 @@ index b04416e3..38893d34 100644
              );
          }
  
-@@ -1652,8 +1876,8 @@ impl TableView {
+@@ -1652,8 +1888,8 @@ impl TableView {
                      p.alpha(Self::top_edge_alpha(sy, vis_top)).rect(
                          Rect::new(content_x, y, frame.w - 2.0 * (SIDE + CONTENT_PAD), 2.0),
                          0.0,
@@ -96463,7 +96719,7 @@ index b04416e3..38893d34 100644
                          0.0,
                      );
                  }
-@@ -1670,11 +1894,11 @@ impl TableView {
+@@ -1670,11 +1906,11 @@ impl TableView {
                      let band =Rect::new(content_x, sy + HEADER_CAP_INSET, (text_right - content_x).max(0.0), baseline - cap_top);
                      if let Some((title, x0)) = self.title_run(measure) {
                          let glyph = CString::new(TITLE_BACK_GLYPH).unwrap_or_default();
@@ -96477,7 +96733,7 @@ index b04416e3..38893d34 100644
                          }
                      }
                  }
-@@ -1713,7 +1937,7 @@ impl TableView {
+@@ -1713,7 +1949,7 @@ impl TableView {
                          measure.width_str(t, hsz, false)
                      });
                      if let Ok(cs) = CString::new(header_text) {
@@ -96486,7 +96742,7 @@ index b04416e3..38893d34 100644
                              .v(VAlign::CapTop)
                              .draw(p, header_band);
                      }
-@@ -1729,7 +1953,7 @@ impl TableView {
+@@ -1729,7 +1965,7 @@ impl TableView {
                              measure.width_str(t, asz, false)
                          });
                          if let Ok(ac) = CString::new(a) {
@@ -96495,7 +96751,7 @@ index b04416e3..38893d34 100644
                                  .h(HAlign::Right)
                                  .v(VAlign::Baseline)
                                  .draw(p, header_band);
-@@ -1745,7 +1969,8 @@ impl TableView {
+@@ -1745,7 +1981,8 @@ impl TableView {
              }
              // …dissolved under the TOP edge, and (a panel's rows only) faded out at the BOTTOM edge
              // before the scissor can reach its ink
@@ -96505,7 +96761,7 @@ index b04416e3..38893d34 100644
              if edge <= 0.0 {
                  return;
              }
-@@ -1761,8 +1986,8 @@ impl TableView {
+@@ -1761,8 +1998,8 @@ impl TableView {
                          2.0,
                      ),
                      0.0,
@@ -96516,7 +96772,7 @@ index b04416e3..38893d34 100644
                      0.0,
                  );
                  return;
-@@ -1800,14 +2025,26 @@ impl TableView {
+@@ -1800,14 +2037,26 @@ impl TableView {
                  c => theme::cross(rest, over, c),
              };
              let base = on_pill(if row.dim { dimc } else { white }, ink);
@@ -96546,7 +96802,7 @@ index b04416e3..38893d34 100644
                  Some(crate::icons::Icon::Check)
              } else {
                  row.licon
-@@ -1817,12 +2054,16 @@ impl TableView {
+@@ -1817,12 +2066,17 @@ impl TableView {
                  let cr = Rect::new(content_x + (CHECK_W - cs) * 0.5, cyc - cs * 0.5, cs, cs);
                  crate::icons::draw(p, li, cr, base);
              }
@@ -96561,12 +96817,13 @@ index b04416e3..38893d34 100644
              let trailing_at = |i: usize| trailing_stack(&trailing_run, text_right).placed().find(|s| s.i == i);
 +            if let Some(at) = trailing_at(3) {
 +                let bar = progress_frame(at, sy, h);
-+                paint_progress(p, bar, row.progress_fraction(self.classic_clock.get()), base);
++                paint_progress(p, bar, row.progress_fraction(self.classic_clock.get()),
++                    on_pill(theme::CLASSIC_PROGRESS, theme::CLASSIC_SECONDARY_ON_SELECTION));
 +            }
              // trailing accessory (SVG), its BOX at the stack's `box_x` so its ink ends on the edge
              if let (Some(ti), Some(at)) = (row.ticon, trailing_at(2)) {
                  let cs = ACCESSORY_ICON_W;
-@@ -1851,7 +2092,7 @@ impl TableView {
+@@ -1851,7 +2105,7 @@ impl TableView {
                      // knocked out of the interior
                      let sty = crate::widgets::BadgeStyle::Outlined {
                          col: base,
@@ -96575,7 +96832,7 @@ index b04416e3..38893d34 100644
                          bg: row_bg,
                      };
                      crate::widgets::badge(p, start + span.x, cyc, b.text(), None, sty, measure);
-@@ -1864,15 +2105,20 @@ impl TableView {
+@@ -1864,15 +2118,20 @@ impl TableView {
              // step is the ink's ALONE — the run itself is bold (see [`VALUE_BOLD`], which all three
              // calls below take so the measure and the paint can never be two different faces).
              if let Some(v) = row.readout() {
@@ -96600,7 +96857,7 @@ index b04416e3..38893d34 100644
                      p.text(
                          vc.as_ptr(),
                          trailing_at(0).map_or(text_right, |s| s.x + s.w),
-@@ -1880,7 +2126,7 @@ impl TableView {
+@@ -1880,7 +2139,7 @@ impl TableView {
                          vsz,
                          ink,
                          2,
@@ -96609,7 +96866,7 @@ index b04416e3..38893d34 100644
                      );
                  }
              }
-@@ -1889,12 +2135,9 @@ impl TableView {
+@@ -1889,12 +2148,9 @@ impl TableView {
              // tall row, with an explicit gap between the title baseline and the detail cap-top
              // (layout ≠ paint — the old fixed offsets left the two lines cramped after centring).
              let two_line = !row.detail.is_empty();
@@ -96625,7 +96882,7 @@ index b04416e3..38893d34 100644
              let (title_y, detail_y) = if two_line {
                  let (t_top, t_base) = crate::typography::text_cap_band(tsz, tbold);
                  let (d_top, d_base) = crate::typography::text_cap_band(theme::size::CAPTION, 0);
-@@ -1909,13 +2152,8 @@ impl TableView {
+@@ -1909,14 +2165,27 @@ impl TableView {
              } else {
                  (0.0, 0.0) // unused single-line; Label centres the label
              };
@@ -96639,9 +96896,61 @@ index b04416e3..38893d34 100644
 +            // PLACE 2 — single-line labels share the measured style of two-line titles.
 +            let (lsz, lbold) = (tsz, tbold);
              let text_w = self.label_width(row, frame.w, measure);
++            let secondary = on_pill(dimc, theme::CLASSIC_SECONDARY_ON_SELECTION);
++            let split = (self.is_classic_catalogue() && !two_line
++                && !plx_gfx::text::needs_bidi_context(&row.label))
++                .then(|| row.secondary_label_start()).flatten();
++            // Preserve the original whole-run path for any bidi context.
++            // The suffix changes tone only: same face, advances, baseline and marquee.
++            let paint_label = |text: &str, x: f32, y: f32| {
++                if let Some(at) = split.filter(|at| *at < text.len() && text.is_char_boundary(*at)) {
++                    let (primary, tail) = text.split_at(at);
++                    if let (Ok(primary_c), Ok(tail_c)) = (CString::new(primary), CString::new(tail)) {
++                        p.text(primary_c.as_ptr(), x, y, lsz, base, 0, lbold);
++                        p.text(tail_c.as_ptr(), x + measure.width_str(primary, lsz, lbold != 0), y,
++                            lsz, secondary, 0, lbold);
++                    }
++                } else if let Ok(text) = CString::new(text) {
++                    p.text(text.as_ptr(), x, y, lsz, base, 0, lbold);
++                }
++            };
              // The FOCUSED row's label never elides: one that overflows its column scrolls through
              // it instead ([`crate::marquee::ROW`] — a rest, a glide, a loop), so a long server name
-@@ -1970,7 +2208,7 @@ impl TableView {
+             // such as a subtitle release can be read in full. Every other row elides as before.
+@@ -1933,15 +2202,15 @@ impl TableView {
+                     let (cap_top, baseline) = crate::typography::text_cap_band(msz, mbold);
+                     cyc - (cap_top + baseline) * 0.5 // `Label`'s own Middle placement
+                 };
+-                if let Ok(cs) = CString::new(row.label.as_str()) {
++                {
+                     // scissored to the label's column on the row's band; nests inside the table's
+                     // own frame clip and restores it on drop
+                     let _clip = crate::screen::ClipScope::open_in(p, Rect::new(label_x, sy, text_w, h));
+                     // the shared placement rule: an Arabic or Hebrew label glides mirrored
+                     let rtl = plx_gfx::text::is_rtl_paragraph(&row.label);
+                     let (run, follower) = crate::marquee::placements(full_w, text_w, off, rtl);
+-                    p.text(cs.as_ptr(), label_x + run, y, msz, base, 0, mbold);
+-                    p.text(cs.as_ptr(), label_x + follower, y, msz, base, 0, mbold);
++                    paint_label(&row.label, label_x + run, y);
++                    paint_label(&row.label, label_x + follower, y);
+                 }
+             } else {
+                 if focused {
+@@ -1952,9 +2221,12 @@ impl TableView {
+                 let lbl = plx_gfx::text::elide_by(&row.label, text_w, false, |t| {
+                     measure.width_str(t, lsz, lbold != 0)
+                 });
+-                if let Ok(cs) = CString::new(lbl) {
++                if let Ok(cs) = CString::new(lbl.as_str()) {
+                     if two_line {
+                         p.text(cs.as_ptr(), label_x, title_y, tsz, base, 0, tbold);
++                    } else if split.is_some() {
++                        let (cap_top, baseline) = crate::typography::text_cap_band(lsz, lbold);
++                        paint_label(&lbl, label_x, cyc - (cap_top + baseline) * 0.5);
+                     } else {
+                         let mut lab = Label::new(cs.as_ptr(), lsz, base);
+                         if lbold == 1 {
+@@ -1970,7 +2242,7 @@ impl TableView {
              // while the badges sat on the title's line: right-aligned and row-centred, a chip now
              // occupies the sub-line's band too, and an unbounded sub-line would run under it.
              if !row.detail.is_empty() {
@@ -96650,7 +96959,7 @@ index b04416e3..38893d34 100644
                  let detail = plx_gfx::text::elide_by(&row.detail, text_w, false, |t| {
                      measure.width_str(t, theme::size::CAPTION, false)
                  });
-@@ -3111,6 +3349,37 @@ mod classic_tests {
+@@ -3111,6 +3383,37 @@ mod classic_tests {
      use super::*;
      use plx_machine::machine::{FontScale, Measure, TypographyMeasure};
      #[test]
@@ -96688,7 +96997,7 @@ index b04416e3..38893d34 100644
      fn classic_uses_one_geometry_for_font_fit_scroll_and_pointer_hits() {
          let mut t = TableView::new();
          t.set_classic(true);
-@@ -3158,7 +3427,7 @@ mod classic_navigation_tests {
+@@ -3158,7 +3461,7 @@ mod classic_navigation_tests {
          table.set_classic(true);
          table.set_classic_catalogue(true);
          table.fit_layout(&crate::fixture::FixtureMeasure);
@@ -96697,7 +97006,7 @@ index b04416e3..38893d34 100644
          assert_eq!(table.catalogue_next(0, -1, None), Some(79));
          assert_eq!(table.catalogue_next(79, 1, None), Some(0));
          assert_eq!(table.catalogue_next(0, -1, page), Some(0));
-@@ -3180,3 +3449,473 @@ mod classic_navigation_tests {
+@@ -3180,3 +3483,563 @@ mod classic_navigation_tests {
          assert_eq!(table.catalogue_next(2, 1, None), Some(0));
      }
  }
@@ -97142,7 +97451,7 @@ index b04416e3..38893d34 100644
 +                    Painter::recording().alpha(0.5), frame, &measure));
 +                let bars: Vec<_> = painted.iter().filter(|(tag, r, _)| *tag == 2 && *r == expected).collect();
 +                assert_eq!(bars.len(), count, "selected={selected}, now={now:?}");
-+                assert!((bars.last().unwrap().2 - 0.1).abs() < 0.001, "track inherits caller alpha");
++                assert!((bars.last().unwrap().2 - 0.5).abs() < 0.001, "track inherits caller alpha");
 +                if count == 2 { assert!((bars[0].2 - 0.5).abs() < 0.001, "fill inherits caller alpha"); }
 +                let all_bars = painted.iter().filter(|(tag, r, _)| *tag == 2 && r.w == expected.w && r.h == expected.h).count();
 +                assert!(all_bars <= 2 * 26, "only visible rows may paint progress");
@@ -97169,6 +97478,96 @@ index b04416e3..38893d34 100644
 +            assert_eq!(table.measured_width(&measure), measured);
 +            assert_eq!(table.row_frame(frame, 0).unwrap(), band);
 +        }
++    }
++}
++
++#[cfg(test)]
++mod classic_secondary_tests {
++    use super::*;
++    use plx_machine::machine::{FontScale, Measure, TypographyMeasure};
++
++    struct RestoreTypography(FontScale);
++    impl Drop for RestoreTypography {
++        fn drop(&mut self) { plx_gfx::text::set_ui_typography(self.0); }
++    }
++
++    #[test]
++    fn secondary_boundary_is_optional_utf8_safe_and_does_not_change_label_or_layout() {
++        let mut row = Row::new("ČT  Zprávy");
++        let h = row.height_in(92.0, 32.0);
++        row.set_secondary_label_start(Some(1));
++        assert_eq!(row.secondary_label_start(), None);
++        row.set_secondary_label_start(Some("ČT  ".len()));
++        assert_eq!(row.secondary_label_start(), Some(5));
++        assert_eq!(row.label, "ČT  Zprávy");
++        assert_eq!(row.height_in(92.0, 32.0), h);
++        row.set_secondary_label_start(Some(row.label.len()));
++        assert_eq!(row.secondary_label_start(), None);
++    }
++
++    #[test]
++    fn classic_secondary_paints_two_tones_without_changing_columns_or_hit_target() {
++        let _serial = plx_base::testlock::serial();
++        let _restore = RestoreTypography(crate::typography::current());
++        let mut measure = TypographyMeasure::new(crate::fixture::FixtureMeasure);
++        crate::typography::apply(100, &mut measure).unwrap();
++        let frame = Rect::new(780.0, 150.0, 1080.0, 810.0);
++        let mut table = TableView::new();
++        table.set_classic(true);
++        table.set_classic_catalogue(true);
++        table.set_classic_page_size(Some(25), frame.h);
++        table.set_sections(vec![Section::new("").row(Row::new("News  Programme").catalogue_number("3"))], 0, false);
++        table.fit_layout(&measure);
++        let before = table.row_columns(&table.sections[0].rows[0], frame.w, &measure).label_w;
++        let band = table.row_frame(frame, 0).unwrap();
++        table.row_mut(0).unwrap().set_secondary_label_start(Some(6));
++        for selected in [false, true] {
++            table.list_focused = selected;
++            let runs = crate::draw_census::capture_runs(|| table.draw(Painter::recording(), frame, &measure));
++            let name = runs.iter().find(|r| r.text == "News  ").unwrap();
++            let programme = runs.iter().find(|r| r.text == "Programme").unwrap();
++            assert_eq!(name.ink, if selected { theme::CLASSIC_SELECTION_INK } else { theme::CLASSIC_TEXT });
++            assert_eq!(programme.ink, if selected { theme::CLASSIC_SECONDARY_ON_SELECTION } else { theme::CLASSIC_SECONDARY });
++            assert_eq!((name.size, name.bold, name.at.y), (programme.size, programme.bold, programme.at.y));
++            assert!((programme.at.x - name.at.x - measure.width_str("News  ", name.size, name.bold)).abs() < 0.01);
++        }
++        assert_eq!(table.row_columns(&table.sections[0].rows[0], frame.w, &measure).label_w, before);
++        assert_eq!(table.row_frame(frame, 0).unwrap(), band);
++        assert_eq!(table.hit_row(frame, band.x + 1.0, band.y + band.h * 0.5), Some(0));
++        table.set_classic_catalogue(false);
++        let runs = crate::draw_census::capture_runs(|| table.draw(Painter::recording(), frame, &measure));
++        assert!(runs.iter().any(|r| r.text == "News  Programme"), "ordinary forms retain their whole label run");
++    }
++
++    #[test]
++    fn mixed_direction_and_bidi_controls_keep_the_original_whole_run() {
++        let _serial = plx_base::testlock::serial();
++        let _restore = RestoreTypography(crate::typography::current());
++        let mut measure = TypographyMeasure::new(crate::fixture::FixtureMeasure);
++        crate::typography::apply(100, &mut measure).unwrap();
++        let frame = Rect::new(0.0, 0.0, 1080.0, 810.0);
++        for title in ["News  חדשות 12", "News  الأخبار 12", "News  \u{202a}ABC\u{202c}",
++            "News  \u{2068}ABC\u{2069}", "News  \u{200e}ABC"] {
++            assert!(!plx_gfx::text::is_rtl_paragraph(title), "the old first-strong guard missed this");
++            assert!(plx_gfx::text::needs_bidi_context(title));
++            let mut table = TableView::new();
++            table.set_classic(true);
++            table.set_classic_catalogue(true);
++            table.set_classic_page_size(Some(25), frame.h);
++            table.set_sections(vec![Section::new("").row(Row::new(title))], 0, false);
++            table.fit_layout(&measure);
++            let before = crate::draw_census::capture_runs(|| table.draw(Painter::recording(), frame, &measure));
++            let mut original = plx_machine::machine::Canon::new();
++            table.write_motion(&mut original);
++            table.row_mut(0).unwrap().set_secondary_label_start(Some(6));
++            let after = crate::draw_census::capture_runs(|| table.draw(Painter::recording(), frame, &measure));
++            let mut styled = plx_machine::machine::Canon::new();
++            table.write_motion(&mut styled);
++            assert_eq!(after, before, "do not split independently shaped bidi paragraphs");
++            assert_eq!(original.finish(), styled.finish(), "derived colour metadata is not a motion/state input");
++            assert!(after.iter().any(|run| run.text == title));
++        }
++        assert!(!plx_gfx::text::needs_bidi_context("News  Programme 12"));
 +    }
 +}
 diff --git a/rust-modules/ui/src/table_screen.rs b/rust-modules/ui/src/table_screen.rs
@@ -97370,16 +97769,18 @@ index 27a2828c..f142e835 100644
      fn long_word_wrapping_preserves_utf8_and_respects_line_limits() {
          struct Measure;
 diff --git a/rust-modules/ui/src/theme.rs b/rust-modules/ui/src/theme.rs
-index c826908e..d68bfcfc 100644
+index c826908e..eb5c02a0 100644
 --- a/rust-modules/ui/src/theme.rs
 +++ b/rust-modules/ui/src/theme.rs
-@@ -53,6 +53,18 @@ const NEUTRAL_950: [f32; 4] = rgb8(0x08, 0x08, 0x0a);
+@@ -53,6 +53,20 @@ const NEUTRAL_950: [f32; 4] = rgb8(0x08, 0x08, 0x0a);
  const WHITE: [f32; 4] = rgb8(0xff, 0xff, 0xff);
  const BLACK: [f32; 4] = rgb8(0x00, 0x00, 0x00);
  
 +// Studio — Classic list surfaces shared with the web/desktop player.
 +const STUDIO_0: [f32; 4] = rgb8(0xf0, 0xf3, 0xf1);
 +const STUDIO_50: [f32; 4] = rgb8(0xe7, 0xf1, 0xeb);
++const STUDIO_MINT: [f32; 4] = rgb8(0x8b, 0xdd, 0xb8);
++const STUDIO_650: [f32; 4] = rgb8(0x4a, 0x62, 0x55);
 +const STUDIO_350: [f32; 4] = rgb8(0xa3, 0xaf, 0xa9);
 +const STUDIO_800: [f32; 4] = rgb8(0x2b, 0x34, 0x30);
 +const STUDIO_850: [f32; 4] = rgb8(0x1a, 0x20, 0x25);
@@ -97392,7 +97793,7 @@ index c826908e..d68bfcfc 100644
  // Caption — the achromatic ladder under `WHITE`, and it has exactly one job: the subtitle tones.
  // Not more Neutral stops, because Neutral is the app's own dark SURFACES and these are light
  // INKS that happen to have no hue. Stops are named by their sRGB level, in percent of `WHITE`.
-@@ -108,6 +120,24 @@ const GREEN_500: [f32; 4] = rgb8(0x2f, 0xae, 0x5b);
+@@ -108,6 +122,30 @@ const GREEN_500: [f32; 4] = rgb8(0x2f, 0xae, 0x5b);
  // primitive here because its one role — the tab track — is a translucent GRADIENT in this renderer;
  // see `TAB_TRACK_TOP`.
  
@@ -97402,6 +97803,12 @@ index c826908e..d68bfcfc 100644
 +pub const CLASSIC_TEXT: [f32; 4] = STUDIO_0;
 +/// Classic secondary metadata and inactive row ink.
 +pub const CLASSIC_SECONDARY: [f32; 4] = STUDIO_350;
++/// Secondary programme text on the Classic light selection.
++pub const CLASSIC_SECONDARY_ON_SELECTION: [f32; 4] = STUDIO_650;
++/// Classic programme progress fill, matching Studio in the web player.
++pub const CLASSIC_PROGRESS: [f32; 4] = STUDIO_MINT;
++/// Unfilled Classic programme progress track.
++pub const CLASSIC_PROGRESS_TRACK: [f32; 4] = STUDIO_800;
 +/// Classic focused row fill.
 +pub const CLASSIC_SELECTION: [f32; 4] = STUDIO_50;
 +/// Classic ink on the light focused row fill.
