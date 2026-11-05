@@ -1054,10 +1054,10 @@ index 58c21931..b998be2d 100644
  and the panel is **OFF by default for every device run, `--fps*` and `profile-tv` included** (the set
 diff --git a/docs/classic-list-settings.md b/docs/classic-list-settings.md
 new file mode 100644
-index 00000000..c3db3469
+index 00000000..eb681f59
 --- /dev/null
 +++ b/docs/classic-list-settings.md
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,159 @@
 +# Classic list and numeric playback settings
 +
 +## Choose Classic and navigate back
@@ -1070,9 +1070,10 @@ index 00000000..c3db3469
 +
 +Physical **Blue** opens Categories where that action is available, including
 +from Providers. It does not replace input handling in an editor, Description
-+or Browse. **Back** first closes those nested views; in the catalogue it
-+returns through the existing category, channel and profile hierarchy. At the
-+settled **Providers** root, Back opens an exit confirmation. Only confirming
++or Browse. **Back** first closes those nested views. In a Classic Channel list
++or Favorites list with a nonempty search, Back clears the filter before leaving
++the list. Otherwise it returns through the existing category, channel and profile
++hierarchy. At the settled **Providers** root, Back opens an exit confirmation. Only confirming
 +exits; **Cancel**, or Back within that confirmation, keeps the application open.
 +Reaching a horizontal focus boundary with Left does not itself mean Back.
 +The explicit contextual-arrow choice described below retains its own actions.
@@ -66411,7 +66412,7 @@ index 162aa79d..2d87f275 100644
      fn exit_fixture() -> Runtime {
          let mut runtime =
 diff --git a/rust-modules/src/app/ott_companion_torrent_tests.rs b/rust-modules/src/app/ott_companion_torrent_tests.rs
-index 4f20c498..18af6dc6 100644
+index 4f20c498..2c0e6ec7 100644
 --- a/rust-modules/src/app/ott_companion_torrent_tests.rs
 +++ b/rust-modules/src/app/ott_companion_torrent_tests.rs
 @@ -66,7 +66,7 @@ fn capture_file_action(runtime: &mut Runtime, adapter: Adapter) -> (Adapter, Ott
@@ -66440,7 +66441,7 @@ index 4f20c498..18af6dc6 100644
      assert!(plx_media::route::native_subtitle_preferences(&app.player.session).is_none());
      assert_eq!(plx_media::route::subtitle_text_appearance(&app.player.session), appearance);
      let source = arm_direct_subtitle_admission(&mut adapter, "https://media.invalid:443/movie.mp4");
-@@ -972,3 +973,724 @@ fn companion_rejected_media_does_not_publish_saved_subtitle_preferences() {
+@@ -972,3 +973,730 @@ fn companion_rejected_media_does_not_publish_saved_subtitle_preferences() {
      assert_eq!(runtime.saved.settings, saved);
      assert!(!runtime.saving);
  }
@@ -66983,12 +66984,18 @@ index 4f20c498..18af6dc6 100644
 +}
 +
 +#[test]
-+fn generic_torrent_file_play_preserves_legacy_action_and_all_file_scope_guards() {
++fn generic_torrent_file_play_preserves_legacy_action() {
 +    let _serial = plx_base::testlock::serial();
 +    let (mut runtime, mut app, key) = generic_file_fixture("torrent");
 +    super::super::handle_action(&mut runtime, &mut app, OttAction::EditSetting(key)).unwrap();
 +    assert!(matches!(&runtime.companion_adapter.as_ref().unwrap().pending[0].request,
 +        Request::Select { file_index: 23, .. }));
++}
++
++// A separate test frame keeps the legacy App/Runtime fixture out of these cases.
++#[test]
++fn generic_torrent_file_play_preserves_all_file_scope_guards() {
++    let _serial = plx_base::testlock::serial();
 +    for case in 0..5 {
 +        let (mut runtime, mut app, mut key) = generic_file_fixture("torrent");
 +        match case {
