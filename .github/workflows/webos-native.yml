@@ -7,10 +7,22 @@ on:
         description: "Only measure the pinned native before/after pair (ordinary CI is separate)"
         type: boolean
         default: false
-      bench_head_tree:
-        description: "Reviewed full prepared Native tree for this exact dispatch commit"
+      bench_base_ref:
+        description: "Required for build_bench: reviewed full outer base commit"
         type: string
-        default: ""
+        required: false
+      bench_base_tree:
+        description: "Required for build_bench: reviewed full prepared Native base tree"
+        type: string
+        required: false
+      bench_head_ref:
+        description: "Required for build_bench: reviewed full outer head commit matching this dispatch"
+        type: string
+        required: false
+      bench_head_tree:
+        description: "Required for build_bench: reviewed full prepared Native tree for this dispatch"
+        type: string
+        required: false
   workflow_call: {}
 
 permissions:
@@ -457,21 +469,27 @@ jobs:
     env:
       JOBS: "2"
       CARGO_BUILD_JOBS: "2"
+      BENCH_BASE_REF: ${{ inputs.bench_base_ref }}
+      BENCH_BASE_TREE: ${{ inputs.bench_base_tree }}
+      BENCH_HEAD_REF: ${{ inputs.bench_head_ref }}
       BENCH_HEAD_TREE: ${{ inputs.bench_head_tree }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Require the reviewed after-tree pin
+      - name: Require the reviewed comparison pins
         shell: bash
         run: |
           set -euo pipefail
-          [[ "$BENCH_HEAD_TREE" =~ ^[0-9a-f]{40}$ ]]
-          test "$GITHUB_SHA" != 39dd8b4581a3375558fd6e15827c5cb17bf4c4f8
+          for pin in "$BENCH_BASE_REF" "$BENCH_BASE_TREE" "$BENCH_HEAD_REF" "$BENCH_HEAD_TREE"; do
+            [[ "$pin" =~ ^[0-9a-f]{40}$ ]]
+          done
+          test "$BENCH_HEAD_REF" = "$GITHUB_SHA"
+          test "$BENCH_BASE_REF" != "$BENCH_HEAD_REF"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: "39dd8b4581a3375558fd6e15827c5cb17bf4c4f8"
+          ref: ${{ inputs.bench_base_ref }}
           path: benchmark-before
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -507,19 +525,22 @@ jobs:
           work = Path(os.environ['RUNNER_TEMP']) / 'native-build-bench-work'
           evidence.mkdir(exist_ok=True)
           work.mkdir(exist_ok=True)
-          base = '39dd8b4581a3375558fd6e15827c5cb17bf4c4f8'
+          base = os.environ['BENCH_BASE_REF']
+          base_tree = os.environ['BENCH_BASE_TREE']
           head = os.environ['GITHUB_SHA']
+          head_ref = os.environ['BENCH_HEAD_REF']
           head_tree = os.environ['BENCH_HEAD_TREE']
-          for value in (head, head_tree):
+          for value in (base, base_tree, head, head_ref, head_tree):
               if not re.fullmatch('[0-9a-f]{40}', value):
-                  raise ValueError('The dispatch commit and reviewed prepared tree must be full object IDs')
+                  raise ValueError('Both comparison commits and prepared trees must be full object IDs')
+          if head_ref != head:
+              raise ValueError('Dispatch commit differs from the reviewed head')
           if head == base:
               raise ValueError('Before and after must be different outer commits')
 
           # Every changed crate plus the shared base leaf and UI hub. No invented benchmark.
-          rows = 'noop,leaf,platform,ui,plex,data,session,media,appkit,screens,app,hub,sizes'
-          phases = [('before', workspace / 'benchmark-before', base,
-                     '5c2d31b2adf3386b84f99dd0d91f9be8a9dbaae0'),
+          rows = 'noop,leaf,machine,platform,gfx,net,ui,plex,telemetry,data,session,media,appkit,screens,app,hub,sizes'
+          phases = [('before', workspace / 'benchmark-before', base, base_tree),
                     ('after', workspace, head, head_tree)]
 
           def git(root, *args, **kwargs):
@@ -529,18 +550,21 @@ jobs:
               with path.open('rb') as stream:
                   return hashlib.file_digest(stream, 'sha256').hexdigest()
 
-          # Native22 already removed three build scripts. Correct only its stale test
-          # inventory, identically to AFTER, and keep the original producer receipt.
-          fixture_path = 'tests/test_harness.py'
-          fixture_before_sha256 = '86c9a25120ed07a0295246e2aac3ccbaf8f9d326373cf0b872821d58b9a2552f'
-          fixture_after_sha256 = '67ae17211c41b6cdb8a57ae5f2e32f7f59115d15983656c400eeeb3bc2589067'
-          baseline_measured_tree = 'ec4696bc1a0bc8ac750fcd03a07b686d383410f5'
-          fixture_patch = workspace / 'native/webos/benchmarks/fpflags-fixture.patch'
-          fixture_patch_sha256 = '5fcdf6f5a1327f6776a4ad83c8e4ae7b190a3e884ce31bdc2cf8eb11e8b5741d'
-          if (fixture_patch.resolve() != fixture_patch.absolute()
-                  or not fixture_patch.is_file()
-                  or digest(fixture_patch) != fixture_patch_sha256):
-              raise ValueError('Benchmark fixture correction differs from the reviewed patch')
+          def load_builder(outer):
+              path = outer / 'native/webos/build.py'
+              spec = importlib.util.spec_from_file_location('native_bench_'+outer.name, path)
+              builder = importlib.util.module_from_spec(spec)
+              # Load the pinned producer source, not cached Python bytecode.
+              exec(compile(path.read_bytes(), str(path), 'exec'), builder.__dict__)
+              return builder
+
+          if git(workspace, 'rev-parse', 'HEAD') != head:
+              raise ValueError('Head checkout differs from the dispatch commit')
+          environment_builder = load_builder(workspace)
+          if not all(callable(getattr(environment_builder, name, None))
+                     for name in ('cargo_environment', 'check_cargo_configs')):
+              raise ValueError('Head producer lacks the required Cargo environment helpers')
+          environment_builder_sha256 = digest(workspace / 'native/webos/build.py')
 
           def checked_document(path, expected, count):
               doc = json.loads(path.read_text())
@@ -560,8 +584,10 @@ jobs:
                       raise ValueError('Missing or invalid sizes measurement')
               # Prove the edited crate rebuilt; downstream dependency reuse is allowed.
               rebuild_flags = {
-                  'leaf': 'base_rebuilt', 'platform': 'platform_rebuilt',
-                  'ui': 'ui_rebuilt', 'plex': 'plex_rebuilt', 'data': 'data_rebuilt',
+                  'leaf': 'base_rebuilt', 'machine': 'machine_rebuilt',
+                  'platform': 'platform_rebuilt', 'gfx': 'gfx_rebuilt', 'net': 'net_rebuilt',
+                  'ui': 'ui_rebuilt', 'plex': 'plex_rebuilt', 'telemetry': 'telemetry_rebuilt',
+                  'data': 'data_rebuilt',
                   'session': 'session_rebuilt', 'media': 'media_rebuilt',
                   'appkit': 'appkit_rebuilt', 'screens': 'screens_rebuilt',
                   'app': 'app_rebuilt', 'hub': 'ui_rebuilt',
@@ -588,9 +614,7 @@ jobs:
               if git(outer, 'rev-parse', 'HEAD') != outer_sha:
                   raise ValueError('Outer checkout differs from requested commit')
               mod_path = outer / 'native/webos/build.py'
-              spec = importlib.util.spec_from_file_location('native_bench_'+label, mod_path)
-              builder = importlib.util.module_from_spec(spec)
-              spec.loader.exec_module(builder)
+              builder = load_builder(outer)
               manifest = builder.manifest()
               if sdk_contract is not None and manifest['sdk'] != sdk_contract:
                   raise ValueError('SDK changes need a separately reviewed comparison')
@@ -606,6 +630,7 @@ jobs:
               prepared = json.loads(prepared_path.read_text())
               if prepared['tree'] != expected_tree:
                   raise ValueError('Prepared Native tree differs from reviewed closure')
+              environment_builder.check_cargo_configs(source, expected_tree)
               builder.bootstrap(args, manifest)
               subprocess.run([sys.executable, 'ci/deps.py', 'stage', 'nanosvg', '--into', 'vendor/nanosvg'],
                              cwd=source, check=True)
@@ -622,33 +647,17 @@ jobs:
               if subprocess.run(['git','-C',str(source),'symbolic-ref','-q','HEAD'],
                                 stdout=subprocess.DEVNULL).returncode != 1:
                   raise ValueError('Preparation must have detached HEAD')
-              # build-bench needs a clean snapshot. BEFORE has one explicit test-only
-              # overlay; its original prepared tree and receipt remain the restore target.
+              # Measure the exact prepared tree, without baseline fixes or fixture overlays.
+              # A temporary commit makes that tree clean; the producer receipt is unchanged.
               identity = dict(os.environ, GIT_AUTHOR_NAME='Native build benchmark',
                               GIT_AUTHOR_EMAIL='benchmark@example.invalid',
                               GIT_COMMITTER_NAME='Native build benchmark',
                               GIT_COMMITTER_EMAIL='benchmark@example.invalid')
               prepared_sha256 = digest(prepared_path)
               binding = None
-              fixture_changed = False
               snapshot_installed = False
               measured_tree = expected_tree
               try:
-                  original_fixture_sha256 = digest(source / fixture_path)
-                  if label == 'before':
-                      if original_fixture_sha256 != fixture_before_sha256:
-                          raise ValueError('Original baseline fixture differs from the reviewed input')
-                      # Mark before applying so even a failed apply restores this one path.
-                      fixture_changed = True
-                      git(source, 'apply', '--index', str(fixture_patch))
-                      measured_tree = git(source, 'write-tree')
-                      if measured_tree != baseline_measured_tree:
-                          raise ValueError('Corrected baseline differs from the reviewed tree')
-                      if git(source, 'diff-tree', '--no-commit-id', '--name-only', '-r',
-                             expected_tree, measured_tree) != fixture_path:
-                          raise ValueError('Baseline correction changed more than the fixture')
-                  if digest(source / fixture_path) != fixture_after_sha256:
-                      raise ValueError('Before and after must carry the same corrected fixture')
                   bench_commit = git(source, 'commit-tree', measured_tree, '-p', upstream,
                                      '-m', 'Ephemeral benchmark snapshot for '+outer_sha, env=identity)
                   git(source, 'update-ref', '--no-deref', 'HEAD', bench_commit, upstream)
@@ -657,16 +666,14 @@ jobs:
                                  prepared_sha256=prepared_sha256, provenance_sha256=digest(provenance),
                                  benchmark_sha256=tool_hash, synthetic_benchmark_commit=bench_commit,
                                  original_prepared_tree=expected_tree, measured_tree=measured_tree,
-                                 fixture_correction=dict(path=fixture_path, applied=fixture_changed,
-                                     patch_sha256=fixture_patch_sha256,
-                                     original_sha256=original_fixture_sha256,
-                                     measured_sha256=fixture_after_sha256),
+                                 environment_builder_sha256=environment_builder_sha256,
                                  makefile_sha256=digest(source/'Makefile'), builder_sha256=digest(mod_path),
                                  documents={})
                   (evidence / (label+'-binding-before.json')).write_text(json.dumps(binding, indent=2)+'\n')
-                  # Reuse the producer's config-free Cargo home and real cache lock aliases.
+                  # Both phases use the same reviewed head helper; old producers need not
+                  # implement cargo_environment. Only its config-free Cargo home is inherited.
                   # Do not use build_env's RELEASE=1/ARM profile for a host benchmark.
-                  with builder.cargo_environment(args) as isolated:
+                  with environment_builder.cargo_environment(args) as isolated:
                       # Keep host defaults: neither caller overrides nor the producer's
                       # ARM release settings belong in the measured Cargo configuration.
                       environment = {
@@ -697,16 +704,11 @@ jobs:
                                                               toolchain=doc['toolchain'], host=doc['host'],
                                                               runner=doc['runner'])
               finally:
-                  # Restore the private overlay even if restoring HEAD itself fails.
-                  # No public ref or original producer receipt is rewritten.
-                  try:
-                      if snapshot_installed:
-                          git(source, 'update-ref', '--no-deref', 'HEAD', upstream, bench_commit)
-                  finally:
-                      if fixture_changed:
-                          git(source, 'restore', '--source='+expected_tree, '--staged',
-                              '--worktree', '--', fixture_path)
+                  # CAS restore the private synthetic commit. Never rewrite source bytes.
+                  if snapshot_installed:
+                      git(source, 'update-ref', '--no-deref', 'HEAD', upstream, bench_commit)
                   builder.check_source(args, manifest)
+                  environment_builder.check_cargo_configs(source, expected_tree)
                   (evidence / (label+'-prepared-after.json')).write_bytes(prepared_path.read_bytes())
                   if digest(prepared_path) != prepared_sha256:
                       raise ValueError('Prepared receipt changed during measurement')
@@ -720,8 +722,8 @@ jobs:
                   raise ValueError('Before/after were not measured on the same host/toolchain')
           (evidence / 'complete-pair.json').write_text(json.dumps(dict(
               status='COMPLETE_MEASURED_PAIR', bindings=bindings,
-              omitted=['machine','gfx','net','telemetry','leaf-inc','hub-inc','tests','arm'],
-              scope='Common-fixture host rebuilds and full make check; original and measured trees are separate; no ARM/runtime claim'), indent=2)+'\n')
+              omitted=['leaf-inc','hub-inc','tests','arm'],
+              scope='Pinned outer base to head: exact prepared Native host rebuilds and full make check; no ARM, companion or runtime claim'), indent=2)+'\n')
           PYBENCH
       - name: Preserve raw before/after benchmark evidence
         if: always()

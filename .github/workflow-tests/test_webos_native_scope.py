@@ -542,8 +542,12 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         inputs = workflow["on"]["workflow_dispatch"]["inputs"]
         self.assertEqual(inputs["build_bench"]["type"], "boolean")
         self.assertEqual(inputs["build_bench"]["default"], "false")
-        self.assertEqual(inputs["bench_head_tree"]["type"], "string")
-        self.assertEqual(inputs["bench_head_tree"]["default"], "")
+        for name in ("bench_base_ref", "bench_base_tree", "bench_head_ref", "bench_head_tree"):
+            with self.subTest(input=name):
+                self.assertEqual(inputs[name]["type"], "string")
+                # Ordinary dispatch remains usable without benchmark-only pins.
+                self.assertEqual(inputs[name]["required"], "false")
+                self.assertNotIn("default", inputs[name])
         self.assertEqual(workflow["permissions"], {"contents": "read"})
         predicate = "github.event_name == 'workflow_dispatch' && inputs.build_bench"
         self.assertEqual(workflow["jobs"]["native-build-bench"]["if"], "${{ " + predicate + " }}")
@@ -574,29 +578,91 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         checkouts = [step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@")]
         self.assertEqual(len(checkouts), 2)
         self.assertNotIn("ref", checkouts[0]["with"])
-        self.assertEqual(checkouts[1]["with"]["ref"], "39dd8b4581a3375558fd6e15827c5cb17bf4c4f8")
+        self.assertEqual(checkouts[1]["with"]["ref"], "${{ inputs.bench_base_ref }}")
         self.assertEqual(checkouts[1]["with"]["path"], "benchmark-before")
-        self.assertEqual(job["env"]["BENCH_HEAD_TREE"], "${{ inputs.bench_head_tree }}")
+        preflight = next(step for step in job["steps"]
+                         if step.get("name") == "Require the reviewed comparison pins")
+        self.assertLess(job["steps"].index(preflight), job["steps"].index(checkouts[1]))
+        self.assertEqual(preflight["shell"], "bash")
+        self.assertIn("set -euo pipefail", preflight["run"])
+        self.assertIn('for pin in "$BENCH_BASE_REF" "$BENCH_BASE_TREE" "$BENCH_HEAD_REF" "$BENCH_HEAD_TREE";', preflight["run"])
+        self.assertIn('[[ "$pin" =~ ^[0-9a-f]{40}$ ]]', preflight["run"])
+        self.assertIn('test "$BENCH_HEAD_REF" = "$GITHUB_SHA"', preflight["run"])
+        self.assertIn('test "$BENCH_BASE_REF" != "$BENCH_HEAD_REF"', preflight["run"])
+        for field in ("base_ref", "base_tree", "head_ref", "head_tree"):
+            self.assertEqual(job["env"]["BENCH_" + field.upper()], "${{ inputs.bench_" + field + " }}")
         code = self.bench_code()
-        self.assertIn("head = os.environ['GITHUB_SHA']", code)
-        self.assertIn("head_tree = os.environ['BENCH_HEAD_TREE']", code)
-        self.assertIn("'5c2d31b2adf3386b84f99dd0d91f9be8a9dbaae0'", code)
         self.assertIn("if prepared['tree'] != expected_tree:", code)
         self.assertIn("if git(outer, 'rev-parse', 'HEAD') != outer_sha:", code)
         self.assertIn("builder_sha256=digest(mod_path)", code)
 
+    def test_bench_selected_base_and_shared_helpers_are_bound_before_phases(self):
+        import ast
+
+        body = ast.parse(self.bench_code()).body
+        end = next(i for i, node in enumerate(body) if isinstance(node, ast.For)
+                   and isinstance(node.target, ast.Tuple) and node.target.elts[0].id == "label")
+        # Retain actual preflight/phase construction; replace only the file-import adapter.
+        prefix = [node for node in body[:end] if not (
+            isinstance(node, ast.FunctionDef) and node.name == "load_builder")]
+        code = compile(ast.Module(body=prefix, type_ignores=[]), "benchmark phase preflight", "exec")
+        for missing in (None, "cargo_environment", "check_cargo_configs"):
+            for malformed in (False, True) if missing else (False,):
+                with self.subTest(missing=missing, malformed=malformed), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory).resolve()
+                    source = root / "native/webos/build.py"
+                    source.parent.mkdir(parents=True)
+                    source.write_text("# synthetic helper identity\n")
+                    helpers = {name: mock.Mock() for name in ("cargo_environment", "check_cargo_configs")}
+                    if missing:
+                        if malformed:
+                            helpers[missing] = "not callable"
+                        else:
+                            del helpers[missing]
+                    owner = types.SimpleNamespace(**helpers)
+                    load = mock.Mock(return_value=owner)
+                    scope = {"load_builder": load}
+                    environment = {"GITHUB_WORKSPACE": str(root), "RUNNER_TEMP": str(root),
+                                   "BENCH_BASE_REF": "a" * 40, "BENCH_BASE_TREE": "b" * 40,
+                                   "BENCH_HEAD_REF": "c" * 40, "BENCH_HEAD_TREE": "d" * 40,
+                                   "GITHUB_SHA": "c" * 40}
+                    with mock.patch.dict(os.environ, environment, clear=True), \
+                            mock.patch("subprocess.run") as run, \
+                            mock.patch("subprocess.check_output", return_value="c" * 40 + "\n") as output:
+                        if missing:
+                            with self.assertRaises(ValueError):
+                                exec(code, scope)  # noqa: S102 - Actual preflight, import adapter mocked.
+                        else:
+                            exec(code, scope)  # noqa: S102
+                            self.assertEqual(scope["phases"], [
+                                ("before", root / "benchmark-before", "a" * 40, "b" * 40),
+                                ("after", root, "c" * 40, "d" * 40)])
+                            self.assertIs(scope["environment_builder"], owner)
+                        load.assert_called_once_with(root)
+                        run.assert_not_called()
+                        output.assert_called_once_with(["git", "-C", str(root), "rev-parse", "HEAD"], text=True)
+
     def test_invalid_bench_pins_refuse_before_any_process(self):
         code = compile(self.bench_code(), "webos-native.yml benchmark", "exec")
-        for head, tree in (("a" * 40, ""), ("a" * 40, "main"), ("bad", "b" * 40),
-                           ("a" * 40, "B" * 40),
-                           ("39dd8b4581a3375558fd6e15827c5cb17bf4c4f8", "b" * 40)):
-            with self.subTest(head=head, tree=tree), tempfile.TemporaryDirectory() as directory:
-                environment = {"GITHUB_WORKSPACE": directory, "RUNNER_TEMP": directory,
-                               "GITHUB_SHA": head, "BENCH_HEAD_TREE": tree}
-                with mock.patch.dict(os.environ, environment), \
+        valid = {"BENCH_BASE_REF": "a" * 40, "BENCH_BASE_TREE": "b" * 40,
+                 "BENCH_HEAD_REF": "c" * 40, "BENCH_HEAD_TREE": "d" * 40,
+                 "GITHUB_SHA": "c" * 40}
+        cases = [(key + ":" + value, {key: value}) for key in valid if key != "GITHUB_SHA"
+                 for value in ("", "main", "B" * 40, "a" * 39, "a" * 41)]
+        cases += [("head-mismatch", {"GITHUB_SHA": "e" * 40}),
+                  ("same-base-and-head", {"BENCH_BASE_REF": "c" * 40})]
+        for name, changed in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                environment = dict(valid, GITHUB_WORKSPACE=directory, RUNNER_TEMP=directory, **changed)
+                with mock.patch.dict(os.environ, environment, clear=True), \
                         mock.patch("subprocess.run") as run, \
                         mock.patch("subprocess.check_output") as output:
-                    with self.assertRaises(ValueError):
+                    reason = "must be full object IDs"
+                    if name == "head-mismatch":
+                        reason = "Dispatch commit differs from the reviewed head"
+                    elif name == "same-base-and-head":
+                        reason = "Before and after must be different outer commits"
+                    with self.assertRaisesRegex(ValueError, reason):
                         # Invalid-input preflight; process APIs are mocked.
                         exec(code, {})  # noqa: S102
                     run.assert_not_called()
@@ -727,11 +793,12 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                 # The ARM producer's settings must not become host benchmark overrides.
                 isolated = {"CARGO_HOME": explicit["CARGO_HOME"], "RELEASE": "1",
                             "CARGO_PROFILE_RELEASE_OPT_LEVEL": "s", "ARM_PROFILE": "release"}
-                builder = types.SimpleNamespace(cargo_environment=mock.Mock(return_value=nullcontext(isolated)))
+                environment_builder = types.SimpleNamespace(cargo_environment=mock.Mock(return_value=nullcontext(isolated)))
                 document = {"git_sha": "a" * 12, "tree_dirty": False, "toolchain": "pinned",
                             "host": "same", "runner": "same"}
                 binding = {"documents": {}}
-                scope = {"builder": builder, "args": object(), "os": os,
+                scope = {"builder": types.SimpleNamespace(), "environment_builder": environment_builder,
+                         "args": object(), "os": os,
                          "subprocess": subprocess, "evidence": Path(directory), "label": label,
                          "rows": "noop,sizes", "source": Path(directory), "bench_commit": "a" * 40,
                          "checked_document": mock.Mock(return_value=document), "binding": binding,
@@ -739,6 +806,7 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                 with mock.patch.dict(os.environ, inherited, clear=True), mock.patch("subprocess.run") as run:
                     exec(code, scope)  # noqa: S102 - Actual workflow AST; process execution is mocked.
                     self.assertEqual(dict(os.environ), original)
+                environment_builder.cargo_environment.assert_called_once_with(scope["args"])
                 self.assertEqual(run.call_count, 2)
                 for call, suffix, count, selected in zip(run.call_args_list,
                                                         ("rows", "check"), (3, 1), ("noop,sizes", "check")):
@@ -759,78 +827,86 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         code = self.bench_code()
         nodes = list(ast.walk(ast.parse(code)))
         final = next(node.finalbody for node in nodes if isinstance(node, ast.Try) and node.finalbody)
-        self.assertIsInstance(final[0], ast.Try)
         self.assertIn("git(source, 'update-ref', '--no-deref', 'HEAD', upstream, bench_commit)",
-                      ast.unparse(final[0].body))
-        self.assertIn("git(source, 'restore', '--source=' + expected_tree, '--staged', '--worktree', '--', fixture_path)",
-                      ast.unparse(final[0].finalbody))
-        self.assertEqual(ast.unparse(final[1]), "builder.check_source(args, manifest)")
+                      ast.unparse(final))
+        self.assertIn("builder.check_source(args, manifest)", ast.unparse(final))
+        self.assertIn("environment_builder.check_cargo_configs(source, expected_tree)", ast.unparse(final))
         self.assertIn("git(source, 'commit-tree', measured_tree, '-p', upstream", code)
         self.assertIn("'update-ref', '--no-deref', 'HEAD', bench_commit, upstream", code)
-        self.assertIn("with builder.cargo_environment(args) as isolated:", code)
+        self.assertIn("with environment_builder.cargo_environment(args) as isolated:", code)
         self.assertIn("synthetic_benchmark_commit=bench_commit", code)
         self.assertIn("original_prepared_tree=expected_tree, measured_tree=measured_tree", code)
-        self.assertIn("'ec4696bc1a0bc8ac750fcd03a07b686d383410f5'", code)
+        self.assertIn("measured_tree = expected_tree", code)
         self.assertNotIn("reset --hard", code)
         self.assertNotIn("git push", code)
 
-    def test_bench_fixture_checkout_preserves_bytes_with_autocrlf(self):
-        name = "native/webos/benchmarks/fpflags-fixture.patch"
-        original = (ROOT / name).read_bytes()
+    def test_bench_never_overlays_or_rewrites_the_selected_source_tree(self):
+        import ast
+
+        code = self.bench_code()
+        self.assertNotIn("fpflags-fixture.patch", code)
+        self.assertNotIn("tests/test_harness.py", code)
+        self.assertNotIn("fixture_correction", code)
+        calls = [node for node in ast.walk(ast.parse(code)) if isinstance(node, ast.Call)
+                 and isinstance(node.func, ast.Name) and node.func.id == "git"]
+        commands = [node.args[1].value for node in calls if len(node.args) > 1
+                    and isinstance(node.args[1], ast.Constant)]
+        self.assertTrue(commands)
+        self.assertFalse(set(commands) & {"apply", "restore", "write-tree", "reset", "checkout"})
+
+    def test_bench_each_phase_uses_its_own_producer_without_new_environment_methods(self):
+        import ast
+
+        phase = next(node for node in ast.parse(self.bench_code()).body if isinstance(node, ast.For)
+                     and isinstance(node.target, ast.Tuple) and node.target.elts[0].id == "label")
+        end = next(i for i, node in enumerate(phase.body) if isinstance(node, ast.Expr)
+                   and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute)
+                   and node.value.func.attr == "bootstrap")
+        loop = ast.For(target=phase.target, iter=phase.iter, body=phase.body[:end + 1], orelse=[])
+        code = compile(ast.fix_missing_locations(ast.Module(body=[loop], type_ignores=[])),
+                       "benchmark phase producers", "exec")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            def git(*args):
-                return subprocess.check_output(["git", "-c", "core.hooksPath=/dev/null", *args],
-                                               cwd=root, stderr=subprocess.PIPE)
-            git("init", "--quiet")
-            (root / ".gitattributes").write_bytes((ROOT / ".gitattributes").read_bytes())
-            fixture = root / name
-            fixture.parent.mkdir(parents=True)
-            fixture.write_bytes(original)
-            git("-c", "core.autocrlf=false", "add", ".gitattributes", name)
-            fixture.unlink()
-            git("-c", "core.autocrlf=true", "checkout-index", "--force", "--", name)
-            self.assertEqual(fixture.read_bytes(), original)
-            self.assertEqual(git("check-attr", "text", "--", name).decode().strip(),
-                             name + ": text: unset")
-
-    def test_bench_fixture_patch_is_exact_and_not_a_symlink(self):
-        import ast
-        import hashlib
-        body = ast.parse(self.bench_code()).body
-        start = next(i for i, node in enumerate(body) if isinstance(node, ast.Assign)
-                     and any(isinstance(t, ast.Name) and t.id == "fixture_path" for t in node.targets))
-        end = next(i for i in range(start, len(body)) if isinstance(body[i], ast.If))
-        code = compile(ast.Module(body=body[start:end + 1], type_ignores=[]),
-                       "benchmark fixture preflight", "exec")
-        patch = (ROOT / "native/webos/benchmarks/fpflags-fixture.patch").read_bytes()
-        self.assertEqual(hashlib.sha256(patch).hexdigest(),
-                         "5fcdf6f5a1327f6776a4ad83c8e4ae7b190a3e884ce31bdc2cf8eb11e8b5741d")
-        for case in ("exact", "tampered", "missing", "symlink"):
-            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory).resolve()
-                path = root / "native/webos/benchmarks/fpflags-fixture.patch"
-                path.parent.mkdir(parents=True)
-                if case == "symlink":
-                    target = root / "outside.patch"
-                    target.write_bytes(patch)
-                    path.symlink_to(target)
-                elif case != "missing":
-                    path.write_bytes(patch if case == "exact" else patch + b"\n")
-                scope = {"workspace": root, "digest": lambda p: hashlib.sha256(p.read_bytes()).hexdigest()}
-                with mock.patch("subprocess.run") as run, mock.patch("subprocess.check_output") as output:
-                    if case == "exact":
-                        # Exact workflow preflight; no process is launched.
-                        exec(code, scope)  # noqa: S102
-                    else:
-                        with self.assertRaises(ValueError):
-                            exec(code, scope)  # noqa: S102
-                    run.assert_not_called()
-                    output.assert_not_called()
+            phases, builders = [], {}
+            for label, ref, tree in (("before", "a" * 40, "b" * 40), ("after", "c" * 40, "d" * 40)):
+                outer, source = root / label, root / (label + "-source")
+                outer.mkdir()
+                source.mkdir()
+                prepared = outer / "prepared.json"
+                prepared.write_text(json.dumps({"tree": tree}))
+                manifest = {"sdk": {"directory": "same-sdk"}}
+                builders[outer] = types.SimpleNamespace(
+                    manifest=mock.Mock(return_value=manifest), prepare=mock.Mock(),
+                    check_source=mock.Mock(return_value=source),
+                    source_receipt=mock.Mock(return_value=prepared), bootstrap=mock.Mock())
+                phases.append((label, outer, ref, tree))
+            load = mock.Mock(side_effect=lambda outer: builders[outer])
+            helper = types.SimpleNamespace(check_cargo_configs=mock.Mock())
+            refs = {outer: ref for _, outer, ref, _ in phases}
+            git = mock.Mock(side_effect=lambda outer, *args: refs[outer])
+            scope = {"phases": phases, "load_builder": load, "git": git, "work": root / "work",
+                     "sdk_contract": None, "environment_builder": helper,
+                     "SimpleNamespace": types.SimpleNamespace, "json": json}
+            with mock.patch("subprocess.run") as run, mock.patch("subprocess.check_output") as output:
+                exec(code, scope)  # noqa: S102 - Only actual phase setup, every producer/process adapter mocked.
+                run.assert_not_called()
+                output.assert_not_called()
+            self.assertEqual(load.call_args_list, [mock.call(phase[1]) for phase in phases])
+            for label, outer, _, tree in phases:
+                producer = builders[outer]
+                self.assertFalse(hasattr(producer, "cargo_environment"))
+                self.assertFalse(hasattr(producer, "check_cargo_configs"))
+                producer.manifest.assert_called_once_with()
+                arguments, manifest = producer.prepare.call_args.args
+                self.assertEqual(arguments.work_dir, root / "work" / label)
+                producer.prepare.assert_called_once_with(arguments, manifest)
+                producer.check_source.assert_called_once_with(arguments, manifest)
+                producer.bootstrap.assert_called_once_with(arguments, manifest)
+                helper.check_cargo_configs.assert_any_call(producer.check_source.return_value, tree)
 
     def test_bench_is_sequential_supported_make_subset_with_raw_evidence(self):
         code = self.bench_code()
-        self.assertIn("rows = 'noop,leaf,platform,ui,plex,data,session,media,appkit,screens,app,hub,sizes'", code)
+        self.assertIn("rows = 'noop,leaf,machine,platform,gfx,net,ui,plex,telemetry,data,session,media,appkit,screens,app,hub,sizes'", code)
         self.assertIn("for label, outer, outer_sha, expected_tree in phases:", code)
         self.assertIn("[('rows', rows, 3), ('check', 'check', 1)]", code)
         self.assertIn("['make', 'build-bench'", code)
@@ -857,7 +933,9 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         # Existing build-bench edit targets and Cargo's owning-crate evidence.
         # UI's hub must rebuild UI; it need not rebuild every downstream crate.
         targets = (("app", "app_rebuilt"), ("leaf", "base_rebuilt"),
-                   ("platform", "platform_rebuilt"), ("ui", "ui_rebuilt"),
+                   ("machine", "machine_rebuilt"), ("platform", "platform_rebuilt"),
+                   ("gfx", "gfx_rebuilt"), ("net", "net_rebuilt"), ("ui", "ui_rebuilt"),
+                   ("telemetry", "telemetry_rebuilt"),
                    ("plex", "plex_rebuilt"), ("data", "data_rebuilt"),
                    ("session", "session_rebuilt"), ("media", "media_rebuilt"),
                    ("appkit", "appkit_rebuilt"), ("screens", "screens_rebuilt"),
@@ -893,13 +971,13 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         start = next(i for i, node in enumerate(phase.body) if isinstance(node, ast.Assign)
                      and any(isinstance(t, ast.Name) and t.id == "prepared_sha256" for t in node.targets))
         end = next(i for i in range(start, len(phase.body)) if isinstance(phase.body[i], ast.Try))
-        # Execute the actual fixture/snapshot transaction with no Git or build process.
+        # Execute the actual snapshot transaction with no Git or build process.
         code = compile(ast.Module(body=phase.body[start:end + 1], type_ignores=[]),
                        "benchmark snapshot transaction", "exec")
         cases = [(label, point) for label in ("before", "after") for point in (
-            "success", "corrected-hash", "commit", "swap", "binding-digest", "binding-write",
-            "benchmark-entry", "benchmark-failure", "document-failure", "head-restore")]
-        cases += [("before", point) for point in ("original-hash", "apply", "measured-tree")]
+            "success", "commit", "swap", "binding-digest", "binding-write", "benchmark-entry",
+            "benchmark-failure", "document-failure", "head-restore", "source-recheck",
+            "config-recheck", "receipt-changed")]
         for label, point in cases:
             with self.subTest(label=label, point=point):
                 self._check_benchmark_transaction_case(code, label, point)
@@ -911,27 +989,14 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
             root = Path(directory)
             prepared_path = root / "prepared.json"
             prepared_path.write_text("{}\n")
-            upstream, snapshot = "a" * 40, "b" * 40
-            expected_tree, corrected_tree = "c" * 40, "d" * 40
-            old_hash, new_hash = "1" * 64, "2" * 64
-            initial_hash = old_hash if label == "before" else new_hash
-            current = {"head": upstream, "index": expected_tree, "fixture": initial_hash}
-            calls = []
+            upstream, snapshot, expected_tree = "a" * 40, "b" * 40, "c" * 40
+            current = {"head": upstream, "index": expected_tree}
+            calls, checks = [], []
             failure = OSError("injected " + point)
-            fixture_path = "tests/test_harness.py"
+            receipt_digests = 0
 
             def git(source, *args, **kwargs):
                 calls.append(args)
-                if args[:2] == ("apply", "--index"):
-                    self.assertEqual(label, "before", "AFTER must not apply the fixture twice")
-                    current.update(index=corrected_tree, fixture=new_hash)
-                    if point == "apply":
-                        raise failure  # Even a partially applied fixture must be restored.
-                    return ""
-                if args == ("write-tree",):
-                    return "e" * 40 if point == "measured-tree" else current["index"]
-                if args[0] == "diff-tree":
-                    return fixture_path
                 if args[0] == "commit-tree":
                     self.assertEqual(args[1], current["index"])
                     if point == "commit":
@@ -944,25 +1009,32 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                         raise failure
                     current["head"] = new
                     return ""
-                if args[0] == "restore":
-                    self.assertEqual(args, ("restore", "--source=" + expected_tree,
-                                           "--staged", "--worktree", "--", fixture_path))
-                    current.update(index=expected_tree, fixture=initial_hash)
-                    return ""
                 self.fail("Unexpected Git command: " + repr(args))
 
             def digest(path):
+                nonlocal receipt_digests
                 if point == "binding-digest" and path.name == "Makefile":
                     raise failure
-                if path == root / "source" / fixture_path:
-                    if point == "original-hash" or (point == "corrected-hash" and current["fixture"] == new_hash):
+                if path == prepared_path:
+                    receipt_digests += 1
+                    if point == "receipt-changed" and receipt_digests > 1:
                         return "0" * 64
-                    return current["fixture"]
                 return "f" * 64
 
             def check_source(*_):
-                self.assertEqual(current, {"head": upstream, "index": expected_tree, "fixture": initial_hash})
+                self.assertEqual(current, {"head": upstream, "index": expected_tree})
                 self.assertEqual(prepared_path.read_bytes(), b"{}\n")
+                checks.append("source")
+                if point == "source-recheck":
+                    raise failure
+
+            def check_cargo_configs(source, tree):
+                self.assertEqual(checks, ["source"])
+                self.assertEqual(source, root / "source")
+                self.assertEqual(tree, expected_tree)
+                checks.append("configs")
+                if point == "config-recheck":
+                    raise failure
 
             original_write = Path.write_text
             def write_text(path, *args, **kwargs):
@@ -976,17 +1048,17 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                 return {"git_sha": snapshot[:12], "tree_dirty": False,
                         "toolchain": "pinned", "host": "same", "runner": "same"}
 
-            builder = types.SimpleNamespace(check_source=mock.Mock(side_effect=check_source),
+            # An old phase producer need not expose the current environment API.
+            builder = types.SimpleNamespace(check_source=mock.Mock(side_effect=check_source))
+            environment_builder = types.SimpleNamespace(
+                check_cargo_configs=mock.Mock(side_effect=check_cargo_configs),
                 cargo_environment=mock.Mock(return_value=nullcontext({"CARGO_HOME": "/unused"})))
             if point == "benchmark-entry":
-                builder.cargo_environment.side_effect = failure
+                environment_builder.cargo_environment.side_effect = failure
             scope = {
                 "git": git, "digest": digest, "builder": builder, "source": root / "source",
-                "upstream": upstream, "label": label, "expected_tree": expected_tree,
-                "baseline_measured_tree": corrected_tree, "identity": {},
-                "fixture_path": fixture_path, "fixture_patch": root / "correction.patch",
-                "fixture_before_sha256": old_hash, "fixture_after_sha256": new_hash,
-                "fixture_patch_sha256": "9" * 64,
+                "environment_builder": environment_builder, "environment_builder_sha256": "9" * 64,
+                "upstream": upstream, "label": label, "expected_tree": expected_tree, "identity": {},
                 "outer_sha": "d" * 40, "prepared": {}, "prepared_path": prepared_path,
                 "provenance": root / "PROVENANCE.json", "tool_hash": "e" * 64,
                 "mod_path": root / "build.py", "evidence": root, "args": object(),
@@ -1002,29 +1074,32 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                     # Real transaction; process adapters are mocked.
                     exec(code, scope)  # noqa: S102
                 else:
-                    expected = ValueError if point in ("original-hash", "corrected-hash", "measured-tree") else OSError
+                    expected = ValueError if point == "receipt-changed" else OSError
                     with self.assertRaises(expected) as caught:
                         exec(code, scope)  # noqa: S102
                     if expected is OSError:
                         self.assertIs(caught.exception, failure)
                 output.assert_not_called()
             self.assertEqual(current["index"], expected_tree)
-            self.assertEqual(current["fixture"], initial_hash)
             if point == "head-restore":
                 self.assertEqual(current["head"], snapshot)
                 builder.check_source.assert_not_called()
+                environment_builder.check_cargo_configs.assert_not_called()
             else:
                 self.assertEqual(current["head"], upstream)
                 builder.check_source.assert_called_once()
-            if label == "after":
-                self.assertFalse(any(call[0] in ("apply", "restore") for call in calls))
+                if point == "source-recheck":
+                    environment_builder.check_cargo_configs.assert_not_called()
+                else:
+                    environment_builder.check_cargo_configs.assert_called_once()
+            self.assertFalse(any(call[0] in ("apply", "restore", "write-tree") for call in calls))
             if point == "success":
                 binding = json.loads((root / (label + "-binding-after.json")).read_text())
                 self.assertEqual(binding["original_prepared_tree"], expected_tree)
-                self.assertEqual(binding["measured_tree"], corrected_tree if label == "before" else expected_tree)
-                self.assertEqual(binding["fixture_correction"]["applied"], label == "before")
-                self.assertEqual(binding["fixture_correction"]["measured_sha256"], new_hash)
-            elif point == "head-restore":
+                self.assertEqual(binding["measured_tree"], expected_tree)
+                self.assertEqual(binding["environment_builder_sha256"], "9" * 64)
+                self.assertNotIn("fixture_correction", binding)
+            elif point in ("head-restore", "source-recheck", "config-recheck", "receipt-changed"):
                 self.assertFalse((root / (label + "-binding-after.json")).exists())
             self.assertFalse((root / "complete-pair.json").exists())
 
