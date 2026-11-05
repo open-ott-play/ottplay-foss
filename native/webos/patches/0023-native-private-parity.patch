@@ -233,7 +233,7 @@ index 11c4591d..f59249d1 100755
          "features:+tel:abc\n+control:none",
          "features:--features lab-diagnostics+tel:abc+unknown:abc",
 diff --git a/ci/list-caps.ini b/ci/list-caps.ini
-index f1287e64..6e36e8ec 100644
+index f1287e64..84fc7e3a 100644
 --- a/ci/list-caps.ini
 +++ b/ci/list-caps.ini
 @@ -1348,7 +1348,7 @@ reason = Acknowledges a bounded batch of queued command IDs; remaining IDs stay
@@ -245,7 +245,7 @@ index f1287e64..6e36e8ec 100644
  class = not-a-list
  reason = Uses a fixed prefix of a hash for an opaque native profile identity; no content list is sliced.
  
-@@ -1676,3 +1676,131 @@ reason = Public discovery catalogs are bounded to 8192 bytes during transfer and
+@@ -1676,3 +1676,135 @@ reason = Public discovery catalogs are bounded to 8192 bytes during transfer and
  [src/app/ott_remote/discovery.rs::CONTROLLER_BODY_LIMIT]
  class = format
  reason = Manual command-server discovery retains its 65536-byte document bound and rejects oversized envelopes atomically.
@@ -377,6 +377,10 @@ index f1287e64..6e36e8ec 100644
 +[platform/src/storage/diagnostics/ui_snapshot.rs::metadata]
 +class = format
 +reason = Fixed slices inspect the PNG signature and IHDR dimensions before correlating the image and typed metadata.
++
++[src/app/ott_classic_source.rs::ensure_source]
++class = not-a-list
++reason = Uses a fixed hexadecimal hash prefix for a temporary Classic source identity; no catalogue or user-visible list is truncated.
 diff --git a/ci/mkipk.py b/ci/mkipk.py
 index 15838a23..056253d3 100644
 --- a/ci/mkipk.py
@@ -25614,10 +25618,10 @@ index 00000000..a59c97da
 +}
 diff --git a/rust-modules/plex/src/plex/client_direct.rs b/rust-modules/plex/src/plex/client_direct.rs
 new file mode 100644
-index 00000000..12a9db09
+index 00000000..56a584de
 --- /dev/null
 +++ b/rust-modules/plex/src/plex/client_direct.rs
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,107 @@
 +//! Revocable evidence for exactly the Direct URL produced at plan creation.
 +//! This borrows the existing registry-owned client; it owns no lease or worker.
 +use super::*;
@@ -25673,8 +25677,15 @@ index 00000000..12a9db09
 +    use super::*;
 +    struct Reset;
 +    impl Drop for Reset { fn drop(&mut self) { crate::plex::reset_servers_for_test(); } }
++    fn register(host: &str) -> ServerId {
++        // A secure synthetic origin keeps the credential eligible in every flavor;
++        // this registry-only seam never starts a transport or session worker.
++        let origin = Origin::parse(&format!("https://{host}:32400")).unwrap();
++        crate::plex::register_pinned_with_client_id("direct-source-test", &origin,
++            "original-token", None, "client-test", Default::default())
++    }
 +    fn registered() -> (&'static Client, Reset) {
-+        let id = crate::plex::register_for_test("direct-source-test", "127.0.0.1", 1, "original-token", "client-test");
++        let id = register("direct-source.invalid");
 +        (crate::plex::client_for(id).unwrap(), Reset)
 +    }
 +    #[test]
@@ -25696,7 +25707,7 @@ index 00000000..12a9db09
 +        let _serial = plx_base::testlock::serial();
 +        let (client, _reset) = registered();
 +        let (_, witness) = client.direct_play_source("/library/parts/77/file.mkv", "playback").unwrap();
-+        let same_id = crate::plex::register_for_test("direct-source-test", "127.0.0.2", 1, "original-token", "client-test");
++        let same_id = register("replacement-source.invalid");
 +        assert_eq!(same_id, client.id());
 +        assert_ne!(crate::plex::client_for(same_id).unwrap().instance_gen(), client.instance_gen());
 +        assert!(!client.uses_token("original-token"));
@@ -28944,6 +28955,45 @@ index f9c66174..2debdffa 100644
 +    assert!(!screen.form.table.is_classic_catalogue());
 +    assert!(screen.form.table.classic_page_rows().is_none());
 +}
+diff --git a/rust-modules/screens/src/ott/tests/modern_caption.rs b/rust-modules/screens/src/ott/tests/modern_caption.rs
+index a907d49a..57b7360c 100644
+--- a/rust-modules/screens/src/ott/tests/modern_caption.rs
++++ b/rust-modules/screens/src/ott/tests/modern_caption.rs
+@@ -193,7 +193,7 @@ fn modern_browse_uses_guide_only_description_and_keeps_its_subject() {
+ }
+ 
+ #[test]
+-fn modern_browse_omits_expired_raw_description_but_classic_keeps_its_contract() {
++fn modern_and_classic_browse_retire_expired_guide_description() {
+     for classic in [false, true] {
+         let (mut screen, guide) = guide_only();
+         let mut view = (*screen.snapshot).clone();
+@@ -201,10 +201,23 @@ fn modern_browse_omits_expired_raw_description_but_classic_keeps_its_contract()
+         screen.install(Arc::new(view));
+         screen.refresh_presentation(if classic { UiMode::Classic } else { UiMode::Modern },
+             &plx_ui::fixture::FixtureMeasure);
++        effects(|fx| screen.open_browse(fx));
++        let description = screen.keys["nav:description"];
++        assert!(screen.form.index_of_key(RowKey(description)).is_some());
++        assert!(screen.has_description());
++        assert_eq!(screen.description(&screen.snapshot.rows[0]), "Current guide-only synopsis");
++        effects(|fx| screen.close_browse(fx));
++
+         screen.guide_clock.update(Some(&guide), 6_000);
+         effects(|fx| screen.open_browse(fx));
+-        assert_eq!(screen.form.index_of_key(RowKey(screen.keys["nav:description"])).is_some(), classic);
+-        assert_eq!(screen.has_description(), classic);
++        assert!(screen.form.index_of_key(RowKey(description)).is_none());
++        assert!(!screen.has_description());
++        let out = effects(|fx| {
++            assert!(!screen.activate_context("nav:description", fx));
++            screen.show_details(fx);
++        });
++        assert!(!screen.reading);
++        assert!(out.iter().all(|effect| !matches!(effect.fx, Fx::App(_))));
+     }
+ }
+ 
 diff --git a/rust-modules/screens/src/ott/tests/modern_viewport.rs b/rust-modules/screens/src/ott/tests/modern_viewport.rs
 index 4f4298c6..e35aae8e 100644
 --- a/rust-modules/screens/src/ott/tests/modern_viewport.rs
@@ -49252,10 +49302,10 @@ index d4e13b20..8a2e0a9d 100644
 +    app.ott = Some(runtime);
 +}
 diff --git a/rust-modules/src/app/ott_player_browse.rs b/rust-modules/src/app/ott_player_browse.rs
-index 1e0c43ca..0a8d4ef1 100644
+index 1e0c43ca..3b08da91 100644
 --- a/rust-modules/src/app/ott_player_browse.rs
 +++ b/rust-modules/src/app/ott_player_browse.rs
-@@ -7,6 +7,59 @@ use plx_ui::containers::modal::{Phase, Style};
+@@ -7,6 +7,64 @@ use plx_ui::containers::modal::{Phase, Style};
  const CHANGED: &str = "Playback changed before continuation";
  const UNRECORDED: &str = "source-bound player catalog navigation is not replayable";
  
@@ -49275,11 +49325,16 @@ index 1e0c43ca..0a8d4ef1 100644
 +}
 +
 +fn native_source(runtime: &Runtime, app: &App) -> Option<NativeSource> {
++    if app.pages.has_pending_surface_navigation() { return None; }
++    native_playback_source(runtime, app)
++}
++
++// Source eligibility only; callers admitting an action also reject pending navigation.
++fn native_playback_source(runtime: &Runtime, app: &App) -> Option<NativeSource> {
 +    if runtime.playing.is_some()
 +        || runtime.interface_mode() != plx_machine::machine::UiMode::Classic
 +        || app.bridge.ui_mode() != plx_machine::machine::UiMode::Classic
 +        || !ready(app) || !runtime.loaded || runtime.persistence_uncertain
-+        || app.pages.has_pending_surface_navigation()
 +        || public_preferences::write_refusal(runtime).is_some()
 +        || !app.bridge.session_ready_current()
 +        || runtime.play_target.is_some() || runtime.resolver_next.is_some() || runtime.pending_play.is_some()
@@ -49315,7 +49370,7 @@ index 1e0c43ca..0a8d4ef1 100644
  fn replaying(app: &App) -> bool {
      matches!(&app.rec, super::super::recorder::Recplay::Replaying(_))
          || app.bridge.is_controlled_replay()
-@@ -27,6 +80,78 @@ pub(super) fn ready(app: &App) -> bool {
+@@ -27,9 +85,98 @@ pub(super) fn ready(app: &App) -> bool {
          && plx_media::route::has_url(&app.player.session)
  }
  
@@ -49328,6 +49383,7 @@ index 1e0c43ca..0a8d4ef1 100644
 +    if runtime.interface_mode() != plx_machine::machine::UiMode::Classic
 +        || app.bridge.ui_mode() != plx_machine::machine::UiMode::Classic
 +        || !ready(app) || !runtime.loaded || runtime.persistence_uncertain
++        || app.pages.has_pending_surface_navigation()
 +        || !runtime.play_work_allowed()
 +        || !matches!(runtime.page, "channels" | "favorites")
 +        || runtime.setup.is_some() || runtime.edit_session.is_some()
@@ -49394,18 +49450,37 @@ index 1e0c43ca..0a8d4ef1 100644
  /// A frame publication for the More menu. At most that one menu may cover
  /// Player; another modal never lends its input authority to this entry point.
  pub(super) fn offer(runtime: &Runtime, app: &App) -> Option<plx_media::route::PlaybackIdentity> {
-@@ -41,7 +166,9 @@ pub(super) fn offer(runtime: &Runtime, app: &App) -> Option<plx_media::route::Pl
++    if app.pages.has_pending_surface_navigation() { return None; }
++    current_offer(runtime, app)
++}
++
++/// Display-only continuity while a queued surface reaches its mount. The More
++/// screen captures its first publication and cannot acquire another source later.
++/// Keep only the already-published, still-eligible identity; action admission
++/// continues through offer()/native_source(), which reject pending navigation.
++pub(super) fn display_offer(runtime: &Runtime, app: &App) -> Option<plx_media::route::PlaybackIdentity> {
++    let source = current_offer(runtime, app)?;
++    if app.pages.has_pending_surface_navigation()
++        && app.bridge.ott_catalog_offer() != Some(&source) { return None; }
++    Some(source)
++}
++
++fn current_offer(runtime: &Runtime, app: &App) -> Option<plx_media::route::PlaybackIdentity> {
+     if !ready(app) || !runtime.loaded || runtime.persistence_uncertain
+         || input_policy::navigation(runtime).is_err() { return None; }
+     let mut surfaces = app.pages.nav.modals.surfaces.iter()
+@@ -41,7 +188,9 @@ pub(super) fn offer(runtime: &Runtime, app: &App) -> Option<plx_media::route::Pl
                  if matches!(arg.kind, plx_screens::player::overlay::OverlayKind::More { .. }))
          { return None; }
      }
 -    let playing = runtime.playing.as_ref()?;
 +    let Some(playing) = runtime.playing.as_ref() else {
-+        return native_source(runtime, app).map(|source| source.identity);
++        return native_playback_source(runtime, app).map(|source| source.identity);
 +    };
      if !playing_matches(playing, app) { return None; }
      let source = playing.identity.as_ref()?;
      plx_media::route::playback_identity_matches(&app.player.session, source)
-@@ -71,8 +198,19 @@ pub(super) fn open(runtime: &mut Runtime, app: &mut App, request: &PlayerCatalog
+@@ -71,8 +220,19 @@ pub(super) fn open(runtime: &mut Runtime, app: &mut App, request: &PlayerCatalog
          || surface.entry.inst.as_ref().is_none_or(|body| body.staged || body.id != request.owner)
      { return Err(CHANGED); }
  
@@ -49425,7 +49500,7 @@ index 1e0c43ca..0a8d4ef1 100644
      Ok(())
  }
  
-@@ -82,6 +220,7 @@ pub(super) fn present(runtime: &mut Runtime, app: &mut App,
+@@ -82,6 +242,7 @@ pub(super) fn present(runtime: &mut Runtime, app: &mut App,
      dismiss: Option<plx_machine::machine::EntryId>, page: &'static str) {
      app.rec.refuse(UNRECORDED);
      runtime.cancel_setup();
@@ -49433,7 +49508,7 @@ index 1e0c43ca..0a8d4ef1 100644
      runtime.reply = None;
      runtime.page = page;
      runtime.accepted_navigation(false);
-@@ -152,6 +291,7 @@ pub(super) fn back(runtime: &mut Runtime, app: &mut App, action: &OttAction)
+@@ -152,6 +313,7 @@ pub(super) fn back(runtime: &mut Runtime, app: &mut App, action: &OttAction)
          runtime.page = if runtime.view_selection().1 { "favorites" } else { "channels" };
      } else if matches!(runtime.page, "channels" | "favorites" | "providers") {
          runtime.cancel_setup();
@@ -54569,7 +54644,7 @@ index 04760077..adafb7e3 100644
  
  const ADDRESS: &str = "nativeRemoteServerAddress";
 diff --git a/rust-modules/src/app/ott_runtime.rs b/rust-modules/src/app/ott_runtime.rs
-index 9681ec31..4e4a5931 100644
+index 9681ec31..5b4ac372 100644
 --- a/rust-modules/src/app/ott_runtime.rs
 +++ b/rust-modules/src/app/ott_runtime.rs
 @@ -1,6 +1,12 @@
@@ -56661,7 +56736,7 @@ index 9681ec31..4e4a5931 100644
      // Consume failed-start deadlines only after viewer and remote commands, so
      // Stop/standby/source changes win even on the frame a retry becomes due.
      if playback_allowed(app) && runtime.play_work_allowed() && runtime.play_target.is_none()
-@@ -3936,6 +4617,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3936,49 +4617,124 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      if !plx_appkit::menu_visibility::projected().is_default() {
          app.rec.refuse("Nondefault menu visibility is not bound in this recording format");
      }
@@ -56670,7 +56745,10 @@ index 9681ec31..4e4a5931 100644
      let programme_dirty=programme_changed || runtime.revision != before;
      publish_programme(&mut runtime, app, programme_dirty);
      if runtime.revision != before {
-@@ -3945,40 +4628,113 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+         runtime.publish(app);
+     }
+-    app.bridge.publish_ott_catalog_offer(player_browse::offer(&runtime, app));
++    app.bridge.publish_ott_catalog_offer(player_browse::display_offer(&runtime, app));
      app.ott = Some(runtime);
  }
  
@@ -57412,7 +57490,7 @@ index daff27b3..008b8f80 100644
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/classic_navigation.rs b/rust-modules/src/app/ott_runtime_tests/classic_navigation.rs
 new file mode 100644
-index 00000000..f3cf07aa
+index 00000000..c8beb133
 --- /dev/null
 +++ b/rust-modules/src/app/ott_runtime_tests/classic_navigation.rs
 @@ -0,0 +1,485 @@
@@ -57633,8 +57711,8 @@ index 00000000..f3cf07aa
 +            let origin = json!({"provider":"m3u","profile":"Home","subprofile":null,"sourceAlias":"Local"});
 +            runtime.saved.settings.insert("nativeKiosk".into(), json!({"version":1,"strict":false,"origin":origin,
 +                "target":{"kind":"item","entry":{"title":"Fixture","origin":origin,"locator":{"kind":"channel","channelId":"fixture-1"}}}}));
-+            assert!(input_policy::navigation(runtime).is_ok());
-+            assert!(input_policy::replace_source(runtime).is_err());
++            assert!(crate::app::ott_runtime::input_policy::navigation(runtime).is_ok());
++            assert!(crate::app::ott_runtime::input_policy::replace_source(runtime).is_err());
 +        } else {
 +            plx_plex::plex::reset_servers_for_test();
 +        }
@@ -58124,10 +58202,10 @@ index 00000000..b07f087a
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/classic_source.rs b/rust-modules/src/app/ott_runtime_tests/classic_source.rs
 new file mode 100644
-index 00000000..78e76d62
+index 00000000..e1e71c73
 --- /dev/null
 +++ b/rust-modules/src/app/ott_runtime_tests/classic_source.rs
-@@ -0,0 +1,385 @@
+@@ -0,0 +1,391 @@
 +//! Source-only regression inputs. Held existing worker slots prevent network IO.
 +use super::*;
 +
@@ -58167,6 +58245,12 @@ index 00000000..78e76d62
 +    let mut app = run::lifecycle_regression_tests::app();
 +    session(&mut app, 10);
 +    let mut runtime = runtime_fixture();
++    // Match the frame's clock boundary without ticking workers before their holds are set.
++    let sample = plx_base::task::time::ClockSample::capture_main(app.adapters.player.mt())
++        .expect("fixture clock");
++    runtime.clock_anchor = Some(sample);
++    runtime.wall_clock_ms = sample.unix_ms();
++    runtime.clock_sample = Some(sample.steady_from(sample));
 +    runtime.loaded = true;
 +    runtime.entropy = Some([1; 16]);
 +    runtime.catalog_done.store(false, Ordering::Release);
@@ -63923,10 +64007,10 @@ index 0a7c52e6..a539d15b 100644
 +#[path = "programme_m3u_media.rs"]
 +mod m3u_media;
 diff --git a/rust-modules/src/app/ott_runtime_tests/programme_catalog_route.rs b/rust-modules/src/app/ott_runtime_tests/programme_catalog_route.rs
-index fe02d39c..da002df1 100644
+index fe02d39c..3a3ebb03 100644
 --- a/rust-modules/src/app/ott_runtime_tests/programme_catalog_route.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/programme_catalog_route.rs
-@@ -574,3 +574,445 @@ mod remote_keys;
+@@ -574,3 +574,481 @@ mod remote_keys;
  
  #[path = "programme_settings_back.rs"]
  mod settings_back;
@@ -64370,6 +64454,42 @@ index fe02d39c..da002df1 100644
 +        assert_eq!(player::state(&app.player.session), player::PlaybackState::Paused);
 +        assert_eq!(app.bridge.metadata_view().current().unwrap().rk, "show-parent");
 +        assert!(app.bridge.metadata_view().current_leaf_now_playing(sid, "42").is_none());
++    }
++}
++
++#[test]
++fn classic_native_pending_display_keeps_only_the_previously_offered_source() {
++    let _serial = plx_base::testlock::serial();
++    let _globals = Globals(player::swap_state_for_test(player::PlaybackState::Idle));
++    let _registry = NativeCatalogRegistry;
++    for change in ["same", "no-prior", "replaced"] {
++        let (mut app, sid) = native_catalog_app();
++        let offered = player_browse::offer(app.ott.as_ref().unwrap(), &app).unwrap();
++        assert_eq!(app.bridge.ott_catalog_offer(), Some(&offered));
++        app.pages.request(MachineId::Nav,
++            plx_machine::machine::NavOp::Present(AppArg::PlayerOverlay(
++                plx_screens::player::overlay::PlayerOverlayArg {
++                    kind: OverlayKind::More { page: None },
++                })));
++        match change {
++            "no-prior" => app.bridge.publish_ott_catalog_offer(None),
++            "replaced" => {
++                route::install_plex_playback_for_test(&mut app.player.session, sid, "42");
++                assert_ne!(route::playback_identity(&app.player.session), Some(offered.clone()));
++            }
++            _ => {}
++        }
++        assert!(app.pages.has_pending_surface_navigation());
++        let runtime = app.ott.as_ref().unwrap();
++        assert!(player_browse::offer(runtime, &app).is_none(), "pending actions stay blocked");
++        let display = player_browse::display_offer(runtime, &app);
++        if change == "same" {
++            assert_eq!(display, Some(offered));
++        } else {
++            assert!(display.is_none(), "{change}");
++        }
++        assert!(runtime.playing.is_none() && runtime.play_target.is_none()
++            && runtime.resolver_next.is_none() && runtime.catalog_next.is_none());
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/programme_local_root_label.rs b/rust-modules/src/app/ott_runtime_tests/programme_local_root_label.rs
