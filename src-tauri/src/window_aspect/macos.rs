@@ -39,7 +39,10 @@ fn refresh(key: usize) -> Result<(bool, bool), String> {
             native.setContentAspectRatio(NSSize::new(16.0, 9.0));
         } else {
             native.setContentAspectRatio(NSSize::new(0.0, 0.0));
-            native.setContentResizeIncrements(state.increments);
+            // Even an equal-value write can invalidate AppKit's native zoom state.
+            if !same_size(native.contentResizeIncrements(), state.increments) {
+                native.setContentResizeIncrements(state.increments);
+            }
             if state.previous.width > 0.0 && state.previous.height > 0.0 {
                 native.setContentAspectRatio(state.previous);
             }
