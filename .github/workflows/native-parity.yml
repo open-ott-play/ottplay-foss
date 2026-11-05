@@ -257,19 +257,34 @@ jobs:
       - name: Check native window smoke runner contracts
         run: python3 tests/test_window_controls_smoke.py
       - name: Build isolated AppKit window controls fixture
-        run: cargo build --locked -p ottplay-tauri --example window_controls_smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          report="$RUNNER_TEMP/ott-macos-window-controls"
+          mkdir "$report"
+          git rev-parse HEAD > "$report/source-commit.txt"
+          sw_vers > "$report/host.txt"
+          uname -m >> "$report/host.txt"
+          git diff --binary HEAD -- > "$report/tracked-before-build.diff"
+          # Earlier cap sync rewrites only these iOS project metadata files.
+          # All native sources remain clean; the complete diff must then stay fixed.
+          git diff --exit-code HEAD -- . \
+            ':(exclude)ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved' \
+            ':(exclude)ios/App/CapApp-SPM/Package.swift'
+          cargo build --locked -p ottplay-tauri --example window_controls_smoke
+          git diff --binary HEAD -- > "$report/tracked-after-build.diff"
+          cmp "$report/tracked-before-build.diff" "$report/tracked-after-build.diff"
       - name: Exercise AppKit aspect constraints through native IPC
         shell: bash
         run: |
           set -euo pipefail
           test "$RUNNER_ENVIRONMENT" = github-hosted
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          git diff --exit-code HEAD --
           report="$RUNNER_TEMP/ott-macos-window-controls"
-          mkdir "$report"
-          git rev-parse HEAD > "$report/source-commit.txt"
-          sw_vers > "$report/host.txt"
-          uname -m >> "$report/host.txt"
+          git diff --binary HEAD -- > "$report/tracked-before-smoke.diff"
+          cmp "$report/tracked-before-build.diff" "$report/tracked-before-smoke.diff"
           shasum -a 256 target/debug/examples/window_controls_smoke > "$report/binary-before.sha256"
           set +e
           python3 scripts/check-window-controls.py --output "$report"
@@ -277,7 +292,8 @@ jobs:
           set -e
           shasum -a 256 target/debug/examples/window_controls_smoke > "$report/binary-after.sha256"
           cmp "$report/binary-before.sha256" "$report/binary-after.sha256"
-          git diff --exit-code HEAD --
+          git diff --binary HEAD -- > "$report/tracked-after-smoke.diff"
+          cmp "$report/tracked-before-build.diff" "$report/tracked-after-smoke.diff"
           exit "$outcome"
       - name: Prepare bounded AppKit failure logs
         if: always()
@@ -302,6 +318,7 @@ jobs:
             ${{ runner.temp }}/ott-macos-window-controls/*.json
             ${{ runner.temp }}/ott-macos-window-controls/*.sha256
             ${{ runner.temp }}/ott-macos-window-controls/*.txt
+            ${{ runner.temp }}/ott-macos-window-controls/*.diff
             ${{ runner.temp }}/ott-macos-window-controls/*.log.tail
           if-no-files-found: warn
           retention-days: 14
