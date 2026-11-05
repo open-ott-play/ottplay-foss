@@ -1601,10 +1601,10 @@ index 00000000..f7975513
 +[preferences]: ../rust-modules/platform/src/storage_service/ott_wire.rs#L98
 +[lg-key]: https://webostv.developer.lge.com/develop/getting-started/developer-mode-app#connecting-tv-and-pc
 diff --git a/docs/native-external-track-validation.md b/docs/native-external-track-validation.md
-index 71cc3dd7..b13fcd44 100644
+index 71cc3dd7..9676a30f 100644
 --- a/docs/native-external-track-validation.md
 +++ b/docs/native-external-track-validation.md
-@@ -63,9 +63,18 @@ or uses a Plex selection request. The menu keeps the acknowledged selection
+@@ -63,9 +63,20 @@ or uses a Plex selection request. The menu keeps the acknowledged selection
  until the owner publishes the new one, and a same-catalog update preserves focus.
  A new catalog invalidates pushed pages. Even reopening the same address creates
  a new identity; a stale menu choice must be rejected. Unknown disposition flags
@@ -1620,13 +1620,15 @@ index 71cc3dd7..b13fcd44 100644
 +unavailable because one segment is not a complete presentation catalog. Finite
 +VOD with supported external AUDIO renditions instead exposes the retained active
 +master audio group through the native menu and the existing `media_tracks` API,
-+as described in [HLS audio renditions](native-hls-audio-renditions.md). Separate subtitle groups
-+and embedded HLS subtitle rendering remain unavailable; no HLS selection is
-+redirected into a Plex operation.
++as described in [HLS audio renditions](native-hls-audio-renditions.md). An otherwise
++supported audio/video master may declare subtitle groups without blocking playback.
++These groups are not selected, fetched, or exposed as subtitle choices. Separate
++subtitle-group rendering (including default or forced tracks) and embedded HLS
++subtitle rendering remain unavailable; no HLS selection is redirected into a Plex operation.
  
  ## Small synthetic fixture
  
-@@ -158,7 +167,8 @@ Use actual shared route/picker entry points, not a parallel test implementation.
+@@ -158,7 +169,8 @@ Use actual shared route/picker entry points, not a parallel test implementation.
  The external picker tests in `appkit/src/external_track_menu.rs` cover real
  source admission without Plex metadata, stale Plex metadata isolation,
  same-catalog audio acknowledgement, subtitle Off and renderer capabilities,
@@ -1669,10 +1671,10 @@ index 16edecdf..96b3fa27 100644
  
 diff --git a/docs/native-hls-audio-renditions.md b/docs/native-hls-audio-renditions.md
 new file mode 100644
-index 00000000..08001d45
+index 00000000..67539c1d
 --- /dev/null
 +++ b/docs/native-hls-audio-renditions.md
-@@ -0,0 +1,139 @@
+@@ -0,0 +1,141 @@
 +# Native HLS audio renditions
 +
 +The native player can join a video-only HLS VOD playlist with one of the external
@@ -1694,8 +1696,10 @@ index 00000000..08001d45
 +`media_tracks` list/select API. List is passive: it does not fetch or inspect
 +media. It lists the active master audio group, not an embedded-track inventory
 +inferred from one segment. Unsupported HLS sources without that retained
-+presentation remain unavailable through this API. Subtitle groups and new
-+browser-player behavior are not included.
++presentation remain unavailable through this API. Subtitle group declarations do
++not block otherwise supported audio/video playback, but their playlists are not
++fetched and they add no subtitle choices. Rendering those subtitles, including
++default or forced tracks, and new browser-player behavior are not included.
 +
 +Remote row IDs are short-lived catalog references. Clients must send back the
 +returned playback, source-generation and catalog references when selecting a
@@ -1730,9 +1734,9 @@ index 00000000..08001d45
 +  numeric values are never used to align audio with video.
 +
 +Live/sliding playlists, discontinuities, encryption, fMP4/init maps, byte ranges,
-+partial segments, separate video/subtitle groups, multiple elementary streams in
-+one rendition segment, and software-only audio decoding remain outside this
-+route. Existing multiplexed HLS and Plex paths keep their own behavior.
++partial segments, separate video groups, subtitle-group playback, multiple
++elementary streams in one rendition segment, and software-only audio decoding
++remain outside this route. Existing multiplexed HLS and Plex paths keep their own behavior.
 +
 +## Synchronization and seeking
 +
@@ -18726,7 +18730,7 @@ index 116ac0e9..d8157ffe 100644
 +    }
  }
 diff --git a/rust-modules/media/src/ff/external_tests.rs b/rust-modules/media/src/ff/external_tests.rs
-index 5cc7412c..50ae3663 100644
+index 5cc7412c..757a2d00 100644
 --- a/rust-modules/media/src/ff/external_tests.rs
 +++ b/rust-modules/media/src/ff/external_tests.rs
 @@ -59,7 +59,7 @@ fn decode(source: ExternalSource, seek: i64) -> Vec<i64> {
@@ -18762,7 +18766,7 @@ index 5cc7412c..50ae3663 100644
                  if path == "/redirect" {
                      let _ = socket.write_all(b"HTTP/1.1 302 Found\r\nLocation: /moved\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
                      continue;
-@@ -325,3 +335,811 @@ fn owned_companion_keeps_exact_capability_without_proxy_or_child_requests() {
+@@ -325,3 +335,831 @@ fn owned_companion_keeps_exact_capability_without_proxy_or_child_requests() {
      assert!(inspect::source(&ExternalSource::OwnedHttp(format!("{}/playlist", http.url)), Arc::new(AtomicBool::new(false))).is_err());
      assert_eq!(*http.requests.lock().unwrap(), vec!["/playlist"]);
  }
@@ -19078,6 +19082,16 @@ index 5cc7412c..50ae3663 100644
 +#[test]
 +#[ignore = "requires bundled host FFmpeg, ffmpeg/libx264 and ffprobe CLI; synthetic localhost fixtures only"]
 +fn external_hls_renditions_join_real_audio_video_and_switch_language() {
++    check_external_hls_audio_presentation(false);
++}
++
++#[test]
++#[ignore = "requires bundled host FFmpeg, ffmpeg/libx264 and ffprobe CLI; synthetic localhost fixtures only"]
++fn external_hls_subtitle_presence_does_not_block_audio_video_or_fetch_subtitles() {
++    check_external_hls_audio_presentation(true);
++}
++
++fn check_external_hls_audio_presentation(with_subtitles: bool) {
 +    let _serial = plx_base::testlock::serial();
 +    let _ff = super::image_subtitle_tests::bind_host_ffmpeg();
 +    assert!(plx_net::net::global_init());
@@ -19128,11 +19142,18 @@ index 5cc7412c..50ae3663 100644
 +        std::fs::write(dir.0.join(format!("{prefix}.m3u8")), out).unwrap();
 +    };
 +    playlist("v", 41); playlist("en", 900); playlist("es", 7);
-+    std::fs::write(dir.0.join("master.m3u8"), "#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"a\",NAME=\"English\",LANGUAGE=\"eng\",DEFAULT=YES,URI=\"en.m3u8\"\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"a\",NAME=\"Spanish\",LANGUAGE=\"spa\",DEFAULT=NO,URI=\"es.m3u8\"\n#EXT-X-STREAM-INF:BANDWIDTH=100000,AUDIO=\"a\"\nv.m3u8\n").unwrap();
++    let mut master = String::from("#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"a\",NAME=\"English\",LANGUAGE=\"eng\",DEFAULT=YES,URI=\"en.m3u8\"\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"a\",NAME=\"Spanish\",LANGUAGE=\"spa\",DEFAULT=NO,URI=\"es.m3u8\"\n#EXT-X-STREAM-INF:BANDWIDTH=100000,AUDIO=\"a\"\nv.m3u8\n");
++    if with_subtitles {
++        master = master.replacen("#EXTM3U\n", "#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"English captions\",LANGUAGE=\"eng\",DEFAULT=YES,AUTOSELECT=YES,URI=\"unselected-captions.m3u8\"\n", 1)
++            .replace("AUDIO=\"a\"\n", "AUDIO=\"a\",SUBTITLES=\"subs\"\n");
++    }
++    std::fs::write(dir.0.join("master.m3u8"), master).unwrap();
 +    let http = HttpFixture::start(dir.0.clone());
 +    let url = format!("{}/master.m3u8", http.url);
 +    let info = inspect::http(&url, Arc::new(AtomicBool::new(false))).unwrap();
++    assert!(info.tracks.subtitles.is_empty(), "unhandled subtitle groups must not become selectable tracks");
 +    let english = info.hls_playback.unwrap();
++    assert_eq!(english.rows().count(), 2);
 +    let spanish_id = english.rows().find(|(_, _, lang)| *lang == "spa").unwrap().0;
 +    let spanish = english.prepare_rendition(spanish_id, Arc::new(AtomicBool::new(false))).unwrap();
 +    let play = |selected: hls_presentation::HlsPlayback, seek: i64| {
@@ -19176,6 +19197,7 @@ index 5cc7412c..50ae3663 100644
 +        plx_net::stream::http_close(&mut *hs);
 +        crate::aq::aq_destroy(&mut *video); crate::aq::aq_destroy(&mut *audio);
 +        assert!(!SHARED.demux_failed.load(Ordering::Acquire));
++        assert!(!SHARED.demux_io_failed.load(Ordering::Acquire));
 +        assert!(video_pts.len() >= 20 && audio_pts.len() >= 40);
 +        (video_pts, audio_pts, encoded)
 +    };
@@ -19198,6 +19220,8 @@ index 5cc7412c..50ae3663 100644
 +    assert!(a[0] >= 970_000_000 && a[0] <= 1_020_000_000);
 +    std::fs::remove_file(dir.0.join("es.m3u8")).unwrap();
 +    assert!(spanish.prepare_rendition(spanish_id, Arc::new(AtomicBool::new(false))).is_err(), "missing selected language must not fall back to English");
++    assert!(http.requests.lock().unwrap().iter().all(|path| !path.contains("unselected-captions")),
++        "unsupported subtitle playlists must never be fetched");
 +}
 +
 +
@@ -20525,10 +20549,10 @@ index 00000000..696fe3bd
 +}
 diff --git a/rust-modules/media/src/ff/hls_presentation.rs b/rust-modules/media/src/ff/hls_presentation.rs
 new file mode 100644
-index 00000000..cdd5de5b
+index 00000000..cc876610
 --- /dev/null
 +++ b/rust-modules/media/src/ff/hls_presentation.rs
-@@ -0,0 +1,291 @@
+@@ -0,0 +1,293 @@
 +//! Immutable external-HLS presentation, separate from embedded AVStream ordinals.
 +//! Private URLs and authentication remain in worker-owned memory only. Debug
 +//! output and public selections contain no URL, path, query or credential.
@@ -20665,7 +20689,9 @@ index 00000000..cdd5de5b
 +        } else if let Some(raw) = line.strip_prefix("#EXT-X-STREAM-INF:") {
 +            if pending.is_some() { return Err("HLS variant has no URI"); }
 +            let a = super::external_hls::attrs(raw)?;
-+            if a.contains_key("VIDEO") || a.contains_key("SUBTITLES") {
++            // Subtitle groups are not selected, retained or fetched by this audio route.
++            // Their presence must not reject otherwise supported audio/video playback.
++            if a.contains_key("VIDEO") {
 +                return Err("Additional HLS rendition groups are outside this route");
 +            }
 +            let bandwidth = a.get("BANDWIDTH").and_then(|s| s.parse::<u64>().ok())
@@ -20822,10 +20848,10 @@ index 00000000..cdd5de5b
 +}
 diff --git a/rust-modules/media/src/ff/hls_presentation_tests.rs b/rust-modules/media/src/ff/hls_presentation_tests.rs
 new file mode 100644
-index 00000000..69b5d842
+index 00000000..d89a84ac
 --- /dev/null
 +++ b/rust-modules/media/src/ff/hls_presentation_tests.rs
-@@ -0,0 +1,170 @@
+@@ -0,0 +1,208 @@
 +use super::*;
 +
 +#[test]
@@ -20995,6 +21021,44 @@ index 00000000..69b5d842
 +        let bad = format!("{text}#EXT-X-MEDIA:{row}\n");
 +        assert_eq!(parse_master("https://example.invalid/master.m3u8", &bad).err(), Some(expected));
 +    }
++}
++
++
++#[test]
++fn subtitle_associations_do_not_change_the_selected_audio_presentation() {
++    let base = "https://example.invalid/master.m3u8";
++    let plain = rendition_master(&rendition_rows("sound", 2), "sound");
++    let expected = parse_master(base, &plain).unwrap();
++    let declaration = "#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"English\",LANGUAGE=\"en\",DEFAULT=YES,AUTOSELECT=YES,FORCED=YES,URI=\"unselected-captions.m3u8\"\n";
++    for association in [
++        plain.replace("AUDIO=\"sound\"", "AUDIO=\"sound\",SUBTITLES=\"subs\""),
++        plain.clone() + "#EXT-X-STREAM-INF:BANDWIDTH=200000,AUDIO=\"sound\",SUBTITLES=\"subs\"\nother.m3u8\n",
++    ] {
++        let text = association.replacen("#EXTM3U\n", &(String::from("#EXTM3U\n") + declaration), 1);
++        let got = parse_master(base, &text).expect("unselected subtitle group must not block audio/video");
++        assert_eq!(got.variant_url, expected.variant_url);
++        assert_eq!(got.default, expected.default);
++        let rows = |master: &Master| master.renditions.iter().map(|row|
++            (row.id, row.name.clone(), row.language.clone(), row.url.clone(), row.default))
++            .collect::<Vec<_>>();
++        assert_eq!(rows(&got), rows(&expected), "subtitles must not add rows or renumber audio");
++        assert!(got.renditions.iter().all(|row| !row.url.contains("captions")));
++    }
++}
++
++#[test]
++fn subtitle_presence_does_not_bypass_video_audio_or_attribute_guards() {
++    let base = "https://example.invalid/master.m3u8";
++    let text = rendition_master(&rendition_rows("sound", 2), "sound")
++        .replace("AUDIO=\"sound\"", "AUDIO=\"sound\",SUBTITLES=\"subs\"");
++    assert_eq!(parse_master(base, &text.replace("SUBTITLES=\"subs\"", "SUBTITLES=\"subs\",VIDEO=\"video\"")).err(),
++        Some("Additional HLS rendition groups are outside this route"));
++    assert_eq!(parse_master(base, &text.replace("AUDIO=\"sound\",", "")).err(),
++        Some("HLS variant has no audio group"));
++    assert_eq!(parse_master(base, &text.replace("AUDIO=\"sound\"", "AUDIO=\"missing\"")).err(),
++        Some("HLS audio group has no external rendition"));
++    let malformed = text + "#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"one\",NAME=\"two\",URI=\"captions.m3u8\"\n";
++    assert_eq!(parse_master(base, &malformed).err(), Some("Duplicate HLS attribute"));
 +}
 diff --git a/rust-modules/media/src/ff/hls_rendition.rs b/rust-modules/media/src/ff/hls_rendition.rs
 new file mode 100644

@@ -19,8 +19,10 @@ The same retained audio group is available through the existing version 1
 `media_tracks` list/select API. List is passive: it does not fetch or inspect
 media. It lists the active master audio group, not an embedded-track inventory
 inferred from one segment. Unsupported HLS sources without that retained
-presentation remain unavailable through this API. Subtitle groups and new
-browser-player behavior are not included.
+presentation remain unavailable through this API. Subtitle group declarations do
+not block otherwise supported audio/video playback, but their playlists are not
+fetched and they add no subtitle choices. Rendering those subtitles, including
+default or forced tracks, and new browser-player behavior are not included.
 
 Remote row IDs are short-lived catalog references. Clients must send back the
 returned playback, source-generation and catalog references when selecting a
@@ -55,9 +57,9 @@ that audio has been heard or decoded.
   numeric values are never used to align audio with video.
 
 Live/sliding playlists, discontinuities, encryption, fMP4/init maps, byte ranges,
-partial segments, separate video/subtitle groups, multiple elementary streams in
-one rendition segment, and software-only audio decoding remain outside this
-route. Existing multiplexed HLS and Plex paths keep their own behavior.
+partial segments, separate video groups, subtitle-group playback, multiple
+elementary streams in one rendition segment, and software-only audio decoding
+remain outside this route. Existing multiplexed HLS and Plex paths keep their own behavior.
 
 ## Synchronization and seeking
 
