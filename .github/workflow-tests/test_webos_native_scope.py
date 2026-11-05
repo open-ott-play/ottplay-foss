@@ -572,6 +572,7 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                 self.assertEqual(inputs[name]["required"], "false")
                 self.assertNotIn("default", inputs[name])
         self.assertEqual(workflow["permissions"], {"contents": "read"})
+        self.assertEqual(workflow["jobs"]["native-build-bench"].get("cache-mode"), "none")
         predicate = "github.event_name == 'workflow_dispatch' && inputs.build_bench"
         self.assertEqual(workflow["jobs"]["native-build-bench"]["if"], "${{ " + predicate + " }}")
         self.assertEqual(workflow["jobs"]["contracts"]["if"], "${{ !(" + predicate + ") }}")
