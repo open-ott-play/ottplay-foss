@@ -11,10 +11,10 @@ on:
         description: Same-ID instrumented build; never a release candidate
         required: true
         type: choice
-        options: [debug]
+        options: [ debug ]
         default: debug
   push:
-    branches: ['ci/native-debug/**']
+    branches: [ "ci/native-debug/**" ]
 
 permissions:
   contents: read
