@@ -951,6 +951,25 @@ index 564873a1..cf153887 100644
      def test_missing_documented_library_fails(self):
          files = {name: data for name, data in self.libraries.items() if name != "libass-plx.so.0"}
          with tempfile.TemporaryDirectory() as temporary:
+diff --git a/docs/TODOS.md b/docs/TODOS.md
+index 510c83ee..15364320 100644
+--- a/docs/TODOS.md
++++ b/docs/TODOS.md
+@@ -2,6 +2,14 @@
+ 
+ ## Player / trailer preview
+ 
++### Correct short-media completion without accepting stale EOS
++
++The native duration-tail check can mark a clip of one second or less complete at position zero after its video queue drains, before its first position callback. This is a confirmed source-level path; it has not been established as the cause of an observed device failure.
++
++Simply requiring native end-of-stream (EOS) is not a complete correction. Early EOS is currently ignored before the first position callback, and a clock can stop at the last video sample below the container duration. The physical playback epoch also survives an in-place seek, so it does not distinguish delayed pre-seek EOS from the new segment's completion. Removing the position guard or requiring the full duration alone is insufficient.
++
++A correction must exercise the real queue/pump and callback ingress: short-duration boundaries, EOS before the first position, synchronous EOS submission, retired epochs, seek before/after EOS, missing EOS with a clamped clock, and audio extending beyond video. Preserve the existing exact-seek and failed-producer guards. A passing host check does not establish native device completion behavior.
++
+ ### Grade `hero_scrim_a`'s legibility contract against synopsis text over live trailer video
+ 
+ **What:** Add a row to `widgets::hero_scrim_a`'s anchor table for "synopsis-weight (`LABEL` 26px)
 diff --git a/docs/agent-reference.md b/docs/agent-reference.md
 index 58c21931..b998be2d 100644
 --- a/docs/agent-reference.md
@@ -63070,7 +63089,7 @@ index 00000000..986e54e8
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_category_state.rs b/rust-modules/src/app/ott_category_state.rs
-index 0a83dd17..366d2f0a 100644
+index 0a83dd17..7307901e 100644
 --- a/rust-modules/src/app/ott_category_state.rs
 +++ b/rust-modules/src/app/ott_category_state.rs
 @@ -15,6 +15,55 @@ fn invalid<T>(result: Result<T, category_preferences::Error>) -> Result<T, &'sta
@@ -63245,7 +63264,7 @@ index 0a83dd17..366d2f0a 100644
          }
          self.pending_category_choice = Some(pending);
          Ok(())
-@@ -147,6 +216,11 @@ impl Runtime {
+@@ -147,7 +216,16 @@ impl Runtime {
          { return false; }
          if pending.owner.is_some() {
              transient::set_view(self, &pending.category, pending.favorites);
@@ -63255,8 +63274,13 @@ index 0a83dd17..366d2f0a 100644
 +            classic_source::set_view(self, &pending.category);
 +            if !pending.favorites { classic_bookmark::record_category(self, &pending.category); }
          }
++        // An explicit list choice opens its whole list, including a reselected
++        // All/Favorites whose source context is unchanged. Clear only after the
++        // durable, current choice is accepted; a failed/stale choice keeps Search.
++        self.search = search::Search::default();
          self.page = if pending.favorites { "favorites" } else { "channels" };
          self.changed();
+         true
 diff --git a/rust-modules/src/app/ott_classic_bookmark.rs b/rust-modules/src/app/ott_classic_bookmark.rs
 new file mode 100644
 index 00000000..a6919946
@@ -112802,7 +112826,7 @@ index 92520e46..b6c3c47f 100644
 +    assert!(!runtime.saving);
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/search.rs b/rust-modules/src/app/ott_runtime_tests/search.rs
-index 82936345..e0a53de6 100644
+index 82936345..58b4c8e8 100644
 --- a/rust-modules/src/app/ott_runtime_tests/search.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/search.rs
 @@ -154,7 +154,7 @@ fn search_is_unicode_caseless_keeps_original_ids_and_accepts_new_scan_rows() {
@@ -112832,7 +112856,7 @@ index 82936345..e0a53de6 100644
      query(&mut app, "STRASSE");
      let filtered = ids(&app); assert_eq!(filtered.len(), 2);
      assert!(filtered.iter().all(|id| id.starts_with("favorite:")));
-@@ -433,3 +444,211 @@ fn clear_search_keeps_mixed_favorites_and_their_origin_identity() {
+@@ -433,3 +444,311 @@ fn clear_search_keeps_mixed_favorites_and_their_origin_identity() {
      assert_eq!(saved(&app), before);
      assert!(runtime.play_target.is_none() && !runtime.saving);
  }
@@ -113043,6 +113067,106 @@ index 82936345..e0a53de6 100644
 +    assert!(runtime.play_target.is_none() && runtime.resolver_next.is_none() && runtime.catalog_next.is_none());
 +    assert_eq!(saved(&app), before);
 +    assert!(!plx_media::route::has_url(&app.player.session));
++}
++
++
++// Use the published picker action and existing revoked-writer seam. The injected
++// completion below covers settlement, not real protected-storage durability.
++fn stage_reselected_list(app: &mut App, favorites: bool) -> Saved {
++    ui(app, OttAction::ShowCategories);
++    let mut runtime = app.ott.take().unwrap();
++    runtime.entropy = Some([1; 16]);
++    runtime.plex_refresh_pending = true;
++    let choice = if favorites { "favorites" } else { "all" };
++    let action = runtime.view().rows.into_iter().find(|row| row.id == choice)
++        .expect("published category picker choice").action;
++    let candidate = runtime.category_choice_candidate(if favorites { None } else { Some("") })
++        .unwrap();
++    handle_action(&mut runtime, app, action).unwrap();
++    assert!(runtime.saving && runtime.pending_category_choice.is_some());
++    assert!(matches!(runtime.save_navigation, SaveNavigation::Preserve));
++    assert!(matches!(runtime.rx.recv_timeout(Duration::from_secs(1)).unwrap(),
++        Job::Saved(Err(_), None, false, _)));
++    app.ott = Some(runtime);
++    candidate
++}
++fn settle_reselected_list(app: &mut App, result: Result<Saved, &'static str>) {
++    app.ott.as_ref().unwrap().tx.send(Job::Saved(result, None, false, json!({"status":"ok"})))
++        .unwrap_or_else(|_| panic!("fixture receiver disappeared"));
++    runtime_tick(app);
++    settle_pages(app);
++}
++
++#[test]
++fn explicit_all_and_favorites_reselection_clear_search_only_after_success() {
++    let _serial = plx_base::testlock::serial();
++    for favorites in [false, true] {
++        let mut app = mounted();
++        {
++            let runtime = app.ott.as_mut().unwrap();
++            runtime.public_preferences.accept(None);
++            runtime.saved.settings.insert("interfaceMode".into(), json!(0));
++            if favorites {
++                runtime.saved.favorites.toggle(Favorite {
++                    title: "News".into(),
++                    origin: plx_data::ott::favorites::Origin { provider: "m3u".into(),
++                        profile: "Permanent".into(), subprofile: None, source_alias: "Fixture".into() },
++                    locator: plx_data::ott::favorites::Locator::Channel { channel_id: "one".into() },
++                }).unwrap();
++                runtime.saved.favorites_selected = true;
++                runtime.page = "favorites";
++            }
++            runtime.changed();
++        }
++        app.bridge.apply_ui_mode(plx_machine::machine::UiMode::Classic);
++        let all = ids(&app);
++        assert!(!all.is_empty());
++        query(&mut app, "no matching title");
++        assert!(ids(&app).is_empty());
++        let runtime = app.ott.as_ref().unwrap();
++        let catalog = runtime.catalog.clone();
++        let document = runtime.saved.favorites.clone();
++        let generation = runtime.generation;
++        let cancel = runtime.cancel.clone();
++        let candidate = stage_reselected_list(&mut app, favorites);
++        assert_eq!(app.ott.as_ref().unwrap().page, "categories");
++        settle_reselected_list(&mut app, Ok(candidate));
++        let runtime = app.ott.as_ref().unwrap();
++        assert_eq!(ids(&app), all, "explicitly reselecting the list must reveal its rows");
++        assert!(runtime.view().search.unwrap().query.is_empty());
++        assert_eq!(runtime.view_selection().1, favorites);
++        assert_eq!(runtime.saved.favorites, document);
++        assert_eq!(runtime.catalog, catalog);
++        assert_eq!(runtime.generation, generation);
++        assert!(Arc::ptr_eq(&runtime.cancel, &cancel));
++        assert!(runtime.catalog_next.is_none() && runtime.resolver_next.is_none()
++            && runtime.play_target.is_none() && !runtime.saving);
++        assert!(!plx_media::route::has_url(&app.player.session));
++    }
++}
++
++#[test]
++fn failed_or_stale_explicit_all_reselection_keeps_search() {
++    let _serial = plx_base::testlock::serial();
++    for stale in [false, true] {
++        let mut app = mounted();
++        query(&mut app, "no matching title");
++        let candidate = stage_reselected_list(&mut app, false);
++        if stale {
++            ui(&mut app, OttAction::ShowSettings);
++            settle_reselected_list(&mut app, Ok(candidate));
++            assert_eq!(app.ott.as_ref().unwrap().page, "settings");
++        } else {
++            settle_reselected_list(&mut app, Err("Fixture write refused"));
++        }
++        ui(&mut app, OttAction::ShowCatalog);
++        let runtime = app.ott.as_ref().unwrap();
++        assert_eq!(runtime.view().search.unwrap().query, "no matching title");
++        assert!(ids(&app).is_empty());
++        assert!(runtime.pending_category_choice.is_none());
++        assert!(runtime.play_target.is_none() && runtime.resolver_next.is_none()
++            && runtime.catalog_next.is_none());
++    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/settings_schema_contract.rs b/rust-modules/src/app/ott_runtime_tests/settings_schema_contract.rs
 new file mode 100644
