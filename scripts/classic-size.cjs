@@ -783,6 +783,14 @@ const DESKTOP_DROP_ALLOWANCE = Object.freeze({
     entry: Object.freeze({ bytes: 4000, gzipBytes: 1200 }),
     optional: Object.freeze({ bytes: 5400, gzipBytes: 2200 }),
 });
+// Bounded recovery after relay failure adds 425 raw and at most 259 gzip bytes.
+// Existing raw caps cover the change. Count the measured gzip cost once per
+// entry and aggregate; preserve identity headroom and unrelated asset caps.
+// Evidence: docs/evidence/auto-relay-stall-recovery-size-20261105.json.
+const AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 0,
+    gzipBytes: 259,
+});
 const BUDGET = Object.freeze({
     bytes:
         DESKTOP_DROP_ALLOWANCE.entry.bytes +
@@ -822,6 +830,7 @@ const BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
+        AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.entry.gzipBytes +
         LOCAL_FAVORITE_WRITE_RECOVERY_ALLOWANCE.entry.gzipBytes +
@@ -1086,6 +1095,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
+        AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.entry.gzipBytes +
         LOCAL_FAVORITE_WRITE_RECOVERY_ALLOWANCE.entry.gzipBytes +
@@ -1371,6 +1381,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
     gzipBytes:
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.optional.gzipBytes +
+        AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.entry.gzipBytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.favorites.gzipBytes +
@@ -1618,6 +1629,8 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
     const report = {
         archiveRelativeSeekAllowance: ARCHIVE_RELATIVE_SEEK_ALLOWANCE,
         artifacts: measured,
+        autoRelayStallRecoveryEntryAllowance:
+            AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
         baseTotalBudget: BASE_TOTAL_BUDGET,
         budget: BUDGET,
         categoryNavigationEntryAllowance: CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
@@ -1964,6 +1977,8 @@ function writeBuildBundleReport(
             archiveRelativeSeekAllowance: ARCHIVE_RELATIVE_SEEK_ALLOWANCE,
             artifacts: measured,
             attempt: label(context.attempt || process.env.GITHUB_RUN_ATTEMPT),
+            autoRelayStallRecoveryEntryAllowance:
+                AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
             budget: BUDGET,
             categoryNavigationEntryAllowance:
                 CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
@@ -2095,6 +2110,7 @@ if (require.main === module) {
 module.exports = {
     ARCHIVE_RELATIVE_SEEK_ALLOWANCE,
     ARTIFACTS,
+    AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
     BASE_TOTAL_BUDGET,
     BUDGET,
     CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,

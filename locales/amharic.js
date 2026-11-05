@@ -605,6 +605,7 @@ var keyStrings = {
     "Local source unavailable": "የአካባቢ ምንጭ አይገኝም",
     "Local URL": "የአካባቢ URL",
     "Local videos": "አካባቢያዊ ቪዲዮዎች",
+    "Lock window to 16:9": "የመስኮቱን ምጥጥን በ16:9 ቆልፍ",
     Login: "የተጠቃሚ ስም",
     lang: "አማርኛ",
     large: "ትልቅ",

@@ -4343,6 +4343,7 @@ dependencies = [
  "sha2",
  "souvlaki",
  "sys-locale",
+ "tao",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

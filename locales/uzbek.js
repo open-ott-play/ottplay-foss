@@ -643,6 +643,7 @@ var keyStrings = {
     "Local source unavailable": "Mahalliy manba mavjud emas",
     "Local URL": "Mahalliy URL manzil",
     "Local videos": "Mahalliy videolar",
+    "Lock window to 16:9": "Oyna nisbatini 16:9 qilib qulflash",
     Login: "Foydalanuvchi nomi",
     lang: "Oʻzbekcha",
     large: "katta",

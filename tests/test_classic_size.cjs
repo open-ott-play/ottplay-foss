@@ -6,6 +6,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 let {
     DESKTOP_DROP_ALLOWANCE,
+    AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
     NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE,
     FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
     LOCAL_FAVORITE_WRITE_RECOVERY_ALLOWANCE,
@@ -202,14 +203,204 @@ assert.deepEqual(
     ),
     desktopBaseline.OPTIONAL_BUDGETS
 );
-function historicalCapsWithoutAllowances(names) {
-    return capsWithoutAllowances(["DESKTOP_DROP_ALLOWANCE", ...names]);
-}
 CLASSIC_OPTIONAL_BUNDLES = Object.fromEntries(
     Object.entries(latestOptionalBundles).filter(
         ([name]) => name !== "local-drop"
     )
 );
+// The paired Auto receipt predates desktop drop; earlier receipts predate both.
+// Remove only those named features from historical projections. Live checks
+// below retain the complete merged caps and restore the full asset inventory.
+const preRecoveryCaps = capsWithoutAllowances([
+    "DESKTOP_DROP_ALLOWANCE",
+    "AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE",
+]);
+const withoutAutoRecovery = capsWithoutAllowances([
+    "AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE",
+]);
+function historicalCapsWithoutAllowances(names) {
+    return capsWithoutAllowances([
+        "DESKTOP_DROP_ALLOWANCE",
+        "AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE",
+        ...names,
+    ]);
+}
+const autoRecoveryEvidence = require("../docs/evidence/auto-relay-stall-recovery-size-20261105.json");
+assert(Object.isFrozen(AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE));
+assert.deepEqual(
+    AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
+    autoRecoveryEvidence.measured_allowance
+);
+assert.equal(AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.bytes, 0);
+assert.deepEqual(
+    autoRecoveryEvidence.entries.map((row) => row.path).sort(),
+    [...ARTIFACTS].sort()
+);
+assert.deepEqual(
+    autoRecoveryEvidence.payloads.map((row) => row.entry).sort(),
+    [...ARTIFACTS].sort()
+);
+assert.equal(
+    AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes,
+    Math.max(
+        0,
+        ...autoRecoveryEvidence.entries.map(
+            (row) => row.candidate.gzipBytes - row.base.gzipBytes
+        )
+    ),
+    "allocate the maximum positive entry cost, not three copies or the overrun"
+);
+for (const [scope, name] of Object.entries({
+    baseTotal: "BASE_TOTAL_BUDGET",
+    completeTotal: "TOTAL_BUDGET",
+    entry: "BUDGET",
+    legacyTotal: "LEGACY_TOTAL_BUDGET",
+})) {
+    assert.deepEqual(
+        preRecoveryCaps[name],
+        autoRecoveryEvidence.budget_before[scope]
+    );
+    assert.deepEqual(
+        desktopBaseline[name],
+        autoRecoveryEvidence.budget_after[scope]
+    );
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            desktopBaseline[name][metric] - preRecoveryCaps[name][metric],
+            AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE[metric],
+            name + " counts the Auto recovery entry cost exactly once"
+        );
+}
+for (const [name, recorded] of Object.entries({
+    OPTIONAL_BUDGET: autoRecoveryEvidence.optionalBudget,
+    OPTIONAL_BUDGETS: autoRecoveryEvidence.optionalBudgets,
+    PROVIDER_BUDGET: autoRecoveryEvidence.providerBudget,
+})) {
+    const actual = desktopBaseline[name];
+    assert.deepEqual(actual, preRecoveryCaps[name]);
+    assert.deepEqual(actual, recorded);
+}
+// The paired record lists every unchanged provider/optional asset. Rebuild
+// both payload totals from those measurements, so entry-only growth cannot
+// hide an omitted asset or an independently increased provider/optional cost.
+const recoveryAssetPaths = new Map();
+for (const entry of ARTIFACTS) {
+    const directory = path.posix.dirname(entry);
+    for (const name of Object.keys(CLASSIC_PROVIDER_BUNDLES))
+        recoveryAssetPaths.set(
+            directory + "/provider-" + name + ".js",
+            "providers"
+        );
+    for (const name of Object.keys(CLASSIC_OPTIONAL_BUNDLES))
+        recoveryAssetPaths.set(
+            directory + "/" + name + ".js",
+            "optionalAssets"
+        );
+}
+assert.equal(recoveryAssetPaths.size, 72);
+assert.equal(autoRecoveryEvidence.unchangedAssets.length, 72);
+assert.deepEqual(autoRecoveryEvidence.assetDifferences, []);
+const recoveryAssets = new Map();
+for (const asset of autoRecoveryEvidence.unchangedAssets) {
+    assert.equal(recoveryAssetPaths.get(asset.path), asset.group, asset.path);
+    assert(!recoveryAssets.has(asset.path), "duplicate asset: " + asset.path);
+    assert.match(asset.sha256, /^[0-9a-f]{64}$/);
+    const cap =
+        asset.group === "providers"
+            ? PROVIDER_BUDGET
+            : OPTIONAL_BUDGETS[path.posix.basename(asset.path, ".js")];
+    for (const metric of ["bytes", "gzipBytes"]) {
+        assert(Number.isSafeInteger(asset[metric]) && asset[metric] > 0);
+        assert(
+            asset[metric] <= cap[metric],
+            asset.path + " retains its existing cap"
+        );
+    }
+    recoveryAssets.set(asset.path, asset);
+}
+assert.deepEqual(
+    [...recoveryAssets.keys()].sort(),
+    [...recoveryAssetPaths.keys()].sort()
+);
+for (const entry of autoRecoveryEvidence.entries) {
+    const payload = autoRecoveryEvidence.payloads.find(
+        (row) => row.entry === entry.path
+    );
+    const assets = [...recoveryAssets.values()].filter(
+        (row) => path.posix.dirname(row.path) === path.posix.dirname(entry.path)
+    );
+    for (const metric of ["bytes", "gzipBytes"]) {
+        const delta = entry.candidate[metric] - entry.base[metric];
+        assert.equal(entry.delta[metric], delta);
+        assert(entry.candidate[metric] <= desktopBaseline.BUDGET[metric]);
+        for (const [scope, name] of Object.entries({
+            legacyTotal: "LEGACY_TOTAL_BUDGET",
+            total: "TOTAL_BUDGET",
+        })) {
+            const included =
+                scope === "legacyTotal"
+                    ? assets.filter((row) => row.group === "providers")
+                    : assets;
+            const unchanged = included.reduce(
+                (sum, row) => sum + row[metric],
+                0
+            );
+            for (const stage of ["base", "candidate"])
+                assert.equal(
+                    payload[scope][stage][metric],
+                    entry[stage][metric] + unchanged,
+                    entry.path +
+                        " " +
+                        scope +
+                        " preserves every unchanged asset"
+                );
+            assert.equal(payload[scope].delta[metric], delta);
+            assert.equal(
+                payload[scope].candidate[metric] - payload[scope].base[metric],
+                delta,
+                "each payload grows by one entry, never by all three variants"
+            );
+            assert(
+                payload[scope].candidate[metric] <=
+                    desktopBaseline[name][metric]
+            );
+        }
+    }
+}
+for (const arm of ["A", "B"]) {
+    assert.equal(autoRecoveryEvidence.validation[arm].inputValid, true);
+    assert.deepEqual(
+        autoRecoveryEvidence.identities[arm].map((row) => row.path).sort(),
+        [...ARTIFACTS].sort()
+    );
+    for (const identity of autoRecoveryEvidence.identities[arm])
+        assert.deepEqual(
+            identity.sourceRevisions,
+            [""],
+            "same dirty identity mode in both arms"
+        );
+}
+
+// Also qualify Auto recovery in the merged caps, with desktop still present.
+for (const name of [
+    "BUDGET",
+    "LEGACY_TOTAL_BUDGET",
+    "BASE_TOTAL_BUDGET",
+    "TOTAL_BUDGET",
+])
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            latestCaps[name][metric] - withoutAutoRecovery[name][metric],
+            AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE[metric],
+            name + " counts Auto recovery once alongside desktop drop"
+        );
+for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET", "OPTIONAL_BUDGETS"])
+    assert.deepEqual(
+        require("../scripts/classic-size.cjs")[name],
+        withoutAutoRecovery[name],
+        name + " is unchanged by Auto recovery"
+    );
+
 // Qualify the new EPG layer against exact paired output, keeping old receipts immutable.
 const epgBaseline = historicalCapsWithoutAllowances([
     "EPG_PRESENTATION_ENTRY_ALLOWANCE",
@@ -225,7 +416,7 @@ for (const metric of ["bytes", "gzipBytes"]) {
         epgEvidence.previousEntryCap[metric]
     );
     assert.equal(
-        desktopBaseline.BUDGET[metric] - epgEvidence.candidate[metric],
+        preRecoveryCaps.BUDGET[metric] - epgEvidence.candidate[metric],
         epgBaseline.BUDGET[metric] - epgEvidence.baseline[metric]
     );
     for (const name of [
@@ -235,12 +426,12 @@ for (const metric of ["bytes", "gzipBytes"]) {
         "TOTAL_BUDGET",
     ])
         assert.equal(
-            desktopBaseline[name][metric] - epgBaseline[name][metric],
+            preRecoveryCaps[name][metric] - epgBaseline[name][metric],
             delta
         );
 }
 for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET", "OPTIONAL_BUDGETS"])
-    assert.deepEqual(desktopBaseline[name], epgBaseline[name]);
+    assert.deepEqual(preRecoveryCaps[name], epgBaseline[name]);
 // This feature changes only the shared entry. Retain historical receipts and
 // verify the exact increment once in each affected aggregate.
 const visibilityBaseline = historicalCapsWithoutAllowances([
@@ -278,11 +469,11 @@ for (const metric of ["bytes", "gzipBytes"]) {
         );
 }
 for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET", "OPTIONAL_BUDGETS"])
-    assert.deepEqual(desktopBaseline[name], visibilityBaseline[name]);
+    assert.deepEqual(preRecoveryCaps[name], visibilityBaseline[name]);
 const favoritesCategoryPersistenceBaseline = historicalCapsWithoutAllowances([
     "FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE",
 ]);
-const localFavoritesPathCaps = desktopBaseline;
+const localFavoritesPathCaps = preRecoveryCaps;
 const localFavoritesPathBaseline = historicalCapsWithoutAllowances([
     "LOCAL_FAVORITES_PATH_ALLOWANCE",
 ]);
@@ -671,7 +862,7 @@ try {
             "TOTAL_BUDGET",
         ])
             assert.equal(
-                desktopBaseline[name][metric] -
+                preRecoveryCaps[name][metric] -
                     withoutWindowControls[name][metric],
                 NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE[metric],
                 name + " counts the window-controls entry cost once"
@@ -682,7 +873,7 @@ try {
         "OPTIONAL_BUDGETS",
     ])
         assert.deepEqual(
-            desktopBaseline[name],
+            preRecoveryCaps[name],
             withoutWindowControls[name],
             name + " is unchanged by window controls"
         );
@@ -723,7 +914,7 @@ try {
     assert(Object.isFrozen(MODERN_REPAINT_OPTIONAL_ALLOWANCE));
     assert.equal(repaint.delta.bytes, -83);
     assert.equal(repaint.delta.gzipBytes, 196);
-    const actualCaps = desktopBaseline;
+    const actualCaps = preRecoveryCaps;
     for (const [name, before] of Object.entries(repaint.budgets.before)) {
         const after = structuredClone(before);
         if (name === "OPTIONAL_BUDGETS")
@@ -796,7 +987,7 @@ try {
             "TOTAL_BUDGET",
         ])
             assert.equal(
-                desktopBaseline[name][metric] -
+                preRecoveryCaps[name][metric] -
                     localFavoriteWriteRecoveryBaseline[name][metric],
                 entry +
                     (["BASE_TOTAL_BUDGET", "TOTAL_BUDGET"].includes(name)
@@ -804,9 +995,9 @@ try {
                         : 0),
                 name + " counts each write-recovery component once"
             );
-        for (const name of Object.keys(desktopBaseline.OPTIONAL_BUDGETS))
+        for (const name of Object.keys(preRecoveryCaps.OPTIONAL_BUDGETS))
             assert.equal(
-                desktopBaseline.OPTIONAL_BUDGETS[name][metric] -
+                preRecoveryCaps.OPTIONAL_BUDGETS[name][metric] -
                     localFavoriteWriteRecoveryBaseline.OPTIONAL_BUDGETS[name][
                         metric
                     ],
@@ -815,7 +1006,7 @@ try {
             );
         for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
             assert.equal(
-                desktopBaseline[name][metric],
+                preRecoveryCaps[name][metric],
                 localFavoriteWriteRecoveryBaseline[name][metric]
             );
         for (const row of writeRecoveryEvidence.measurements) {
@@ -887,7 +1078,7 @@ try {
             "TOTAL_BUDGET",
         ])
             assert.equal(
-                desktopBaseline[name][metric] -
+                preRecoveryCaps[name][metric] -
                     favoritesCategoryPersistenceBaseline[name][metric],
                 entry +
                     (["BASE_TOTAL_BUDGET", "TOTAL_BUDGET"].includes(name)
@@ -896,23 +1087,23 @@ try {
                 name + " counts each category persistence component once"
             );
         assert.equal(
-            desktopBaseline.OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+            preRecoveryCaps.OPTIONAL_BUDGETS["favorites-transfer"][metric] -
                 favoritesCategoryPersistenceBaseline.OPTIONAL_BUDGETS[
                     "favorites-transfer"
                 ][metric],
             favorites
         );
-        for (const name of Object.keys(desktopBaseline.OPTIONAL_BUDGETS))
+        for (const name of Object.keys(preRecoveryCaps.OPTIONAL_BUDGETS))
             if (name !== "favorites-transfer")
                 assert.equal(
-                    desktopBaseline.OPTIONAL_BUDGETS[name][metric],
+                    preRecoveryCaps.OPTIONAL_BUDGETS[name][metric],
                     favoritesCategoryPersistenceBaseline.OPTIONAL_BUDGETS[name][
                         metric
                     ]
                 );
         for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
             assert.equal(
-                desktopBaseline[name][metric],
+                preRecoveryCaps[name][metric],
                 favoritesCategoryPersistenceBaseline[name][metric]
             );
         for (const row of categoryPersistenceEvidence.measurements) {
@@ -1001,7 +1192,7 @@ try {
                 );
         for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
             assert.equal(
-                desktopBaseline[name][metric],
+                preRecoveryCaps[name][metric],
                 localFavoritesPathBaseline[name][metric]
             );
         for (const row of pathEvidence.measurements) {
@@ -4970,6 +5161,8 @@ try {
     );
     const failed = diagnose();
     for (const [key, allowance] of Object.entries({
+        autoRelayStallRecoveryEntryAllowance:
+            AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
         favoritesCategoryPersistenceAllowance:
             FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
         localFavoritesPathAllowance: LOCAL_FAVORITES_PATH_ALLOWANCE,
