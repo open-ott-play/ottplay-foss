@@ -1,0 +1,16 @@
+--- a/src/platform/unix.rs
++++ b/src/platform/unix.rs
+@@ -306,3 +306,13 @@
+     &self.inner.monitor
+   }
+ }
++
++/// Set/query a 16:9 content aspect hint without replacing Tao's size constraints.
++/// UI thread only. None means this GDK backend cannot enforce an aspect hint.
++/// The boolean pair is (requested, armed in ordinary window state).
++pub fn set_content_aspect_lock(
++  window: &gtk::ApplicationWindow,
++  enabled: Option<bool>,
++) -> Result<Option<(bool, bool)>, &'static str> {
++  crate::platform_impl::set_content_aspect_lock(window, enabled)
++}

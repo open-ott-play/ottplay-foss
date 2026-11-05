@@ -2,7 +2,7 @@
 //! Build with cargo build --locked -p ottplay-tauri --example window_controls_smoke,
 //! then run scripts/check-window-controls.py. Both paths use production IPC handlers.
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 mod smoke {
     use ottplay_tauri_lib::native_window_smoke_commands::{
         tauri_commands, window_aspect, window_controls,
@@ -10,6 +10,7 @@ mod smoke {
     use serde_json::{json, Value};
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicBool, AtomicI32, AtomicUsize, Ordering};
+    use std::sync::{mpsc, OnceLock};
     use std::time::{Duration, Instant};
     use tauri::{Listener, Manager};
 
@@ -17,6 +18,81 @@ mod smoke {
     static STARTED: AtomicBool = AtomicBool::new(false);
     static REQUEST: AtomicUsize = AtomicUsize::new(0);
     static EXIT_CODE: AtomicI32 = AtomicI32::new(1);
+    static START_TIME: OnceLock<Instant> = OnceLock::new();
+    static PHASE: AtomicUsize = AtomicUsize::new(0);
+
+    // Startup allowance is independent of the unchanged exercise/cleanup budget.
+    // It is a bounded fixture tolerance, not an assertion about the cause of a stall.
+    #[cfg(target_os = "windows")]
+    const STARTUP_BUDGET: Duration = Duration::from_secs(60);
+    #[cfg(target_os = "windows")]
+    const EXERCISE_BUDGET: Duration = Duration::from_secs(30);
+
+    enum WatchdogEvent {
+        ExerciseStarted(Instant),
+        Finished(Instant),
+    }
+
+    fn phase_name() -> &'static str {
+        match PHASE.load(Ordering::SeqCst) {
+            1 => "building-main",
+            2 => "building-pip",
+            3 => "exercise",
+            4 => "cleanup",
+            5 => "report",
+            6 => "exit-requested",
+            7 => "event-loop-returned",
+            8 => "awaiting-page-loads",
+            _ => "startup",
+        }
+    }
+
+    fn trace(event: &str, detail: Value) {
+        eprintln!("WINDOW_CONTROLS_TRACE {}", json!({
+            "event": event, "detail": detail, "phase": phase_name(),
+            "elapsed_ms": START_TIME.get().map(|start| start.elapsed().as_millis()),
+            "loaded_mask": LOADED.load(Ordering::SeqCst),
+            "request_count": REQUEST.load(Ordering::SeqCst),
+        }));
+    }
+
+    #[cfg(target_os = "windows")]
+    fn wait_for_completion(
+        receiver: mpsc::Receiver<WatchdogEvent>,
+        started: Instant,
+    ) -> Result<(), &'static str> {
+        let startup_deadline = started + STARTUP_BUDGET;
+        let ready = match receiver.recv_timeout(
+            startup_deadline.saturating_duration_since(Instant::now()),
+        ) {
+            Ok(WatchdogEvent::ExerciseStarted(at)) if at <= startup_deadline => at,
+            _ => return Err("startup did not complete within 60 seconds"),
+        };
+        // Use the event's original instant, not a renewed budget at dequeue.
+        let exercise_deadline = ready + EXERCISE_BUDGET;
+        match receiver.recv_timeout(
+            exercise_deadline.saturating_duration_since(Instant::now()),
+        ) {
+            Ok(WatchdogEvent::Finished(at)) if at <= exercise_deadline => Ok(()),
+            _ => Err("exercise and cleanup did not complete within 30 seconds"),
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn wait_for_completion(
+        receiver: mpsc::Receiver<WatchdogEvent>,
+        started: Instant,
+    ) -> Result<(), &'static str> {
+        // Telemetry must not renew the existing total Mac/Linux fixture budget.
+        let deadline = started + Duration::from_secs(30);
+        loop {
+            match receiver.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+                Ok(WatchdogEvent::ExerciseStarted(at)) if at <= deadline => {},
+                Ok(WatchdogEvent::Finished(at)) if at <= deadline => return Ok(()),
+                _ => return Err("30-second internal deadline"),
+            }
+        }
+    }
 
     #[cfg(target_os = "windows")]
     #[repr(C)]
@@ -53,6 +129,7 @@ mod smoke {
 
     #[cfg(target_os = "windows")]
     fn snapshot(window: &tauri::WebviewWindow) -> Result<Snapshot, String> {
+        trace("snapshot-start", json!({"window": window.label()}));
         let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
         let mut pid = 0;
         let mut rect = Rect::default();
@@ -71,12 +148,14 @@ mod smoke {
             if GetWindowRect(hwnd, &mut rect) == 0 {
                 return Err("GetWindowRect failed".into());
             }
-            Ok(Snapshot {
+            let state = Snapshot {
                 fullscreen: window.is_fullscreen().map_err(|e| e.to_string())?,
                 topmost: window.is_always_on_top().map_err(|e| e.to_string())?,
                 win32_topmost: style & 0x8 != 0, // WS_EX_TOPMOST
                 rect: [rect.left, rect.top, rect.right, rect.bottom],
-            })
+            };
+            trace("snapshot-finished", json!({"window": window.label()}));
+            Ok(state)
         }
     }
 
@@ -85,6 +164,7 @@ mod smoke {
         command: &str,
         args: Value,
     ) -> Result<Value, String> {
+        trace("invoke", json!({"window": window.label(), "command": command}));
         let event = format!(
             "window-controls-smoke-{}",
             REQUEST.fetch_add(1, Ordering::SeqCst)
@@ -104,12 +184,14 @@ mod smoke {
             window.unlisten(listener);
             return Err(error.to_string());
         }
+        trace("await-ipc", json!({"window": window.label(), "command": command}));
         let result = tokio::time::timeout(Duration::from_secs(4), receiver).await;
         window.unlisten(listener);
         let reply = result
             .map_err(|_| format!("{command}: IPC deadline"))?
             .map_err(|_| "IPC reply channel closed".to_string())?
             .map_err(|e| e.to_string())?;
+        trace("ipc-reply", json!({"window": window.label(), "command": command, "ok": reply["ok"]}));
         // Keep IPC rejection structured: a timeout or script failure is never an ACL pass.
         if reply["ok"].is_boolean() {
             Ok(reply)
@@ -236,6 +318,7 @@ mod smoke {
             flags: u32,
         ) -> i32;
         fn SendMessageW(w: Hwnd, message: u32, wparam: usize, lparam: isize) -> isize;
+        fn DefWindowProcW(w: Hwnd, message: u32, wparam: usize, lparam: isize) -> isize;
     }
     #[cfg(target_os = "windows")]
     #[derive(Default)]
@@ -252,6 +335,13 @@ mod smoke {
         _id: usize,
         data: usize,
     ) -> isize {
+        if message == 0x0046 && lp != 0 {
+            // Tao consumes WM_WINDOWPOSCHANGING without default processing.
+            // Only this temporary observer asks Windows to validate the actual
+            // proposal, emitting an OS-initialized WM_GETMINMAXINFO through the
+            // real subclass chain. Tao still applies its adjustments afterward.
+            DefWindowProcW(w, message, wp, lp);
+        }
         let result = DefSubclassProc(w, message, wp, lp);
         if message == 0x0024 && lp != 0 {
             let native = &*(lp as *const MinMax);
@@ -337,13 +427,34 @@ mod smoke {
                             return Err("Cannot install owned bounds observer".into());
                         }
                         let mut guard = ProbeGuard { hwnd, data };
+                        SetLastError(0);
+                        let style = GetWindowLongW(hwnd, -16) as u32; // GWL_STYLE
+                        let style_error = GetLastError();
+                        SetLastError(0);
                         let changed =
                             SetWindowPos(hwnd, std::ptr::null_mut(), 0, 0, width + 1, height, 0x16);
+                        let change_error = (changed == 0).then(|| GetLastError());
+                        let change_captures = (*data).captures;
                         // Always restore, even if the deliberate one-pixel proposal failed.
+                        SetLastError(0);
                         let restored =
                             SetWindowPos(hwnd, std::ptr::null_mut(), 0, 0, width, height, 0x16);
+                        let restore_error = (restored == 0).then(|| GetLastError());
+                        let observation = json!({
+                            "method": "temporary-default-windowpos-observer",
+                            "style": style, "style_error": style_error,
+                            "thickframe": style & 0x00040000 != 0,
+                            "caption": style & 0x00c00000 == 0x00c00000,
+                            "changed": changed, "change_error": change_error,
+                            "change_captures": change_captures,
+                            "restored": restored, "restore_error": restore_error,
+                            "captures": (*data).captures, "limits": (*data).limits,
+                        });
+                        eprintln!("window-controls-sizing-probe {observation}");
                         if changed == 0 || restored == 0 || (*data).captures == 0 {
-                            return Err("OS did not supply real tracking bounds".into());
+                            return Err(format!(
+                                "OS did not supply real tracking bounds: {observation}"
+                            ));
                         }
                         let limits = (*data).limits;
                         if insets.iter().any(|v| *v < 0)
@@ -390,7 +501,7 @@ mod smoke {
                         }
                         let report = json!({"kind": "owned-hwnd-message-probe", "enabled": enabled,
                         "os_bounds_captures": (*data).captures, "outer_limits": limits,
-                        "client_insets": insets, "samples": samples});
+                        "client_insets": insets, "samples": samples, "bounds_probe": observation});
                         guard.finish()?;
                         Ok(report)
                     }
@@ -597,6 +708,8 @@ mod smoke {
 
     #[cfg(target_os = "macos")]
     include!("window_controls_smoke/appkit.rs");
+    #[cfg(target_os = "linux")]
+    include!("window_controls_smoke/linux.rs");
 
     pub fn run() -> Result<i32, Box<dyn std::error::Error>> {
         let output = PathBuf::from(
@@ -624,13 +737,24 @@ mod smoke {
             }),
             _ => return Err("Unsupported fixture arguments".into()),
         };
-        let (done, deadline) = std::sync::mpsc::channel();
+        let started = Instant::now();
+        let _ = START_TIME.set(started);
+        trace("startup", json!({"missing_permission": missing}));
+        let (done, deadline) = mpsc::channel();
+        let exercise_started = done.clone();
         let deadline_output = output.clone();
         let watchdog = std::thread::spawn(move || {
-            if deadline.recv_timeout(Duration::from_secs(30)).is_err() {
+            if let Err(error) = wait_for_completion(deadline, started) {
+                let failure = json!({"status": "fail", "error": error,
+                    "phase": phase_name(), "elapsed_ms": started.elapsed().as_millis(),
+                    "loaded_mask": LOADED.load(Ordering::SeqCst),
+                    "request_count": REQUEST.load(Ordering::SeqCst)});
+                trace("watchdog", failure.clone());
+                // Keep timeout evidence separate from any earlier assertion report.
+                // The parent treats this marker as failure even if result.json says pass.
                 let _ = std::fs::write(
-                    deadline_output.join("result.json"),
-                    "{\"status\":\"fail\",\"error\":\"30-second internal deadline\"}",
+                    deadline_output.join("watchdog.json"),
+                    serde_json::to_vec_pretty(&failure).unwrap(),
                 );
                 // Exit only this isolated process; no installed player is targeted.
                 // The parent runner subsequently removes its private WebView data.
@@ -657,8 +781,10 @@ mod smoke {
             ])
             .setup(move |app| {
                 for label in ["main", "pip"] {
+                    PHASE.store(if label == "main" { 1 } else { 2 }, Ordering::SeqCst);
+                    trace("window-build-start", json!({"window": label}));
                     std::fs::create_dir_all(data.join(label))?;
-                    tauri::WebviewWindowBuilder::new(
+                    let builder = tauri::WebviewWindowBuilder::new(
                         app,
                         label,
                         tauri::WebviewUrl::App("index.html".into()),
@@ -671,10 +797,13 @@ mod smoke {
                     .always_on_top(
                         label == "main" && window_controls::initial_always_on_top(app.handle()),
                     )
-                    .visible(label == "main")
+                    .visible(label == "main" || cfg!(target_os = "linux"))
                     .incognito(true)
-                    .data_directory(data.join(label))
-                    .build()?;
+                    .data_directory(data.join(label));
+                    #[cfg(target_os = "linux")]
+                    let builder = builder.min_inner_size(320.0, 180.0).max_inner_size(1600.0, 1000.0);
+                    builder.build()?;
+                    trace("window-build-finished", json!({"window": label}));
                 }
                 #[cfg(target_os = "macos")]
                 appkit_prepare(app)?;
@@ -687,6 +816,9 @@ mod smoke {
                         }
                     });
                 }
+                // A page callback can already have admitted exercise; never overwrite it.
+                let _ = PHASE.compare_exchange(2, 8, Ordering::SeqCst, Ordering::SeqCst);
+                trace("setup-finished", json!({}));
                 Ok(())
             })
             .on_page_load(move |view, payload| {
@@ -698,11 +830,15 @@ mod smoke {
                     "pip" => 2,
                     _ => return,
                 };
-                if LOADED.fetch_or(bit, Ordering::SeqCst) | bit != 3
-                    || STARTED.swap(true, Ordering::SeqCst)
-                {
+                let loaded = LOADED.fetch_or(bit, Ordering::SeqCst) | bit;
+                trace("page-finished", json!({"window": view.label()}));
+                if loaded != 3 || STARTED.swap(true, Ordering::SeqCst) {
                     return;
                 }
+                let ready_at = Instant::now();
+                PHASE.store(3, Ordering::SeqCst);
+                trace("exercise-started", json!({}));
+                let _ = exercise_started.send(WatchdogEvent::ExerciseStarted(ready_at));
                 let handle = view.app_handle().clone();
                 let main = handle
                     .get_webview_window("main")
@@ -714,12 +850,15 @@ mod smoke {
                     } else {
                         exercise(main, missing).await
                     };
+                    trace("exercise-finished", json!({"ok": result.is_ok()}));
+                    PHASE.store(4, Ordering::SeqCst);
                     let mut code = if result.is_ok() { 0 } else { 1 };
                     let mut report =
                         result.unwrap_or_else(|error| json!({"status": "fail", "error": error}));
                     let mut cleanup = Vec::new();
                     for label in ["pip", "main"] {
                         if let Some(window) = handle.get_webview_window(label) {
+                            trace("window-destroy", json!({"window": label}));
                             if let Err(error) = window.destroy() {
                                 cleanup.push(format!("{label}: {error}"));
                             }
@@ -731,6 +870,8 @@ mod smoke {
                     }
                     report["cleanup_errors"] = json!(cleanup);
                     report["owned_labels"] = json!(["main", "pip"]);
+                    PHASE.store(5, Ordering::SeqCst);
+                    trace("report", json!({"exit_code": code}));
                     if std::fs::write(
                         output.join("result.json"),
                         serde_json::to_vec_pretty(&report).unwrap(),
@@ -741,6 +882,8 @@ mod smoke {
                     }
                     println!("{report}");
                     EXIT_CODE.store(code, Ordering::SeqCst);
+                    PHASE.store(6, Ordering::SeqCst);
+                    trace("exit-requested", json!({"exit_code": code}));
                     handle.exit(code);
                 });
             })
@@ -754,14 +897,85 @@ mod smoke {
                 api.prevent_exit();
             }
         });
+        let finished_at = Instant::now();
+        PHASE.store(7, Ordering::SeqCst);
         let code = EXIT_CODE.load(Ordering::SeqCst);
-        let _ = done.send(());
+        trace("event-loop-returned", json!({"exit_code": code}));
+        let _ = done.send(WatchdogEvent::Finished(finished_at));
         let _ = watchdog.join();
         Ok(code)
     }
+
+    #[cfg(all(test, target_os = "windows"))]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn watchdog_uses_captured_phase_instants_without_renewing_queued_budget() {
+            let now = Instant::now();
+            let started = now - Duration::from_secs(100);
+            let ready = started + Duration::from_secs(40);
+            let (sender, receiver) = mpsc::channel();
+            sender.send(WatchdogEvent::ExerciseStarted(ready)).unwrap();
+            sender.send(WatchdogEvent::Finished(ready + Duration::from_secs(20))).unwrap();
+            assert_eq!(wait_for_completion(receiver, started), Ok(()));
+        }
+
+        #[test]
+        fn watchdog_rejects_late_start_even_with_a_queued_completion() {
+            let started = Instant::now() - Duration::from_secs(100);
+            let ready = started + Duration::from_secs(61);
+            let (sender, receiver) = mpsc::channel();
+            sender.send(WatchdogEvent::ExerciseStarted(ready)).unwrap();
+            sender.send(WatchdogEvent::Finished(ready)).unwrap();
+            assert_eq!(wait_for_completion(receiver, started),
+                Err("startup did not complete within 60 seconds"));
+        }
+
+        #[test]
+        fn watchdog_rejects_late_completion_after_timely_start() {
+            let started = Instant::now() - Duration::from_secs(100);
+            let ready = started + Duration::from_secs(59);
+            let (sender, receiver) = mpsc::channel();
+            sender.send(WatchdogEvent::ExerciseStarted(ready)).unwrap();
+            sender.send(WatchdogEvent::Finished(ready + Duration::from_secs(31))).unwrap();
+            assert_eq!(wait_for_completion(receiver, started),
+                Err("exercise and cleanup did not complete within 30 seconds"));
+        }
+
+        #[test]
+        fn watchdog_rejects_expired_startup_without_a_ready_event() {
+            let started = Instant::now() - Duration::from_secs(61);
+            let (_sender, receiver) = mpsc::channel();
+            assert_eq!(wait_for_completion(receiver, started),
+                Err("startup did not complete within 60 seconds"));
+        }
+    }
+    #[cfg(all(test, not(target_os = "windows")))]
+    mod total_deadline_tests {
+        use super::*;
+
+        #[test]
+        fn captured_completion_within_original_total_deadline_is_accepted() {
+            let started = Instant::now() - Duration::from_secs(100);
+            let (sender, receiver) = mpsc::channel();
+            sender.send(WatchdogEvent::ExerciseStarted(started + Duration::from_secs(20))).unwrap();
+            sender.send(WatchdogEvent::Finished(started + Duration::from_secs(29))).unwrap();
+            assert_eq!(wait_for_completion(receiver, started), Ok(()));
+        }
+
+        #[test]
+        fn exercise_event_does_not_renew_original_total_deadline() {
+            let started = Instant::now() - Duration::from_secs(100);
+            let (sender, receiver) = mpsc::channel();
+            sender.send(WatchdogEvent::ExerciseStarted(started + Duration::from_secs(20))).unwrap();
+            sender.send(WatchdogEvent::Finished(started + Duration::from_secs(31))).unwrap();
+            assert_eq!(wait_for_completion(receiver, started), Err("30-second internal deadline"));
+        }
+    }
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 fn main() {
     match smoke::run() {
         Ok(code) => std::process::exit(code),
@@ -771,8 +985,8 @@ fn main() {
         }
     }
 }
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 fn main() {
-    eprintln!("This fixture requires Windows with WebView2 or macOS with AppKit.");
+    eprintln!("This fixture requires Windows, macOS or Linux with X11.");
     std::process::exit(2);
 }

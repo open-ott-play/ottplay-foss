@@ -1,0 +1,10 @@
+--- a/src/platform_impl/linux/mod.rs
++++ b/src/platform_impl/linux/mod.rs
+@@ -12,6 +12,7 @@
+ #[cfg(feature = "dbus")]
+ mod portal;
+ mod util;
++pub(crate) use util::set_content_aspect_lock;
+ mod window;
+ 
+ pub mod taskbar;

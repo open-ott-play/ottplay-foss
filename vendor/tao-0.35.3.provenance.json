@@ -4,7 +4,7 @@
   "archive": "https://static.crates.io/crates/tao/tao-0.35.3.crate",
   "archiveSha256": "d1c93047acf68669466a34690ac58cca7010bd1b201e1ec86f1fd0a75d3dd4a9",
   "upstreamRevision": "5a14e624c81b7a799728129417e9218be25f17d9",
-  "patchPurpose": "Guard absent or malformed macOS file drag pasteboard data before native callbacks parse it.",
+  "patchPurpose": "Guard absent or malformed macOS file drag pasteboard data before native callbacks parse it. Compose the optional GTK/X11 content aspect hint with Tao size constraints without changing the existing macOS backport.",
   "license": "Apache-2.0",
   "files": {
     ".cargo_vcs_info.json": "afbbb8046a363bb3dd4e38cef6675907603ab05b1bfb0f426d451f68595cd960",
@@ -128,8 +128,25 @@
     "src/window.rs": "1c3d9ea5812f08c1c0fc70a0f15e539e8f224b6ce05063f1233da82b2e7c9eb4"
   },
   "patchedFiles": {
-    "src/platform_impl/macos/window_delegate.rs": "8a9f6851ebd230392e153347fec66eeebe4e5d938f3267b11d1f188d757ce983"
+    "src/platform_impl/macos/window_delegate.rs": "8a9f6851ebd230392e153347fec66eeebe4e5d938f3267b11d1f188d757ce983",
+    "src/platform/unix.rs": "1605fb3f5d1f8014c4d72134bde53229ec2901d2828da7b1d515e62d36f93703",
+    "src/platform_impl/linux/mod.rs": "cdf9f301df72f606f28c81b6dbf74d6eca507726605cd339f9a6fb68af3a5908",
+    "src/platform_impl/linux/util.rs": "fd9ea1ab89ff76f4b1765363a6787051874f39d620cd0781a482ec0ef718ba58"
   },
   "patch": "tao-0.35.3-macos-drag-pasteboard.patch",
-  "patchSha256": "88a8afe7c02d79c83ca79c80294e759e50b4e8584abff0222c55cbab0c4839f3"
+  "patchSha256": "88a8afe7c02d79c83ca79c80294e759e50b4e8584abff0222c55cbab0c4839f3",
+  "additionalPatches": {
+    "src/platform/unix.rs": {
+      "patch": "tao-0.35.3-linux-aspect-unix.patch",
+      "patchSha256": "fbafa3bb70cbcdabdada05c970755f834cc480d04f4e8af213b2c969e0aad564"
+    },
+    "src/platform_impl/linux/mod.rs": {
+      "patch": "tao-0.35.3-linux-aspect-mod.patch",
+      "patchSha256": "89d54d88c57b78ec31fb527c7f56154ba0671cda38689fd8183053c7030ba25f"
+    },
+    "src/platform_impl/linux/util.rs": {
+      "patch": "tao-0.35.3-linux-aspect-util.patch",
+      "patchSha256": "9dba062b8a068eeaea1fc629a03f648a420732d93eff6a67208a86b98dcde3e3"
+    }
+  }
 }

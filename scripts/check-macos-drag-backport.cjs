@@ -16,6 +16,11 @@ const crates = [
         archiveSha256:
             "d1c93047acf68669466a34690ac58cca7010bd1b201e1ec86f1fd0a75d3dd4a9",
         name: "tao",
+        additionalSources: {
+            "src/platform/unix.rs": "tao-0.35.3-linux-aspect-unix.patch",
+            "src/platform_impl/linux/mod.rs": "tao-0.35.3-linux-aspect-mod.patch",
+            "src/platform_impl/linux/util.rs": "tao-0.35.3-linux-aspect-util.patch",
+        },
         source: "src/platform_impl/macos/window_delegate.rs",
         version: "0.35.3",
     },
@@ -101,7 +106,16 @@ for (const crate of crates) {
         files(sourceRoot).sort(),
         Object.keys(manifest.files).sort()
     );
-    assert.deepEqual(Object.keys(manifest.patchedFiles), [crate.source]);
+    const additionalSources = crate.additionalSources || {};
+    const additionalPatches = manifest.additionalPatches || {};
+    assert.deepEqual(
+        Object.keys(additionalPatches).sort(),
+        Object.keys(additionalSources).sort()
+    );
+    assert.deepEqual(
+        Object.keys(manifest.patchedFiles).sort(),
+        [crate.source, ...Object.keys(additionalSources)].sort()
+    );
     for (const [file, originalHash] of Object.entries(manifest.files)) {
         assert.equal(
             sha256(fs.readFileSync(path.join(sourceRoot, file))),
@@ -124,6 +138,21 @@ for (const crate of crates) {
         manifest.files[crate.source],
         "reversing the exact patch must recover the published source"
     );
+    for (const [source, expectedPatch] of Object.entries(additionalSources)) {
+        const details = additionalPatches[source];
+        assert.equal(details.patch, expectedPatch);
+        const extraPatch = fs.readFileSync(
+            path.join(root, "vendor", details.patch),
+            "utf8"
+        );
+        assert.equal(sha256(extraPatch), details.patchSha256);
+        const extraSource = fs.readFileSync(path.join(sourceRoot, source), "utf8");
+        assert.equal(
+            sha256(originalSource(extraSource, extraPatch, source)),
+            manifest.files[source],
+            "reversing each additional patch must recover the published source"
+        );
+    }
     assert.ok(
         overrides.includes(`${crate.name} = { path = "vendor/${directory}" }`),
         crate.name + " must use its local patched dependency"

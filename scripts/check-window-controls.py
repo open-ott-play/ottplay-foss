@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the already-built Windows/macOS fixture; never launch installed players."""
+"""Run the already-built Windows/macOS/X11 fixture; never launch installed players."""
 import argparse
 import json
 import math
@@ -11,6 +11,14 @@ import subprocess
 import sys
 import tempfile
 import time
+
+
+# Only Windows uses the separately budgeted 60s startup plus 30s exercise.
+WINDOWS_PROCESS_TIMEOUT_SECONDS = 100
+
+
+def process_timeout_seconds(platform):
+    return WINDOWS_PROCESS_TIMEOUT_SECONDS if platform == "windows" else 40
 
 
 def require(condition, message):
@@ -70,9 +78,9 @@ def validate_sizing_probe(probe, enabled):
 
 
 def validate_evidence(report, missing, *, platform="windows"):
-    require(platform in {"windows", "macos"}, "Unsupported native fixture platform")
-    if platform == "macos":
-        require(report.get("platform") == "macos", "Wrong native fixture platform")
+    require(platform in {"windows", "macos", "linux"}, "Unsupported native fixture platform")
+    if platform in {"macos", "linux"}:
+        require(report.get("platform") == ("linux-x11" if platform == "linux" else "macos"), "Wrong native fixture platform")
     validate_common_evidence(report)
     denials = report.get("denials", [])
     expected = ({"set_always_on_top", "set_fullscreen", "toggle_fullscreen"} if missing else {"set_always_on_top"}) | {"get_window_aspect_lock", "set_window_aspect_lock"}
@@ -82,7 +90,11 @@ def validate_evidence(report, missing, *, platform="windows"):
                 and "not allowed" in entry.get("error", "") for entry in denials), "Not an ACL denial")
     require(report.get("mode") == ("missing-permission" if missing else "production-permissions"), "Wrong ACL mode")
     if missing:
+        if platform == "linux":
+            validate_x11_snapshot(report.get("baseline"), report.get("baseline"), active=False, startup=True)
         return
+    if platform == "linux":
+        return validate_x11_evidence(report)
     if platform == "macos":
         return validate_appkit_evidence(report)
     require(report.get("aux_unchanged") is True, "Auxiliary window changed")
@@ -126,6 +138,8 @@ def validate_evidence(report, missing, *, platform="windows"):
 
 
 def validate_restoration_evidence(report, phase, *, platform="windows"):
+    if platform == "linux":
+        return validate_x11_restoration(report, phase)
     if platform == "macos":
         return validate_appkit_restoration(report, phase)
     validate_common_evidence(report)
@@ -224,11 +238,80 @@ def validate_appkit_restoration(report, phase):
         validate_appkit_snapshot(report.get(name), baseline, active=enabled)
 
 
+def validate_x11_snapshot(value, baseline, *, active, fullscreen=False,
+                          maximized=False, original_geometry=True, startup=False):
+    require(isinstance(value, dict) and isinstance(baseline, dict), "Missing X11 native observation")
+    require(value.get("label") == "main" and all(type(value.get(k)) is int and value[k] > 0
+            for k in ("xid", "pid")) and value["xid"] == baseline.get("xid")
+            and value["pid"] == baseline.get("pid"), "X11 window ownership changed")
+    require(value.get("wm_present") is True and value.get("above") is False
+            and value.get("fullscreen") is fullscreen and value.get("maximized") is maximized,
+            "Wrong native X11 window state or missing WM")
+    for key, length in (("rect", 4), ("min_size", 2), ("max_size", 2), ("min_aspect", 2), ("max_aspect", 2)):
+        require(isinstance(value.get(key), list) and len(value[key]) == length
+                and all(type(x) is int for x in value[key]), "Malformed X11 " + key)
+    require(value["rect"][2] > 0 and value["rect"][3] > 0, "Empty X11 client geometry")
+    hints = value.get("hints")
+    require(type(hints) is int and hints >= 0 and hints & 48 == 48
+            and value["min_size"] == [320, 180] and value["max_size"] == [1600, 1000],
+            "X11 min/max hints were lost")
+    require(bool(hints & 128) is active, "X11 native aspect hint disagrees")
+    if active:
+        require(all(pair[0] > 0 and pair[1] > 0 and pair[0] * 9 == pair[1] * 16
+                    for pair in (value["min_aspect"], value["max_aspect"])), "X11 ratio is not 16:9")
+    if original_geometry:
+        require(isinstance(baseline.get("rect"), list) and len(baseline["rect"]) == 4
+                and all(type(x) is int for x in baseline["rect"])
+                and all(abs(a - b) <= 2 for a, b in zip(value["rect"], baseline["rect"])),
+                "X11 aspect operation changed initial geometry")
+    if startup:
+        require(all(abs(a - b) <= 2 for a, b in zip(value["rect"][2:], [640, 400])),
+                "X11 initial or saved-on layout changed requested content size")
+
+
+def validate_x11_evidence(report):
+    require(report.get("requested_content") == [640, 400], "Wrong X11 setup geometry")
+    baseline = report.get("baseline")
+    validate_x11_snapshot(baseline, baseline, active=False, startup=True)
+    validate_aspect_state(report.get("initial_state"), False, False)
+    require(report.get("aux_unchanged") is True, "Auxiliary X11 window changed")
+    sequence = report.get("set_sequence", [])
+    require(len(sequence) == 4, "Incomplete X11 on/off sequence")
+    for row, enabled in zip(sequence, [True, True, False, False]):
+        validate_aspect_state(row.get("state"), enabled, enabled)
+        validate_x11_snapshot(row.get("native"), baseline, active=enabled)
+    transitions = report.get("transitions", [])
+    expected = [(kind, target) for kind in ("toggle_fullscreen", "set_fullscreen", "maximize")
+                for target in (True, False)]
+    require(len(transitions) == len(expected), "Incomplete X11 transition sequence")
+    for row, (kind, target) in zip(transitions, expected):
+        require(row.get("kind") == kind and row.get("target") is target, "Wrong X11 transition")
+        validate_aspect_state(row.get("state"), True, not target)
+        validate_x11_snapshot(row.get("native"), baseline, active=not target,
+                              fullscreen=kind != "maximize" and target,
+                              maximized=kind == "maximize" and target, original_geometry=not target)
+    validate_aspect_state(report.get("final_state"), False, False)
+    validate_x11_snapshot(report.get("final"), baseline, active=False)
+
+
+def validate_x11_restoration(report, phase):
+    require(report.get("platform") == "linux-x11", "Wrong X11 restoration platform")
+    validate_common_evidence(report)
+    require(report.get("mode") == "preference-restoration" and report.get("phase") == phase,
+            "Wrong X11 preference phase")
+    require(report.get("requested_content") == [640, 400] and report.get("aux_unchanged") is True,
+            "Wrong X11 requested geometry or changed PiP")
+    initial = report.get("initial")
+    for name, enabled in (("initial", phase == "unpin"), ("final", phase == "pin")):
+        validate_aspect_state(report.get(name + "_state"), enabled, enabled)
+        validate_x11_snapshot(report.get(name), initial, active=enabled, startup=True)
+
+
 def stop_owned_process(process, *, platform="windows"):
     """PID comes only from this runner's Popen. Never terminate by image name."""
     if process.poll() is not None:
         return
-    if platform == "macos":
+    if platform in {"macos", "linux"}:
         try:
             os.killpg(process.pid, signal.SIGTERM)
         except ProcessLookupError:
@@ -275,11 +358,11 @@ def run_case(binary, output, missing, *, phase=None, preferences=None, platform=
         environment["OTTPLAY_DATA_DIR"] = str(preferences if phase else directory / "preferences")
         environment.pop("OTTPLAY_INSTANCE", None)
         with (output / f"{name}.log").open("w", encoding="utf-8") as log:
-            platform_options = {"start_new_session": True} if platform == "macos" else {}
+            platform_options = {"start_new_session": True} if platform in {"macos", "linux"} else {}
             process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=environment, **platform_options)
             result["pid"] = process.pid
             try:
-                result["exit_code"] = process.wait(timeout=40)
+                result["exit_code"] = process.wait(timeout=process_timeout_seconds(platform))
             finally:
                 stop_owned_process(process, platform=platform)
         native = directory / "result.json"
@@ -317,6 +400,14 @@ def run_case(binary, output, missing, *, phase=None, preferences=None, platform=
         try:
             if process is not None:
                 stop_owned_process(process, platform=platform)
+            watchdog = directory / "watchdog.json"
+            if watchdog.is_file():
+                result["status"] = "fail"
+                result["error"] = "Native watchdog terminated the fixture"
+                try:
+                    result["watchdog"] = json.loads(watchdog.read_text(encoding="utf-8"))
+                except (OSError, ValueError) as error:
+                    result["watchdog_error"] = str(error)
             remove_private_data(directory)
             result["private_data_removed"] = True
         except Exception as error:
@@ -350,8 +441,10 @@ def run_restoration_sequence(binary, output, *, platform="windows"):
 
 
 def main():
-    platform = "macos" if sys.platform == "darwin" else "windows"
-    require(sys.platform == "darwin" or os.name == "nt", "Native window fixture requires Windows or macOS")
+    platform = "macos" if sys.platform == "darwin" else ("linux" if sys.platform == "linux" else "windows")
+    require(sys.platform in {"darwin", "linux"} or os.name == "nt", "Native window fixture requires Windows, macOS or Linux")
+    if platform == "linux":
+        require(os.environ.get("GDK_BACKEND") == "x11" and os.environ.get("DISPLAY"), "X11 acceptance requires explicit GDK_BACKEND=x11 and DISPLAY")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=Path("target/debug/examples/window_controls_smoke" + (".exe" if platform == "windows" else "")))
     parser.add_argument("--output", type=Path, default=Path("build/" + platform + "-window-controls-report"))
