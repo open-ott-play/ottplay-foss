@@ -537,6 +537,29 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         run = next(step["run"] for step in steps if "<<'PYBENCH'" in step.get("run", ""))
         return run.split("python3 - <<'PYBENCH'\n", 1)[1].rsplit("\nPYBENCH", 1)[0]
 
+    def diagnostic_fixture(self, root):
+        import hashlib
+
+        target = root / "tools/build-bench.py"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("# synthetic benchmark target; never executed\n")
+        hook = root / "external-hook/sitecustomize.py"
+        hook.parent.mkdir()
+        hook.write_bytes((ROOT / "scripts/webos-native-bench-diagnostics/sitecustomize.py").read_bytes())
+        return target, hook, hashlib.sha256(target.read_bytes()).hexdigest(), hashlib.sha256(hook.read_bytes()).hexdigest()
+
+    def mocked_bench_activation(self, environment):
+        """The mocked make process publishes its child-observer receipt."""
+        import hashlib
+
+        context = json.loads(environment["OTT_NATIVE_BENCH_DIAGNOSTICS"])
+        hook = Path(environment["PYTHONPATH"].split(os.pathsep)[0]) / "sitecustomize.py"
+        target = Path(context["target"]).resolve()
+        receipt = {"schema": 1, "target": str(target),
+                   "target_sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+                   "hook_sha256": hashlib.sha256(hook.read_bytes()).hexdigest()}
+        (Path(context["output"]) / "activation.json").write_text(json.dumps(receipt))
+
     def test_bench_is_explicit_dispatch_only_and_read_only(self):
         workflow = self.workflow()
         inputs = workflow["on"]["workflow_dispatch"]["inputs"]
@@ -613,6 +636,9 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                     source = root / "native/webos/build.py"
                     source.parent.mkdir(parents=True)
                     source.write_text("# synthetic helper identity\n")
+                    hook = root / "scripts/webos-native-bench-diagnostics/sitecustomize.py"
+                    hook.parent.mkdir(parents=True)
+                    hook.write_bytes((ROOT / "scripts/webos-native-bench-diagnostics/sitecustomize.py").read_bytes())
                     helpers = {name: mock.Mock() for name in ("cargo_environment", "check_cargo_configs")}
                     if missing:
                         if malformed:
@@ -797,13 +823,17 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                 document = {"git_sha": "a" * 12, "tree_dirty": False, "toolchain": "pinned",
                             "host": "same", "runner": "same"}
                 binding = {"documents": {}}
+                _, diagnostic_hook, tool_hash, diagnostic_hash = self.diagnostic_fixture(Path(directory))
                 scope = {"builder": types.SimpleNamespace(), "environment_builder": environment_builder,
                          "args": object(), "os": os,
                          "subprocess": subprocess, "evidence": Path(directory), "label": label,
                          "rows": "noop,sizes", "source": Path(directory), "bench_commit": "a" * 40,
                          "checked_document": mock.Mock(return_value=document), "binding": binding,
-                         "digest": lambda path: "f" * 64}
+                         "digest": lambda path: "f" * 64, "json": json, "sys": sys,
+                         "diagnostic_hook": diagnostic_hook.parent, "tool_hash": tool_hash,
+                         "diagnostic_hash": diagnostic_hash}
                 with mock.patch.dict(os.environ, inherited, clear=True), mock.patch("subprocess.run") as run:
+                    run.side_effect = lambda *args, **kwargs: self.mocked_bench_activation(kwargs["env"])
                     exec(code, scope)  # noqa: S102 - Actual workflow AST; process execution is mocked.
                     self.assertEqual(dict(os.environ), original)
                 environment_builder.cargo_environment.assert_called_once_with(scope["args"])
@@ -821,6 +851,144 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                         self.assertEqual(environment[key], value, key)
                     self.assertNotIn("ARM_PROFILE", environment)
                 self.assertEqual(set(binding["documents"]), {"rows", "check"})
+
+    def test_bench_observer_retains_failed_cargo_evidence_for_both_phases(self):
+        for label in ("before", "after"):
+            for suffix in ("rows", "check"):
+                with self.subTest(label=label, suffix=suffix):
+                    self._check_diagnostic_workflow(label, suffix, "valid", failed=True, observe=True)
+
+    def test_bench_success_requires_valid_observer_activation(self):
+        for label in ("before", "after"):
+            for suffix in ("rows", "check"):
+                for receipt in ("missing", "malformed", "mismatch"):
+                    with self.subTest(label=label, suffix=suffix, receipt=receipt):
+                        self._check_diagnostic_workflow(label, suffix, receipt, failed=False)
+
+    def test_bench_activation_failure_preserves_original_make_failure(self):
+        for label in ("before", "after"):
+            for suffix in ("rows", "check"):
+                for receipt in ("missing", "malformed", "mismatch"):
+                    with self.subTest(label=label, suffix=suffix, receipt=receipt):
+                        self._check_diagnostic_workflow(label, suffix, receipt, failed=True)
+
+    def _check_diagnostic_workflow(self, label, suffix, receipt, *, failed, observe=False):
+        import ast
+        import hashlib
+        import io
+        from contextlib import nullcontext
+
+        node = next(node for node in ast.walk(ast.parse(self.bench_code()))
+                    if isinstance(node, ast.With) and any(
+                        isinstance(item.context_expr, ast.Call)
+                        and isinstance(item.context_expr.func, ast.Attribute)
+                        and item.context_expr.func.attr == "cargo_environment"
+                        for item in node.items))
+        code = compile(ast.Module(body=[node], type_ignores=[]), "actual diagnostic measurement loop", "exec")
+        with tempfile.TemporaryDirectory() as directory:
+            # Match the resolved target/hook receipt paths; macOS /var is a symlink.
+            root = Path(directory).resolve()
+            target, hook, tool_hash, hook_hash = self.diagnostic_fixture(root / "source")
+            original_target = target.read_bytes()
+            evidence = root / "evidence"
+            evidence.mkdir()
+            binding = {"documents": {}}
+            doc = {"git_sha": "a" * 12, "tree_dirty": False,
+                   "toolchain": "pinned", "host": "same", "runner": "same"}
+            checked = mock.Mock(return_value=doc)
+            scope = {"environment_builder": types.SimpleNamespace(
+                         cargo_environment=mock.Mock(return_value=nullcontext({"CARGO_HOME": "/unused"}))),
+                     "args": object(), "os": os, "sys": sys, "json": json,
+                     "subprocess": subprocess, "evidence": evidence, "label": label,
+                     "rows": "noop,sizes", "source": target.parent.parent,
+                     "bench_commit": "a" * 40, "binding": binding, "checked_document": checked,
+                     "digest": lambda path: "f" * 64, "diagnostic_hook": hook.parent,
+                     "tool_hash": tool_hash, "diagnostic_hash": hook_hash}
+            make_failure = subprocess.CalledProcessError(2, ["make", "build-bench"])
+            cargo_stdout = '{"reason":"compiler-message","message":{"rendered":"full error"}}\n' * 40
+            cargo_stderr = "first diagnostic\n" + "tail" * 300
+            expected_calls = 1 if suffix == "rows" else 2
+
+            def make(*args, **kwargs):
+                self.assertEqual(args[0][:2], ["make", "build-bench"])
+                self.assertTrue(kwargs["check"])
+                context = json.loads(kwargs["env"]["OTT_NATIVE_BENCH_DIAGNOSTICS"])
+                destination = Path(context["output"])
+                self.assertEqual(context["target"], str(target))
+                self.assertEqual(context["pythonpath"], "/original/pythonpath")
+                self.assertEqual(kwargs["env"]["PYTHONPATH"], str(hook.parent) + os.pathsep + "/original/pythonpath")
+                current = "rows" if destination.name.endswith("-rows-diagnostics") else "check"
+                self.assertEqual(destination, evidence / (label + "-" + current + "-diagnostics"))
+                self.assertIn(f"--runs {3 if current == 'rows' else 1}", args[0][2])
+                kwargs["stdout"].write(b"synthetic make log\n")
+                if current != suffix:
+                    self.mocked_bench_activation(kwargs["env"])
+                    return subprocess.CompletedProcess(args[0], 0)
+                if observe:
+                    # Run the real injected observer in-process, with its only process adapter
+                    # mocked. This models Python startup, not a Cargo/toolchain execution.
+                    cargo_argv = ["cargo", "+pinned", "build", "--message-format=json"]
+                    result = subprocess.CompletedProcess(cargo_argv, 101, cargo_stdout, cargo_stderr)
+                    with mock.patch.dict(os.environ, kwargs["env"], clear=True), \
+                            mock.patch.object(sys, "argv", [str(target)]), \
+                            mock.patch.object(sys, "path", [str(hook.parent), *sys.path]), \
+                            mock.patch("subprocess.run", return_value=result) as child:
+                        exec(compile(hook.read_bytes(), str(hook), "exec"),
+                             {"__file__": str(hook), "__name__": "sitecustomize"})  # noqa: S102
+                        self.assertNotIn("OTT_NATIVE_BENCH_DIAGNOSTICS", os.environ)
+                        self.assertEqual(os.environ["PYTHONPATH"], "/original/pythonpath")
+                        self.assertNotIn(str(hook.parent), sys.path)
+                        self.assertIs(subprocess.run(cargo_argv, capture_output=True, text=True), result)
+                        child.assert_called_once_with(cargo_argv, capture_output=True, text=True)
+                elif receipt != "missing":
+                    self.mocked_bench_activation(kwargs["env"])
+                    activation = destination / "activation.json"
+                    if receipt == "malformed":
+                        activation.write_text("not JSON")
+                    elif receipt == "mismatch":
+                        value = json.loads(activation.read_text())
+                        value["target_sha256"] = "0" * 64
+                        activation.write_text(json.dumps(value))
+                if failed:
+                    raise make_failure
+                return subprocess.CompletedProcess(args[0], 0)
+
+            original_env = {"PATH": "/usr/bin:/bin", "PYTHONPATH": "/original/pythonpath"}
+            with mock.patch.dict(os.environ, original_env, clear=True), \
+                    mock.patch("subprocess.run", side_effect=make) as process, \
+                    mock.patch("subprocess.check_output") as output, \
+                    mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
+                expected_error = subprocess.CalledProcessError if failed else (
+                    FileNotFoundError if receipt == "missing" else ValueError)
+                with self.assertRaises(expected_error) as caught:
+                    exec(code, scope)  # noqa: S102 - Actual workflow, make and Cargo mocked.
+                if failed:
+                    self.assertIs(caught.exception, make_failure)
+                self.assertEqual(dict(os.environ), original_env)
+                self.assertEqual(process.call_count, expected_calls)
+                output.assert_not_called()
+                self.assertEqual("Benchmark diagnostics unavailable:" in errors.getvalue(),
+                                 failed and receipt != "valid")
+            self.assertEqual(checked.call_count, expected_calls - 1)
+            self.assertEqual(set(binding["documents"]), set() if suffix == "rows" else {"rows"})
+            self.assertEqual(target.read_bytes(), original_target)
+            self.assertFalse((evidence / "complete-pair.json").exists())
+            self.assertEqual((evidence / (label + "-" + suffix + ".log")).read_bytes(), b"synthetic make log\n")
+            if observe:
+                destination = evidence / (label + "-" + suffix + "-diagnostics")
+                activation = json.loads((destination / "activation.json").read_text())
+                self.assertEqual(activation, {"schema": 1, "target": str(target.resolve()),
+                                             "target_sha256": tool_hash, "hook_sha256": hook_hash})
+                failures = list(destination.glob("cargo-*/result.json"))
+                self.assertEqual(len(failures), 1)
+                failure = json.loads(failures[0].read_text())
+                self.assertEqual(failure["returncode"], 101)
+                self.assertEqual(failure["command"], ["cargo", "+pinned", "build", "--message-format=json"])
+                for stream, text in (("stdout", cargo_stdout), ("stderr", cargo_stderr)):
+                    raw = text.encode("utf-8")
+                    self.assertEqual((failures[0].parent / stream).read_bytes(), raw)
+                    self.assertEqual(failure["streams"][stream], {
+                        "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw), "text": True})
 
     def test_bench_keeps_exact_tree_snapshot_and_restores_in_finally(self):
         import ast
@@ -987,6 +1155,7 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            _, diagnostic_hook, tool_hash, diagnostic_hash = self.diagnostic_fixture(root / "source")
             prepared_path = root / "prepared.json"
             prepared_path.write_text("{}\n")
             upstream, snapshot, expected_tree = "a" * 40, "b" * 40, "c" * 40
@@ -1060,7 +1229,8 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                 "environment_builder": environment_builder, "environment_builder_sha256": "9" * 64,
                 "upstream": upstream, "label": label, "expected_tree": expected_tree, "identity": {},
                 "outer_sha": "d" * 40, "prepared": {}, "prepared_path": prepared_path,
-                "provenance": root / "PROVENANCE.json", "tool_hash": "e" * 64,
+                "provenance": root / "PROVENANCE.json", "tool_hash": tool_hash,
+                "diagnostic_hook": diagnostic_hook.parent, "diagnostic_hash": diagnostic_hash, "sys": sys,
                 "mod_path": root / "build.py", "evidence": root, "args": object(),
                 "manifest": {}, "json": json, "os": os, "subprocess": subprocess,
                 "rows": "noop,sizes", "checked_document": checked_document,
@@ -1068,8 +1238,11 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
             with mock.patch.object(Path, "write_text", new=write_text), \
                     mock.patch("subprocess.run") as run, \
                     mock.patch("subprocess.check_output") as output:
-                if point == "benchmark-failure":
-                    run.side_effect = failure
+                def benchmark(*args, **kwargs):
+                    self.mocked_bench_activation(kwargs["env"])
+                    if point == "benchmark-failure":
+                        raise failure
+                run.side_effect = benchmark
                 if point == "success":
                     # Real transaction; process adapters are mocked.
                     exec(code, scope)  # noqa: S102

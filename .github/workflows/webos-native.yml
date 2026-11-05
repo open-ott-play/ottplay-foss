@@ -550,6 +550,15 @@ jobs:
               with path.open('rb') as stream:
                   return hashlib.file_digest(stream, 'sha256').hexdigest()
 
+          # A single external observer covers both producers' unmodified tools.
+          # Keep it outside prepared sources; include its exact bytes in evidence.
+          diagnostic_hook = work / 'diagnostic-hook'
+          diagnostic_hook.mkdir()
+          hook_bytes = (workspace / 'scripts/webos-native-bench-diagnostics/sitecustomize.py').read_bytes()
+          (diagnostic_hook / 'sitecustomize.py').write_bytes(hook_bytes)
+          (evidence / 'diagnostic-hook.py').write_bytes(hook_bytes)
+          diagnostic_hash = digest(diagnostic_hook / 'sitecustomize.py')
+
           def load_builder(outer):
               path = outer / 'native/webos/build.py'
               spec = importlib.util.spec_from_file_location('native_bench_'+outer.name, path)
@@ -665,6 +674,7 @@ jobs:
                   binding = dict(label=label, outer_commit=outer_sha, prepared=prepared,
                                  prepared_sha256=prepared_sha256, provenance_sha256=digest(provenance),
                                  benchmark_sha256=tool_hash, synthetic_benchmark_commit=bench_commit,
+                                 diagnostic_hook_sha256=diagnostic_hash,
                                  original_prepared_tree=expected_tree, measured_tree=measured_tree,
                                  environment_builder_sha256=environment_builder_sha256,
                                  makefile_sha256=digest(source/'Makefile'), builder_sha256=digest(mod_path),
@@ -692,11 +702,34 @@ jobs:
                       for suffix, selected, count in [('rows', rows, 3), ('check', 'check', 1)]:
                           output = evidence / (label+'-'+suffix+'.json')
                           log = evidence / (label+'-'+suffix+'.log')
-                          with log.open('wb') as stream:
-                              subprocess.run(['make', 'build-bench',
-                                              f'ARGS=--runs {count} --only {selected} --json {output}'],
-                                             cwd=source, env=environment, stdout=stream,
-                                             stderr=subprocess.STDOUT, check=True)
+                          diagnostics = evidence / (label+'-'+suffix+'-diagnostics')
+                          diagnostics.mkdir()
+                          observed_environment = dict(environment)
+                          original_pythonpath = environment.get('PYTHONPATH')
+                          observed_environment['PYTHONPATH'] = str(diagnostic_hook) + (
+                              os.pathsep + original_pythonpath if original_pythonpath is not None else '')
+                          observed_environment['OTT_NATIVE_BENCH_DIAGNOSTICS'] = json.dumps(dict(
+                              target=str(source / 'tools/build-bench.py'), output=str(diagnostics),
+                              pythonpath=original_pythonpath))
+                          try:
+                              with log.open('wb') as stream:
+                                  subprocess.run(['make', 'build-bench',
+                                                  f'ARGS=--runs {count} --only {selected} --json {output}'],
+                                                 cwd=source, env=observed_environment, stdout=stream,
+                                                 stderr=subprocess.STDOUT, check=True)
+                          finally:
+                              # Also require activation on a failed build, while its original
+                              # nonzero status remains the measurement result.
+                              measurement_failure = sys.exc_info()[1]
+                              try:
+                                  activation = json.loads((diagnostics / 'activation.json').read_text())
+                                  if activation != dict(schema=1, target=str((source / 'tools/build-bench.py').resolve()),
+                                                        target_sha256=tool_hash, hook_sha256=diagnostic_hash):
+                                      raise ValueError('Benchmark diagnostic observer did not activate on the pinned tool')
+                              except Exception as diagnostic_error:
+                                  if measurement_failure is None:
+                                      raise
+                                  print('Benchmark diagnostics unavailable: '+str(diagnostic_error), file=sys.stderr)
                           doc = checked_document(output, selected.split(','), count)
                           if doc['git_sha'] != bench_commit[:12] or doc['tree_dirty']:
                               raise ValueError('Benchmark was not run against the clean pinned snapshot')
