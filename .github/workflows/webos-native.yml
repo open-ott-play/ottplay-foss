@@ -176,6 +176,7 @@ jobs:
           printf '%s\n' "$toolchain" > "$RUNNER_TEMP/native-host-verification/rust-toolchain.txt"
           rustup component add --toolchain "$toolchain" clippy rustfmt 2>&1 | tee "$RUNNER_TEMP/native-host-verification/components.log"
       - name: Native full check, package contracts and shipping type checks
+        id: native_host_check
         # Replaces the 10 + 25 + 25 minute partial host gates without repeating them.
         # The unchanged 90-minute job limit still bounds host, replay and ARM work.
         timeout-minutes: 60
@@ -447,6 +448,157 @@ jobs:
             build/native-webos/dist/ottplay-native-webos-${{ steps.bundle.outputs.version }}-build-config.txt
           if-no-files-found: error
           retention-days: 30
+      - name: Diagnose the failed native host tests
+        if: ${{ failure() && steps.native_host_check.outcome == 'failure' }}
+        timeout-minutes: 10
+        working-directory: build/native-webos/source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY_DIAGNOSTIC'
+          import hashlib
+          import json
+          import os
+          import re
+          import signal
+          import subprocess
+          import tempfile
+          import time
+          from pathlib import Path
+
+
+          TESTS = (
+              "app::ott_runtime::tests::classic_navigation::modern_mode_restores_the_exact_retained_native_entry_and_focus",
+              "app::ott_runtime::tests::lifecycle_runtime::initial_retry_cannot_cross_viewer_pause_or_standby",
+          )
+
+
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+          def select_binary(raw, root):
+              sections = list(re.finditer(r"^\s*Running unittests \(([^\n)]+)\) \[([^,\n]+),[^\n]*$", raw, re.M))
+              matches = []
+              for index, section in enumerate(sections):
+                  end = sections[index + 1].start() if index + 1 < len(sections) else len(raw)
+                  body = raw[section.end():end]
+                  if section[2] != "plxnative_modules" or not all(test in body for test in TESTS):
+                      continue
+                  modern_failed = re.search(r"^test " + re.escape(TESTS[0]) + r" \.\.\. FAILED$", body, re.M)
+                  lifecycle_overflow = re.search(r"^thread '" + re.escape(TESTS[1]) + r"'[^\n]*has overflowed its stack$", body, re.M)
+                  if not modern_failed and not lifecycle_overflow:
+                      continue
+                  relative = section[1]
+                  if not re.fullmatch(r"target/debug/deps/plxnative_modules-[0-9a-f]+", relative):
+                      raise RuntimeError("Unexpected app executable path in original check log")
+                  path = root / relative
+                  if path.is_symlink() or not path.is_file() or path.resolve().parent != (root / "target/debug/deps").resolve():
+                      raise RuntimeError("Original app executable is missing or outside its target")
+                  matches.append(path.resolve())
+              if len(matches) != 1:
+                  raise RuntimeError("Expected exactly one failed app executable containing both tests")
+              return matches[0]
+
+
+          def run_one(binary, test, root, environment, output, timeout=180):
+              command = [str(binary), "--exact", test, "--nocapture", "--test-threads=1"]
+              with tempfile.TemporaryDirectory(prefix="native-failure-", dir=os.environ["RUNNER_TEMP"]) as temporary:
+                  env = dict(environment)
+                  runtime, scratch = Path(temporary) / "runtime", Path(temporary) / "tmp"
+                  runtime.mkdir(mode=0o700)
+                  scratch.mkdir(mode=0o700)
+                  env.update(PLXNATIVE_RUNTIME_DIR=str(runtime), TMPDIR=str(scratch), TMP=str(scratch), TEMP=str(scratch))
+                  started, timed_out = time.monotonic(), False
+                  with output.open("wb") as stream:
+                      process = subprocess.Popen(command, cwd=root, env=env, stdin=subprocess.DEVNULL,
+                                                 stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
+                      try:
+                          process.wait(timeout=timeout)
+                      except subprocess.TimeoutExpired:
+                          timed_out = True
+                      finally:
+                          # This group belongs only to this diagnostic invocation, including any workers.
+                          try:
+                              os.killpg(process.pid, signal.SIGKILL)
+                          except ProcessLookupError:
+                              pass
+                          process.wait(timeout=10)
+                  raw = output.read_text(errors="replace")
+                  print(raw, end="", flush=True)
+                  return {"test": test, "command": command, "returncode": process.returncode,
+                          "timeout": timed_out, "seconds": time.monotonic() - started,
+                          "log_sha256": digest(output), "ran_exactly_one": bool(re.search(r"^running 1 test$", raw, re.M))}
+
+
+          def main():
+              def interrupted(signum, _frame):
+                  raise SystemExit(128 + signum)
+
+              for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+                  signal.signal(signum, interrupted)
+              source = Path.cwd()
+              root = source / "rust-modules"
+              evidence = Path(os.environ["RUNNER_TEMP"]) / "native-host-verification"
+              original = evidence / "check.log"
+              binary = select_binary(original.read_text(errors="replace"), root)
+              files = ("Makefile", "rust-modules/Cargo.toml", "rust-modules/Cargo.lock",
+                       "rust-modules/rust-toolchain.toml", "tools/cargo-test-parallel.py",
+                       "rust-modules/src/app/ott_runtime_tests/classic_navigation.rs",
+                       "rust-modules/src/app/ott_runtime_tests/lifecycle.rs")
+
+              def source_pin():
+                  tree = subprocess.check_output(["git", "write-tree"], text=True).strip()
+                  subprocess.run(["git", "diff", "--exit-code", "--quiet"], check=True)
+                  if tree != json.loads((source.parent / "prepared.json").read_text())["tree"]:
+                      raise RuntimeError("Diagnostic source differs from the prepared tree")
+                  return {"tree": tree,
+                          "files": {name: digest(source / name) for name in files}}
+
+              environment = dict(os.environ)
+              canonical = subprocess.check_output(["make", "-s", "print-cargo-env"], text=True)
+              for name in list(environment):
+                  if name.startswith("PLX_"):
+                      del environment[name]
+              for line in canonical.splitlines():
+                  name, separator, value = line.partition("=")
+                  if not separator or not name.startswith("PLX_"):
+                      raise RuntimeError("Invalid canonical Cargo environment")
+                  environment[name] = value
+              for name in ("RUST_MIN_STACK", "RUST_TEST_THREADS", "RUST_TEST_NOCAPTURE"):
+                  environment.pop(name, None)
+              environment.update(NO_PROXY="*", no_proxy="*", RUST_BACKTRACE="1", CARGO_MANIFEST_DIR=str(root),
+                                 CARGO_CRATE_NAME="plxnative_modules", CARGO_PRIMARY_PACKAGE="1")
+              import tomllib
+              package = tomllib.loads((root / "Cargo.toml").read_text())["package"]
+              environment.update(CARGO_PKG_NAME=package["name"], CARGO_PKG_VERSION=package["version"])
+              environment["LD_LIBRARY_PATH"] = os.pathsep.join(filter(None, (
+                  str(binary.parent), str(binary.parent.parent), environment.get("LD_LIBRARY_PATH"))))
+              before = source_pin()
+              binding = {"purpose": "Diagnostics only; the original failed gate remains authoritative",
+                         "source": before, "outer_commit": os.environ["GITHUB_SHA"],
+                         "binary": str(binary.relative_to(root)), "binary_sha256": digest(binary),
+                         "original_log_sha256": digest(original), "recompiled": False,
+                         "stack_override": False, "results": []}
+              receipt = evidence / "failure-diagnostics.json"
+              receipt.write_text(json.dumps(binding, indent=2) + "\n")
+              for index, test in enumerate(TESTS):
+                  try:
+                      result = run_one(binary, test, root, environment, evidence / f"failure-{index + 1}.log")
+                  except Exception as error:
+                      result = {"test": test, "diagnostic_error": str(error)}
+                  binding["results"].append(result)
+                  receipt.write_text(json.dumps(binding, indent=2) + "\n")
+              binding["source_unchanged"] = source_pin() == before
+              binding["binary_unchanged"] = digest(binary) == binding["binary_sha256"]
+              receipt.write_text(json.dumps(binding, indent=2) + "\n")
+              # Never promote a failed complete suite to a pass, even when isolated tests pass.
+              raise SystemExit(1)
+
+
+          if __name__ == "__main__":
+              main()
+          PY_DIAGNOSTIC
       - name: Preserve native host verification evidence
         if: always()
         timeout-minutes: 5
