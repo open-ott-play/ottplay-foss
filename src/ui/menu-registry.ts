@@ -100,7 +100,7 @@ function createDesktopWindowControls(host: any) {
                         result.ok !== true ||
                         typeof result.fullscreen !== "boolean"
                     )
-                        throw new Error("Unconfirmed fullscreen state");
+                        throw new Error();
                     return result.fullscreen;
                 });
             }
@@ -136,11 +136,11 @@ function createDesktopWindowControls(host: any) {
                 });
             }
             if (typeof native.current.isAlwaysOnTop !== "function")
-                throw new Error("Always-on-top query unavailable");
+                throw new Error();
             return Promise.resolve(native.current.isAlwaysOnTop()).then(
                 function (current: any) {
                     if (typeof current !== "boolean")
-                        throw new Error("Unconfirmed window state");
+                        throw new Error();
                     if (!admitted(context)) return null;
                     var desired = !current;
                     return Promise.resolve(
@@ -153,7 +153,7 @@ function createDesktopWindowControls(host: any) {
                             result.ok !== true ||
                             result.alwaysOnTop !== desired
                         )
-                            throw new Error("Unconfirmed always-on-top state");
+                            throw new Error();
                         return result.alwaysOnTop;
                     });
                 }
