@@ -5,6 +5,7 @@ The two expected receipt/inventory digests are external trust inputs. This is
 not a release verifier. Its static host checks do not prove runtime health.
 """
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -56,9 +57,31 @@ def regular(path):
     return path
 
 
-def read(path, limit):
+@contextmanager
+def open_regular(path):
     path = regular(path)
-    with path.open("rb") as stream:
+    before = path.lstat()
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        opened = os.fstat(descriptor)
+        def identity(item):
+            return (item.st_dev, item.st_ino, item.st_mode, item.st_size,
+                    item.st_mtime_ns, item.st_ctime_ns)
+        require(stat.S_ISREG(opened.st_mode) and identity(opened) == identity(before),
+                "Input changed while opening")
+        stream = os.fdopen(descriptor, "rb")
+        descriptor = None  # The stream now owns it, including on read failure.
+        with stream:
+            yield stream
+            require(identity(opened) == identity(os.fstat(stream.fileno()))
+                    == identity(path.lstat()), "Input changed while reading")
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def read(path, limit):
+    with open_regular(path) as stream:
         raw = stream.read(limit + 1)
     require(len(raw) <= limit, "Input exceeds size bound")
     return raw
@@ -78,9 +101,8 @@ def parse(raw):
 
 
 def file_identity(path, limit=MAX_BINARY):
-    path = regular(path)
     count, h = 0, hashlib.sha256()
-    with path.open("rb") as stream:
+    with open_regular(path) as stream:
         while block := stream.read(1024 * 1024):
             count += len(block)
             require(count <= limit, "File exceeds size bound")
@@ -179,7 +201,7 @@ def accepted(args):
 
 
 def macho_requirements(binary):
-    with regular(binary).open("rb") as stream:
+    with open_regular(binary) as stream:
         header = stream.read(32)
         require(len(header) == 32, "Truncated Mach-O header")
         magic, cpu, _, kind, count, size, _, _ = struct.unpack("<8I", header)
@@ -258,9 +280,15 @@ def host_checks(binary):
             "compatibility": "static system-install-name and minimum-OS checks only", "serverExecuted": False}
 
 
-def write_new(path, raw, mode=0o600):
+def write_new(path, raw, owned, mode=0o600):
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
-    with os.fdopen(descriptor, "wb") as stream:
+    owned.append(path)  # Exclusive creation succeeded; track before any write.
+    try:
+        stream = os.fdopen(descriptor, "wb")
+    except BaseException:
+        os.close(descriptor)
+        raise
+    with stream:
         stream.write(raw)
         stream.flush()
         os.fsync(stream.fileno())
@@ -284,14 +312,6 @@ def prepare(args):
     for name in TRIO:
         require(file_identity(directory / name) == {k: files[name][k] for k in ("bytes", "sha256")},
                 "Retained artifact differs from acceptance")
-    checks = host_checks(directory / STEM)
-    # Recheck inputs after external inspection and before producing any output.
-    require(read(args.acceptance, 2 * 1024**2) == raw and read(args.implementation, 65536) == pins_raw,
-            "Acceptance inputs changed")
-    macos_server_artifact.validate_artifact_set(directory, expected)
-    for name in TRIO:
-        require(file_identity(directory / name) == {k: files[name][k] for k in ("bytes", "sha256")},
-                "Retained artifact changed during inspection")
     output.mkdir(mode=0o700)
     owned = []
     try:
@@ -299,7 +319,7 @@ def prepare(args):
         descriptor = os.open(binary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o700)
         owned.append(binary)
         count, h = 0, hashlib.sha256()
-        with os.fdopen(descriptor, "wb") as target, regular(directory / STEM).open("rb") as source:
+        with os.fdopen(descriptor, "wb") as target, open_regular(directory / STEM) as source:
             while block := source.read(1024 * 1024):
                 count += len(block)
                 require(count <= files[STEM]["bytes"], "Candidate grew during preparation")
@@ -311,6 +331,18 @@ def prepare(args):
         require(count == files[STEM]["bytes"] and h.hexdigest() == files[STEM]["sha256"]
                 and file_identity(binary) == {"bytes": count, "sha256": h.hexdigest()}
                 and stat.S_IMODE(binary.stat().st_mode) == 0o755, "Prepared binary differs")
+        # Inspect the exact executable candidate, not its downloaded predecessor.
+        checks = host_checks(binary)
+        require(file_identity(binary) == {"bytes": count, "sha256": h.hexdigest()}
+                and stat.S_IMODE(binary.stat().st_mode) == 0o755,
+                "Prepared binary changed during inspection")
+        # Keep external trust inputs and retained payloads bound after inspection.
+        require(read(args.acceptance, 2 * 1024**2) == raw and read(args.implementation, 65536) == pins_raw,
+                "Acceptance inputs changed")
+        macos_server_artifact.validate_artifact_set(directory, expected)
+        for name in TRIO:
+            require(file_identity(directory / name) == {k: files[name][k] for k in ("bytes", "sha256")},
+                    "Retained artifact changed during inspection")
         identity = {"schema": 1, "source": args.source, "version": args.version, "target": TARGET,
                     "provenance": "official-release", "binary_sha256": h.hexdigest()}
         identity_raw = encoded(identity)
@@ -324,8 +356,7 @@ def prepare(args):
         for name, data in (("identity.json", identity_raw), ("acceptance.json", raw),
                            ("implementation.json", pins_raw), ("preparation.json", encoded(evidence))):
             path = output / name
-            write_new(path, data)
-            owned.append(path)
+            write_new(path, data, owned)
         return evidence
     except BaseException:
         for path in reversed(owned):

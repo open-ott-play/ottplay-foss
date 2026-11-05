@@ -197,14 +197,15 @@ class MacOSServerArtifactTests(unittest.TestCase):
     def producer_fixture(self):
         root = self.directory / "checkout"
         (root / "scripts").mkdir(parents=True)
+        (root / ".git").mkdir()
         (root / "target").mkdir()
         (root / "tauri-artifacts").mkdir()
         (root / "target/server").write_bytes(self.binary)
-        (root / ".release-policy.json").write_text("{}", encoding="utf-8")
+        (root / ".release-policy.json").write_text('{"versioning":{"files":[]}}', encoding="utf-8")
         raw = b'{"source_sha":"' + self.expected["source"].encode() + b'"}\n'
         (root / ".release-plan.json").write_bytes(raw)
         official = SimpleNamespace(
-            validate_plan=mock.Mock(), sync_versions=mock.Mock(),
+            validate_plan=mock.Mock(), sync_versions=mock.Mock(), verify_checkout=mock.Mock(),
             projections=mock.Mock(return_value={"package": self.expected["packageVersion"]}),
             plan_digest=mock.Mock(return_value=self.expected["planDigest"]),
         )
@@ -225,22 +226,24 @@ class MacOSServerArtifactTests(unittest.TestCase):
         with mock.patch.dict(sys.modules, {"version_plan": official}), \
              mock.patch.object(artifact, "__file__", str(root / "scripts/macos_server_artifact.py")), \
              mock.patch.dict(artifact.os.environ, environment), \
-             mock.patch.object(artifact.subprocess, "check_output", side_effect=[self.expected["source"], self.expected["tree"]]), \
+             mock.patch.object(artifact.subprocess, "check_output", side_effect=[self.expected["source"], self.expected["tree"], b"", b"", b""]), \
              mock.patch.object(artifact.subprocess, "run", side_effect=otool):
             record = artifact.create_artifact_set(Path("target/server"), Path("tauri-artifacts"), Path(".release-plan.json"))
         expected = {**self.expected, "planSha256": hashlib.sha256(raw).hexdigest()}
         self.assertEqual(artifact.validate_artifact_set(root / "tauri-artifacts", expected), record)
         self.assertEqual(record["binary"], self.identity(artifact.BINARY_NAME, self.binary))
         self.assertEqual(record["dependencies"], self.identity(artifact.DEPENDENCIES_NAME, self.dependencies))
-        official.validate_plan.assert_called_once_with(json.loads(raw), {}, self.expected["source"])
-        official.sync_versions.assert_called_once_with(root, {}, json.loads(raw), check=True)
+        policy = {"versioning": {"files": []}}
+        official.validate_plan.assert_called_once_with(json.loads(raw), policy, self.expected["source"])
+        official.sync_versions.assert_called_once_with(root, policy, json.loads(raw), check=True)
+        official.verify_checkout.assert_called_once_with(root, policy, json.loads(raw))
 
     def test_producer_refuses_foreign_actions_source_before_writing(self):
         root, _raw, official = self.producer_fixture()
         with mock.patch.dict(sys.modules, {"version_plan": official}), \
              mock.patch.object(artifact, "__file__", str(root / "scripts/macos_server_artifact.py")), \
              mock.patch.dict(artifact.os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_SHA": "f" * 40}), \
-             mock.patch.object(artifact.subprocess, "check_output", side_effect=[self.expected["source"], self.expected["tree"]]):
+             mock.patch.object(artifact.subprocess, "check_output", side_effect=[self.expected["source"], self.expected["tree"], b"", b"", b""]):
             with self.assertRaises(ValueError):
                 artifact.create_artifact_set(Path("target/server"), Path("tauri-artifacts"), Path(".release-plan.json"))
         self.assertEqual(list((root / "tauri-artifacts").iterdir()), [])
@@ -261,7 +264,7 @@ class MacOSServerArtifactTests(unittest.TestCase):
                 with mock.patch.dict(sys.modules, {"version_plan": official}), \
                      mock.patch.object(artifact, "__file__", str(root / "scripts/macos_server_artifact.py")), \
                      mock.patch.dict(artifact.os.environ, environment), \
-                     mock.patch.object(artifact.subprocess, "check_output", side_effect=[self.expected["source"], self.expected["tree"]]), \
+                     mock.patch.object(artifact.subprocess, "check_output", side_effect=[self.expected["source"], self.expected["tree"], b"", b"", b""]), \
                      mock.patch.object(artifact.subprocess, "run", side_effect=otool), \
                      mock.patch.object(artifact, "validate_artifact_set", side_effect=ValueError("invalid record")) as validate:
                     with self.assertRaises((ValueError, artifact.subprocess.CalledProcessError)):
@@ -269,6 +272,61 @@ class MacOSServerArtifactTests(unittest.TestCase):
                     self.assertEqual(validate.call_count, 0 if fail_otool else 1)
                 self.assertEqual(list((root / "tauri-artifacts").iterdir()), [unrelated])
                 self.assertEqual(unrelated.read_bytes(), b"preserve existing desktop payload")
+
+    def test_producer_rejects_staged_metadata_and_other_tracked_changes_before_output(self):
+        root, _raw, official = self.producer_fixture()
+        environment = {"GITHUB_ACTIONS": "true", "GITHUB_SHA": self.expected["source"],
+                       "GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "2"}
+        cases = ([b"src/main.rs\0"],  # staged, even if worktree was restored
+                 [b"", b" mode change 100644 => 100755 src/main.rs\n"],
+                 [b"", b" delete mode 100644 src/main.rs\n"],
+                 [b"", b"", b"src/main.rs\0"])
+        for index, changes in enumerate(cases):
+            directory = root / ("output-" + str(index))
+            directory.mkdir()
+            def otool(_command, **kwargs):
+                kwargs["stdout"].write(self.dependencies)
+            with self.subTest(changes=changes), \
+                 mock.patch.dict(sys.modules, {"version_plan": official}), \
+                 mock.patch.object(artifact, "__file__", str(root / "scripts/macos_server_artifact.py")), \
+                 mock.patch.dict(artifact.os.environ, environment), \
+                 mock.patch.object(artifact.subprocess, "check_output", side_effect=[
+                     self.expected["source"], self.expected["tree"], *changes]), \
+                 mock.patch.object(artifact.subprocess, "run", side_effect=otool) as command:
+                with self.assertRaisesRegex(ValueError, "Producer source"):
+                    artifact.create_artifact_set(Path("target/server"), directory, Path(".release-plan.json"))
+                command.assert_not_called()
+                official.verify_checkout.assert_not_called()
+                self.assertEqual(list(directory.iterdir()), [])
+
+    def test_only_exact_official_version_overlay_is_allowed_in_tracked_version_file(self):
+        # Use the real existing version adapter, not a filename-only whitelist.
+        with mock.patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
+            import version_plan
+        root, _raw, _official = self.producer_fixture()
+        original = b'{"version":"1.2.3","name":"fixture"}\n'
+        expected = original.replace(b'"1.2.3"', b'"1.2.3-beta.4"')
+        policy = {"versioning": {"files": [{"path": "package.json", "format": "json", "field": "version"}]}}
+        plan = {"source_sha": self.expected["source"], "base_version": "1.2.3",
+                "version": "1.2.3-beta.4", "channel": "beta", "sequence": 4,
+                "build_number": None, "promotion": "promote-bytes"}
+
+        def git(command, **kwargs):
+            if command[:2] == ["git", "diff"]:
+                self.assertEqual(kwargs["cwd"], root)
+                self.assertEqual(kwargs["timeout"], 30)
+                return b"package.json\0" if command[2:5] == ["--name-only", "--no-renames", "-z"] else b""
+            if command[-2:] == ["rev-parse", "HEAD"]:
+                return self.expected["source"]
+            self.assertEqual(command[-1], self.expected["source"] + ":package.json")
+            return original
+
+        (root / "package.json").write_bytes(expected)
+        with mock.patch.object(artifact.subprocess, "check_output", side_effect=git):
+            artifact._verify_tracked_source(root, policy, plan, version_plan)
+            (root / "package.json").write_bytes(expected.replace(b'"fixture"', b'"tampered"'))
+            with self.assertRaisesRegex(ValueError, "Undeclared changes in version input"):
+                artifact._verify_tracked_source(root, policy, plan, version_plan)
 
     def test_policy_requires_record_version_and_workflow_validates_before_staging(self):
         policy = json.loads((ROOT / ".release-policy.json").read_text(encoding="utf-8"))

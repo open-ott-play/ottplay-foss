@@ -180,6 +180,23 @@ def _owned_path(root: Path, value: Path) -> Path:
     return path
 
 
+def _verify_tracked_source(root: Path, policy: dict, plan: dict, version_plan) -> None:
+    # Release sync intentionally overlays version fields on HEAD. Permit only
+    # that exact transformation, never arbitrary edits in those same files.
+    _require((root / ".git").exists(), "Producer root must be a Git checkout")
+    def git_diff(*arguments):
+        return subprocess.check_output(["git", "diff", *arguments, "HEAD", "--"],
+                                       cwd=root, timeout=30)
+    _require(not git_diff("--cached", "--name-only", "-z"),
+             "Producer source has staged changes")
+    _require(not git_diff("--summary", "--no-renames"),
+             "Producer source has file mode, type, creation or deletion changes")
+    changed = set(git_diff("--name-only", "--no-renames", "-z").split(b"\0")) - {b""}
+    declared = {os.fsencode(item["path"]) for item in policy["versioning"]["files"]}
+    _require(changed <= declared, "Producer source has undeclared tracked changes")
+    version_plan.verify_checkout(root, policy, plan)
+
+
 def create_artifact_set(binary: Path, directory: Path, plan_path: Path) -> dict:
     """CLI producer only: capture actual checkout, plan, Actions and otool facts."""
     # Official version logic is deliberately not an import-time dependency.
@@ -201,6 +218,7 @@ def create_artifact_set(binary: Path, directory: Path, plan_path: Path) -> dict:
     policy = _json((root / ".release-policy.json").read_bytes())
     version_plan.validate_plan(plan, policy, source)
     version_plan.sync_versions(root, policy, plan, check=True)
+    _verify_tracked_source(root, policy, plan, version_plan)
     expected = {
         "source": source, "tree": tree, "target": TARGET,
         "packageVersion": version_plan.projections(plan)["package"],

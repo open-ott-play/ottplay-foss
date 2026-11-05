@@ -102,9 +102,14 @@ class PrepareMacosServerTests(unittest.TestCase):
 
     def test_accepted_nonexecutable_download_becomes_exact_0755_candidate(self):
         original = {p.name: p.read_bytes() for p in self.artifacts.iterdir()}
-        with mock.patch.object(prep, "host_checks", return_value={"serverExecuted": False}) as check:
+        def inspect(candidate):
+            self.assertEqual(candidate, self.args.output / "ottplay-server")
+            self.assertEqual(candidate.read_bytes(), original[prep.STEM])
+            self.assertEqual(stat.S_IMODE(candidate.stat().st_mode), 0o755)
+            return {"serverExecuted": False}
+        with mock.patch.object(prep, "host_checks", side_effect=inspect) as check:
             evidence = prep.prepare(self.args)
-        check.assert_called_once_with(self.artifacts / prep.STEM)
+        check.assert_called_once_with(self.args.output / "ottplay-server")
         binary = self.args.output / "ottplay-server"
         self.assertEqual(binary.read_bytes(), original[prep.STEM])
         self.assertEqual(stat.S_IMODE(binary.stat().st_mode), 0o755)
@@ -290,6 +295,109 @@ class PrepareMacosServerTests(unittest.TestCase):
             prep.prepare(self.args)
         self.assertFalse((self.args.output / "identity.json").exists())
         self.assertFalse((self.args.output / "ottplay-server").exists())
+
+
+    def test_readers_refuse_fifo_symlink_and_file_replacement_at_open(self):
+        real_open = os.open
+        other = self.root / "other"
+        other.write_bytes(macho())
+        for reader in (lambda path: prep.read(path, 1024), prep.file_identity, prep.macho_requirements):
+            for replacement in ("fifo", "symlink", "regular"):
+                with self.subTest(reader=reader, replacement=replacement):
+                    path = self.root / "race-input"
+                    path.write_bytes(macho())
+                    descriptors = []
+                    def replace_before_open(name, flags, *args, **kwargs):
+                        self.assertEqual(Path(name), path)
+                        self.assertTrue(flags & os.O_NOFOLLOW)
+                        self.assertTrue(flags & os.O_NONBLOCK)
+                        path.rename(self.root / "prior-input")
+                        if replacement == "fifo":
+                            os.mkfifo(path)
+                        elif replacement == "symlink":
+                            path.symlink_to(other)
+                        else:
+                            path.write_bytes(macho())
+                        descriptor = real_open(name, flags, *args, **kwargs)
+                        descriptors.append(descriptor)
+                        return descriptor
+                    with mock.patch.object(prep.os, "open", side_effect=replace_before_open) as opened:
+                        with self.assertRaises((ValueError, OSError)):
+                            reader(path)
+                    opened.assert_called_once()
+                    for descriptor in descriptors:
+                        with self.assertRaises(OSError):
+                            os.fstat(descriptor)
+                    path.unlink()
+
+    def test_copy_refuses_source_replaced_by_fifo_after_initial_validation(self):
+        real_open = os.open
+        source = self.artifacts / prep.STEM
+        swapped = False
+        def replace_before_copy(name, flags, *args, **kwargs):
+            nonlocal swapped
+            if Path(name) == source and (self.args.output / "ottplay-server").exists():
+                self.assertTrue(flags & os.O_NONBLOCK)
+                source.unlink()
+                os.mkfifo(source)
+                swapped = True
+            return real_open(name, flags, *args, **kwargs)
+        with mock.patch.object(prep.os, "open", side_effect=replace_before_copy), \
+             mock.patch.object(prep, "host_checks") as check:
+            with self.assertRaisesRegex(ValueError, "changed while opening"):
+                prep.prepare(self.args)
+        self.assertTrue(swapped)
+        check.assert_not_called()
+        self.assertFalse(self.args.output.exists())
+
+    def test_inspection_changes_to_candidate_retained_payload_or_pins_refuse(self):
+        pins = self.args.implementation.read_bytes()
+        for changed in ("candidate", "retained", "pins"):
+            with self.subTest(changed=changed):
+                self.reset_artifacts()
+                self.args.implementation.write_bytes(pins)
+                def inspect(candidate):
+                    target = {"candidate": candidate, "retained": self.artifacts / prep.STEM,
+                              "pins": self.args.implementation}[changed]
+                    target.write_bytes(target.read_bytes() + b"changed")
+                    return {}
+                with mock.patch.object(prep, "host_checks", side_effect=inspect):
+                    with self.assertRaises(ValueError):
+                        prep.prepare(self.args)
+                self.assertFalse(self.args.output.exists())
+
+    def test_sidecar_fsync_failure_removes_all_owned_files_and_allows_retry(self):
+        for fail_at in range(2, 6):  # candidate fsync is first, then four sidecars
+            with self.subTest(fail_at=fail_at):
+                self.args.output = self.root / ("prepared-" + str(fail_at))
+                calls = 0
+                def fsync(_descriptor):
+                    nonlocal calls
+                    calls += 1
+                    if calls == fail_at:
+                        raise OSError("sidecar fsync failed")
+                with mock.patch.object(prep, "host_checks", return_value={}), \
+                     mock.patch.object(prep.os, "fsync", side_effect=fsync):
+                    with self.assertRaisesRegex(OSError, "sidecar fsync failed"):
+                        prep.prepare(self.args)
+                self.assertEqual(calls, fail_at)
+                self.assertFalse(self.args.output.exists())
+                with mock.patch.object(prep, "host_checks", return_value={}):
+                    self.assertEqual(prep.prepare(self.args)["status"], "PREPARED_ACCEPTED_SERVER")
+
+    def test_colliding_sidecar_is_never_owned_or_removed(self):
+        real_open = os.open
+        collision = self.args.output / "identity.json"
+        def collide(name, flags, *args, **kwargs):
+            if Path(name) == collision:
+                collision.write_bytes(b"foreign file")
+            return real_open(name, flags, *args, **kwargs)
+        with mock.patch.object(prep, "host_checks", return_value={}), \
+             mock.patch.object(prep.os, "open", side_effect=collide):
+            with self.assertRaises(FileExistsError):
+                prep.prepare(self.args)
+        self.assertEqual(list(self.args.output.iterdir()), [collision])
+        self.assertEqual(collision.read_bytes(), b"foreign file")
 
 
 if __name__ == "__main__":
