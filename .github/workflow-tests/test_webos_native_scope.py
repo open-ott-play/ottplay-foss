@@ -136,6 +136,46 @@ class NativeScopeTests(unittest.TestCase):
         expected.add("build/native-webos/dist/ottplay-native-webos-icon.png")
         self.assertEqual(set(steps[upload]["with"]["path"].splitlines()), expected)
 
+    def test_native_size_diagnostics_survive_failed_build_without_promoting_candidate(self):
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        steps = workflow["jobs"]["native-candidate"]["steps"]
+        matches = [step for step in steps
+                   if step.get("name") == "Preserve native main size and link diagnostics"]
+        self.assertEqual(len(matches), 1)
+        diagnostics = matches[0]
+        self.assertEqual(diagnostics["if"], "always()")
+        self.assertEqual(diagnostics["timeout-minutes"], "5")
+        self.assertNotIn("run", diagnostics)
+        self.assertNotIn("continue-on-error", diagnostics)
+        settings = diagnostics["with"]
+        self.assertEqual(settings["name"],
+                         "ottplay-native-size-diagnostics-${{ github.sha }}-${{ github.run_attempt }}")
+        self.assertEqual(settings["if-no-files-found"], "warn")
+        self.assertEqual(settings["retention-days"], "30")
+        work = "build/native-webos/"
+        expected = {work + path for path in (
+            "prepared.json", "ottplay-native-webos-*-cargo-artifacts.jsonl",
+            "ottplay-native-webos-*-build-config.txt", "source/rust-modules/rust-toolchain.toml",
+            "source/ci/build-budgets.json", "source/pkg/plxnative",
+            "source/ipkroot/data/usr/palm/applications/com.openottplay.player.native/plxnative",
+        )}
+        expected.update(work + prefix + suffix
+                        for prefix in ("source/pkg/plxnative", "source/pkg/link-evidence/stable/plxnative")
+                        for suffix in (".link.map", ".link.trace", ".link.json"))
+        self.assertEqual(set(settings["path"].splitlines()), expected)
+        candidate = next(step for step in steps
+                         if step.get("with", {}).get("name") == "ottplay-native-webos-candidate")
+        self.assertEqual(diagnostics["uses"], candidate["uses"])
+        self.assertNotIn("if", candidate)
+        self.assertNotIn("continue-on-error", candidate)
+        self.assertEqual(candidate["with"]["if-no-files-found"], "error")
+        build = next(i for i, step in enumerate(steps)
+                     if "native/webos/build.py all" in step.get("run", ""))
+        self.assertLess(build, steps.index(diagnostics))
+        self.assertNotIn("if", steps[build])
+        self.assertNotIn("continue-on-error", steps[build])
+
     def test_host_qualification_precedes_arm_and_preserves_failure_evidence(self):
         workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
                              Loader=yaml.BaseLoader)
