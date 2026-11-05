@@ -20,7 +20,7 @@ class DesktopPreflightContracts(unittest.TestCase):
                 self.assertEqual(MODULE.manual_preflight(event, requested),
                                  event == "workflow_dispatch" and requested is True)
         workflow = (ROOT / ".github/workflows/native-parity.yml").read_text()
-        guard = "if: \u0024{{ !(github.event_name == 'workflow_dispatch' && inputs.desktop_preflight_only == true) }}"
+        guard = "if: \u0024{{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}"
         for job in ("shared-guide", "windows-installers", "android", "apple", "favorites-native"):
             self.assertIn("  " + job + ":\n    " + guard, workflow)
         self.assertIn("if: \u0024{{ github.event_name == 'workflow_dispatch' && inputs.desktop_preflight_only == true }}",
