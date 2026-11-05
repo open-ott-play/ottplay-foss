@@ -89,8 +89,11 @@ and identify the failed stage before changing the connection:
   write blocks further preference writes until the application restarts.
   Preference success does not complete pairing, verify protected storage or
   unlock access when prior kiosk or parental policy is unknown.
-- **Protected pairing-token Save:** a helper result of `complete` does not prove that
-  application-side encryption or the subsequent commit succeeded. If a diagnostic
+- **Protected pairing-token Save:** with typed Control support, native ARM
+  encrypts credentials in the named helper. Host builds and legacy v1
+  read/migration still use application-side cryptography. A helper diagnostic
+  result of `complete` alone does not prove a durable credential write and
+  verified readback. If a diagnostic
   reports `operation=seal stage=generate service_code=-1000`, the meaning of
   that numeric code is not yet established. It is not evidence of a missing
   server or wrong password, or proof that the connection was saved.

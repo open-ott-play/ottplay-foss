@@ -1135,6 +1135,135 @@ index f145594f..76c3df2a 100644
  
  ## What had to change for it to work at all
  
+diff --git a/docs/native-credential-storage.md b/docs/native-credential-storage.md
+new file mode 100644
+index 00000000..aa04da65
+--- /dev/null
++++ b/docs/native-credential-storage.md
+@@ -0,0 +1,123 @@
++# Why Plex sign-in can work while OTT Save fails
++
++This compares native ARM source at `0be35d69174737cfaf8831e5f107250b8e96a899`.
++It is not evidence that a particular package or television has passed persistence
++checks. For installation and verification steps, use the
++[native delivery guide](ott-native-delivery.md#update-without-assuming-that-state-survived).
++
++Plex and native ARM OTT Control use the same named storage helper, but
++different keys, records and fallback policies. Other OTT private state still
++uses application-side encryption.
++
++```mermaid
++flowchart TB
++    P["Plex session"] --> H["Named storage helper"]
++    H --> E["Helper AES-GCM, or policy-permitted DB8 ACL storage"]
++    E --> D["Plex record: ottstate.*"]
++    O["OTT Control on native ARM"] --> C["Typed request to named helper"]
++    C --> K["Control-specific KeyManager encryption"]
++    K --> T["Control v2 in OTT record: ottpriv.*"]
++```
++
++## Plex: helper-owned protection with explicit fallback policy
++
++The helper registers as `<app-id>.storage` and creates a private DB8 kind owned
++by that same service. Plex credentials live in its `ottstate.*` record. These
++are source-defined identities; the firmware must still admit the actual
++operation. See [helper registration][helper], [DB8 ownership][db8] and
++[record identity][identity].
++
++For fresh authentication, explicit reauthentication or legacy import, the
++[Plex policy][policy] requests DB8 ACL-only storage on platform major versions
++1–4. On newer or unclassified versions it tries KeyManager encryption and
++allows an ACL-only result if sealing fails. That authorized fresh-write path
++also permits ACL fallback if [decrypting or verifying its newly written
++encrypted record fails][plex-readback]. Routine refresh preserves an
++existing encrypted record's encryption requirement; an existing ACL-only
++record can remain ACL-only.
++
++The [ACL envelope][protection] contains plaintext inside the private DB8
++record. It is access-controlled storage, **not encryption**. A separate
++[guarded legacy file fallback][legacy] may also retain a marked, owner-only
++session file after a non-durable canonical attempt. It refuses to downgrade
++known protected state and does not turn that canonical attempt into a durable
++success.
++
++Consequently, a successful Plex login or a visible library does not establish
++which protection path stored the credentials, or that a durable write happened.
++The [login owner][login-owner] tracks durable completion separately and can
++allow entry after an unsaved-login warning is acknowledged.
++
++## OTT Control on native ARM: encryption in the named helper
++
++The paired [ARM load/save adapter][control-load] selects the
++[typed Control coordinator][control-coordinator]. It sends validated Control
++fields to the named helper. The [Control backend][control-backend] encrypts
++with a separate Control key and writes an installation-bound v2 envelope in
++`ottpriv.*`. This path has **no ACL-only or plaintext fallback**; it does not
++inherit Plex's fallback policy.
++
++A durable result requires the matching commit receipt and a fresh stored
++read/decrypt matching the exact configuration. A missing or uncertain result
++is not reported as a successful protected Save. This is an integrated source
++path, not a claim that the installed television has passed it.
++
++## What still uses application-side cryptography
++
++Host and hostsim builds retain the original [application-side private
++writer][ott-writer] and [KeyManager adapter][app-keymanager]. On native ARM,
++reading legacy v1 Control also requires the old application-side decryption.
++Reading alone does not create v2: an explicit save first requires successful
++legacy decoding and retains the original ciphertext. A decryption failure
++remains a failure, not an absent record. Other OTT private state also remains
++on its existing protected path; this change concerns Control, not all saved
++state.
++
++An explicitly provisioned private `ottplay-control.json` remains a separate
++managed authority, not a fallback file created after encryption fails. A
++locked or invalid canonical Control record returns an error before that
++managed path is considered.
++
++## Public preferences already separated in this source
++
++The [closed preference schema][preferences] permits only the installation
++device ID, normalized HTTPS controller address and Classic/Modern selection,
++plus its format version. Tokens and arbitrary settings are excluded. The
++address excludes credentials, query strings, fragments and percent escapes.
++These non-secret
++values use the existing helper without KeyManager encryption; "public" does
++not mean a publicly accessible database. A genuinely absent configuration can
++therefore establish a disabled, tokenless identity. Full private state and
++authenticated pairing still use their protected paths.
++
++## Installation and verification remain separate
++
++The application and storage helper must be delivered as a matching pair.
++Source integration or publishing a diagnostic canary does not establish a
++successful protected Save, restart or authenticated reconnect on the TV.
++Those results still need device receipts. The implementation described here
++adds no OTT Control ACL fallback.
++
++## Key Server is not KeyManager
++
++Developer Mode's **Key Server** supplies the computer's SSH key for installing
++and debugging apps, as shown in [LG's connection procedure][lg-key].
++**KeyManager** is the credential-encryption service called by the code above.
++Enabling Key Server is not a test of KeyManager access. OTT controller pairing
++is a third, separate authorization exchange.
++
++[helper]: ../rust-modules/platform/src/storage_service/service.rs#L54
++[db8]: ../rust-modules/platform/src/storage_service/backend.rs#L133
++[identity]: ../rust-modules/platform/src/storage/state.rs#L18
++[policy]: ../rust-modules/plex/src/plex/session/persistence.rs#L725
++[protection]: ../rust-modules/platform/src/storage_service/backend.rs#L982
++[plex-readback]: ../rust-modules/platform/src/storage_service/backend.rs#L553
++[login-owner]: ../rust-modules/session/src/auth/owner.rs#L1526
++[legacy]: ../rust-modules/plex/src/plex/session.rs#L4621
++[ott-writer]: ../rust-modules/platform/src/storage/private_helper.rs#L433
++[app-keymanager]: ../rust-modules/platform/src/keymanager.rs#L94
++[control-load]: ../rust-modules/src/app/ott_remote/transport.rs#L187
++[control-coordinator]: ../rust-modules/platform/src/storage/control.rs#L118
++[control-backend]: ../rust-modules/platform/src/storage_service/ott_control_backend.rs#L89
++[preferences]: ../rust-modules/platform/src/storage_service/ott_wire.rs#L98
++[lg-key]: https://webostv.developer.lge.com/develop/getting-started/developer-mode-app#connecting-tv-and-pc
 diff --git a/docs/native-external-track-validation.md b/docs/native-external-track-validation.md
 index 71cc3dd7..b13fcd44 100644
 --- a/docs/native-external-track-validation.md
@@ -1381,7 +1510,7 @@ index 38fb7f6b..a520938c 100644
  The setting IDs are `menuShowProviders`, `menuShowProfiles`, `menuShowCatalog`, `menuShowCategories`, `menuShowFavorites`, `menuShowSearch`, `menuShowDescription`, `menuShowPlay`, `menuShowFavorite`, `menuShowRefresh`, `menuShowAudio`, `menuShowSubtitles`, `menuShowQuality`, `menuShowSpeed`, and `menuShowStats`.
  
 diff --git a/docs/ott-native-delivery.md b/docs/ott-native-delivery.md
-index 5c0c7935..fe5eda4b 100644
+index 5c0c7935..33750cde 100644
 --- a/docs/ott-native-delivery.md
 +++ b/docs/ott-native-delivery.md
 @@ -1,6 +1,6 @@
@@ -1432,7 +1561,7 @@ index 5c0c7935..fe5eda4b 100644
  is not this repository. Do not infer a working 0.2.1 or 0.3.0 feed from the URL
  pattern: Homebrew validation for the 0.2.1 local candidate is still absent, and
  the planned 0.3.0 tag is not a published repository snapshot.
-@@ -143,12 +144,25 @@ automatic downgrade to 0.2.0 after the new canonical domain initializes.
+@@ -143,12 +144,28 @@ automatic downgrade to 0.2.0 after the new canonical domain initializes.
  
  For the reviewed local-candidate procedure, `installed-storage-unverified`
  means package/process and covered legacy-file checks passed; it deliberately
@@ -1458,6 +1587,9 @@ index 5c0c7935..fe5eda4b 100644
 +Developer Mode's Key Server provides the computer's SSH key ([LG procedure](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app));
 +it is separate from the credential KeyManager used by protected writes.
 +OTT controller pairing is separate from both.
++
++For why Plex sign-in and OTT Save can have different outcomes, see the
++[credential storage comparison](native-credential-storage.md).
 +
  ## Local videos on a USB drive or SSD
  
@@ -18482,9 +18614,27 @@ index 8ded4c5b..d09c9a9a 100644
 +    }
  }
 diff --git a/rust-modules/platform/src/storage/client.rs b/rust-modules/platform/src/storage/client.rs
-index 1842b45d..fb1a5d57 100644
+index 1842b45d..9b67359a 100644
 --- a/rust-modules/platform/src/storage/client.rs
 +++ b/rust-modules/platform/src/storage/client.rs
+@@ -88,7 +88,7 @@ fn runtime_path() -> PathBuf {
+     PathBuf::from(format!("/tmp/{}.storage-runtime", plx_base::paths::app_id()))
+ }
+ 
+-fn generation_text(generation: Generation) -> String {
++pub(super) fn generation_text(generation: Generation) -> String {
+     generation
+         .0
+         .iter()
+@@ -118,7 +118,7 @@ fn io_failed(stage: Stage, error: std::io::Error) -> ClientError {
+     failed(stage, error.raw_os_error(), ClientError::Unavailable)
+ }
+ 
+-fn error(code: ErrorCode) -> ClientError {
++pub(super) fn error(code: ErrorCode) -> ClientError {
+     if !failure::last().is_some_and(|f| matches!(f.observed.stage, Stage::BackendRejected | Stage::HelloRejected)) {
+         failed(Stage::BackendRejected, None, classify_error(code));
+         failure::update(|f| f.wire = Some(code));
 @@ -143,6 +143,42 @@ pub fn load() -> Result<Load, ClientError> {
      load_with(&mut NativeTransport)
  }
@@ -18528,7 +18678,17 @@ index 1842b45d..fb1a5d57 100644
  /// Injectable external I/O boundary, shared by the shipping coordinator and host fault tests.
  pub trait Transport {
      fn transact(&mut self, request: Request) -> Result<Response, ClientError>;
-@@ -730,6 +766,13 @@ fn connect(root: &Path) -> Result<(UnixStream, Descriptor), ClientError> {
+@@ -581,7 +617,8 @@ fn read_response(stream: &mut impl Read, root: &Path, generation: &str) -> Resul
+     if let Some(code) = response.failure_code() {
+         let stage = match response {
+             Response::Commit { .. } | Response::Reconcile { .. }
+-                | Response::OttCommit { .. } | Response::OttReconcile { .. } => Stage::BackendUncertain,
++                | Response::OttCommit { .. } | Response::OttReconcile { .. }
++                | Response::OttControlCommit { .. } => Stage::BackendUncertain,
+             _ => Stage::BackendRejected,
+         };
+         failed(stage, None, classify_error(code));
+@@ -730,6 +767,13 @@ fn connect(root: &Path) -> Result<(UnixStream, Descriptor), ClientError> {
  
  #[cfg(target_os = "linux")]
  fn connect_to(root: &Path, inspection_deadline: Option<Instant>) -> Result<(UnixStream, Descriptor), ClientError> {
@@ -18542,7 +18702,7 @@ index 1842b45d..fb1a5d57 100644
      let directory = OpenOptions::new()
          .read(true)
          .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC)
-@@ -756,10 +799,9 @@ fn connect_to(root: &Path, inspection_deadline: Option<Instant>) -> Result<(Unix
+@@ -756,10 +800,9 @@ fn connect_to(root: &Path, inspection_deadline: Option<Instant>) -> Result<(Unix
      {
          return Err(failed(Stage::DescriptorInvalid, None, ClientError::Protocol));
      }
@@ -18556,7 +18716,7 @@ index 1842b45d..fb1a5d57 100644
      });
      let socket_meta = std::fs::symlink_metadata(&socket).map_err(|e| io_failed(
          if e.raw_os_error() == Some(libc::ENOENT) { Stage::SocketAbsent } else { Stage::SocketInvalid }, e))?;
-@@ -769,7 +811,7 @@ fn connect_to(root: &Path, inspection_deadline: Option<Instant>) -> Result<(Unix
+@@ -769,7 +812,7 @@ fn connect_to(root: &Path, inspection_deadline: Option<Instant>) -> Result<(Unix
      {
          return Err(failed(Stage::SocketInvalid, None, ClientError::Authentication));
      }
@@ -18565,7 +18725,7 @@ index 1842b45d..fb1a5d57 100644
          Some(deadline) => connect_inspection_socket(&socket, deadline),
          None => UnixStream::connect(socket),
      }.map_err(|e| io_failed(Stage::Connect, e))?;
-@@ -840,6 +882,52 @@ fn hex_128(value: &str) -> bool {
+@@ -840,6 +883,52 @@ fn hex_128(value: &str) -> bool {
  mod tests {
      use super::*;
  
@@ -18619,10 +18779,15 @@ index 1842b45d..fb1a5d57 100644
      // `task`, so the test lives with the call it grades.
      #[test]
 diff --git a/rust-modules/platform/src/storage/client_ott.rs b/rust-modules/platform/src/storage/client_ott.rs
-index c51a1327..6dffb70d 100644
+index c51a1327..dafeaa7a 100644
 --- a/rust-modules/platform/src/storage/client_ott.rs
 +++ b/rust-modules/platform/src/storage/client_ott.rs
-@@ -25,6 +25,8 @@ fn valid_status(status: &ott::Status) -> bool {
+@@ -21,10 +21,12 @@ fn valid_decimal(value: &str) -> bool {
+         .is_some_and(|number| number > 0 && number.to_string() == value)
+ }
+ 
+-fn valid_status(status: &ott::Status) -> bool {
++pub(crate) fn valid_status(status: &ott::Status) -> bool {
      valid_decimal(&status.db_rev)
          && status.revision > 0
          && status.epoch > 0
@@ -18631,8 +18796,16 @@ index c51a1327..6dffb70d 100644
          && (status.barrier != ott::Barrier::Pending
              || (!status.control_present && !status.state_present))
  }
-@@ -35,7 +37,8 @@ fn valid_value(value: &wire::SecretString) -> bool {
+@@ -33,9 +35,16 @@ fn valid_value(value: &wire::SecretString) -> bool {
+     ott::validate_envelope(&value.0).is_ok()
+ }
  
++fn valid_control_value(value: &wire::SecretString) -> bool {
++    if wire::control::is_protected(&value.0) {
++        wire::control::Envelope::parse(&value.0, plx_base::paths::app_id()).is_ok()
++    } else { valid_value(value) }
++}
++
  fn valid_mutation(mutation: &ott::Mutation) -> bool {
      match mutation {
 -        ott::Mutation::Initialize {
@@ -18641,7 +18814,7 @@ index c51a1327..6dffb70d 100644
              control,
              state,
              barrier,
-@@ -43,6 +46,7 @@ fn valid_mutation(mutation: &ott::Mutation) -> bool {
+@@ -43,6 +52,7 @@ fn valid_mutation(mutation: &ott::Mutation) -> bool {
              (control.as_ref().is_none_or(valid_value) && state.as_ref().is_none_or(valid_value))
                  && (*barrier != ott::Barrier::Pending || (control.is_none() && state.is_none()))
          }
@@ -18649,9 +18822,12 @@ index c51a1327..6dffb70d 100644
          ott::Mutation::Put { value, .. } => valid_value(value),
          ott::Mutation::BeginErase {} | ott::Mutation::FinishErase {} => true,
      }
-@@ -85,6 +89,7 @@ pub fn load_with(transport: &mut dyn Transport) -> Result<Option<ott::Snapshot>,
+@@ -83,8 +93,9 @@ pub fn load_with(transport: &mut dyn Transport) -> Result<Option<ott::Snapshot>,
+                     || snapshot.status.barrier == ott::Barrier::Pending
+                     || snapshot.status.control_present != snapshot.control.is_some()
                      || snapshot.status.state_present != snapshot.state.is_some()
-                     || !snapshot.control.as_ref().is_none_or(valid_value)
+-                    || !snapshot.control.as_ref().is_none_or(valid_value)
++                    || !snapshot.control.as_ref().is_none_or(valid_control_value)
                      || !snapshot.state.as_ref().is_none_or(valid_value)
 +                    || snapshot.public_preferences.as_ref().is_some_and(|prefs| prefs.validate().is_err())
                  {
@@ -18676,11 +18852,348 @@ index 1e4f52e7..b94360e4 100644
          })
      }))
      .is_err());
+diff --git a/rust-modules/platform/src/storage/control.rs b/rust-modules/platform/src/storage/control.rs
+new file mode 100644
+index 00000000..57a143de
+--- /dev/null
++++ b/rust-modules/platform/src/storage/control.rs
+@@ -0,0 +1,322 @@
++//! Helper-owned Control storage selected by the native ARM remote-control adapter.
++//! Run on a storage worker. Loading may import retained v1 files through the existing
++//! private import transaction, but only an explicit save creates or updates v2.
++use super::{helper, secure, Namespace, Sealed, WritePermit, WRITER};
++use crate::storage::{
++    client::{self, Transport}, state::{self, Generation},
++    wire::{self, control, ott, CommitStatus, Request, Response}, CommitReceipt, CommitStage,
++    StoreError,
++};
++pub use control::Config;
++
++/// Pure application adapter: use the existing Config::parse (including its URL
++/// normalization and legacy defaults), then convert to this wire Config. Required
++/// explicitly so this lower layer never invents a second URL parser or a fallback.
++pub type LegacyDecoder = fn(serde_json::Value) -> Result<Config, ()>;
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum Error {
++    Storage(super::Error),
++    /// A present encrypted record could not be opened. Never interpret as absence.
++    Locked(super::Error),
++    /// An initial legacy import could not be confirmed. No v2 save was attempted.
++    Uncertain,
++}
++impl From<super::Error> for Error {
++    fn from(error: super::Error) -> Self {
++        match error {
++            super::Error::ProtectionUnavailable | super::Error::ProtectionFailed(_) => Self::Locked(error),
++            error => Self::Storage(error),
++        }
++    }
++}
++
++#[derive(Clone, PartialEq, Eq)]
++pub struct Snapshot {
++    pub value: Config,
++    pub revision: u64,
++    pub epoch: u64,
++}
++impl std::fmt::Debug for Snapshot {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        f.write_str("OttControlSnapshot([REDACTED])")
++    }
++}
++
++struct Observation {
++    status: Option<ott::Status>,
++    source: control::Source,
++    value: Option<Config>,
++}
++type Open = fn(Namespace, &Sealed) -> Option<Vec<u8>>;
++
++fn invalid() -> Error { super::Error::Invalid.into() }
++fn client_error(error: client::ClientError) -> Error { helper::client_error(error).into() }
++fn uncertain() -> CommitReceipt {
++    CommitReceipt::Uncertain { stage: CommitStage::Readback, errno: 0 }
++}
++
++/// Normalize only the decrypted in-memory value. The source digest and retained
++/// v1 bytes always refer to the original encrypted record, never a reserialization.
++pub(super) fn decode_config(value: serde_json::Value, decode: LegacyDecoder) -> Result<Config, super::Error> {
++    let config = decode(value).map_err(|_| super::Error::Invalid)?;
++    config.validate().map_err(|_| super::Error::Invalid)?;
++    Ok(config)
++}
++
++fn observe(transport: &mut dyn Transport, open: Open, decode: LegacyDecoder) -> Result<Observation, Error> {
++    let (status, loaded) = match transport.transact(Request::OttControlLoad {}).map_err(client_error)? {
++        Response::OttControlLoaded { status, value } => (status, value),
++        Response::KeymanagerError { failure, .. } => return Err(super::Error::ProtectionFailed(failure).into()),
++        Response::Error { code } => return Err(client_error(client::error(code))),
++        _ => return Err(client_error(client::ClientError::Protocol)),
++    };
++    if status.as_ref().is_some_and(|status| !client::ott::valid_status(status)) {
++        return Err(invalid());
++    }
++    if status.as_ref().is_some_and(|status| status.barrier == ott::Barrier::Pending) {
++        return Err(super::Error::Revoked.into());
++    }
++    if status.as_ref().is_some_and(|status| !status.private_initialized) {
++        return Err(super::Error::Store(StoreError::Conflict).into());
++    }
++    let present = !matches!(&loaded, control::Loaded::Missing {});
++    if status.as_ref().is_some_and(|status| status.control_present != present)
++        || (status.is_none() && present)
++    { return Err(invalid()); }
++    let (source, value) = match loaded {
++        control::Loaded::Missing {} => (control::Source::Absent {}, None),
++        control::Loaded::Legacy { envelope } => {
++            if ott::envelope_app(&envelope.0, ott::Namespace::Control).map_err(|_| invalid())?
++                != plx_base::paths::app_id()
++            { return Err(invalid()); }
++            let value = super::decode_payload(Namespace::OttControl, &envelope.0, open)?
++                .ok_or_else(invalid)?;
++            let config = decode_config(value, decode)?;
++            (control::Source::Legacy { sha256: state::digest_bytes(envelope.0.as_bytes()) }, Some(config))
++        }
++        control::Loaded::Protected { value, envelope_sha256 } => {
++            value.validate().map_err(|_| invalid())?;
++            if !control::valid_digest(&envelope_sha256) { return Err(invalid()); }
++            (control::Source::Protected { sha256: envelope_sha256 }, Some(value))
++        }
++    };
++    Ok(Observation { status, source, value })
++}
++
++fn prepare(transport: &mut dyn Transport, permit: &WritePermit, decode: LegacyDecoder) -> Result<(), Error> {
++    if !permit.is_valid() { return Err(super::Error::Revoked.into()); }
++    helper::ready_for_control(transport, permit, decode).map_err(|error| match error {
++        // The old importer conservatively reports unconfirmed writes as unavailable.
++        super::Error::Store(StoreError::HelperUnavailable)
++        | super::Error::HelperFailed { source: StoreError::HelperUnavailable, .. } => Error::Uncertain,
++        error => error.into(),
++    })?;
++    Ok(())
++}
++
++/// Explicit opt-in. May import existing encrypted files, retaining them unchanged.
++/// Does not migrate a stored v1 Control value to v2 or write a new configuration.
++/// `decode` must preserve the application's existing legacy parsing semantics.
++pub fn load_guarded(permit: &WritePermit, decode: LegacyDecoder) -> Result<Option<Snapshot>, Error> {
++    let _writer = WRITER.lock().unwrap_or_else(|error| error.into_inner());
++    let transport = &mut client::NativeTransport;
++    prepare(transport, permit, decode)?;
++    let observed = observe(transport, secure::open_named, decode)?;
++    if !permit.is_valid() { return Err(super::Error::Revoked.into()); }
++    match (observed.value, observed.status) {
++        (Some(value), Some(status)) => Ok(Some(Snapshot { value, revision: status.revision, epoch: status.epoch })),
++        (None, _) => Ok(None),
++        _ => Err(invalid()),
++    }
++}
++
++/// Explicit opt-in. One Control commit, no reconciliation or automatic replay.
++/// Only a fresh stored decryption matching the exact receipt and Config is durable.
++/// `decode` is also required before overwriting or importing any legacy Control.
++pub fn save_guarded(value: &Config, permit: &WritePermit, decode: LegacyDecoder) -> Result<CommitReceipt, Error> {
++    value.validate().map_err(|_| invalid())?;
++    let _writer = WRITER.lock().unwrap_or_else(|error| error.into_inner());
++    let transport = &mut client::NativeTransport;
++    prepare(transport, permit, decode)?;
++    let operation = Generation::random().map_err(|_| invalid())?;
++    save_prepared(transport, value, permit, operation, secure::open_named, decode)
++}
++
++fn save_prepared(transport: &mut dyn Transport, value: &Config, permit: &WritePermit,
++    operation: Generation, open: Open, decode: LegacyDecoder) -> Result<CommitReceipt, Error>
++{
++    let observed = observe(transport, open, decode)?;
++    commit(transport, observed, value, permit, operation, (open, decode))
++}
++
++fn commit(transport: &mut dyn Transport, before: Observation, value: &Config,
++    permit: &WritePermit, operation: Generation, legacy: (Open, LegacyDecoder)) -> Result<CommitReceipt, Error>
++{
++    let (open, decode) = legacy;
++    value.validate().map_err(|_| invalid())?;
++    let operation_id = client::generation_text(operation);
++    let mut request = Request::OttControlCommit {
++        expected: client::ott::expected(before.status.as_ref()),
++        operation_id: operation_id.clone(), digest: String::new(),
++        source: before.source, value: value.clone(),
++    };
++    let digest = state::digest_bytes(&wire::request_digest_bytes(&request).map_err(|_| invalid())?);
++    if let Request::OttControlCommit { digest: target, .. } = &mut request { *target = digest.clone(); }
++    if !permit.is_valid() { return Err(super::Error::Revoked.into()); }
++    let receipt = match transport.transact(request) {
++        Ok(Response::OttControlCommit { status: CommitStatus::Committed, receipt: Some(receipt) })
++            if receipt.operation_id == operation_id && receipt.digest == digest
++                && receipt.revision > 0 && receipt.epoch > 0 => receipt,
++        Ok(Response::OttControlCommit { status: CommitStatus::Conflict, receipt: None }) =>
++            return Err(super::Error::Store(StoreError::Conflict).into()),
++        Ok(Response::OttControlCommit { status: CommitStatus::Invalid, receipt: None }) => return Err(invalid()),
++        Ok(Response::KeymanagerError { failure, preservation: wire::AuthPreservation::Unchanged,
++            db8_commit_verified: false }) => return Err(super::Error::ProtectionFailed(failure).into()),
++        Ok(Response::Error { code: wire::ErrorCode::Invalid }) => return Err(invalid()),
++        // Any ambiguous response after dispatch can hide an applied write.
++        _ => return Ok(uncertain()),
++    };
++    let after = match observe(transport, open, decode) {
++        Ok(after) => after,
++        Err(_) => return Ok(uncertain()),
++    };
++    let matches = matches!(&after.source, control::Source::Protected { .. })
++        && after.status.as_ref().is_some_and(|status|
++            status.revision == receipt.revision && status.epoch == receipt.epoch)
++        && after.value.as_ref() == Some(value)
++        && permit.is_valid();
++    Ok(if matches { CommitReceipt::Durable } else { uncertain() })
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use wire::SecretString;
++
++    fn config() -> Config {
++        Config { version: 1, enabled: true, address: "https://control.invalid:443".into(),
++            token: SecretString("a".repeat(32)), device_id: "fixture-device".into(), allow_insecure_http: false }
++    }
++    fn status(revision: u64) -> ott::Status {
++        ott::Status { db_rev: revision.to_string(), revision, epoch: 1, barrier: ott::Barrier::Open,
++            control_present: true, state_present: false, private_initialized: true }
++    }
++    fn protected(revision: u64) -> Response {
++        Response::OttControlLoaded { status: Some(status(revision)), value: control::Loaded::Protected {
++            value: config(), envelope_sha256: "b".repeat(64),
++        } }
++    }
++    fn legacy() -> wire::SecretString {
++        SecretString(serde_json::json!({"version":1,"sealed":{
++            "backend":"keymanager3", "key":Namespace::OttControl.key_name(),
++            "iv":"AQ==", "data":"Ag=="
++        }}).to_string())
++    }
++    fn refuse_open(_: Namespace, _: &Sealed) -> Option<Vec<u8>> { None }
++    fn decode_fixture(value: serde_json::Value) -> Result<Config, ()> {
++        serde_json::from_value(value).map_err(|_| ())
++    }
++    fn open_unnormalized_legacy(namespace: Namespace, _: &Sealed) -> Option<Vec<u8>> {
++        let mut value = serde_json::to_value(config()).unwrap();
++        value["address"] = serde_json::json!(" https://control.invalid/api/webhook/commands/// ");
++        super::super::encode_plain(namespace, &value).ok()
++    }
++    fn decode_legacy_fixture(mut value: serde_json::Value) -> Result<Config, ()> {
++        // The actual application adapter must use its existing Config::parse.
++        // This fixture pins the boundary: it receives the original logical value
++        // before wire validation and returns the normalized typed representation.
++        assert_eq!(value["address"], " https://control.invalid/api/webhook/commands/// ");
++        value["address"] = serde_json::json!("https://control.invalid:443");
++        decode_fixture(value)
++    }
++
++    #[test]
++    fn locked_legacy_is_never_missing_or_overwritten() {
++        let mut calls = 0;
++        let mut transport = |request| {
++            calls += 1;
++            assert!(matches!(request, Request::OttControlLoad {}));
++            Ok(Response::OttControlLoaded { status: Some(status(2)),
++                value: control::Loaded::Legacy { envelope: legacy() } })
++        };
++        assert_eq!(save_prepared(&mut transport, &config(), &WritePermit::new(),
++            Generation([1; 16]), refuse_open, decode_fixture), Err(Error::Locked(super::super::Error::ProtectionUnavailable)));
++        assert_eq!(calls, 1);
++    }
++
++    #[test]
++    fn legacy_decoder_cannot_bypass_wire_config_validation() {
++        let value = serde_json::to_value(config()).unwrap();
++        assert!(decode_config(value.clone(), decode_fixture).is_ok());
++        let mut bad = value.clone(); bad["unbounded_payload"] = serde_json::json!("x");
++        assert!(decode_config(bad, decode_fixture).is_err());
++        let mut bad = value; bad["version"] = serde_json::json!(9);
++        assert!(decode_config(bad, decode_fixture).is_err());
++    }
++
++    #[test]
++    fn legacy_normalization_precedes_commit_without_changing_the_source_digest() {
++        for wrong_revision in [false, true] {
++            let mut calls = 0;
++            let source_digest = state::digest_bytes(legacy().0.as_bytes());
++            let mut transport = |request: Request| {
++                calls += 1;
++                let expected_digest = if matches!(&request, Request::OttControlCommit { .. }) {
++                    Some(state::digest_bytes(&wire::request_digest_bytes(&request).unwrap()))
++                } else { None };
++                match request {
++                    Request::OttControlLoad {} if calls == 1 => Ok(Response::OttControlLoaded {
++                        status: Some(status(2)), value: control::Loaded::Legacy { envelope: legacy() },
++                    }),
++                    Request::OttControlCommit { expected, operation_id, digest, source, value } => {
++                        assert_eq!(expected, client::ott::expected(Some(&status(2))));
++                        assert_eq!(source, control::Source::Legacy { sha256: source_digest.clone() });
++                        assert_eq!(Some(digest.clone()), expected_digest);
++                        assert_eq!(value, config());
++                        Ok(Response::OttControlCommit { status: CommitStatus::Committed,
++                            receipt: Some(ott::Receipt { operation_id, digest, revision: 3, epoch: 1,
++                                verified: false }) })
++                    }
++                    Request::OttControlLoad {} => Ok(protected(if wrong_revision { 4 } else { 3 })),
++                    _ => panic!("unexpected operation"),
++                }
++            };
++            let result = save_prepared(&mut transport, &config(), &WritePermit::new(),
++                Generation([1; 16]), open_unnormalized_legacy, decode_legacy_fixture).unwrap();
++            assert_eq!(calls, 3);
++            assert_eq!(result, if wrong_revision { uncertain() } else { CommitReceipt::Durable });
++        }
++    }
++
++    #[test]
++    fn lost_commit_reply_is_uncertain_and_is_never_replayed() {
++        let mut calls = 0;
++        let mut transport = |request| {
++            calls += 1;
++            match request {
++                Request::OttControlLoad {} if calls == 1 => Ok(protected(2)),
++                Request::OttControlCommit { .. } => Err(client::ClientError::Unavailable),
++                _ => panic!("uncertain operation must not be retried"),
++            }
++        };
++        assert_eq!(save_prepared(&mut transport, &config(), &WritePermit::new(),
++            Generation([1; 16]), refuse_open, decode_fixture).unwrap(), uncertain());
++        assert_eq!(calls, 2);
++    }
++
++    #[test]
++    fn revocation_after_load_prevents_the_control_write() {
++        let permit = WritePermit::new();
++        let mut calls = 0;
++        let mut transport = |request| {
++            calls += 1;
++            assert!(matches!(request, Request::OttControlLoad {}));
++            permit.revoke();
++            Ok(protected(2))
++        };
++        assert_eq!(save_prepared(&mut transport, &config(), &permit,
++            Generation([1; 16]), refuse_open, decode_fixture), Err(Error::Storage(super::super::Error::Revoked)));
++        assert_eq!(calls, 1);
++    }
++}
 diff --git a/rust-modules/platform/src/storage/diagnostics.rs b/rust-modules/platform/src/storage/diagnostics.rs
-index f4a812ca..32b82d4c 100644
+index f4a812ca..7b123843 100644
 --- a/rust-modules/platform/src/storage/diagnostics.rs
 +++ b/rust-modules/platform/src/storage/diagnostics.rs
-@@ -21,6 +21,10 @@ use super::wire::{
+@@ -1,5 +1,6 @@
+-//! Allowlisted, group-readable storage evidence. Only the diagnostics worker probes or publishes;
+-//! callers send typed outcomes, never protocol payloads or platform error text. No telemetry sink.
++//! Allowlisted, group-readable storage evidence. The diagnostics worker owns normal publication;
++//! the explicit cold canary synchronously exports its separate typed result before exiting.
++//! Callers send typed outcomes, never protocol payloads or platform error text. No telemetry sink.
+ 
+ use std::{
+     ffi::CString,
+@@ -21,10 +22,33 @@ use super::wire::{
      ErrorCode, KeymanagerFailure,
  };
  
@@ -18691,7 +19204,92 @@ index f4a812ca..32b82d4c 100644
  type Protection = Result<(), KeymanagerFailure>;
  type Published = (bool, Option<HelperFailure>, Option<Detail>, Option<Protection>);
  
-@@ -192,13 +196,24 @@ pub fn reset_for_test() {
+ pub const NAME: &str = plx_base::paths::runtime_file::STORAGE_DIAGNOSTICS;
++// Only the developer shared directory receives this separate result, never the runtime log.
++#[cfg(any(test, all(feature = "devtriggers", target_os = "linux", target_arch = "arm", not(feature = "hostsim"))))]
++const CANARY_NAME: &str = "plxnative-canary.json";
++
++#[derive(Clone, Copy)]
++enum Artifact {
++    Snapshot,
++    #[cfg(any(test, all(feature = "devtriggers", target_os = "linux", target_arch = "arm", not(feature = "hostsim"))))]
++    Canary,
++}
++impl Artifact {
++    fn name(self) -> CString {
++        CString::new(match self {
++            Self::Snapshot => NAME,
++            #[cfg(any(test, all(feature = "devtriggers", target_os = "linux", target_arch = "arm", not(feature = "hostsim"))))]
++            Self::Canary => CANARY_NAME,
++        }).expect("fixed diagnostics filename")
++    }
++}
+ const LIMIT: usize = 16 * 1024;
+ const MARKER: &str = "truncated value=true\n";
+ 
+@@ -168,6 +192,61 @@ pub fn protection(result: Result<(), KeymanagerFailure>) {
+     }
+     submit(Update::Protection(result));
+ }
++/// Synchronous developer-only export for the explicit cold canary, which exits before
++/// the normal diagnostics worker starts. Publication cannot change the probe's result.
++/// No activation, retry, private state read, or normal snapshot probe is performed here.
++#[cfg(all(feature = "devtriggers", target_os = "linux", target_arch = "arm", not(feature = "hostsim")))]
++pub fn canary_result(
++    version: &str, request_id: &str, elapsed_ms: u128,
++    result: &Result<super::wire::CanaryResult, super::client::ClientError>,
++) -> io::Result<()> {
++    developer_export::publish_canary(version, request_id, elapsed_ms, result)
++}
++
++#[cfg(any(test, all(feature = "devtriggers", target_os = "linux", target_arch = "arm", not(feature = "hostsim"))))]
++fn format_canary(
++    app_id: &str, version: &str, request_id: &str, elapsed_ms: u128,
++    result: &Result<super::wire::CanaryResult, super::client::ClientError>,
++) -> io::Result<Vec<u8>> {
++    // Match the launch validator, even if a future caller bypasses the port adapter.
++    if request_id.len() != 32 || !request_id.bytes().all(|b| b.is_ascii_hexdigit()) {
++        return Err(io::Error::from_raw_os_error(libc::EINVAL));
++    }
++    #[derive(serde::Serialize)]
++    #[serde(tag = "state", rename_all = "snake_case")]
++    enum Outcome<'a> {
++        Response { result: &'a super::wire::CanaryResult },
++        Transport { code: &'static str, cleanup: &'static str },
++    }
++    #[derive(serde::Serialize)]
++    struct Record<'a> {
++        schema: u8,
++        app_id: String,
++        version: String,
++        request_id: &'a str,
++        pid: u32,
++        elapsed_ms: u128,
++        outcome: Outcome<'a>,
++    }
++    let outcome = match result {
++        Ok(result) => Outcome::Response { result },
++        Err(error) => Outcome::Transport {
++            code: match error {
++                super::client::ClientError::Unavailable => "unavailable",
++                super::client::ClientError::Authentication => "authentication",
++                super::client::ClientError::Protocol => "protocol",
++                super::client::ClientError::Corrupt => "corrupt",
++                super::client::ClientError::Invalid => "invalid",
++            },
++            cleanup: "unknown",
++        },
++    };
++    serde_json::to_vec(&Record {
++        schema: 1, app_id: Identifier::new(app_id).0, version: Identifier::new(version).0,
++        request_id, pid: std::process::id(), elapsed_ms, outcome,
++    }).map_err(io::Error::other)
++}
++
+ fn submit(update: Update) {
+     if let Some(mailbox) = mailbox() {
+         mailbox
+@@ -192,13 +271,24 @@ pub fn reset_for_test() {
  pub fn finish_disable(root: &Path) -> Result<(), String> {
      let _block = guard();
      let _publication = PUBLICATION.lock().unwrap_or_else(|e| e.into_inner());
@@ -18722,7 +19320,7 @@ index f4a812ca..32b82d4c 100644
  }
  fn publish_if_enabled(
      snapshot: &mut Snapshot,
-@@ -214,7 +229,11 @@ fn run(mailbox: Arc<Mailbox>) {
+@@ -214,7 +304,11 @@ fn run(mailbox: Arc<Mailbox>) {
      let root = plx_base::paths::runtime_dir();
      let mut snapshot = Snapshot::boot();
      let mut published = None;
@@ -18734,7 +19332,7 @@ index f4a812ca..32b82d4c 100644
      loop {
          let update = {
              let mut pending = mailbox.pending.lock().unwrap_or_else(|e| e.into_inner());
-@@ -237,6 +256,8 @@ fn run(mailbox: Arc<Mailbox>) {
+@@ -237,6 +331,8 @@ fn run(mailbox: Arc<Mailbox>) {
              Update::Protection(result) => snapshot.protection = Some(result),
          }
          publish_if_enabled(&mut snapshot, root, &mut published);
@@ -18743,7 +19341,7 @@ index f4a812ca..32b82d4c 100644
      }
  }
  fn guard() -> plx_base::task::BlockingGuard {
-@@ -474,17 +495,19 @@ impl Snapshot {
+@@ -474,17 +570,19 @@ impl Snapshot {
  fn write_protection(out: &mut String, result: Option<Protection>) -> std::fmt::Result {
      use std::fmt::Write;
      match result {
@@ -18767,7 +19365,28 @@ index f4a812ca..32b82d4c 100644
          }
      }
  }
-@@ -827,9 +850,24 @@ fn publish_with(
+@@ -699,7 +797,7 @@ fn unique() -> CString {
+     .unwrap()
+ }
+ fn destination_name() -> CString {
+-    CString::new(NAME).expect("fixed diagnostics filename")
++    Artifact::Snapshot.name()
+ }
+ fn create(dir: &File, name: &CString) -> io::Result<File> {
+     let _block = guard();
+@@ -783,9 +881,9 @@ fn probe(label: Directory, path: &Path) -> Probe {
+ fn safe_destination(stat: &libc::stat, uid: u32) -> bool {
+     stat.st_mode & libc::S_IFMT == libc::S_IFREG && stat.st_uid == uid && stat.st_nlink == 1
+ }
+-fn destination(dir: &File) -> io::Result<()> {
++fn destination_for(dir: &File, artifact: Artifact) -> io::Result<()> {
+     let _block = guard();
+-    let name = destination_name();
++    let name = artifact.name();
+     let mut stat: libc::stat = unsafe { std::mem::zeroed() };
+     let result = unsafe {
+         libc::fstatat(
+@@ -827,9 +925,32 @@ fn publish_with(
          return Err(io::Error::from_raw_os_error(libc::EFBIG));
      }
      let dir = directory(root)?;
@@ -18781,29 +19400,42 @@ index f4a812ca..32b82d4c 100644
 +    bytes: &[u8],
 +    before_rename: impl FnOnce() -> io::Result<()>,
 +) -> io::Result<()> {
++    publish_artifact_in(dir, Artifact::Snapshot, bytes, before_rename)
++}
++fn publish_artifact_in(
++    dir: &File,
++    artifact: Artifact,
++    bytes: &[u8],
++    before_rename: impl FnOnce() -> io::Result<()>,
++) -> io::Result<()> {
 +    if DISABLED.load(Ordering::Acquire) {
 +        return Err(io::Error::from_raw_os_error(libc::ECANCELED));
 +    }
 +    if bytes.len() > LIMIT {
 +        return Err(io::Error::from_raw_os_error(libc::EFBIG));
 +    }
-+    destination(dir)?;
++    destination_for(dir, artifact)?;
      let name = unique();
 -    let mut file = create(&dir, &name)?;
 +    let mut file = create(dir, &name)?;
      let result = (|| {
          let meta = file.metadata()?;
          if !meta.is_file()
-@@ -844,7 +882,7 @@ fn publish_with(
+@@ -844,11 +965,11 @@ fn publish_with(
              return Err(io::Error::last_os_error());
          }
          before_rename()?;
 -        destination(&dir)?;
-+        destination(dir)?;
++        destination_for(dir, artifact)?;
          if DISABLED.load(Ordering::Acquire) {
              return Err(io::Error::from_raw_os_error(libc::ECANCELED));
          }
-@@ -863,7 +901,7 @@ fn publish_with(
+-        let destination = destination_name();
++        let destination = artifact.name();
+         if unsafe {
+             libc::renameat(
+                 dir.as_raw_fd(),
+@@ -863,7 +984,7 @@ fn publish_with(
          Ok(())
      })();
      if result.is_err() {
@@ -18812,7 +19444,7 @@ index f4a812ca..32b82d4c 100644
      }
      result
  }
-@@ -886,7 +924,7 @@ mod tests {
+@@ -886,7 +1007,7 @@ mod tests {
              let _ = std::fs::remove_dir_all(&self.0);
          }
      }
@@ -18821,7 +19453,7 @@ index f4a812ca..32b82d4c 100644
          Snapshot {
              seq: 1,
              app_id: Identifier::new("com.openottplay.player.native"),
-@@ -1071,7 +1109,7 @@ mod tests {
+@@ -1071,7 +1192,7 @@ mod tests {
          use super::super::wire::{KeymanagerFailureCategory, KeymanagerOperation, KeymanagerStage};
          KeymanagerFailure { operation: KeymanagerOperation::Seal, stage: KeymanagerStage::Begin,
              code: ErrorCode::Capability, category: KeymanagerFailureCategory::ServiceRejected,
@@ -18830,7 +19462,7 @@ index f4a812ca..32b82d4c 100644
      }
  
      #[test]
-@@ -1084,7 +1122,7 @@ mod tests {
+@@ -1084,7 +1205,7 @@ mod tests {
          assert_ne!(snapshot.semantic(), before);
          let failed = snapshot.format();
          assert!(failed.contains("helper stage=complete "));
@@ -18839,7 +19471,7 @@ index f4a812ca..32b82d4c 100644
          assert!(failed.len() <= LIMIT);
          snapshot.helper.observe(Some(HelperFailure::new(Stage::Db8, Some(-3963))));
          snapshot.protection = Some(Ok(()));
-@@ -1108,6 +1146,37 @@ mod tests {
+@@ -1108,6 +1229,37 @@ mod tests {
          assert!(matches!(pending.0.pop_front(), Some(Update::Protection(Ok(())))));
      }
  
@@ -18877,12 +19509,76 @@ index f4a812ca..32b82d4c 100644
      #[test]
      fn changed_protection_is_published_without_changing_helper_evidence() {
          let _serial = plx_base::testlock::serial();
+@@ -1376,4 +1528,63 @@ mod tests {
+         assert!(prompt.is_ok(), "disable waited for the publisher's queue lock");
+         assert_eq!(std::fs::read_dir(&root.0).unwrap().count(), 0);
+     }
++    #[test]
++    fn canary_export_formats_only_correlated_closed_results() {
++        use super::super::{client::ClientError, wire::{CanaryCleanup, CanaryResult}};
++        let request = "0123456789abcdef0123456789abcdef";
++        let complete = CanaryResult { operation: Ok(()), cleanup: CanaryCleanup::Removed {} };
++        let bytes = format_canary(plx_base::paths::STABLE_APP_ID, "0.3.0", request, 17, &Ok(complete)).unwrap();
++        assert!(bytes.len() <= LIMIT);
++        let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
++        assert_eq!(value["schema"], 1);
++        assert_eq!(value["request_id"], request);
++        assert_eq!(value["pid"], std::process::id());
++        assert_eq!(value["elapsed_ms"], 17);
++        assert_eq!(value["outcome"]["state"], "response");
++        assert_eq!(value["outcome"]["result"], serde_json::to_value(complete).unwrap());
++        for (error, code) in [
++            (ClientError::Unavailable, "unavailable"), (ClientError::Authentication, "authentication"),
++            (ClientError::Protocol, "protocol"), (ClientError::Corrupt, "corrupt"),
++            (ClientError::Invalid, "invalid"),
++        ] {
++            let value: serde_json::Value = serde_json::from_slice(
++                &format_canary(plx_base::paths::STABLE_APP_ID, "0.3.0", request, 19, &Err(error)).unwrap(),
++            ).unwrap();
++            assert_eq!(value["outcome"], serde_json::json!({"state":"transport", "code":code, "cleanup":"unknown"}));
++        }
++        let failed = CanaryResult {
++            operation: Err(KeymanagerFailure {
++                operation: super::super::wire::KeymanagerOperation::Seal,
++                stage: super::super::wire::KeymanagerStage::Generate,
++                code: ErrorCode::Capability,
++                category: super::super::wire::KeymanagerFailureCategory::ServiceRejected,
++                service_code: Some(-1000), hub_error: Some(true),
++            }),
++            cleanup: CanaryCleanup::Failed {
++                code: ErrorCode::Timeout,
++                category: super::super::wire::KeymanagerFailureCategory::Timeout,
++                service_code: None,
++            },
++        };
++        let value: serde_json::Value = serde_json::from_slice(
++            &format_canary(plx_base::paths::STABLE_APP_ID, "0.3.0", request, 23, &Ok(failed)).unwrap(),
++        ).unwrap();
++        assert_eq!(value["outcome"]["result"], serde_json::to_value(failed).unwrap());
++    }
++
++    #[test]
++    fn canary_export_rejects_unbounded_or_untrusted_request_identifiers() {
++        use super::super::client::ClientError;
++        for bad in ["", "../private/key", "g123456789abcdef0123456789abcdef", "0123456789abcdef0123456789abcdef\n", &"a".repeat(33)] {
++            assert_eq!(format_canary("app", "version", bad, 0, &Err(ClientError::Invalid))
++                .unwrap_err().raw_os_error(), Some(libc::EINVAL));
++        }
++        let bytes = format_canary("/private/path", "token=secret", "0123456789abcdef0123456789abcdef", 0,
++            &Err(ClientError::Unavailable)).unwrap();
++        let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
++        assert_eq!(value["app_id"], "invalid");
++        assert_eq!(value["version"], "invalid");
++        assert!(!String::from_utf8(bytes).unwrap().contains("secret"));
++    }
++
+ }
 diff --git a/rust-modules/platform/src/storage/diagnostics/developer_export.rs b/rust-modules/platform/src/storage/diagnostics/developer_export.rs
 new file mode 100644
-index 00000000..84fb52c6
+index 00000000..9962c6bb
 --- /dev/null
 +++ b/rust-modules/platform/src/storage/diagnostics/developer_export.rs
-@@ -0,0 +1,244 @@
+@@ -0,0 +1,339 @@
 +//! Best-effort developer-only mirror of the existing typed, capped storage snapshot.
 +//! No secret/state files are read. Visibility across an actual TV's jail is not assumed.
 +use super::*;
@@ -18973,6 +19669,32 @@ index 00000000..84fb52c6
 +    }
 +}
 +
++#[cfg(all(feature = "devtriggers", target_os = "linux", target_arch = "arm", not(feature = "hostsim")))]
++pub(super) fn publish_canary(
++    version: &str, request_id: &str, elapsed_ms: u128,
++    result: &Result<super::super::wire::CanaryResult, super::super::client::ClientError>,
++) -> io::Result<()> {
++    let _block = guard();
++    let parent = shared_parent()?;
++    publish_canary_at(&parent, plx_base::paths::app_id(), version, request_id, elapsed_ms, result)
++}
++
++fn publish_canary_at(
++    parent: &File, app_id: &str, version: &str, request_id: &str, elapsed_ms: u128,
++    result: &Result<super::super::wire::CanaryResult, super::super::client::ClientError>,
++) -> io::Result<()> {
++    let _block = guard();
++    let bytes = format_canary(app_id, version, request_id, elapsed_ms, result)?;
++    let _publication = PUBLICATION.lock().unwrap_or_else(|e| e.into_inner());
++    if DISABLED.load(Ordering::Acquire) {
++        return Err(io::Error::from_raw_os_error(libc::ECANCELED));
++    }
++    let dir = owned_directory(parent, app_id, true)?;
++    // The same bounded atomic publisher, with a closed separate leaf. The ordinary
++    // diagnostic snapshot is neither read nor overwritten; no worker is started.
++    publish_artifact_in(&dir, Artifact::Canary, &bytes, || Ok(()))
++}
++
 +// Caller holds PUBLICATION after disable(). Remove only the exact owned snapshot;
 +// never recursively clean the shared parent or the dedicated directory.
 +fn remove_at(parent: &File, app_id: &str) -> io::Result<()> {
@@ -18981,11 +19703,19 @@ index 00000000..84fb52c6
 +        Err(error) if error.raw_os_error() == Some(libc::ENOENT) => return Ok(()),
 +        Err(error) => return Err(error),
 +    };
-+    destination(&dir)?;
-+    match unlink(&dir, &destination_name()) {
-+        0 | libc::ENOENT => Ok(()),
-+        error => Err(io::Error::from_raw_os_error(error)),
++    // Try both owned fixed leaves even if one is unsafe/unavailable. Report the
++    // first failure; never erase a symlink target or claim erasure was complete.
++    let mut result = Ok(());
++    for artifact in [Artifact::Snapshot, Artifact::Canary] {
++        let removed = destination_for(&dir, artifact).and_then(|()| {
++            match unlink(&dir, &artifact.name()) {
++                0 | libc::ENOENT => Ok(()),
++                error => Err(io::Error::from_raw_os_error(error)),
++            }
++        });
++        if result.is_ok() { result = removed; }
 +    }
++    result
 +}
 +
 +#[cfg(all(feature = "devtriggers", target_os = "linux", target_arch = "arm", not(feature = "hostsim")))]
@@ -19126,20 +19856,82 @@ index 00000000..84fb52c6
 +        assert!(!f.slot().join(NAME).exists());
 +        assert_eq!(std::fs::read(unrelated).unwrap(), b"sentinel");
 +    }
++    #[test]
++    fn canary_export_is_synchronous_separate_and_erased_with_diagnostics() {
++        let _serial = plx_base::testlock::serial();
++        let _enabled = Enabled::new();
++        let f = Fixture::new();
++        let snapshot = super::super::tests::fixture();
++        publish_at(&f.parent(), plx_base::paths::STABLE_APP_ID, &snapshot, &mut None).unwrap();
++        let ordinary = std::fs::read(f.slot().join(NAME)).unwrap();
++        let request = "0123456789abcdef0123456789abcdef";
++        publish_canary_at(&f.parent(), plx_base::paths::STABLE_APP_ID, "0.3.0", request, 31,
++            &Err(super::super::super::client::ClientError::Unavailable)).unwrap();
++        let path = f.slot().join(CANARY_NAME);
++        let value: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
++        assert_eq!(value["request_id"], request);
++        assert_eq!(value["outcome"]["cleanup"], "unknown");
++        assert_eq!(std::fs::read(f.slot().join(NAME)).unwrap(), ordinary);
++        let meta = std::fs::metadata(&path).unwrap();
++        assert_eq!(meta.mode() & 0o7777, 0o640);
++        assert_eq!((meta.uid(), meta.gid(), meta.nlink()),
++            (unsafe { libc::geteuid() }, unsafe { libc::getegid() }, 1));
++        assert!(meta.len() <= LIMIT as u64);
++        let unrelated = f.slot().join("unrelated");
++        std::fs::write(&unrelated, b"sentinel").unwrap();
++        disable();
++        {
++            let _publication = PUBLICATION.lock().unwrap_or_else(|e| e.into_inner());
++            remove_at(&f.parent(), plx_base::paths::STABLE_APP_ID).unwrap();
++        }
++        assert!(!path.exists());
++        assert!(!f.slot().join(NAME).exists());
++        assert_eq!(std::fs::read(unrelated).unwrap(), b"sentinel");
++        assert_eq!(publish_canary_at(&f.parent(), plx_base::paths::STABLE_APP_ID, "0.3.0", request, 31,
++            &Err(super::super::super::client::ClientError::Unavailable))
++            .unwrap_err().raw_os_error(), Some(libc::ECANCELED));
++        assert!(!path.exists());
++    }
++
++    #[test]
++    fn canary_export_refuses_aliases_and_never_touches_normal_snapshot() {
++        let _serial = plx_base::testlock::serial();
++        let _enabled = Enabled::new();
++        let f = Fixture::new();
++        let other = Fixture::new();
++        let target = other.0.join("target");
++        std::fs::write(&target, b"sentinel").unwrap();
++        let snapshot = super::super::tests::fixture();
++        publish_at(&f.parent(), plx_base::paths::STABLE_APP_ID, &snapshot, &mut None).unwrap();
++        let ordinary = std::fs::read(f.slot().join(NAME)).unwrap();
++        let path = f.slot().join(CANARY_NAME);
++        for hard_link in [false, true] {
++            if hard_link { std::fs::hard_link(&target, &path).unwrap(); }
++            else { symlink(&target, &path).unwrap(); }
++            assert!(publish_canary_at(&f.parent(), plx_base::paths::STABLE_APP_ID, "0.3.0",
++                "0123456789abcdef0123456789abcdef", 0,
++                &Err(super::super::super::client::ClientError::Unavailable)).is_err());
++            assert_eq!(std::fs::read(&target).unwrap(), b"sentinel");
++            assert_eq!(std::fs::read(f.slot().join(NAME)).unwrap(), ordinary);
++            std::fs::remove_file(&path).unwrap();
++        }
++    }
++
 +}
 diff --git a/rust-modules/platform/src/storage/mod.rs b/rust-modules/platform/src/storage/mod.rs
-index 03f06191..e8433635 100644
+index 03f06191..a03a4556 100644
 --- a/rust-modules/platform/src/storage/mod.rs
 +++ b/rust-modules/platform/src/storage/mod.rs
-@@ -23,6 +23,7 @@ use libc::{dirent as NativeDirent, readdir as read_directory_entry};
+@@ -23,6 +23,8 @@ use libc::{dirent as NativeDirent, readdir as read_directory_entry};
  // The canonical DB8 engine is introduced before its transport/adapters replace JsonStore.
  pub mod client;
  pub mod private;
 +pub use private::public_preferences;
++pub use private::control;
  pub mod diagnostics;
  pub mod readonly;
  #[allow(dead_code)]
-@@ -43,6 +44,7 @@ pub enum RecordKey {
+@@ -43,6 +45,7 @@ pub enum RecordKey {
      OttControl,
      OttState,
      OttErasure,
@@ -19147,7 +19939,7 @@ index 03f06191..e8433635 100644
  }
  
  impl RecordKey {
-@@ -53,6 +55,7 @@ impl RecordKey {
+@@ -53,6 +56,7 @@ impl RecordKey {
              Self::OttControl => "ott-control",
              Self::OttState => "ott-state",
              Self::OttErasure => "ott-erasure",
@@ -19155,7 +19947,7 @@ index 03f06191..e8433635 100644
          }
      }
  
-@@ -63,6 +66,7 @@ impl RecordKey {
+@@ -63,6 +67,7 @@ impl RecordKey {
              Self::OttControl => "ott-control.json",
              Self::OttState => "ott-state.json",
              Self::OttErasure => "ott-erasure.json",
@@ -19163,7 +19955,7 @@ index 03f06191..e8433635 100644
          }
      }
  }
-@@ -75,6 +79,7 @@ impl fmt::Debug for RecordKey {
+@@ -75,6 +80,7 @@ impl fmt::Debug for RecordKey {
              Self::OttControl => "OttControl",
              Self::OttState => "OttState",
              Self::OttErasure => "OttErasure",
@@ -19172,19 +19964,21 @@ index 03f06191..e8433635 100644
      }
  }
 diff --git a/rust-modules/platform/src/storage/private.rs b/rust-modules/platform/src/storage/private.rs
-index b5b6ed21..84c35a81 100644
+index b5b6ed21..badae170 100644
 --- a/rust-modules/platform/src/storage/private.rs
 +++ b/rust-modules/platform/src/storage/private.rs
-@@ -24,6 +24,8 @@ const USE_HELPER: bool = cfg!(all(target_os = "linux", target_arch = "arm",
+@@ -24,6 +24,10 @@ const USE_HELPER: bool = cfg!(all(target_os = "linux", target_arch = "arm",
      not(any(feature = "hostsim", test, feature = "test-support"))));
  #[path = "private_helper.rs"]
  mod helper;
 +#[path = "public_preferences.rs"]
 +pub mod public_preferences;
++#[path = "control.rs"]
++pub mod control;
  
  #[derive(Clone, Copy, Debug, PartialEq, Eq)]
  pub enum Error {
-@@ -353,7 +355,7 @@ fn erase_store_with(store: &JsonStore, managed_cleanup: impl FnOnce() -> Vec<Str
+@@ -353,7 +357,7 @@ fn erase_store_with(store: &JsonStore, managed_cleanup: impl FnOnce() -> Vec<Str
          return vec![format!("OTT import barrier: {error:?}")];
      }
      let mut errors = Vec::new();
@@ -19193,7 +19987,7 @@ index b5b6ed21..84c35a81 100644
          if let Err(error) = durable(store.commit(key, &Record::cleared(1))) {
              errors.push(format!("OTT {key:?}: {error:?}"));
          }
-@@ -380,6 +382,7 @@ fn cleanup_owned_temporaries(store: &JsonStore) -> Result<(), StoreError> {
+@@ -380,6 +384,7 @@ fn cleanup_owned_temporaries(store: &JsonStore) -> Result<(), StoreError> {
              RecordKey::OttControl,
              RecordKey::OttState,
              RecordKey::OttErasure,
@@ -19202,15 +19996,44 @@ index b5b6ed21..84c35a81 100644
          .iter()
          .any(|key| super::safe_temp_name(&name, &format!(".{}.new-", key.file_name())));
 diff --git a/rust-modules/platform/src/storage/private_helper.rs b/rust-modules/platform/src/storage/private_helper.rs
-index b16bf9f9..96e869a1 100644
+index b16bf9f9..4d141fdb 100644
 --- a/rust-modules/platform/src/storage/private_helper.rs
 +++ b/rust-modules/platform/src/storage/private_helper.rs
-@@ -235,11 +235,12 @@ fn ready(
+@@ -150,7 +150,7 @@ fn legacy_barrier(value: ErasureState) -> ott::Barrier {
+     }
+ }
+ 
+-fn client_error(error: client::ClientError) -> Error {
++pub(super) fn client_error(error: client::ClientError) -> Error {
+     Error::Store(match error {
+         client::ClientError::Unavailable => StoreError::HelperUnavailable,
+         client::ClientError::Authentication => StoreError::HelperAuthentication,
+@@ -235,11 +235,32 @@ fn ready(
      open: Open,
      permit: &WritePermit,
  ) -> Result<Option<ott::Status>, Error> {
 -    if let Some(status) = remote::status_with(transport).map_err(client_error)? {
 -        return Ok(Some(status));
++    ready_checked(transport, legacy, open, permit, None)
++}
++
++/// Explicit Control coordinator only. Validate the legacy logical schema before
++/// importing either private slot, including when public preferences already exist.
++pub(super) fn ready_for_control(
++    transport: &mut dyn Transport,
++    permit: &WritePermit,
++    decode: control::LegacyDecoder,
++) -> Result<Option<ott::Status>, Error> {
++    ready_checked(transport, &mut Files, secure::open_named, permit, Some(decode))
++}
++
++fn ready_checked(
++    transport: &mut dyn Transport,
++    legacy: &mut dyn Legacy,
++    open: Open,
++    permit: &WritePermit,
++    decode_control: Option<control::LegacyDecoder>,
++) -> Result<Option<ott::Status>, Error> {
 +    let prior = remote::status_with(transport).map_err(client_error)?;
 +    if prior.as_ref().is_some_and(|status| status.private_initialized) {
 +        return Ok(prior);
@@ -19221,8 +20044,15 @@ index b16bf9f9..96e869a1 100644
          return Ok(None);
      }
      for (namespace, value) in [
-@@ -250,23 +251,23 @@ fn ready(
-             decode(namespace, value, open)?;
+@@ -247,26 +268,29 @@ fn ready(
+         (Namespace::OttState, &image.state),
+     ] {
+         if let Some(value) = value {
+-            decode(namespace, value, open)?;
++            let value = decode(namespace, value, open)?;
++            if let Some(decode) = decode_control.filter(|_| matches!(namespace, Namespace::OttControl)) {
++                control::decode_config(value, decode)?;
++            }
          }
      }
 -    let outcome = commit(
@@ -19258,7 +20088,7 @@ index b16bf9f9..96e869a1 100644
      }
      let receipt = require_applied(outcome)?;
      let status = remote::status_with(transport)
-@@ -275,6 +276,7 @@ fn ready(
+@@ -275,6 +299,7 @@ fn ready(
      if status.revision != receipt.revision
          || status.epoch != receipt.epoch
          || status.barrier != image.barrier
@@ -19266,7 +20096,7 @@ index b16bf9f9..96e869a1 100644
      {
          return Err(Error::Store(StoreError::Conflict));
      }
-@@ -314,6 +316,7 @@ fn inspect_with(
+@@ -314,6 +339,7 @@ fn inspect_with(
              Ok(None)
          };
      };
@@ -19274,7 +20104,7 @@ index b16bf9f9..96e869a1 100644
      slot(&snapshot, namespace)
          .as_ref()
          .map(|value| inspect_payload(namespace, &value.0, open))
-@@ -448,9 +451,16 @@ fn save_with_sealer(
+@@ -448,9 +474,16 @@ fn save_with_sealer(
          if !permit.is_valid() {
              return Err(Error::Revoked);
          }
@@ -19292,7 +20122,7 @@ index b16bf9f9..96e869a1 100644
          if winner.status.barrier != ott::Barrier::Open
              || winner.status.epoch != 1
              || slot(&winner, namespace).is_some()
-@@ -516,8 +526,8 @@ fn barrier_with(
+@@ -516,8 +549,8 @@ fn barrier_with(
      legacy: &mut dyn Legacy,
  ) -> Result<ott::Barrier, Error> {
      match remote::status_with(transport).map_err(client_error)? {
@@ -19303,7 +20133,7 @@ index b16bf9f9..96e869a1 100644
      }
  }
  pub(super) fn imports_suppressed() -> Result<bool, Error> {
-@@ -591,6 +601,62 @@ pub(super) fn finish_erasure() -> Result<(), Error> {
+@@ -591,6 +624,103 @@ pub(super) fn finish_erasure() -> Result<(), Error> {
      finish_with(&mut client::NativeTransport, &mut Files)
  }
  
@@ -19366,6 +20196,47 @@ index b16bf9f9..96e869a1 100644
  #[cfg(test)]
  #[path = "private_helper_tests.rs"]
  mod tests;
++
++#[cfg(test)]
++mod control_import_tests {
++    use super::*;
++
++    struct LegacyControl;
++    impl Legacy for LegacyControl {
++        fn read(&mut self) -> Result<LegacyImage, Error> {
++            Ok(LegacyImage { present: true, barrier: ott::Barrier::Open, state: None,
++                control: Some(SecretString(serde_json::json!({"version":1,"sealed":{
++                    "backend":"keymanager3", "key":Namespace::OttControl.key_name(),
++                    "iv":"AQ==", "data":"Ag=="
++                }}).to_string())) })
++        }
++        fn barrier(&mut self) -> Result<ott::Barrier, Error> { Ok(ott::Barrier::Open) }
++        fn erase(&mut self) -> Vec<String> { panic!("import must retain legacy files") }
++    }
++    fn open_invalid_control(namespace: Namespace, _: &Sealed) -> Option<Vec<u8>> {
++        encode_plain(namespace, &serde_json::json!({"version":9,"device_id":"fixture-device"})).ok()
++    }
++    fn reject_invalid_control(value: Value) -> Result<control::Config, ()> {
++        assert_eq!(value["version"], 9);
++        Err(())
++    }
++
++    #[test]
++    fn public_only_state_does_not_skip_typed_control_validation_before_import() {
++        let mut calls = 0;
++        let mut transport = |request| {
++            calls += 1;
++            assert!(matches!(request, wire::Request::OttStatus {}));
++            Ok(wire::Response::OttStatus { status: Some(ott::Status {
++                db_rev: "1".into(), revision: 1, epoch: 1, barrier: ott::Barrier::Open,
++                control_present: false, state_present: false, private_initialized: false,
++            }) })
++        };
++        assert_eq!(ready_checked(&mut transport, &mut LegacyControl, open_invalid_control,
++            &WritePermit::new(), Some(reject_invalid_control)), Err(Error::Invalid));
++        assert_eq!(calls, 1, "invalid Control must fail before any import commit");
++    }
++}
 diff --git a/rust-modules/platform/src/storage/private_helper_named_tests.rs b/rust-modules/platform/src/storage/private_helper_named_tests.rs
 index 22b8f31a..79b8b5e6 100644
 --- a/rust-modules/platform/src/storage/private_helper_named_tests.rs
@@ -19640,9 +20511,27 @@ index 00000000..aee8a42a
 +    }
 +}
 diff --git a/rust-modules/platform/src/storage_service/backend.rs b/rust-modules/platform/src/storage_service/backend.rs
-index 9b40ba2c..0c1fa36c 100644
+index 9b40ba2c..2188a7bc 100644
 --- a/rust-modules/platform/src/storage_service/backend.rs
 +++ b/rust-modules/platform/src/storage_service/backend.rs
+@@ -234,7 +234,7 @@ impl<R: Rpc> Backend<R> {
+                 // A matching ledger/candidate was not established, even if every RPC succeeded.
+                 // Authentication, readback and put paths below record a more specific cause first.
+                 match &r {
+-                    Response::Commit { status: CommitStatus::Unavailable, .. } | Response::OttCommit { status: CommitStatus::Unavailable, .. } => ensure_failure(failure::Stage::ReadbackLedger),
++                    Response::Commit { status: CommitStatus::Unavailable, .. } | Response::OttCommit { status: CommitStatus::Unavailable, .. } | Response::OttControlCommit { status: CommitStatus::Unavailable, .. } => ensure_failure(failure::Stage::ReadbackLedger),
+                     Response::Reconcile { status: ReconcileStatus::Unknown, .. } | Response::OttReconcile { status: ReconcileStatus::Unknown, .. } => ensure_failure(failure::Stage::ReconcileLedger),
+                     _ => (),
+                 }
+@@ -264,7 +264,7 @@ impl<R: Rpc> Backend<R> {
+             }
+         }
+         match request {
+-            request @ (Request::OttStatus {} | Request::OttLoad {} | Request::OttCommit { .. } | Request::OttReconcile { .. }) => ott_backend::dispatch(self, request),
++            request @ (Request::OttStatus {} | Request::OttLoad {} | Request::OttCommit { .. } | Request::OttReconcile { .. } | Request::OttControlLoad {} | Request::OttControlCommit { .. }) => ott_backend::dispatch(self, request),
+             Request::Load {} => match self.load().map_err(load_stage)? {
+                 None => Ok(Response::Missing),
+                 Some((rev, state)) => {
 @@ -366,7 +366,8 @@ impl<R: Rpc> Backend<R> {
                  digest,
                  mutation,
@@ -19654,7 +20543,7 @@ index 9b40ba2c..0c1fa36c 100644
      }
      fn commit(
 diff --git a/rust-modules/platform/src/storage_service/keymanager.rs b/rust-modules/platform/src/storage_service/keymanager.rs
-index 7374caf1..db47caf2 100644
+index 7374caf1..3c3fc822 100644
 --- a/rust-modules/platform/src/storage_service/keymanager.rs
 +++ b/rust-modules/platform/src/storage_service/keymanager.rs
 @@ -2,7 +2,8 @@
@@ -19675,10 +20564,44 @@ index 7374caf1..db47caf2 100644
      }
  }
  fn diagnose<R: Rpc, T>(
-@@ -106,6 +108,80 @@ pub fn unseal_detailed(
+@@ -106,6 +108,114 @@ pub fn unseal_detailed(
  ) -> Result<String, KeymanagerFailure> {
      diagnose(bus, operation, |bus| unseal(bus, name, encoded, context))
  }
++
++// This key belongs to the named storage service, not the application's legacy OTT keys.
++// It is stable across saves and must never enter generation-key retirement/cleanup.
++const CONTROL_KEY: &str = super::wire::control::KEY_NAME;
++pub fn seal_control_detailed(
++    bus: &mut impl Rpc,
++    plaintext: &str,
++    context: Value,
++) -> Result<String, KeymanagerFailure> {
++    diagnose(bus, KeymanagerOperation::Seal, |bus| {
++        let generated = bus.call(
++            &format!("{URI}/generateKey"),
++            &json!({"name":CONTROL_KEY,"params":generate_params()}),
++        )?;
++        if !(generated["returnValue"] == false && generated["errorCode"] == -10002) {
++            checked(generated)?;
++        }
++        Ok(())
++    })?;
++    // An accepted existing-key reply is not the failure of a later encryption RPC.
++    diagnose(bus, KeymanagerOperation::Seal, |bus| {
++        seal_created(bus, CONTROL_KEY, plaintext, context)
++    })
++}
++
++pub fn open_control_detailed(
++    bus: &mut impl Rpc,
++    encoded: &str,
++    context: &Value,
++) -> Result<String, KeymanagerFailure> {
++    diagnose(bus, KeymanagerOperation::Readback, |bus| {
++        unseal_with_name(bus, CONTROL_KEY, encoded, context)
++    })
++}
 +
 +const CANARY: &str = "ott-keymanager-canary-v1";
 +fn canary_context() -> Value {
@@ -19756,10 +20679,70 @@ index 7374caf1..db47caf2 100644
  const URI: &str = "luna://com.webos.service.keymanager3";
  #[derive(Serialize, Deserialize)]
  #[serde(deny_unknown_fields)]
-@@ -335,6 +411,203 @@ pub fn unbase64(text: &str) -> Result<Vec<u8>, ErrorCode> {
+@@ -202,10 +312,20 @@ pub fn unseal(
+     name: &str,
+     encoded: &str,
+     context: &Value,
++) -> Result<String, ErrorCode> {
++    if !valid_key_name(name) {
++        return Err(ErrorCode::Corrupt);
++    }
++    unseal_with_name(bus, name, encoded, context)
++}
++fn unseal_with_name(
++    bus: &mut impl Rpc,
++    name: &str,
++    encoded: &str,
++    context: &Value,
+ ) -> Result<String, ErrorCode> {
+     let envelope: Envelope = serde_json::from_str(encoded).map_err(|_| ErrorCode::Corrupt)?;
+-    if !valid_key_name(name)
+-        || envelope.format != "keymanager3-aes256-gcm-v1"
++    if envelope.format != "keymanager3-aes256-gcm-v1"
+         || envelope.key_name != name
+         || &envelope.context != context
+         || unbase64(&envelope.iv)?.is_empty()
+@@ -335,6 +455,240 @@ pub fn unbase64(text: &str) -> Result<Vec<u8>, ErrorCode> {
  #[cfg(test)]
  mod tests {
      use super::*;
++
++    #[test]
++    fn control_key_reuse_does_not_hide_later_failure_or_retire_the_key() {
++        for generated in [json!({"returnValue":true}), json!({"returnValue":false,"errorCode":-10002})] {
++            let mut rpc = Script { replies:vec![generated,
++                json!({"returnValue":false,"errorCode":-20030,"errorText":"private-fixture"})].into(), calls:vec![] };
++            let error = seal_control_detailed(&mut rpc, "private-fixture", json!({"namespace":"control"})).unwrap_err();
++            assert_eq!(error.stage, KeymanagerStage::Begin);
++            assert_eq!(error.service_code, Some(-20030));
++            assert_eq!(rpc.calls.len(), 2);
++            assert!(rpc.calls.iter().all(|(uri, value)| !uri.ends_with("/removeKey") && value["name"] == CONTROL_KEY));
++            assert!(!serde_json::to_string(&error).unwrap().contains("private-fixture"));
++        }
++    }
++
++    #[test]
++    fn control_generation_requires_success_or_explicit_existing_key_reply() {
++        for generated in [json!({"returnValue":false,"errorCode":-1000}),
++            json!({"errorCode":-10002}), json!({"returnValue":"false","errorCode":-10002})] {
++            let mut rpc = Script { replies:vec![generated].into(), calls:vec![] };
++            assert!(seal_control_detailed(&mut rpc, "fixture", json!({})).is_err());
++            assert_eq!(rpc.calls.len(), 1);
++            assert!(rpc.calls[0].0.ends_with("/generateKey"));
++        }
++    }
++
++    #[test]
++    fn control_key_is_never_accepted_by_plex_generation_or_retirement() {
++        let mut rpc = Script { replies:vec![].into(), calls:vec![] };
++        assert!(seal(&mut rpc, CONTROL_KEY, "fixture", json!({})).is_err());
++        remove_retired(&mut rpc, CONTROL_KEY);
++        assert!(unseal(&mut rpc, CONTROL_KEY, "{}", &json!({})).is_err());
++        let foreign = serde_json::to_string(&Envelope { format:"keymanager3-aes256-gcm-v1".into(),
++            key_name:"a.AAAAAAAAAAAAAAAAAAAAAA".into(), iv:base64(&[1;12]), ciphertext:base64(&[2;32]), context:json!({}) }).unwrap();
++        assert!(open_control_detailed(&mut rpc, &foreign, &json!({})).is_err());
++        assert!(rpc.calls.is_empty());
++    }
 +
 +    struct CanaryScript {
 +        replies: std::collections::VecDeque<Result<Value, ErrorCode>>,
@@ -19961,10 +20944,35 @@ index 7374caf1..db47caf2 100644
      fn canonical_base64_and_invalid_padding() {
          for b in [b"".as_slice(), b"f", b"fo", b"foo", b"foob"] {
 diff --git a/rust-modules/platform/src/storage_service/ott_backend.rs b/rust-modules/platform/src/storage_service/ott_backend.rs
-index b00a25b2..ddf426b3 100644
+index b00a25b2..bf215d6c 100644
 --- a/rust-modules/platform/src/storage_service/ott_backend.rs
 +++ b/rust-modules/platform/src/storage_service/ott_backend.rs
-@@ -87,6 +87,7 @@ pub(super) fn dispatch<R: Rpc>(
+@@ -1,4 +1,4 @@
+-//! Fixed-ID DB8 adapter for app-encrypted OTT records. Never calls Keymanager.
++//! Fixed-ID OTT DB8 adapter. Only the dedicated control lane owns helper encryption.
+ use super::super::wire::{
+     self, ott, CommitStatus, ErrorCode, ReconcileStatus, Request, Response, SecretString,
+ };
+@@ -6,6 +6,8 @@ use super::{db8_failure, exact_revision, record_put_failure, state, Backend, Fla
+ use serde_json::{json, Value};
+ #[path = "ott_state.rs"]
+ mod model;
++#[path = "ott_control_backend.rs"]
++mod protected_control;
+ use model::State;
+ 
+ fn load<R: Rpc>(backend: &mut Backend<R>) -> Result<Option<(u64, State)>, ErrorCode> {
+@@ -71,6 +73,9 @@ pub(super) fn dispatch<R: Rpc>(
+     request: Request,
+ ) -> Result<Response, ErrorCode> {
+     match request {
++        request @ (Request::OttControlLoad {} | Request::OttControlCommit { .. }) => {
++            protected_control::dispatch(backend, request)
++        }
+         Request::OttStatus {} => Ok(Response::OttStatus {
+             status: load(backend)?.map(|(rev, state)| state.status(rev)),
+         }),
+@@ -87,6 +92,7 @@ pub(super) fn dispatch<R: Rpc>(
                      status: state.status(rev),
                      control: state.control.map(SecretString),
                      state: state.state.map(SecretString),
@@ -20101,11 +21109,691 @@ index bdf35dfd..0620bd2a 100644
 +        assert_eq!(puts(&b), 0);
 +    }
 +}
+diff --git a/rust-modules/platform/src/storage_service/ott_control_backend.rs b/rust-modules/platform/src/storage_service/ott_control_backend.rs
+new file mode 100644
+index 00000000..697f959c
+--- /dev/null
++++ b/rust-modules/platform/src/storage_service/ott_control_backend.rs
+@@ -0,0 +1,140 @@
++//! Typed OTT control persistence; never accepts caller-selected keys or ciphertext to open.
++use super::*;
++use super::super::keymanager;
++use wire::{control, AuthPreservation};
++
++fn install<R: Rpc>(backend: &Backend<R>) -> Result<&str, ErrorCode> {
++    backend.service.strip_suffix(".storage")
++        .filter(|app| Flavor::from_app_id(app) == Some(backend.flavor))
++        .ok_or(ErrorCode::Invalid)
++}
++
++fn protected_open<R: Rpc>(backend: &mut Backend<R>, text: &str)
++    -> Result<(control::Envelope, control::Config), ErrorCode>
++{
++    let envelope = control::Envelope::parse(text, install(backend)?)?;
++    let plain = keymanager::open_control_detailed(&mut backend.rpc, &envelope.cipher.0, &envelope.context())
++        .map_err(|failure| {
++            backend.keymanager_error = Some((failure, AuthPreservation::Unchanged));
++            failure.code
++        })?;
++    let value: control::Config = serde_json::from_str(&plain).map_err(|_| ErrorCode::Corrupt)?;
++    value.validate().map_err(|_| ErrorCode::Corrupt)?;
++    Ok((envelope, value))
++}
++
++fn response(status: CommitStatus, receipt: Option<ott::Receipt>) -> Response {
++    Response::OttControlCommit { status, receipt }
++}
++
++pub(super) fn dispatch<R: Rpc>(backend: &mut Backend<R>, request: Request) -> Result<Response, ErrorCode> {
++    match request {
++        Request::OttControlLoad {} => {
++            let current = load(backend)?;
++            if current.as_ref().is_some_and(|(_, state)| state.barrier == ott::Barrier::Pending) {
++                return Err(ErrorCode::Unavailable);
++            }
++            let value = match current.as_ref().and_then(|(_, state)| state.control.as_deref()) {
++                None => control::Loaded::Missing {},
++                Some(text) if control::is_protected(text) => {
++                    let (_, value) = protected_open(backend, text)?;
++                    control::Loaded::Protected { value, envelope_sha256: state::digest_bytes(text.as_bytes()) }
++                }
++                Some(text) => control::Loaded::Legacy { envelope: SecretString(text.to_owned()) },
++            };
++            Ok(Response::OttControlLoaded { status: current.map(|(rev, state)| state.status(rev)), value })
++        }
++        request @ Request::OttControlCommit { .. } => commit(backend, request),
++        _ => Err(ErrorCode::Protocol),
++    }
++}
++
++fn commit<R: Rpc>(backend: &mut Backend<R>, request: Request) -> Result<Response, ErrorCode> {
++    let bytes = wire::request_digest_bytes(&request)?;
++    let Request::OttControlCommit { expected, operation_id, digest, source, value } = request else {
++        return Err(ErrorCode::Protocol);
++    };
++    value.validate()?;
++    source.validate()?;
++    if !model::valid_hex(&operation_id, 32) || !model::valid_hex(&digest, 64)
++        || state::digest_bytes(&bytes) != digest
++    { return Err(ErrorCode::Invalid); }
++    let current = load(backend)?;
++    if let Some((_, state)) = &current {
++        if let Some(receipt) = state.receipt(&operation_id, &digest, false)? {
++            return Ok(response(CommitStatus::Committed, Some(receipt)));
++        }
++    }
++    if !expected_matches(&expected, current.as_ref()) {
++        return Ok(response(CommitStatus::Conflict, None));
++    }
++    if current.as_ref().is_some_and(|(_, state)| !state.private_initialized
++        || state.barrier == ott::Barrier::Pending || state.revision == u64::MAX) {
++        return Err(ErrorCode::Invalid);
++    }
++    // Only the value loaded from the canonical object may reach the decrypt operation.
++    let legacy = match (&source, current.as_ref().and_then(|(_, state)| state.control.as_deref())) {
++        (control::Source::Absent {}, None) => None,
++        (control::Source::Legacy { sha256 }, Some(text))
++            if !control::is_protected(text) && *sha256 == state::digest_bytes(text.as_bytes()) => {
++                Some(SecretString(text.to_owned()))
++            }
++        (control::Source::Protected { sha256 }, Some(text))
++            if control::is_protected(text) && *sha256 == state::digest_bytes(text.as_bytes()) => {
++                // Do not replace an already protected value that cannot be authenticated.
++                protected_open(backend, text)?.0.legacy
++            }
++        _ => return Ok(response(CommitStatus::Conflict, None)),
++    };
++    let mut envelope = control::Envelope {
++        version: 2, install: install(backend)?.to_owned(), namespace: "control".into(),
++        cipher: SecretString(String::new()), legacy,
++    };
++    let plain = serde_json::to_string(&value).map_err(|_| ErrorCode::Invalid)?;
++    envelope.cipher = SecretString(keymanager::seal_control_detailed(&mut backend.rpc, &plain, envelope.context())
++        .map_err(|failure| {
++            backend.keymanager_error = Some((failure, AuthPreservation::Unchanged));
++            failure.code
++        })?);
++    let candidate = State::control_candidate(current.as_ref().map(|(_, state)| state), backend.flavor,
++        envelope.encode()?, &operation_id, &digest)?;
++    let mut object = json!({"_id":model::object_id(backend.flavor),
++        "_kind":format!("{}:1",backend.service),"state":candidate.encode()?});
++    if let Some((rev, _)) = &current { object["_rev"] = json!(rev); }
++    let payload = json!({"objects":[object]});
++    wire::check_frame_size(&payload)?;
++    let result = backend.rpc.call("luna://com.palm.db/put", &payload);
++    record_put_failure(&result);
++
++    // Every result after this point may have published data: retain uncertainty on failure.
++    let actual = match load(backend) {
++        Ok(actual) => actual,
++        Err(_) => return Ok(response(CommitStatus::Unavailable, None)),
++    };
++    let expectation_changed = !expected_matches(&expected, actual.as_ref());
++    if let Some((_, stored)) = actual {
++        if stored == candidate {
++            let Some(text) = stored.control.as_deref() else {
++                return Ok(response(CommitStatus::Unavailable, None));
++            };
++            if !matches!(protected_open(backend, text), Ok((_, opened)) if opened == value) {
++                return Ok(response(CommitStatus::Unavailable, None));
++            }
++            return Ok(response(CommitStatus::Committed, stored.receipt(&operation_id, &digest, true)?));
++        }
++        match stored.receipt(&operation_id, &digest, false) {
++            Ok(Some(receipt)) => return Ok(response(CommitStatus::Committed, Some(receipt))),
++            Err(_) => return Ok(response(CommitStatus::Unavailable, None)),
++            Ok(None) => (),
++        }
++    }
++    if expectation_changed && matches!(result, Ok(ref reply) if reply["returnValue"] == false) {
++        Ok(response(CommitStatus::Conflict, None))
++    } else {
++        Ok(response(CommitStatus::Unavailable, None))
++    }
++}
++
++#[cfg(test)]
++#[path = "ott_control_backend_tests.rs"]
++mod tests;
+diff --git a/rust-modules/platform/src/storage_service/ott_control_backend_tests.rs b/rust-modules/platform/src/storage_service/ott_control_backend_tests.rs
+new file mode 100644
+index 00000000..cb4d8e30
+--- /dev/null
++++ b/rust-modules/platform/src/storage_service/ott_control_backend_tests.rs
+@@ -0,0 +1,306 @@
++use super::*;
++use std::collections::BTreeMap;
++
++const APP: &str = "com.openottplay.player.native";
++#[derive(Default)]
++struct Bus {
++    object: Option<Value>,
++    calls: Vec<(String, Value)>,
++    key_exists: bool,
++    deny_generate: bool,
++    deny_decrypt: bool,
++    fail_postwrite_decrypt: bool,
++    wrong_postwrite_plaintext: bool,
++    reject_put: bool,
++    lose_ack: bool,
++    alter_after_put: bool,
++    put_seen: bool,
++    next: u64,
++    handles: BTreeMap<String, bool>,
++    ciphertext: BTreeMap<String, Vec<u8>>,
++}
++impl Rpc for Bus {
++    fn call(&mut self, uri: &str, payload: &Value) -> Result<Value, ErrorCode> {
++        self.calls.push((uri.into(), payload.clone()));
++        match uri {
++            "luna://com.palm.db/get" => Ok(json!({"returnValue":true,
++                "results":self.object.clone().into_iter().collect::<Vec<_>>()})),
++            "luna://com.palm.db/put" => {
++                self.put_seen = true;
++                if self.reject_put { return Ok(json!({"returnValue":false,"errorCode":-3961})); }
++                let mut object = payload["objects"][0].clone();
++                let old = self.object.as_ref().and_then(|object| object["_rev"].as_u64());
++                assert_eq!(old, object["_rev"].as_u64(), "CAS revision omitted or changed");
++                object["_rev"] = json!(old.unwrap_or(0) + 1);
++                if self.alter_after_put {
++                    let mut state: Value = serde_json::from_str(object["state"].as_str().unwrap()).unwrap();
++                    state["public_preferences"] = json!({"version":1,"interface_mode":1});
++                    object["state"] = json!(serde_json::to_string(&state).unwrap());
++                }
++                self.object = Some(object);
++                if self.lose_ack { Err(ErrorCode::Timeout) } else { Ok(json!({"returnValue":true})) }
++            }
++            "luna://com.webos.service.keymanager3/generateKey" => {
++                assert_eq!(payload["name"], control::KEY_NAME);
++                if self.deny_generate { return Ok(json!({"returnValue":false,"errorCode":-1000,"errorText":"private-rejection"})); }
++                if self.key_exists { return Ok(json!({"returnValue":false,"errorCode":-10002})); }
++                self.key_exists = true;
++                Ok(json!({"returnValue":true}))
++            }
++            "luna://com.webos.service.keymanager3/begin" => {
++                assert_eq!(payload["name"], control::KEY_NAME);
++                let encrypt = payload["params"]["purpose"][0] == "encrypt";
++                if !encrypt && (self.deny_decrypt || self.fail_postwrite_decrypt && self.put_seen) {
++                    return Ok(json!({"returnValue":false,"errorCode":-20030}));
++                }
++                self.next += 1;
++                let handle = self.next.to_string();
++                self.handles.insert(handle.clone(), encrypt);
++                Ok(json!({"returnValue":true,"handle":handle,"iv":keymanager::base64(&[0;12])}))
++            }
++            "luna://com.webos.service.keymanager3/finish" => {
++                let handle = payload["handle"].as_str().unwrap();
++                let encrypt = self.handles.remove(handle).unwrap();
++                let input = payload["data"].as_str().unwrap();
++                if encrypt {
++                    let mut bytes = [0;32];
++                    bytes[..8].copy_from_slice(&self.next.to_le_bytes());
++                    let cipher = keymanager::base64(&bytes);
++                    self.ciphertext.insert(cipher.clone(), keymanager::unbase64(input).unwrap());
++                    Ok(json!({"returnValue":true,"output":cipher}))
++                } else {
++                    let mut plain = self.ciphertext.get(input).unwrap().clone();
++                    if self.wrong_postwrite_plaintext && self.put_seen {
++                        let mut inner: Value = serde_json::from_slice(&plain).unwrap();
++                        inner["payload"] = json!(serde_json::to_string(&config('z')).unwrap());
++                        plain = serde_json::to_vec(&inner).unwrap();
++                    }
++                    Ok(json!({"returnValue":true,"output":keymanager::base64(&plain)}))
++                }
++            }
++            "luna://com.webos.service.keymanager3/abort" => {
++                self.handles.remove(payload["handle"].as_str().unwrap());
++                Ok(json!({"returnValue":true}))
++            }
++            _ => panic!("unexpected RPC, including forbidden key deletion: {uri}"),
++        }
++    }
++}
++fn backend() -> Backend<Bus> {
++    Backend::new(Bus::default(), Flavor::Stable, format!("{APP}.storage"))
++}
++fn config(token: char) -> control::Config {
++    control::Config { version:1, enabled:true, address:"https://home.example:443/control".into(),
++        token:SecretString(token.to_string().repeat(32)), device_id:"dev_fixture".into(), allow_insecure_http:false }
++}
++fn stored(b: &Backend<Bus>) -> State {
++    State::decode(b.rpc.object.as_ref().unwrap()["state"].as_str().unwrap(), Flavor::Stable).unwrap()
++}
++fn expected(b: &Backend<Bus>) -> ott::Expected {
++    match &b.rpc.object {
++        None => ott::Expected::Missing {},
++        Some(object) => {
++            let state = stored(b);
++            ott::Expected::Present { db_rev:object["_rev"].as_u64().unwrap().to_string(),
++                revision:state.revision, epoch:state.epoch }
++        }
++    }
++}
++fn signed(mut request: Request) -> Request {
++    let digest = state::digest_bytes(&wire::request_digest_bytes(&request).unwrap());
++    match &mut request {
++        Request::OttControlCommit { digest: field, .. } | Request::OttCommit { digest: field, .. } => *field = digest,
++        _ => panic!("unsigned request"),
++    }
++    request
++}
++fn request(b: &Backend<Bus>, n: u64, source: control::Source, value: control::Config) -> Request {
++    signed(Request::OttControlCommit { expected:expected(b), operation_id:format!("{n:032x}"),
++        digest:String::new(), source, value })
++}
++fn generic(b: &Backend<Bus>, n: u64, mutation: ott::Mutation) -> Request {
++    signed(Request::OttCommit { expected:expected(b), operation_id:format!("{n:032x}"), digest:String::new(), mutation })
++}
++fn legacy(namespace: &str) -> SecretString {
++    // Deliberate whitespace survives migration exactly, rather than being reserialized.
++    SecretString(format!("{{ \"version\": 1, \"sealed\": {{\"backend\":\"keymanager3\",\"key\":\"{APP}.ott.{namespace}.v1\",\"iv\":\"aXZpdmlyaXZpdmly\",\"data\":\"bGVnYWN5\"}} }}"))
++}
++fn verified(response: Response) {
++    assert!(matches!(response, Response::OttControlCommit { status:CommitStatus::Committed,
++        receipt:Some(ott::Receipt { verified:true, .. }) }));
++}
++fn source(b: &Backend<Bus>) -> control::Source {
++    let state = stored(b);
++    let text = state.control.as_deref().unwrap();
++    let sha256 = state::digest_bytes(text.as_bytes());
++    if control::is_protected(text) { control::Source::Protected { sha256 } }
++    else { control::Source::Legacy { sha256 } }
++}
++
++#[test]
++fn typed_control_writes_only_ciphertext_and_replay_has_no_crypto_or_put() {
++    let mut b = backend();
++    let value = config('a');
++    let r = request(&b, 1, control::Source::Absent {}, value.clone());
++    verified(b.dispatch(r.clone()));
++    let text = stored(&b).control.unwrap();
++    let envelope = control::Envelope::parse(&text, APP).unwrap();
++    assert!(envelope.legacy.is_none());
++    let disk = b.rpc.object.as_ref().unwrap().to_string();
++    assert!(!disk.contains(&value.token.0));
++    assert!(!disk.contains("home.example"));
++    assert!(!disk.contains("dev_fixture"));
++    let before = b.rpc.calls.len();
++    assert!(matches!(b.dispatch(r), Response::OttControlCommit { status:CommitStatus::Committed,
++        receipt:Some(ott::Receipt { verified:false, .. }) }));
++    assert_eq!(b.rpc.calls.len(), before + 1);
++    assert_eq!(b.rpc.calls.last().unwrap().0, "luna://com.palm.db/get");
++    assert!(matches!(b.dispatch(Request::OttControlLoad {}), Response::OttControlLoaded {
++        value:control::Loaded::Protected { value:actual, .. }, .. } if actual == value));
++}
++
++#[test]
++fn legacy_bytes_survive_migration_and_subsequent_updates_and_generic_state_edits() {
++    let mut b = backend();
++    let old = legacy("control");
++    let state = legacy("state");
++    let r = generic(&b, 1, ott::Mutation::Initialize { control:Some(old.clone()), state:Some(state.clone()), barrier:ott::Barrier::Open });
++    assert!(matches!(b.dispatch(r), Response::OttCommit { status:CommitStatus::Committed, .. }));
++    assert!(matches!(b.dispatch(Request::OttControlLoad {}), Response::OttControlLoaded {
++        value:control::Loaded::Legacy { envelope }, .. } if envelope.0 == old.0));
++    let r = request(&b, 2, source(&b), config('a')); verified(b.dispatch(r));
++    let first = stored(&b).control.unwrap();
++    assert_eq!(control::Envelope::parse(&first, APP).unwrap().legacy.unwrap().0, old.0);
++    let r = request(&b, 3, source(&b), config('b')); verified(b.dispatch(r));
++    let second = stored(&b).control.unwrap();
++    assert_ne!(first, second);
++    assert_eq!(control::Envelope::parse(&second, APP).unwrap().legacy.unwrap().0, old.0);
++    let r = generic(&b, 4, ott::Mutation::Put { namespace:ott::Namespace::State, value:state });
++    assert!(matches!(b.dispatch(r), Response::OttCommit { status:CommitStatus::Committed, .. }));
++    let r = generic(&b, 5, ott::Mutation::PatchPublic { patch:ott::PublicPatch::InterfaceMode(1) });
++    assert!(matches!(b.dispatch(r), Response::OttCommit { status:CommitStatus::Committed, .. }));
++    assert_eq!(stored(&b).control.as_deref(), Some(second.as_str()));
++}
++
++#[test]
++fn wrong_source_stale_revision_and_bad_digest_are_refused_before_crypto() {
++    let mut b = backend();
++    let r = request(&b, 1, control::Source::Absent {}, config('a')); verified(b.dispatch(r));
++    for candidate_source in [control::Source::Absent {}, control::Source::Legacy { sha256:"0".repeat(64) },
++        control::Source::Protected { sha256:"0".repeat(64) }] {
++        let r = request(&b, 2, candidate_source, config('b'));
++        let before = b.rpc.calls.len();
++        assert!(matches!(b.dispatch(r), Response::OttControlCommit { status:CommitStatus::Conflict, .. }));
++        assert_eq!(b.rpc.calls.len(), before + 1);
++    }
++    let mut r = request(&b, 2, source(&b), config('b'));
++    if let Request::OttControlCommit { expected, .. } = &mut r { *expected = ott::Expected::Missing {}; }
++    r = signed(r);
++    let before = b.rpc.calls.len();
++    assert!(matches!(b.dispatch(r), Response::OttControlCommit { status:CommitStatus::Conflict, .. }));
++    assert_eq!(b.rpc.calls.len(), before + 1);
++    let mut r = request(&b, 2, source(&b), config('b'));
++    if let Request::OttControlCommit { digest, .. } = &mut r { *digest = "0".repeat(64); }
++    let before = b.rpc.calls.len();
++    assert!(matches!(b.dispatch(r), Response::Error { code:ErrorCode::Invalid }));
++    assert_eq!(b.rpc.calls.len(), before);
++}
++
++#[test]
++fn generic_control_paths_cannot_inject_or_downgrade_v2() {
++    let mut b = backend();
++    let r = request(&b, 1, control::Source::Absent {}, config('a')); verified(b.dispatch(r));
++    let v2 = stored(&b).control.unwrap();
++    for mutation in [
++        ott::Mutation::Put { namespace:ott::Namespace::Control, value:legacy("control") },
++        ott::Mutation::Put { namespace:ott::Namespace::Control, value:SecretString(v2.clone()) },
++    ] {
++        let r = generic(&b, 2, mutation);
++        assert!(matches!(b.dispatch(r), Response::Error { code:ErrorCode::Invalid }));
++        assert_eq!(stored(&b).control.as_deref(), Some(v2.as_str()));
++    }
++    let mut empty = backend();
++    let r = generic(&empty, 1, ott::Mutation::Initialize { control:Some(SecretString(v2.clone())), state:None, barrier:ott::Barrier::Open });
++    assert!(matches!(empty.dispatch(r), Response::Error { code:ErrorCode::Invalid }));
++    assert!(empty.rpc.object.is_none());
++}
++
++#[test]
++fn protected_key_denial_never_falls_back_to_plaintext_or_modifies_existing_state() {
++    let mut b = backend();
++    b.rpc.deny_generate = true;
++    let r = request(&b, 1, control::Source::Absent {}, config('a'));
++    assert!(matches!(b.dispatch(r), Response::KeymanagerError { failure, .. }
++        if failure.service_code == Some(-1000)));
++    assert!(b.rpc.object.is_none());
++    assert!(!b.rpc.calls.iter().any(|(uri,_)| uri.ends_with("/put") || uri.ends_with("/removeKey")));
++    b.rpc.deny_generate = false;
++    let r = request(&b, 2, control::Source::Absent {}, config('a')); verified(b.dispatch(r));
++    let original = b.rpc.object.clone();
++    b.rpc.deny_decrypt = true;
++    let before = b.rpc.calls.len();
++    let r = request(&b, 3, source(&b), config('b'));
++    assert!(matches!(b.dispatch(r), Response::KeymanagerError { .. }));
++    assert_eq!(b.rpc.object, original);
++    assert!(!b.rpc.calls[before..].iter().any(|(uri,_)| uri.ends_with("/generateKey") || uri.ends_with("/put")));
++}
++
++#[test]
++fn lost_put_ack_can_verify_but_wrong_or_unreadable_decryption_is_uncertain() {
++    let mut b = backend(); b.rpc.lose_ack = true;
++    let r = request(&b, 1, control::Source::Absent {}, config('a')); verified(b.dispatch(r));
++    for mismatch in [false, true] {
++        let mut b = backend();
++        b.rpc.fail_postwrite_decrypt = !mismatch;
++        b.rpc.wrong_postwrite_plaintext = mismatch;
++        let r = request(&b, 1, control::Source::Absent {}, config('a'));
++        assert!(matches!(b.dispatch(r.clone()), Response::OttControlCommit { status:CommitStatus::Unavailable, receipt:None }));
++        assert!(b.rpc.object.is_some());
++        let before = b.rpc.calls.len();
++        assert!(matches!(b.dispatch(r), Response::OttControlCommit {
++            status:CommitStatus::Committed, receipt:Some(ott::Receipt { verified:false, .. }) }));
++        assert_eq!(b.rpc.calls.len(), before + 1);
++    }
++}
++
++#[test]
++fn changed_readback_candidate_never_earns_a_verified_receipt() {
++    let mut b = backend(); b.rpc.alter_after_put = true;
++    let r = request(&b, 1, control::Source::Absent {}, config('a'));
++    assert!(matches!(b.dispatch(r), Response::OttControlCommit {
++        status:CommitStatus::Committed, receipt:Some(ott::Receipt { verified:false, .. }) }));
++}
++
++#[test]
++fn changed_preserved_legacy_bytes_invalidate_the_authenticated_context() {
++    let mut b = backend();
++    let r = generic(&b, 1, ott::Mutation::Initialize {
++        control:Some(legacy("control")), state:None, barrier:ott::Barrier::Open });
++    b.dispatch(r);
++    let r = request(&b, 2, source(&b), config('a')); verified(b.dispatch(r));
++    let object = b.rpc.object.as_mut().unwrap();
++    let mut state: Value = serde_json::from_str(object["state"].as_str().unwrap()).unwrap();
++    let mut envelope: Value = serde_json::from_str(state["control"].as_str().unwrap()).unwrap();
++    envelope["legacy"] = json!(legacy("control").0 + " ");
++    state["control"] = json!(serde_json::to_string(&envelope).unwrap());
++    object["state"] = json!(serde_json::to_string(&state).unwrap());
++    let before = b.rpc.calls.len();
++    assert!(matches!(b.dispatch(Request::OttControlLoad {}), Response::Error { code:ErrorCode::Corrupt }));
++    assert_eq!(b.rpc.calls.len(), before + 1);
++}
++
++#[test]
++fn pending_erasure_and_incomplete_private_import_refuse_control_writes() {
++    for mutation in [ott::Mutation::BeginErase {},
++        ott::Mutation::PatchPublic { patch:ott::PublicPatch::InterfaceMode(1) }] {
++        let mut b = backend();
++        let r = generic(&b, 1, mutation);
++        assert!(matches!(b.dispatch(r), Response::OttCommit { status:CommitStatus::Committed, .. }));
++        let original = b.rpc.object.clone();
++        let r = request(&b, 2, control::Source::Absent {}, config('a'));
++        let before = b.rpc.calls.len();
++        assert!(matches!(b.dispatch(r), Response::Error { code:ErrorCode::Invalid }));
++        assert_eq!(b.rpc.calls.len(), before + 1);
++        assert_eq!(b.rpc.object, original);
++    }
++}
+diff --git a/rust-modules/platform/src/storage_service/ott_control_wire.rs b/rust-modules/platform/src/storage_service/ott_control_wire.rs
+new file mode 100644
+index 00000000..2a0a964b
+--- /dev/null
++++ b/rust-modules/platform/src/storage_service/ott_control_wire.rs
+@@ -0,0 +1,204 @@
++//! Closed helper-owned OTT control credentials. No arbitrary encryption or key selection.
++use super::{ott, ErrorCode, SecretString};
++use serde::{Deserialize, Serialize};
++use serde_json::{json, Value};
++
++pub const KEY_NAME: &str = "ott.control.v2";
++pub const ENVELOPE_BYTES: usize = ott::ENVELOPE_BYTES + 65536;
++const CIPHER_BYTES: usize = 32768;
++
++#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(deny_unknown_fields)]
++pub struct Config {
++    pub version: u8,
++    pub enabled: bool,
++    pub address: String,
++    pub token: SecretString,
++    pub device_id: String,
++    #[serde(rename = "allowInsecureHttp")]
++    pub allow_insecure_http: bool,
++}
++impl Config {
++    pub fn validate(&self) -> Result<(), ErrorCode> {
++        let valid_token = self.token.0.is_empty() || ((32..=256).contains(&self.token.0.len())
++            && self.token.0.bytes().all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b)));
++        let valid_address = self.address.is_empty()
++            || valid_address(&self.address, self.allow_insecure_http);
++        if self.version != 1 || !ott::valid_device(&self.device_id) || !valid_token
++            || !valid_address || (self.enabled && (self.address.is_empty() || self.token.0.is_empty()))
++        { return Err(ErrorCode::Invalid); }
++        Ok(())
++    }
++}
++// The app admits a normalized control base. Defense in depth keeps HTTP limited
++// to an explicitly consented numeric local address, as in its control protocol.
++fn valid_address(address: &str, allow_http: bool) -> bool {
++    let (rest, http) = if let Some(rest) = address.strip_prefix("https://") { (rest, false) }
++        else if let Some(rest) = address.strip_prefix("http://") { (rest, true) }
++        else { return false; };
++    if address.len() > 2048
++        || !ott::public_address_with_limit(&format!("https://{rest}"), 2048 + usize::from(http))
++    { return false; }
++    let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
++    if !path.bytes().all(|b| b.is_ascii_alphanumeric() || b"/-._~".contains(&b)) {
++        return false;
++    }
++    if !http { return true; }
++    if !allow_http { return false; }
++    let host = if let Some(rest) = authority.strip_prefix('[') {
++        rest.split_once(']').map(|(host, _)| host)
++    } else { authority.rsplit_once(':').map(|(host, _)| host) };
++    match host.and_then(|host| host.parse::<std::net::IpAddr>().ok()) {
++        Some(std::net::IpAddr::V4(ip)) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
++        Some(std::net::IpAddr::V6(ip)) => ip.is_loopback() || ip.is_unique_local() || ip.is_unicast_link_local(),
++        None => false,
++    }
++}
++impl std::fmt::Debug for Config {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        f.write_str("OttControlConfig([REDACTED])")
++    }
++}
++
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
++pub enum Source {
++    Absent {},
++    Legacy { sha256: String },
++    Protected { sha256: String },
++}
++impl Source {
++    pub fn validate(&self) -> Result<(), ErrorCode> {
++        match self {
++            Self::Absent {} => Ok(()),
++            Self::Legacy { sha256 } | Self::Protected { sha256 } if valid_digest(sha256) => Ok(()),
++            _ => Err(ErrorCode::Invalid),
++        }
++    }
++}
++pub fn valid_digest(value: &str) -> bool {
++    value.len() == 64 && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
++}
++
++#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
++pub enum Loaded {
++    Missing {},
++    Legacy { envelope: SecretString },
++    Protected { value: Config, envelope_sha256: String },
++}
++impl std::fmt::Debug for Loaded {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        f.write_str("OttControlLoaded([REDACTED])")
++    }
++}
++
++/// The original app-owned v1 bytes survive migration and later updates unchanged.
++/// These fields are ciphertext/metadata; the typed Config is never persisted here in cleartext.
++#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(deny_unknown_fields)]
++pub struct Envelope {
++    pub version: u8,
++    pub install: String,
++    pub namespace: String,
++    pub cipher: SecretString,
++    pub legacy: Option<SecretString>,
++}
++impl std::fmt::Debug for Envelope {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        f.write_str("OttControlEnvelope([REDACTED])")
++    }
++}
++#[derive(Deserialize)]
++#[serde(deny_unknown_fields)]
++struct Cipher {
++    format: String,
++    key_name: String,
++    iv: String,
++    ciphertext: String,
++    context: Value,
++}
++impl Envelope {
++    pub fn context(&self) -> Value {
++        let legacy_sha256 = self.legacy.as_ref()
++            .map(|value| super::super::state::digest_bytes(value.0.as_bytes()));
++        json!({"format":"ott-control", "version":2, "install":self.install,
++            "namespace":"control", "legacy_sha256":legacy_sha256})
++    }
++    pub fn parse(text: &str, expected_install: &str) -> Result<Self, ErrorCode> {
++        if text.len() > ENVELOPE_BYTES { return Err(ErrorCode::Invalid); }
++        let value: Self = serde_json::from_str(text).map_err(|_| ErrorCode::Invalid)?;
++        value.validate(expected_install)?;
++        Ok(value)
++    }
++    pub fn validate(&self, expected_install: &str) -> Result<(), ErrorCode> {
++        if self.version != 2 || self.install != expected_install || self.install.is_empty()
++            || self.namespace != "control" || self.cipher.0.len() > CIPHER_BYTES
++        { return Err(ErrorCode::Invalid); }
++        if let Some(legacy) = &self.legacy {
++            if ott::envelope_app(&legacy.0, ott::Namespace::Control)? != expected_install {
++                return Err(ErrorCode::Invalid);
++            }
++        }
++        let cipher: Cipher = serde_json::from_str(&self.cipher.0).map_err(|_| ErrorCode::Invalid)?;
++        if cipher.format != "keymanager3-aes256-gcm-v1" || cipher.key_name != KEY_NAME
++            || !ott::base64_shape(&cipher.iv) || cipher.iv.len() > 256
++            || !ott::base64_shape(&cipher.ciphertext) || cipher.context != self.context()
++        { return Err(ErrorCode::Invalid); }
++        Ok(())
++    }
++    pub fn encode(&self) -> Result<String, ErrorCode> {
++        self.validate(&self.install)?;
++        let text = serde_json::to_string(self).map_err(|_| ErrorCode::Invalid)?;
++        if text.len() > ENVELOPE_BYTES { return Err(ErrorCode::Invalid); }
++        Ok(text)
++    }
++}
++/// Detection is not validation. Unknown/malformed data must subsequently fail closed.
++pub fn is_protected(text: &str) -> bool {
++    serde_json::from_str::<Value>(text).ok()
++        .is_some_and(|value| value.get("version").and_then(Value::as_u64) == Some(2))
++}
++pub fn validate_record(text: &str, expected_install: &str) -> Result<(), ErrorCode> {
++    if is_protected(text) { Envelope::parse(text, expected_install).map(|_| ()) }
++    else if ott::envelope_app(text, ott::Namespace::Control)? == expected_install { Ok(()) }
++    else { Err(ErrorCode::Invalid) }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn closed_empty_variants_reject_extra_fields() {
++        assert!(serde_json::from_value::<Source>(json!({"type":"absent","token":"x"})).is_err());
++        assert!(serde_json::from_value::<Loaded>(json!({"type":"missing","payload":"x"})).is_err());
++    }
++    #[test]
++    fn config_is_bounded_and_never_displays_secret() {
++        let config = Config { version:1, enabled:true, address:"https://home.example:443/control".into(),
++            token:SecretString("a".repeat(32)), device_id:"dev_example".into(), allow_insecure_http:false };
++        assert!(config.validate().is_ok());
++        assert_eq!(format!("{config:?}"), "OttControlConfig([REDACTED])");
++        let mut unsafe_config = config.clone(); unsafe_config.address = "https://user:pass@host:443".into();
++        assert!(unsafe_config.validate().is_err());
++        unsafe_config = config.clone(); unsafe_config.address = "http://host:80".into();
++        assert!(unsafe_config.validate().is_err());
++        unsafe_config.allow_insecure_http = true;
++        assert!(unsafe_config.validate().is_err());
++        unsafe_config.address = "http://192.168.1.4:80".into();
++        assert!(unsafe_config.validate().is_ok());
++        unsafe_config.address = "https://home.example:443/path:bad".into();
++        assert!(unsafe_config.validate().is_err());
++        let mut value = serde_json::to_value(config).unwrap(); value["arbitrary"] = json!("payload");
++        assert!(serde_json::from_value::<Config>(value).is_err());
++    }
++
++    #[test]
++    fn http_limit_is_applied_to_the_original_address() {
++        let mut address = "http://192.168.1.4:80/".to_string();
++        address.push_str(&"a".repeat(2048 - address.len()));
++        assert!(valid_address(&address, true));
++        address.push('a');
++        assert!(!valid_address(&address, true));
++    }
++}
 diff --git a/rust-modules/platform/src/storage_service/ott_state.rs b/rust-modules/platform/src/storage_service/ott_state.rs
-index 9373a250..c2446f2f 100644
+index 9373a250..89b64341 100644
 --- a/rust-modules/platform/src/storage_service/ott_state.rs
 +++ b/rust-modules/platform/src/storage_service/ott_state.rs
-@@ -24,6 +24,10 @@ pub(super) struct State {
+@@ -1,9 +1,10 @@
+ //! Pure state for the independent, encrypted OTT domain. No key or IO authority.
+ use super::{ott, ErrorCode, Flavor};
++use super::super::super::wire::control;
+ use serde::{Deserialize, Serialize};
+ 
+ const LEDGER_CAPACITY: usize = 16;
+-const ENCODED_BYTES: usize = 2 * ott::ENVELOPE_BYTES + 65536;
++const ENCODED_BYTES: usize = ott::ENVELOPE_BYTES + control::ENVELOPE_BYTES + 65536;
+ 
+ pub(super) fn object_id(flavor: Flavor) -> &'static str {
+     match flavor {
+@@ -24,6 +25,10 @@ pub(super) struct State {
      pub barrier: ott::Barrier,
      pub control: Option<String>,
      pub state: Option<String>,
@@ -20116,7 +21804,24 @@ index 9373a250..c2446f2f 100644
      operations: Vec<Entry>,
  }
  #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-@@ -79,7 +83,10 @@ impl State {
+@@ -46,6 +51,16 @@ fn validate_record(
+     namespace: ott::Namespace,
+     flavor: Flavor,
+ ) -> Result<(), ErrorCode> {
++    if namespace == ott::Namespace::Control && control::is_protected(value) {
++        let envelope: control::Envelope = serde_json::from_str(value).map_err(|_| ErrorCode::Invalid)?;
++        if Flavor::from_app_id(&envelope.install) != Some(flavor) {
++            return Err(ErrorCode::Invalid);
++        }
++        return control::validate_record(value, &envelope.install);
++    }
++    validate_legacy_record(value, namespace, flavor)
++}
++fn validate_legacy_record(value: &str, namespace: ott::Namespace, flavor: Flavor) -> Result<(), ErrorCode> {
+     let app = ott::envelope_app(value, namespace)?;
+     if Flavor::from_app_id(&app) != Some(flavor) {
+         return Err(ErrorCode::Invalid);
+@@ -79,7 +94,10 @@ impl State {
              || self.operations.is_empty()
              || self.operations.len() > LEDGER_CAPACITY
              || (self.barrier == ott::Barrier::Pending
@@ -20128,7 +21833,7 @@ index 9373a250..c2446f2f 100644
          {
              return Err(ErrorCode::Invalid);
          }
-@@ -123,6 +130,7 @@ impl State {
+@@ -123,6 +141,7 @@ impl State {
              barrier: self.barrier,
              control_present: self.control.is_some(),
              state_present: self.state.is_some(),
@@ -20136,7 +21841,7 @@ index 9373a250..c2446f2f 100644
          }
      }
      pub fn receipt(
-@@ -164,6 +172,8 @@ impl State {
+@@ -164,6 +183,8 @@ impl State {
              barrier: ott::Barrier::Open,
              control: None,
              state: None,
@@ -20145,10 +21850,13 @@ index 9373a250..c2446f2f 100644
              operations: Vec::new(),
          });
          match mutation {
-@@ -177,12 +187,27 @@ impl State {
+@@ -177,16 +198,43 @@ impl State {
                  {
                      return Err(ErrorCode::Invalid);
                  }
++                if let Some(value) = &control {
++                    validate_legacy_record(&value.0, ott::Namespace::Control, flavor)?;
++                }
 +                next.private_initialized = true;
                  next.control = control.map(|v| v.0);
                  next.state = state.map(|v| v.0);
@@ -20158,6 +21866,9 @@ index 9373a250..c2446f2f 100644
 +                if current.is_none() || next.private_initialized || next.barrier != ott::Barrier::Open
 +                    || (barrier == ott::Barrier::Pending && (control.is_some() || state.is_some()))
 +                { return Err(ErrorCode::Invalid); }
++                if let Some(value) = &control {
++                    validate_legacy_record(&value.0, ott::Namespace::Control, flavor)?;
++                }
 +                next.private_initialized = true;
 +                next.control = control.map(|value| value.0);
 +                next.state = state.map(|value| value.0);
@@ -20174,7 +21885,18 @@ index 9373a250..c2446f2f 100644
                      return Err(ErrorCode::Invalid);
                  }
                  match namespace {
-@@ -196,6 +221,8 @@ impl State {
+-                    ott::Namespace::Control => next.control = Some(value.0),
++                    ott::Namespace::Control => {
++                        validate_legacy_record(&value.0, ott::Namespace::Control, flavor)?;
++                        if next.control.as_deref().is_some_and(control::is_protected) {
++                            return Err(ErrorCode::Invalid);
++                        }
++                        next.control = Some(value.0);
++                    }
+                     ott::Namespace::State => next.state = Some(value.0),
+                 }
+             }
+@@ -196,6 +244,8 @@ impl State {
                  }
                  next.control = None;
                  next.state = None;
@@ -20183,8 +21905,57 @@ index 9373a250..c2446f2f 100644
                  next.barrier = ott::Barrier::Pending;
              }
              ott::Mutation::FinishErase {} => {
+@@ -205,17 +255,40 @@ impl State {
+                 next.barrier = ott::Barrier::Complete;
+             }
+         }
+-        next.revision = next.revision.checked_add(1).ok_or(ErrorCode::Invalid)?;
+-        next.operations.push(Entry {
++        next.finish(flavor, id, digest)
++    }
++
++    /// Only the typed control adapter may publish a helper-encrypted control value.
++    pub fn control_candidate(current: Option<&Self>, flavor: Flavor, value: String,
++        id: &str, digest: &str) -> Result<Self, ErrorCode> {
++        if !valid_hex(id, 32) || !valid_hex(digest, 64) || !control::is_protected(&value) {
++            return Err(ErrorCode::Invalid);
++        }
++        if current.is_some_and(|state| !state.private_initialized || state.barrier == ott::Barrier::Pending) {
++            return Err(ErrorCode::Invalid);
++        }
++        validate_record(&value, ott::Namespace::Control, flavor)?;
++        let mut next = current.cloned().unwrap_or(Self {
++            format: "ott-private".into(), schema: 1, flavor, revision: 0, epoch: 1,
++            barrier: ott::Barrier::Open, control: None, state: None,
++            private_initialized: true, public_preferences: None, operations: Vec::new(),
++        });
++        next.control = Some(value);
++        next.finish(flavor, id, digest)
++    }
++
++    fn finish(mut self, flavor: Flavor, id: &str, digest: &str) -> Result<Self, ErrorCode> {
++        self.revision = self.revision.checked_add(1).ok_or(ErrorCode::Invalid)?;
++        self.operations.push(Entry {
+             operation_id: id.to_owned(),
+             digest: digest.to_owned(),
+-            revision: next.revision,
+-            epoch: next.epoch,
++            revision: self.revision,
++            epoch: self.epoch,
+         });
+-        if next.operations.len() > LEDGER_CAPACITY {
+-            next.operations.remove(0);
++        if self.operations.len() > LEDGER_CAPACITY {
++            self.operations.remove(0);
+         }
+-        next.validate(flavor)?;
+-        Ok(next)
++        self.validate(flavor)?;
++        Ok(self)
+     }
+ }
 diff --git a/rust-modules/platform/src/storage_service/ott_wire.rs b/rust-modules/platform/src/storage_service/ott_wire.rs
-index 1b376c9e..6849692d 100644
+index 1b376c9e..f3e5b66e 100644
 --- a/rust-modules/platform/src/storage_service/ott_wire.rs
 +++ b/rust-modules/platform/src/storage_service/ott_wire.rs
 @@ -38,6 +38,8 @@ pub struct Status {
@@ -20218,7 +21989,7 @@ index 1b376c9e..6849692d 100644
      Put {
          namespace: Namespace,
          value: SecretString,
-@@ -81,6 +91,108 @@ impl std::fmt::Debug for Mutation {
+@@ -81,6 +91,111 @@ impl std::fmt::Debug for Mutation {
      }
  }
  
@@ -20292,16 +22063,19 @@ index 1b376c9e..6849692d 100644
 +        if valid { Ok(()) } else { Err(ErrorCode::Invalid) }
 +    }
 +}
-+fn valid_device(id: &str) -> bool {
++pub(super) fn valid_device(id: &str) -> bool {
 +    !id.is_empty() && id.len() <= 128
 +        && id.bytes().all(|b| b.is_ascii_alphanumeric() || b"._:-".contains(&b))
 +}
 +/// Defensive helper-side shape gate. The app must additionally use its canonical
 +/// control-address normalizer before admission. This path never accepts credentials,
 +/// query/fragment data, percent escapes, whitespace or cleartext HTTP.
-+fn public_address(address: &str) -> bool {
++pub(super) fn public_address(address: &str) -> bool {
++    public_address_with_limit(address, 2048)
++}
++pub(super) fn public_address_with_limit(address: &str, max_bytes: usize) -> bool {
 +    let Some(rest) = address.strip_prefix("https://") else { return false; };
-+    if address.len() > 2048 || !rest.is_ascii()
++    if address.len() > max_bytes || !rest.is_ascii()
 +        || rest.bytes().any(|b| !b.is_ascii_alphanumeric() && !b"-._~:/[]".contains(&b))
 +    { return false; }
 +    let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
@@ -20327,6 +22101,15 @@ index 1b376c9e..6849692d 100644
  #[derive(Deserialize)]
  #[serde(deny_unknown_fields)]
  struct Envelope {
+@@ -117,7 +232,7 @@ fn parse_envelope(text: &str) -> Result<Envelope, ErrorCode> {
+     }
+     Ok(value)
+ }
+-fn base64_shape(text: &str) -> bool {
++pub(super) fn base64_shape(text: &str) -> bool {
+     !text.is_empty() && text.len() % 4 == 0 && {
+         let body = text.trim_end_matches('=');
+         text.len() - body.len() <= 2
 diff --git a/rust-modules/platform/src/storage_service/service.rs b/rust-modules/platform/src/storage_service/service.rs
 index 9706e34a..7da44d07 100644
 --- a/rust-modules/platform/src/storage_service/service.rs
@@ -20404,10 +22187,19 @@ index 9706e34a..7da44d07 100644
                  // a keymanager success on old firmware nor silently selects weaker protection.
                  wire::failure::clear();
 diff --git a/rust-modules/platform/src/storage_service/wire.rs b/rust-modules/platform/src/storage_service/wire.rs
-index d93d32cf..f4b1ad51 100644
+index d93d32cf..6bf01577 100644
 --- a/rust-modules/platform/src/storage_service/wire.rs
 +++ b/rust-modules/platform/src/storage_service/wire.rs
-@@ -98,6 +98,11 @@ pub enum Request {
+@@ -3,6 +3,8 @@
+ pub mod failure;
+ #[path = "ott_wire.rs"]
+ pub mod ott;
++#[path = "ott_control_wire.rs"]
++pub mod control;
+ #[path = "inspection_io.rs"]
+ pub mod inspection_io;
+ #[path = "activation.rs"]
+@@ -98,6 +100,11 @@ pub enum Request {
          protocol: u32,
          nonce: String,
      },
@@ -20419,7 +22211,16 @@ index d93d32cf..f4b1ad51 100644
      /// Read-only handshake: never initializes DB8 or probes Keymanager.
      InspectHello {
          protocol: u32,
-@@ -192,6 +197,36 @@ pub struct KeymanagerFailure {
+@@ -106,6 +113,8 @@ pub enum Request {
+     Load {},
+     OttStatus {},
+     OttLoad {},
++    OttControlLoad {},
++    OttControlCommit { expected: ott::Expected, operation_id: String, digest: String, source: control::Source, value: control::Config },
+     OttCommit { expected: ott::Expected, operation_id: String, digest: String, mutation: ott::Mutation },
+     OttReconcile { operation_id: String, digest: String },
+     Commit {
+@@ -192,6 +201,36 @@ pub struct KeymanagerFailure {
      pub code: ErrorCode,
      pub category: KeymanagerFailureCategory,
      pub service_code: Option<i32>,
@@ -20456,7 +22257,7 @@ index d93d32cf..f4b1ad51 100644
  }
  #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
  #[serde(rename_all = "snake_case")]
-@@ -236,6 +271,12 @@ pub enum AuthLoad {
+@@ -236,6 +275,12 @@ pub enum AuthLoad {
  #[derive(Clone, Serialize, Deserialize)]
  #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
  pub enum Response {
@@ -20469,7 +22270,33 @@ index d93d32cf..f4b1ad51 100644
      InspectHello {
          protocol: u32,
          nonce: String,
-@@ -374,6 +415,30 @@ pub fn write_frame<T: Serialize>(writer: &mut impl Write, value: &T) -> io::Resu
+@@ -257,6 +302,8 @@ pub enum Response {
+     Missing,
+     OttStatus { status: Option<ott::Status> },
+     OttLoaded { snapshot: Option<ott::Snapshot> },
++    OttControlLoaded { status: Option<ott::Status>, value: control::Loaded },
++    OttControlCommit { status: CommitStatus, receipt: Option<ott::Receipt> },
+     OttCommit { status: CommitStatus, receipt: Option<ott::Receipt> },
+     OttReconcile { status: ReconcileStatus, receipt: Option<ott::Receipt> },
+     Commit {
+@@ -296,6 +343,7 @@ impl Response {
+             Self::Error { code } => Some(*code),
+             Self::Commit { status: CommitStatus::Unavailable, .. }
+                 | Self::OttCommit { status: CommitStatus::Unavailable, .. }
++                | Self::OttControlCommit { status: CommitStatus::Unavailable, .. }
+                 | Self::OttReconcile { status: ReconcileStatus::Unknown, .. }
+                 | Self::Reconcile { status: ReconcileStatus::Unknown, .. } => Some(ErrorCode::Unavailable),
+             _ => None,
+@@ -331,7 +379,7 @@ pub struct Descriptor {
+ pub fn request_digest_bytes(request: &Request) -> Result<Vec<u8>, ErrorCode> {
+     check_frame_size(request)?;
+     let mut value = serde_json::to_value(request).map_err(|_| ErrorCode::Invalid)?;
+-    if !matches!(request, Request::Commit { .. } | Request::OttCommit { .. }) {
++    if !matches!(request, Request::Commit { .. } | Request::OttCommit { .. } | Request::OttControlCommit { .. }) {
+         return Err(ErrorCode::Invalid);
+     }
+     value
+@@ -374,6 +422,30 @@ pub fn write_frame<T: Serialize>(writer: &mut impl Write, value: &T) -> io::Resu
  #[cfg(test)]
  mod tests {
      use super::*;
@@ -20500,7 +22327,7 @@ index d93d32cf..f4b1ad51 100644
      #[test]
      fn oversize_and_unknown_requests_are_rejected() {
          assert!(read_frame::<Request>(&mut &((MAX_FRAME as u32 + 1).to_be_bytes())[..]).is_err());
-@@ -390,6 +455,7 @@ mod tests {
+@@ -390,6 +462,7 @@ mod tests {
              ("operation", serde_json::json!("private-fixture")),
              ("stage", serde_json::json!("private-fixture")),
              ("service_code", serde_json::json!("private-fixture")),
@@ -20508,7 +22335,7 @@ index d93d32cf..f4b1ad51 100644
              ("errorText", serde_json::json!("private-fixture")),
          ] {
              let mut bad = good.clone();
-@@ -398,6 +464,30 @@ mod tests {
+@@ -398,6 +471,30 @@ mod tests {
          }
      }
  
@@ -20539,7 +22366,7 @@ index d93d32cf..f4b1ad51 100644
      #[test]
      fn fallback_context_and_strict_failure_have_only_closed_fields() {
          let context =
-@@ -415,6 +505,7 @@ mod tests {
+@@ -415,6 +512,7 @@ mod tests {
                  code: ErrorCode::Timeout,
                  category: KeymanagerFailureCategory::Timeout,
                  service_code: None,
@@ -22182,11 +24009,14 @@ index 1446e46f..015a0deb 100644
      }
  
 diff --git a/rust-modules/plex/src/plex/session/persistence.rs b/rust-modules/plex/src/plex/session/persistence.rs
-index 9f163f23..4aac9dee 100644
+index 9f163f23..80c94e7d 100644
 --- a/rust-modules/plex/src/plex/session/persistence.rs
 +++ b/rust-modules/plex/src/plex/session/persistence.rs
-@@ -1063,6 +1063,7 @@ fn helper_commit_with(
+@@ -1061,8 +1061,10 @@ fn helper_commit_with(
+                 Response::Missing => "missing",
+                 Response::OttStatus { .. } | Response::OttLoaded { .. }
                      | Response::OttCommit { .. } | Response::OttReconcile { .. } => "ott_domain",
++                Response::OttControlLoaded { .. } | Response::OttControlCommit { .. } => "ott_control",
                  Response::Error { .. } => "error",
                  Response::KeymanagerError { .. } => "keymanager_error",
 +                Response::KeymanagerProbe { .. } => "keymanager_probe",
@@ -22487,7 +24317,7 @@ index 1dc12f74..99cdcba0 100644
          OttGuideProgramme { title: title.into(), description: String::new(), start_s, end_s }
      }
 diff --git a/rust-modules/screens/src/ott/input_tests.rs b/rust-modules/screens/src/ott/input_tests.rs
-index e59cfa3d..1e7e81e5 100644
+index e59cfa3d..add31d76 100644
 --- a/rust-modules/screens/src/ott/input_tests.rs
 +++ b/rust-modules/screens/src/ott/input_tests.rs
 @@ -1,6 +1,6 @@
@@ -22701,7 +24531,7 @@ index e59cfa3d..1e7e81e5 100644
              let page = d.nav.top_page().unwrap();
              let screen = page.inst.as_ref().unwrap().screen.as_any().unwrap().downcast_ref::<OttScreen>().unwrap();
              assert!(!screen.browse);
-@@ -889,3 +895,706 @@ fn remote_editor_keyboard_back_dismisses_before_a_second_back_cancels() {
+@@ -889,3 +895,789 @@ fn remote_editor_keyboard_back_dismisses_before_a_second_back_cancels() {
  mod literal_fields {
      include!("literal_fields_tests.rs");
  }
@@ -23406,6 +25236,89 @@ index e59cfa3d..1e7e81e5 100644
 +            &["item:remote.server:0:2:0"], plx_ui::screen::Activate::Direct)[0];
 +        click_header(&mut d, &mut rig, new_rect, 720);
 +        assert_eq!(rig.actions, vec![OttAction::EditSetting("remote.choice:2:0".into())]);
++    }
++}
++
++
++// Runtime supplies the ordered choices; these tests exercise their installation,
++// focus and activation through the shipping screen dispatcher, without discovery IO.
++fn inline_remote_choices_view(revision: u64, choices: bool) -> Arc<OttView> {
++    let setting = |id: &str| navigation_row(id, OttAction::EditSetting(id.into()));
++    let mut rows = vec![setting("remote.address"), setting("remote.find")];
++    if choices {
++        for (index, token) in ["choice-a", "choice-b"].into_iter().enumerate() {
++            rows.push(navigation_row(&format!("remote.server:{index}:{token}"),
++                OttAction::EditSetting(format!("remote.choice:{token}"))));
++        }
++    }
++    rows.extend([setting("uiFontScale"), setting("interfaceMode")]);
++    Arc::new(OttView {
++        page_id: "settings".into(), revision, title: "Settings".into(), rows,
++        // A retained fallback must not displace a surviving user-selected row.
++        selected_row: Some("remote.address".into()),
++        status: if choices { "Select a command server" } else { "" }.into(),
++        ..OttView::default()
++    })
++}
++
++#[test]
++fn dispatcher_inline_server_choices_keep_find_focus_and_down_selects_first_choice() {
++    let _guard = plx_base::testlock::serial();
++    for mode in [UiMode::Classic, UiMode::Modern] {
++        let (mut d, mut rig) = mount_snapshot_in_mode(inline_remote_choices_view(1, false), mode);
++        let screen = d.nav.top_page().unwrap().inst.as_ref().unwrap().screen.as_any().unwrap()
++            .downcast_ref::<OttScreen>().unwrap();
++        assert_eq!(screen.classic_mode, mode == UiMode::Classic);
++        assert_focus(&d, "item:remote.address");
++        frame(&mut d, &mut rig, 224, vec![key(Key::Down, tick(224))]);
++        frame(&mut d, &mut rig, 240, vec![key_up(Key::Down, tick(240))]);
++        assert_focus(&d, "item:remote.find");
++        press_navigation_ok(&mut d, &mut rig, 256, false);
++        assert_eq!(rig.actions, vec![OttAction::EditSetting("remote.find".into())]);
++        let focused = d.focus();
++
++        publish_snapshot(&mut d, &mut rig, inline_remote_choices_view(2, true), 400);
++        assert_eq!(d.focus(), focused, "an async result must retain the Find row");
++        assert_focus(&d, "item:remote.find");
++        assert_eq!(rig.actions, vec![OttAction::EditSetting("remote.find".into())],
++            "installing choices must not activate a server");
++        frame(&mut d, &mut rig, 432, vec![key(Key::Down, tick(432))]);
++        frame(&mut d, &mut rig, 448, vec![key_up(Key::Down, tick(448))]);
++        assert_focus(&d, "item:remote.server:0:choice-a");
++        draw_pointer_map_with_activation(&mut d, &rig,
++            &["item:remote.server:0:choice-a"], plx_ui::screen::Activate::Direct);
++        press_navigation_ok(&mut d, &mut rig, 480, false);
++        assert_eq!(rig.actions, vec![OttAction::EditSetting("remote.find".into()),
++            OttAction::EditSetting("remote.choice:choice-a".into())],
++            "the first following row must dispatch its own opaque choice");
++    }
++}
++
++#[test]
++fn dispatcher_inline_server_choices_preserve_focus_moved_to_another_setting() {
++    let _guard = plx_base::testlock::serial();
++    for mode in [UiMode::Classic, UiMode::Modern] {
++        let (mut d, mut rig) = mount_snapshot_in_mode(inline_remote_choices_view(1, false), mode);
++        let screen = d.nav.top_page().unwrap().inst.as_ref().unwrap().screen.as_any().unwrap()
++            .downcast_ref::<OttScreen>().unwrap();
++        assert_eq!(screen.classic_mode, mode == UiMode::Classic);
++        frame(&mut d, &mut rig, 224, vec![key(Key::Down, tick(224))]);
++        frame(&mut d, &mut rig, 240, vec![key_up(Key::Down, tick(240))]);
++        assert_focus(&d, "item:remote.find");
++        press_navigation_ok(&mut d, &mut rig, 256, false);
++        frame(&mut d, &mut rig, 352, vec![key(Key::Down, tick(352))]);
++        frame(&mut d, &mut rig, 368, vec![key_up(Key::Down, tick(368))]);
++        assert_focus(&d, "item:uiFontScale");
++        let focused = d.focus();
++
++        publish_snapshot(&mut d, &mut rig, inline_remote_choices_view(2, true), 400);
++        assert_eq!(d.focus(), focused, "inserted choices must not steal or retarget focus");
++        assert_focus(&d, "item:uiFontScale");
++        assert_eq!(rig.actions, vec![OttAction::EditSetting("remote.find".into())],
++            "the async result must not activate the new row at the old index");
++        press_navigation_ok(&mut d, &mut rig, 448, false);
++        assert_eq!(rig.actions, vec![OttAction::EditSetting("remote.find".into()),
++            OttAction::EditSetting("uiFontScale".into())]);
 +    }
 +}
 diff --git a/rust-modules/screens/src/ott/media.rs b/rust-modules/screens/src/ott/media.rs
@@ -48181,10 +50094,22 @@ index 00000000..7462686f
 +    assert_eq!(take_response(&mut delivery)["data"]["error"], "cancelled");
 +}
 diff --git a/rust-modules/src/app/ott_remote/transport.rs b/rust-modules/src/app/ott_remote/transport.rs
-index 98f84bf6..772d97b4 100644
+index 98f84bf6..02720025 100644
 --- a/rust-modules/src/app/ott_remote/transport.rs
 +++ b/rust-modules/src/app/ott_remote/transport.rs
-@@ -14,6 +14,7 @@ use std::sync::{
+@@ -1,10 +1,7 @@
+ //! Bounded native IO adapter; never called from a model/screen step.
+ use super::protocol::{Config, Request, Response, BODY_LIMIT};
+ use plx_base::task::{time::Budget, OffFrame};
+-use plx_platform::{
+-    storage::{private, CommitReceipt},
+-    tv::secure::Namespace,
+-};
++use plx_platform::storage::{private, CommitReceipt};
+ use serde_json::Value;
+ use std::sync::{
+     atomic::{AtomicBool, Ordering},
+@@ -14,6 +11,7 @@ use std::sync::{
  use std::time::Duration;
  
  pub(super) enum Outcome {
@@ -48192,7 +50117,7 @@ index 98f84bf6..772d97b4 100644
      Loaded(Result<(Config, bool, String), &'static str>),
      Saved(Result<(), &'static str>),
      Http {
-@@ -63,6 +64,10 @@ fn launch(work: impl FnOnce(&OffFrame, &AtomicBool) -> Outcome + Send + 'static)
+@@ -63,6 +61,10 @@ fn launch(work: impl FnOnce(&OffFrame, &AtomicBool) -> Outcome + Send + 'static)
      });
      launched.then_some(Task { receiver, canceled })
  }
@@ -48203,7 +50128,7 @@ index 98f84bf6..772d97b4 100644
  pub(super) fn send(request: Request) -> Option<Task> {
      send_bounded(request, BODY_LIMIT)
  }
-@@ -76,8 +81,11 @@ pub(super) fn send_bounded(request: Request, body_limit: usize) -> Option<Task>
+@@ -76,8 +78,11 @@ pub(super) fn send_bounded(request: Request, body_limit: usize) -> Option<Task>
          if request.body.is_some() {
              headers.push("Content-Type: application/json".into());
          }
@@ -48217,16 +50142,30 @@ index 98f84bf6..772d97b4 100644
              status: r.status,
              body: r.body,
          });
-@@ -179,7 +187,7 @@ fn confirm_config(config: Config, required: bool,
+@@ -179,12 +184,18 @@ fn confirm_config(config: Config, required: bool,
      }
      Ok((config, true))
  }
 -fn load_config(mut device_id: String, permit: &private::WritePermit,
 +fn load_config(device_id: String, permit: &private::WritePermit,
      confirm_existing: bool) -> Result<(Config, bool), &'static str> {
-     match private::load(Namespace::OttControl) {
-         Ok(Some(value)) => return confirm_config(Config::parse(value)?, confirm_existing,
-@@ -201,16 +209,58 @@ fn load_config(mut device_id: String, permit: &private::WritePermit,
+-    match private::load(Namespace::OttControl) {
+-        Ok(Some(value)) => return confirm_config(Config::parse(value)?, confirm_existing,
++    #[cfg(all(target_os = "linux", target_arch = "arm", not(any(feature = "hostsim", test))))]
++    let stored = helper_control::load(permit, plx_platform::storage::control::load_guarded);
++    #[cfg(not(all(target_os = "linux", target_arch = "arm", not(any(feature = "hostsim", test)))))]
++    let stored = private::load(plx_platform::tv::secure::Namespace::OttControl)
++        .map_err(|_| "Saved control configuration is locked or unavailable")
++        .and_then(|value| value.map(Config::parse).transpose());
++    match stored {
++        Ok(Some(config)) => return confirm_config(config, confirm_existing,
+             |config| save_config(config, permit)),
+-        Err(_) => return Err("Saved control configuration is locked or unavailable"),
++        Err(error) => return Err(error),
+         Ok(None) => {}
+     }
+     let suppressed = private::imports_suppressed().map_err(|_| "Managed import policy is unavailable")?;
+@@ -201,27 +212,188 @@ fn load_config(mut device_id: String, permit: &private::WritePermit,
              let _ = save_config(&config, permit);
              Ok((config, true))
          }
@@ -48292,7 +50231,142 @@ index 98f84bf6..772d97b4 100644
  pub(super) fn save(config: Config, permit: private::WritePermit) -> Option<Task> {
      launch(move |_, _| Outcome::Saved(save_config(&config, &permit)))
  }
-@@ -413,4 +463,121 @@ mod bootstrap_tests {
+ fn save_config(config: &Config, permit: &private::WritePermit) -> Result<(), &'static str> {
+-    let value: Value = serde_json::to_value(config).map_err(|_| "Invalid control configuration")?;
+-    match private::save_guarded(Namespace::OttControl, &value, permit) {
+-        Ok(CommitReceipt::Durable) => Ok(()),
+-        Ok(CommitReceipt::Uncertain { .. }) => {
++    #[cfg(all(target_os = "linux", target_arch = "arm", not(any(feature = "hostsim", test))))]
++    let receipt = helper_control::save(config, permit, plx_platform::storage::control::save_guarded)?;
++    #[cfg(not(all(target_os = "linux", target_arch = "arm", not(any(feature = "hostsim", test)))))]
++    let receipt = {
++        let value: Value = serde_json::to_value(config).map_err(|_| "Invalid control configuration")?;
++        private::save_guarded(plx_platform::tv::secure::Namespace::OttControl, &value, permit)
++            .map_err(|_| "Protected control storage is unavailable")?
++    };
++    match receipt {
++        CommitReceipt::Durable => Ok(()),
++        CommitReceipt::Uncertain { .. } => {
+             Err("Control configuration durability is unconfirmed")
+         }
+-        Err(_) => Err("Protected control storage is unavailable"),
++    }
++}
++
++// The paired ARM load/save adapter is compiled only for the native target (and
++// pure host tests). Hostsim and app tests keep the existing private fixture path;
++// test-support is a dependency feature, not an app feature that cfg can inspect.
++#[cfg(any(test, all(target_os = "linux", target_arch = "arm", not(feature = "hostsim"))))]
++mod helper_control {
++    use super::*;
++    use plx_platform::storage::{control, wire::SecretString};
++
++    fn decode(value: Value) -> Result<control::Config, ()> {
++        // This is also the helper coordinator's required legacy decoder. Keep
++        // defaults and URL normalization exactly at the existing app boundary.
++        let config = Config::parse(value).map_err(|_| ())?;
++        let value = control::Config {
++            version: config.version, enabled: config.enabled, address: config.address,
++            token: SecretString(config.token), device_id: config.device_id,
++            allow_insecure_http: config.allow_insecure_http,
++        };
++        value.validate().map_err(|_| ())?;
++        Ok(value)
++    }
++
++    pub(super) fn load(permit: &private::WritePermit,
++        load: impl FnOnce(&private::WritePermit, control::LegacyDecoder)
++            -> Result<Option<control::Snapshot>, control::Error>,
++    ) -> Result<Option<Config>, &'static str> {
++        if !permit.is_valid() { return Err("Control configuration was retired"); }
++        let stored = load(permit, decode)
++            .map_err(|_| "Saved control configuration is locked or unavailable")?;
++        if !permit.is_valid() { return Err("Control configuration was retired"); }
++        stored.map(|snapshot| {
++            let value = serde_json::to_value(snapshot.value).map_err(|_| "Invalid control configuration")?;
++            Config::parse(value)
++        }).transpose()
++    }
++
++    pub(super) fn save(config: &Config, permit: &private::WritePermit,
++        save: impl FnOnce(&control::Config, &private::WritePermit, control::LegacyDecoder)
++            -> Result<CommitReceipt, control::Error>,
++    ) -> Result<CommitReceipt, &'static str> {
++        if !permit.is_valid() { return Err("Control configuration was retired"); }
++        let value = serde_json::to_value(config).map_err(|_| "Invalid control configuration")?;
++        let value = decode(value).map_err(|_| "Invalid control configuration")?;
++        let receipt = save(&value, permit, decode).map_err(|error| match error {
++            control::Error::Uncertain => "Control configuration durability is unconfirmed",
++            _ => "Protected control storage is unavailable",
++        })?;
++        if !permit.is_valid() { return Err("Control configuration was retired"); }
++        Ok(receipt)
++    }
++
++    #[cfg(test)]
++    mod tests {
++        use super::*;
++        use serde_json::json;
++
++        #[test]
++        fn app_parser_normalizes_legacy_and_fresh_configs_with_all_fields_preserved() {
++            let input = json!({"version":1,"enabled":true,
++                "address":" http://127.0.0.1/api/webhook/commands/// ",
++                "token":"a".repeat(32),"device_id":"dev_fixture","allowInsecureHttp":true});
++            let expected = json!({"version":1,"enabled":true,"address":"http://127.0.0.1:80",
++                "token":"a".repeat(32),"device_id":"dev_fixture","allowInsecureHttp":true});
++            assert_eq!(serde_json::to_value(decode(input.clone()).unwrap()).unwrap(), expected);
++            let unparsed: Config = serde_json::from_value(input.clone()).unwrap();
++            let receipt = save(&unparsed, &private::WritePermit::new(), |value, _, legacy_decode| {
++                assert_eq!(serde_json::to_value(value).unwrap(), expected);
++                assert_eq!(serde_json::to_value(legacy_decode(input).unwrap()).unwrap(), expected);
++                Ok(CommitReceipt::Durable)
++            }).unwrap();
++            assert_eq!(receipt, CommitReceipt::Durable);
++            let defaults = decode(json!({"device_id":"dev_fixture"})).unwrap();
++            assert!(!defaults.enabled && defaults.address.is_empty() && defaults.token.0.is_empty());
++            assert!(!defaults.allow_insecure_http);
++        }
++
++        #[test]
++        fn helper_load_distinguishes_absence_from_locked_or_unknown_and_preserves_config() {
++            let permit = private::WritePermit::new();
++            for error in [control::Error::Locked(private::Error::ProtectionUnavailable),
++                control::Error::Uncertain,
++                control::Error::Storage(private::Error::Store(plx_platform::storage::StoreError::HelperUnavailable))] {
++                assert!(matches!(load(&permit, |_, _| Err(error)),
++                    Err("Saved control configuration is locked or unavailable")));
++            }
++            assert!(load(&permit, |_, _| Ok(None)).unwrap().is_none());
++            let value = json!({"enabled":true,"address":"https://home.example/webhook/poll",
++                "token":"b".repeat(32),"device_id":"dev_existing"});
++            let loaded = load(&permit, |_, legacy_decode| Ok(Some(control::Snapshot {
++                value: legacy_decode(value.clone()).unwrap(), revision: 4, epoch: 2,
++            }))).unwrap().unwrap();
++            assert_eq!(serde_json::to_value(loaded).unwrap(),
++                serde_json::to_value(Config::parse(value).unwrap()).unwrap());
++        }
++
++        #[test]
++        fn invalid_or_retired_config_does_not_write_and_late_retirement_does_not_publish() {
++            let permit = private::WritePermit::new();
++            let mut config = Config::disabled("dev_fixture".into());
++            config.enabled = true;
++            assert!(save(&config, &permit, |_, _, _| panic!("invalid config must not write")).is_err());
++            config.enabled = false;
++            permit.revoke();
++            assert!(save(&config, &permit, |_, _, _| panic!("retired config must not write")).is_err());
++            assert!(load(&permit, |_, _| panic!("retired config must not load")).is_err());
++            let permit = private::WritePermit::new();
++            assert_eq!(save(&config, &permit, |_, permit, _| {
++                permit.revoke();
++                Ok(CommitReceipt::Durable)
++            }), Err("Control configuration was retired"));
++        }
+     }
+ }
+ 
+@@ -413,4 +585,121 @@ mod bootstrap_tests {
          assert!(matches!(result, Err("Protected control storage is unavailable")),
              "failed bootstrap must not become Ok(config, false)");
      }
@@ -48427,7 +50501,7 @@ index 04760077..adafb7e3 100644
  
  const ADDRESS: &str = "nativeRemoteServerAddress";
 diff --git a/rust-modules/src/app/ott_runtime.rs b/rust-modules/src/app/ott_runtime.rs
-index 9681ec31..553d6501 100644
+index 9681ec31..a546073a 100644
 --- a/rust-modules/src/app/ott_runtime.rs
 +++ b/rust-modules/src/app/ott_runtime.rs
 @@ -1,6 +1,8 @@
@@ -49515,7 +51589,17 @@ index 9681ec31..553d6501 100644
                      item.content_title = Some(e.title.clone());
                      item.media = ui_projection::entry(e, &e.id, media_resume);
                      item.guide = self.selected_row_guide(&e.id, Some(e));
-@@ -2129,7 +2535,8 @@ impl Runtime {
+@@ -2124,12 +2530,17 @@ impl Runtime {
+                 ));
+             }
+             if let Some(servers) = self.remote_snapshot["servers"].as_array() {
+-                rows.extend(servers.iter().enumerate().map(|(index, server)| {
++                // Keep asynchronous choices next to the action that reveals them.
++                let after = rows.iter().position(|row| row.id == "remote.find")
++                    .or_else(|| rows.iter().position(|row| row.id == "remote.address"))
++                    .map_or(rows.len(), |index| index + 1);
++                rows.splice(after..after, servers.iter().enumerate().map(|(index, server)| {
+                     let address = server["address"].as_str().unwrap_or("");
                      let id = server["id"].as_str().unwrap_or("");
                      let domain = server["domain"].as_str().unwrap_or("");
                      row(
@@ -49525,7 +51609,7 @@ index 9681ec31..553d6501 100644
                          address.into(),
                          if domain.is_empty() { id.into() } else { format!("{domain} · {id}") },
                          // The engine binds this opaque token to the validated
-@@ -2170,12 +2577,17 @@ impl Runtime {
+@@ -2170,12 +2581,17 @@ impl Runtime {
                  else { self.organization_category_id(effective_category) }),
              "settings" => self.settings_focus.filter(|id| rows.iter().any(|row| row.enabled && row.id == *id))
                  .map(str::to_owned),
@@ -49544,7 +51628,7 @@ index 9681ec31..553d6501 100644
          };
          let page_id = if self.page == "profile-setup" {
              format!("profile-setup:{}", self.setup.as_ref()
-@@ -2185,7 +2597,7 @@ impl Runtime {
+@@ -2185,7 +2601,7 @@ impl Runtime {
          } else {
              self.search_page_id().unwrap_or_else(|| self.page.into())
          };
@@ -49553,7 +51637,7 @@ index 9681ec31..553d6501 100644
              preview_context: preview::context(self),
              order_context: self.local_order_key(),
              random_context: random::context(self, &rows),
-@@ -2197,13 +2609,16 @@ impl Runtime {
+@@ -2197,13 +2613,16 @@ impl Runtime {
                  "providers" => "Providers",
                  "profiles" => "Profiles",
                  "profile-setup" => "Profile setup",
@@ -49571,7 +51655,7 @@ index 9681ec31..553d6501 100644
                  "Enter the connection details supplied by your provider".into()
              } else if self.page == "settings" && self.remote_snapshot["pairing_server"].as_str().is_some_and(|s| !s.is_empty()) {
                  self.remote_snapshot["pairing_server"].as_str().unwrap_or("").into()
-@@ -2213,7 +2628,7 @@ impl Runtime {
+@@ -2213,7 +2632,7 @@ impl Runtime {
              status: if let Some(status) = self.protected_state_status() {
                  status.into()
              } else if self.page == "settings" {
@@ -49580,7 +51664,7 @@ index 9681ec31..553d6501 100644
                      .or_else(|| self.remote_snapshot["pairing_code"]
                      .as_str()
                      .filter(|code| !code.is_empty())
-@@ -2297,10 +2712,18 @@ impl Runtime {
+@@ -2297,10 +2716,18 @@ impl Runtime {
              return Err("This profile changed; reopen its setup before saving");
          }
          let mut candidate = self.saved.clone();
@@ -49599,7 +51683,7 @@ index 9681ec31..553d6501 100644
              candidate.profiles.profiles.push(profile.clone());
          }
          candidate.profiles.active_profile = Some(profile.id);
-@@ -2316,6 +2739,7 @@ impl Runtime {
+@@ -2316,6 +2743,7 @@ impl Runtime {
              return;
          }
          self.complete_archive_hours(session);
@@ -49607,7 +51691,7 @@ index 9681ec31..553d6501 100644
          if let Some(profile) = self.edit_profile.as_ref().and_then(|draft|
              self.saved.profiles.profiles.iter().find(|current| current.id == draft.id)).cloned()
          {
-@@ -2339,6 +2763,7 @@ impl Runtime {
+@@ -2339,6 +2767,7 @@ impl Runtime {
      }
  
      fn recover_plex_profiles(&mut self, app: &mut App, explicit: bool) -> Result<(), &'static str> {
@@ -49615,7 +51699,7 @@ index 9681ec31..553d6501 100644
          use super::ott_plex_setup::{self, PlexSetupPlan, PlexSetupServer};
          self.profile_focus = None;
          self.plex_omitted_servers = 0;
-@@ -2347,6 +2772,7 @@ impl Runtime {
+@@ -2347,6 +2776,7 @@ impl Runtime {
          let servers: Vec<_> = plx_plex::plex::server_ids().into_iter().filter_map(|sid| {
              let client = plx_plex::plex::client_for(sid)?;
              let machine_id = client.machine_id();
@@ -49623,7 +51707,7 @@ index 9681ec31..553d6501 100644
              if machine_id.is_empty()
                  || !plx_plex::plex::grant::credential_allowed_for(machine_id, client.origin())
              {
-@@ -2367,6 +2793,7 @@ impl Runtime {
+@@ -2367,6 +2797,7 @@ impl Runtime {
          }
          if let Some(error) = self.settings_write_refusal() { return Err(error); }
          match ott_plex_setup::plan(&self.saved.profiles, &servers)? {
@@ -49631,7 +51715,7 @@ index 9681ec31..553d6501 100644
              PlexSetupPlan::Login => app.pages.emit(MachineId::Nav,
                  Fx::App(plx_screens::registry::AppFx::Loop(
                      plx_screens::registry::LoopReq::AccountSignIn))),
-@@ -2387,6 +2814,7 @@ impl Runtime {
+@@ -2387,6 +2818,7 @@ impl Runtime {
  
      fn cancel_editor(&mut self) {
          self.archive_hours_editor = None;
@@ -49639,7 +51723,7 @@ index 9681ec31..553d6501 100644
          self.organization_cancel_editor();
          self.edit_session = None;
          self.edit_profile = None;
-@@ -2395,6 +2823,47 @@ impl Runtime {
+@@ -2395,6 +2827,47 @@ impl Runtime {
          // a draft must neither cancel that write nor retarget its result.
      }
  
@@ -49687,7 +51771,7 @@ index 9681ec31..553d6501 100644
      fn editor_result(&mut self, app: &mut App, session: &EditorSession, error: Option<String>) {
          if error.is_none() && self.edit_session.as_ref() == Some(session) {
              self.cancel_editor();
-@@ -2405,7 +2874,7 @@ impl Runtime {
+@@ -2405,7 +2878,7 @@ impl Runtime {
                  MachineId::Instance(session.owner),
                  Delivery::Screen(plx_ui::screen::ScreenEvent::App(AppMsg::OttEditorResult {
                      session: session.id,
@@ -49696,7 +51780,7 @@ index 9681ec31..553d6501 100644
                  })),
              ),
          );
-@@ -2424,11 +2893,18 @@ impl Runtime {
+@@ -2424,11 +2897,18 @@ impl Runtime {
              );
          }
      }
@@ -49715,7 +51799,7 @@ index 9681ec31..553d6501 100644
          self.restore_play_generation = None;
          self.play_ticket = None;
          self.resolver_next = None;
-@@ -2438,6 +2914,7 @@ impl Runtime {
+@@ -2438,6 +2918,7 @@ impl Runtime {
          }
      }
      fn rebind_native_admission(&mut self,app:&App,profile:&ProviderProfile,entry:&CatalogEntry)->Result<(),&'static str> {
@@ -49723,7 +51807,7 @@ index 9681ec31..553d6501 100644
          if favorites_items::pending_error(self).is_some() { return Err("Favorite selection changed before playback"); }
          let request=self.play_target.as_ref().ok_or("Playback request is no longer current")?.clone();
          let (bound,bound_profile,bound_entry,favorite)=match transient::staged_native_binding(self,&request) {
-@@ -2459,6 +2936,7 @@ impl Runtime {
+@@ -2459,6 +2940,7 @@ impl Runtime {
          kiosk_capture::explicit_admitted(self);
          Ok(())
      }
@@ -49731,7 +51815,7 @@ index 9681ec31..553d6501 100644
      fn play(&mut self, app: &mut App, id: &str) -> Result<(), &'static str> {
          self.play_with_policy(app, id, true)
      }
-@@ -2472,6 +2950,9 @@ impl Runtime {
+@@ -2472,6 +2954,9 @@ impl Runtime {
          self.play_request_with_policy(app,request)
      }
      fn play_request_with_policy(&mut self,app:&mut App,request:PlaybackRequest)->Result<(),&'static str> {
@@ -49741,7 +51825,7 @@ index 9681ec31..553d6501 100644
          if !self.play_work_allowed() {
              return Err("Media work is waiting for foreground or worker retirement");
          }
-@@ -2480,6 +2961,7 @@ impl Runtime {
+@@ -2480,6 +2965,7 @@ impl Runtime {
          if !transient::lifecycle_target_ready(self, &profile, request.local_selection.as_ref()) {
              return Err("The local source is still being validated");
          }
@@ -49749,7 +51833,7 @@ index 9681ec31..553d6501 100644
          let policy_profile=self.attachment_policy_profile(&profile,favorite.as_ref())?;
          self.require_parental_playback(&policy_profile)?;
          kiosk_source::admit_bound(self,app,kiosk_source::BoundCandidate {request:&request,profile:&profile,entry:entry.as_ref(),favorite:favorite.as_ref()}).map_err(kiosk_source::SourceError::message)?;
-@@ -2487,9 +2969,10 @@ impl Runtime {
+@@ -2487,9 +2973,10 @@ impl Runtime {
          self.resume_pending=None;
          self.playback_epoch=self.playback_epoch.wrapping_add(1);
          self.continuity.user_selected(self.generation,&id);
@@ -49761,7 +51845,7 @@ index 9681ec31..553d6501 100644
              if let Some(playing) = self.playing.as_ref() {
                  self.continuity
                      .retain_selection(self.generation, &playing.selection_id);
-@@ -2573,7 +3056,11 @@ impl Runtime {
+@@ -2573,7 +3060,11 @@ impl Runtime {
          self.queue_play_request(request,profile,entry,favorite,true)
      }
      fn queue_play_request(&mut self, request:PlaybackRequest, profile:ProviderProfile,
@@ -49774,7 +51858,7 @@ index 9681ec31..553d6501 100644
          if !self.play_work_allowed() {
              return Err("Media work is waiting for foreground or worker retirement");
          }
-@@ -2594,7 +3081,9 @@ impl Runtime {
+@@ -2594,7 +3085,9 @@ impl Runtime {
          let selected_id = request.id.clone();
          let archive = request.archive.clone();
          self.play_target=Some(request);
@@ -49784,7 +51868,7 @@ index 9681ec31..553d6501 100644
          transient::plex_remote::selected(self, &selected_id);
          self.status="Opening video…".into();
          self.resolver_next=Some(ResolveRequest{archive,generation:self.play_generation,profile,entry,favorite,local_proof,cancel:self.play_cancel.clone(),plex:None,plex_choice,local_read});
-@@ -2623,6 +3112,17 @@ impl Runtime {
+@@ -2623,6 +3116,17 @@ impl Runtime {
          }
      }
      fn launch_resolver(&mut self) -> Result<(), &'static str> {
@@ -49802,7 +51886,7 @@ index 9681ec31..553d6501 100644
          if self.resolver_next.is_some() && !self.pending_attachment_current() { return Err("M3U media attachment changed before lookup"); }
          if !self.play_work_allowed() { return Ok(()); }
          if self.resolver_busy {
-@@ -2642,6 +3142,12 @@ impl Runtime {
+@@ -2642,6 +3146,12 @@ impl Runtime {
              archive, generation, profile, entry, favorite, local_proof, cancel, plex, plex_choice, local_read,
          } = request;
          let sender = self.tx.clone();
@@ -49815,7 +51899,7 @@ index 9681ec31..553d6501 100644
          // Preparation only reads Plex metadata. An actual prepared choice is
          // a replacement: transfer the previous lease to this same worker so
          // its stop completion is drained before native Plex admission.
-@@ -2662,9 +3168,9 @@ impl Runtime {
+@@ -2662,9 +3172,9 @@ impl Runtime {
                      .lock()
                      .unwrap_or_else(|poison| poison.into_inner())
                      .take();
@@ -49828,7 +51912,7 @@ index 9681ec31..553d6501 100644
                  if cancel.load(Ordering::Relaxed) {
                      return Err("Playback request cancelled");
                  }
-@@ -2697,23 +3203,20 @@ impl Runtime {
+@@ -2697,23 +3207,20 @@ impl Runtime {
                      let (source, lease) = if matches!(entry.media, MediaLocator::Local { .. }) {
                          (transient::open_video_source(worker, local_read.as_ref(), &profile, &entry, &cancel)?, None)
                      } else {
@@ -49860,7 +51944,7 @@ index 9681ec31..553d6501 100644
                  };
                  if cancel.load(Ordering::Relaxed) {
                      if let ReadySource::External(_, _, Some(lease)) = ready {
-@@ -2721,16 +3224,24 @@ impl Runtime {
+@@ -2721,16 +3228,24 @@ impl Runtime {
                      }
                      return Err("Playback request cancelled");
                  }
@@ -49887,7 +51971,7 @@ index 9681ec31..553d6501 100644
              if let Some(lease) = previous_lease.lock().unwrap_or_else(|poison| poison.into_inner()).take() {
                  self.active_lease = Some(lease);
              }
-@@ -2814,8 +3325,14 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2814,8 +3329,14 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
                  runtime.subtitle_save = None;
                  if let Ok(saved) = result {
                      runtime.saved = saved;
@@ -49902,7 +51986,7 @@ index 9681ec31..553d6501 100644
              Job::SaveRejected(..) => {
                  runtime.saving = false;
                  runtime.subtitle_save = None;
-@@ -2829,6 +3346,10 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2829,6 +3350,10 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
              Job::FavoriteCommit(result) => favorites::finish(runtime, result),
              Job::FavoriteRecovery(result) => favorites_recovery::finish(runtime, result),
              Job::PlexPrepared(..) => { runtime.resolver_busy = false; }
@@ -49913,7 +51997,7 @@ index 9681ec31..553d6501 100644
              Job::Play(_, _, result) => {
                  runtime.resolver_busy = false;
                  if let Ok((_, ReadySource::External(_, _, Some(lease)))) = result {
-@@ -2848,6 +3369,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2848,6 +3373,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
      let started = ClockSample::capture_main(app.adapters.player.mt()).ok();
      Runtime::withdraw_reminder_ui(app);
      runtime.reminders.invalidate();
@@ -49921,7 +52005,7 @@ index 9681ec31..553d6501 100644
      runtime.reminder_save = None;
      runtime.consume_exit(app);
      runtime.checkpoint(app, false);
-@@ -2863,7 +3385,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2863,7 +3389,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
      transient::plex_remote::cancel_shutdown(&runtime);
      runtime.cancel_play_request();
      runtime.cancel_catalog();
@@ -49930,7 +52014,7 @@ index 9681ec31..553d6501 100644
      if let Some(lease) = runtime.active_lease.take() {
          lease.begin_release();
          leases.push(lease.into_lease());
-@@ -2920,6 +3442,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2920,6 +3446,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
          transient::revoke_unavailable_proofs(&runtime, &mut saved);
          kiosk_resume::merge(&mut saved, &runtime.checkpoints);
          kiosk_resume::sanitize(&mut saved);
@@ -49938,7 +52022,7 @@ index 9681ec31..553d6501 100644
          let _ = favorites::write_verified(&saved, &runtime.write_permit);
      }
      for lease in leases {
-@@ -2933,8 +3456,17 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2933,8 +3460,17 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
  
  /// Synchronous native-input handoff, after the media performer accepted it.
  pub(super) fn viewer_transport(app: &mut App) {
@@ -49957,7 +52041,7 @@ index 9681ec31..553d6501 100644
          app.ott = Some(runtime);
      }
  }
-@@ -2942,12 +3474,14 @@ pub(super) fn viewer_transport(app: &mut App) {
+@@ -2942,12 +3478,14 @@ pub(super) fn viewer_transport(app: &mut App) {
  pub(super) fn track_request(app: &mut App, request: plx_screens::registry::PlayerReq)
      -> Option<plx_screens::registry::PlayerReq>
  {
@@ -49974,7 +52058,7 @@ index 9681ec31..553d6501 100644
  }
  
  /// Validate queued remote track work before the native pump consumes it. The
-@@ -2963,6 +3497,16 @@ pub(super) fn before_playback_tick(app: &mut App) {
+@@ -2963,6 +3501,16 @@ pub(super) fn before_playback_tick(app: &mut App) {
  }
  
  pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSample) {
@@ -49991,7 +52075,7 @@ index 9681ec31..553d6501 100644
      let programme_changed = observe_programme(app, clock_sample.unix_ms());
      let Some(mut runtime) = app.ott.take() else {
          app.bridge.publish_ott_catalog_offer(None);
-@@ -2982,12 +3526,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -2982,12 +3530,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          app.rec
              .refuse("Nondefault UI typography is not bound in this recording format");
      }
@@ -50007,7 +52091,7 @@ index 9681ec31..553d6501 100644
                  runtime.persistence_uncertain = true;
                  Job::Loaded(Ok((saved, entropy)))
              },
-@@ -2995,6 +3541,10 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -2995,6 +3545,10 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          };
          match job {
              Job::LoadedItemsUncertain(_, _) => unreachable!("load uncertainty normalized above"),
@@ -50018,7 +52102,7 @@ index 9681ec31..553d6501 100644
              Job::Parental(completion) => parental_runtime::completed(&mut runtime, app, completion),
              Job::Loaded(result) => {
                  runtime.kiosk_capture.cancel_unwritten();
-@@ -3004,16 +3554,21 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3004,16 +3558,21 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let browse = (runtime.page, runtime.provider);
                  match result {
                      Ok((saved, entropy)) => {
@@ -50041,7 +52125,7 @@ index 9681ec31..553d6501 100644
                              runtime.status = error.into();
                          }
                          if let Err(error) = runtime
-@@ -3028,6 +3583,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3028,6 +3587,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          } else {
                              runtime.plex_refresh_requested = true;
                              let kiosk_startup = runtime.stage_kiosk_startup(app);
@@ -50049,7 +52133,7 @@ index 9681ec31..553d6501 100644
                              if runtime.active().is_some() {
                                  if runtime.navigation_epoch == 0 {
                                      runtime.load_catalog();
-@@ -3080,6 +3636,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3080,6 +3640,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          (Err(Cow::Owned(save_error::message(error))), invocation, reload, response),
                      _ => unreachable!("matched settings write completion"),
                  };
@@ -50057,7 +52141,7 @@ index 9681ec31..553d6501 100644
                  let browse = (runtime.page, runtime.provider);
                  let navigation = std::mem::replace(&mut runtime.save_navigation, SaveNavigation::Preserve);
                  let ui_owner = runtime.save_ui_owner.take();
-@@ -3102,7 +3659,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3102,7 +3663,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let usb_activation_ready = result.as_ref().is_ok_and(|candidate|
                      owner_current && runtime.save_playback_epoch == runtime.playback_epoch
                          && runtime.usb_save_ready(candidate));
@@ -50067,7 +52151,7 @@ index 9681ec31..553d6501 100644
                  let mut editor_error = None;
                  let setup_persisted = result.is_ok();
                  let capture_write=invocation.is_none() && runtime.kiosk_capture.pending();
-@@ -3126,10 +3684,20 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3126,10 +3688,20 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          if (source_changed && restore_allowed) || usb_ready {
                              runtime.invalidate_source(app);
                          }
@@ -50088,7 +52172,7 @@ index 9681ec31..553d6501 100644
                          runtime.usb_save_finished(usb_ready);
                          kiosk_resume::reconciled(&mut runtime);
                          runtime.parental_confirmed();
-@@ -3151,7 +3719,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3151,7 +3723,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                                      super::ott_import::register_verified(&source).map(|_| ())
                                  })
                              })
@@ -50098,7 +52182,7 @@ index 9681ec31..553d6501 100644
                          kiosk_settings_applied = applied.is_ok();
                          if let Err(error) = applied {
                              subtitle_outcome = TrackCommitOutcome::Rejected(TrackCommitFailure::Unavailable);
-@@ -3176,7 +3745,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3176,7 +3749,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                                      } else {
                                          runtime.continuity.suppress_unrequested_start();
                                      }
@@ -50109,7 +52193,7 @@ index 9681ec31..553d6501 100644
                                  }
                              }
                              response
-@@ -3192,6 +3763,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3192,6 +3767,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          response
                      }
                  };
@@ -50117,7 +52201,7 @@ index 9681ec31..553d6501 100644
                  if let Some(startup) = usb_startup { runtime.finish_usb_startup(app, startup); }
                  if !may_navigate || usb_preserve_browse {
                      (runtime.page, runtime.provider) = browse;
-@@ -3235,10 +3807,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3235,10 +3811,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.remote.complete(invocation, response);
                  }
                  if let Some(pending) = subtitle_save { pending.finish(app, subtitle_outcome); }
@@ -50131,7 +52215,7 @@ index 9681ec31..553d6501 100644
                  runtime.kiosk_capture.cancel_unwritten();
                  let capture_write=invocation.is_none() && runtime.kiosk_capture.pending();
                  runtime.parental_uncertain();
-@@ -3259,6 +3834,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3259,6 +3838,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  if let Some(saved) = visible {
                      // A visible but unverified image has no browse authority.
                      runtime.saved = saved;
@@ -50139,7 +52223,7 @@ index 9681ec31..553d6501 100644
                  }
                  if capture_write {kiosk_capture::settled(&mut runtime,app,kiosk_capture::Completion::Unknown);}
                  runtime.status = "Settings write needs reconciliation; restart the player".into();
-@@ -3389,7 +3965,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3389,7 +3969,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.changed();
                  }
              }
@@ -50153,7 +52237,7 @@ index 9681ec31..553d6501 100644
                  runtime.restore_play_generation = None;
                  let superseded = runtime
                      .play_ticket
-@@ -3448,8 +4030,23 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3448,8 +4034,23 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                              runtime.retire_result(Ok((entry,source)));
                              return Err(error);
                          }
@@ -50178,7 +52262,7 @@ index 9681ec31..553d6501 100644
                          native_start=Some(NativeStartReceipt {generation,before,after:plx_media::route::play_request_ticket()});
                          result
                      })
-@@ -3527,7 +4124,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3527,7 +4128,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      }
      runtime.reconcile_m3u_attachment(app);
      let resolver_generation = runtime.play_generation;
@@ -50187,7 +52271,7 @@ index 9681ec31..553d6501 100644
          transient::plex_remote::resolver_failed(&mut runtime);
          // Synchronous resolver refusal has the same kiosk-before-catalog order.
          let pinned_retry = runtime.kiosk_resolve_failed(app, runtime.play_generation);
-@@ -3555,18 +4152,40 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3555,18 +4156,40 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      // immutable screen model. Large local folders must not rebuild the full list
      // once for every 64 files that arrived during the same frame.
      runtime.rearm_source_work(app);
@@ -50230,7 +52314,7 @@ index 9681ec31..553d6501 100644
              }
              CatalogEvent::Finished(generation, result) if generation == runtime.generation => {
                  runtime.catalog_warning = None;
-@@ -3581,11 +4200,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3581,11 +4204,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          }
      }
      transient::scan_result(&mut runtime,app,&mut incoming,&mut finished);
@@ -50245,7 +52329,7 @@ index 9681ec31..553d6501 100644
              finished = None;
          } else {
              runtime.catalog_revision = runtime.catalog_revision.wrapping_add(1);
-@@ -3605,12 +4226,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3605,12 +4230,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  .map(|(_, warning)| warning.to_owned())
                  .unwrap_or_else(|| format!("{} videos", runtime.catalog.entries.len())));
          runtime.changed();
@@ -50260,7 +52344,7 @@ index 9681ec31..553d6501 100644
                  if guide_ui::accept_failure(&mut runtime, &event) { continue; }
                  event
              },
-@@ -3631,6 +4254,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3631,6 +4258,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  continue;
              }
          };
@@ -50270,7 +52354,7 @@ index 9681ec31..553d6501 100644
          if !runtime.metadata_attachment_current() { continue; }
          if let Some(binding)=runtime.metadata_local_selection.as_ref(){
              let current=runtime.saved.favorites.entries().iter().find(|f|event.entry_id==format!("favorite:{}",f.identity()));
-@@ -3696,7 +4322,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3696,7 +4326,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      if updated != entry
                          && runtime
                              .catalog
@@ -50279,7 +52363,7 @@ index 9681ec31..553d6501 100644
                                  entries: vec![updated],
                              })
                              .is_ok()
-@@ -3741,7 +4367,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3741,7 +4371,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      transient::cleanup_local_proofs(&mut runtime);
      transient::pending_tick(&mut runtime,app);
      runtime.poll_local_assets(app);
@@ -50288,7 +52372,7 @@ index 9681ec31..553d6501 100644
      if playback_allowed(app) {
          live_hud::rearm_player(&mut runtime, app);
          runtime.refresh_metadata();
-@@ -3765,6 +4391,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3765,6 +4395,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          };
          if let Some(request) = resume {
              let exact = !request.advance_on_failure;
@@ -50297,7 +52381,7 @@ index 9681ec31..553d6501 100644
              let result = if request.continuation.as_ref().is_some_and(|identity|
                  !plx_media::route::playback_identity_matches(&app.player.session, identity))
              {
-@@ -3776,6 +4404,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3776,6 +4408,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  runtime.play_request(request)
              };
              if result.is_ok() {
@@ -50305,7 +52389,7 @@ index 9681ec31..553d6501 100644
                  if let Some(attempt) = kiosk_source::admitted_pinned_request(&runtime) {
                      runtime.note_kiosk_attempt(attempt);
                  }
-@@ -3785,13 +4414,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3785,13 +4418,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.continuity.stop(runtime.generation);
                  }
                  runtime.play_target = None;
@@ -50322,7 +52406,7 @@ index 9681ec31..553d6501 100644
              let ids = runtime.ordered_ids();
              let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
              let decision = runtime.continuity.catalog_updated(
-@@ -3835,10 +4464,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3835,10 +4468,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
              OttOut::Action { reply, action } => {
                  runtime.reply = Some(reply);
                  let navigates = match &action {
@@ -50339,7 +52423,7 @@ index 9681ec31..553d6501 100644
                      OttAction::EditSetting(key) if key == "local.usb" || key.starts_with("local.usb.select:")
                          || key.starts_with("local.usb.browse:") => false,
                      OttAction::Back if runtime.usb_browsing() => false,
-@@ -3850,36 +4482,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3850,36 +4486,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                              && matches!(editor.purpose, search::EditorPurpose::Search { .. })),
                      OttAction::CancelSetting { session } => runtime.edit_session.as_ref()
                          .is_some_and(|editor| editor.id == *session && editor.owner == reply),
@@ -50379,7 +52463,7 @@ index 9681ec31..553d6501 100644
                  if runtime.reply.is_none() { break; }
              }
          }
-@@ -3889,8 +4498,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3889,8 +4502,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      let state = state(app, &runtime);
      for invocation in runtime.remote.tick(now, state) {
          let response = if let Err(error) = input_policy::remote(&mut runtime, &invocation) {
@@ -50390,7 +52474,7 @@ index 9681ec31..553d6501 100644
          } else if matches!(
              invocation.action.as_str(),
              "native_companion" | "torrent_indexer"
-@@ -3901,6 +4510,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3901,6 +4514,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          } else {
              commands::command(&mut runtime, app, &invocation)
          };
@@ -50400,7 +52484,7 @@ index 9681ec31..553d6501 100644
          if let Some(response) = response {
              runtime.remote.complete(invocation, response);
          }
-@@ -3913,9 +4525,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3913,9 +4529,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          runtime.remote_snapshot = snapshot;
          runtime.changed();
      }
@@ -50415,7 +52499,7 @@ index 9681ec31..553d6501 100644
      // Consume failed-start deadlines only after viewer and remote commands, so
      // Stop/standby/source changes win even on the frame a retry becomes due.
      if playback_allowed(app) && runtime.play_work_allowed() && runtime.play_target.is_none()
-@@ -3936,6 +4553,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3936,6 +4557,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      if !plx_appkit::menu_visibility::projected().is_default() {
          app.rec.refuse("Nondefault menu visibility is not bound in this recording format");
      }
@@ -50424,7 +52508,7 @@ index 9681ec31..553d6501 100644
      let programme_dirty=programme_changed || runtime.revision != before;
      publish_programme(&mut runtime, app, programme_dirty);
      if runtime.revision != before {
-@@ -3945,40 +4564,111 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3945,40 +4568,111 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      app.ott = Some(runtime);
  }
  
@@ -50541,7 +52625,7 @@ index 9681ec31..553d6501 100644
              | OttAction::PlayArchive { .. } | OttAction::ReturnLive { .. } | OttAction::ToggleReminder { .. }
              => unreachable!("guide action was handled above"),
          OttAction::ReminderAnswer { .. } => return Err("Reminder reply must come from the player"),
-@@ -3990,6 +4680,10 @@ fn handle_action(
+@@ -3990,6 +4684,10 @@ fn handle_action(
              | OttAction::CancelSearch { .. } => unreachable!("search action was handled above"),
          OttAction::ShowProviders => { runtime.cancel_setup(); runtime.page = "providers"; }
          OttAction::ShowProfiles => { runtime.cancel_setup(); runtime.page = "profiles"; }
@@ -50552,7 +52636,7 @@ index 9681ec31..553d6501 100644
          OttAction::ShowCategories => { runtime.cancel_setup(); runtime.page = "categories"; }
          OttAction::ShowFavorites => {
              runtime.save_category_choice(None)?;
-@@ -4014,6 +4708,18 @@ fn handle_action(
+@@ -4014,6 +4712,18 @@ fn handle_action(
                  runtime.recover_plex_profiles(app, false)?;
              }
          }
@@ -50571,7 +52655,7 @@ index 9681ec31..553d6501 100644
          OttAction::SelectProfile(id) => {
              let mut saved = runtime.saved.clone();
              saved.profiles.active_profile = Some(id);
-@@ -4038,12 +4744,16 @@ fn handle_action(
+@@ -4038,12 +4748,16 @@ fn handle_action(
                      .ok_or("Video not found")?;
                  let bindings=runtime.selection_bindings().map_err(|_|"Source inventory is invalid")?;
                  let owner=runtime.row_owner().ok_or("Select a provider profile")?;
@@ -50588,7 +52672,7 @@ index 9681ec31..553d6501 100644
          OttAction::Preview(id) => {
              if id.starts_with("favorite:") {
                  return runtime.request_favorite_metadata(&id);
-@@ -4060,13 +4770,24 @@ fn handle_action(
+@@ -4060,13 +4774,24 @@ fn handle_action(
                  }
              }
          }
@@ -50614,7 +52698,7 @@ index 9681ec31..553d6501 100644
              runtime.cancel_setup();
          }
          OttAction::Refresh => {
-@@ -4077,7 +4798,13 @@ fn handle_action(
+@@ -4077,7 +4802,13 @@ fn handle_action(
                  // Only this admitted viewer action may attribute cancellation to Refresh.
                  // Hold its diagnostic record away from generic source invalidation below.
                  let retry = runtime.continuity_retry_log.take();
@@ -50629,7 +52713,7 @@ index 9681ec31..553d6501 100644
                  if let Some(retry) = retry {
                      if runtime.continuity.pending_retry().is_some_and(|pending|
                          retry.catalog_generation == pending.generation
-@@ -4103,6 +4830,8 @@ fn handle_action(
+@@ -4103,6 +4834,8 @@ fn handle_action(
                  return Ok(());
              }
              let return_catalog = runtime.catalog_return_after_back();
@@ -50638,7 +52722,7 @@ index 9681ec31..553d6501 100644
              let leaving_setup = runtime.setup.is_some();
              runtime.cancel_setup();
              transient::cancel_play_candidate(runtime,app);
-@@ -4112,6 +4841,7 @@ fn handle_action(
+@@ -4112,6 +4845,7 @@ fn handle_action(
              runtime.playback_epoch = runtime.playback_epoch.wrapping_add(1);
              runtime.cancel_play_request();
              runtime.cancel_catalog();
@@ -50646,7 +52730,7 @@ index 9681ec31..553d6501 100644
              runtime.catalog_return = return_catalog.map(|profile| (runtime.generation, profile));
              runtime.status.clear();
              if leaving_setup || matches!(runtime.page, "channels" | "favorites") {
-@@ -4279,6 +5009,10 @@ fn handle_action(
+@@ -4279,6 +5013,10 @@ fn handle_action(
                  }
                  "profile.history_hours" => ("Archive hours (0 uses playlist values)",
                      runtime.begin_archive_hours()?, false, 4, OttTextPolicy::Literal),
@@ -50657,7 +52741,7 @@ index 9681ec31..553d6501 100644
                  "uiFontScale" => ("Interface text scale (20–200%)",
                      runtime.font_scale_percent().to_string(), false, 3, OttTextPolicy::Literal),
                  "remote.address" => ("Remote control server", remote_settings::address_input(runtime), false, 2048, OttTextPolicy::Literal),
-@@ -4300,8 +5034,8 @@ fn handle_action(
+@@ -4300,8 +5038,8 @@ fn handle_action(
                  let editor = OttEditor {
                      kind: plx_screens::ott::OttEditorKind::Setting,
                      session,
@@ -50667,7 +52751,7 @@ index 9681ec31..553d6501 100644
                      value,
                      secret,
                      limit,
-@@ -4364,9 +5098,18 @@ fn handle_action(
+@@ -4364,9 +5102,18 @@ fn handle_action(
                      runtime.status.clear();
                      return Ok(true);
                  }
@@ -50687,7 +52771,7 @@ index 9681ec31..553d6501 100644
                  } else if key == "uiFontScale" {
                      let saved = runtime.font_scale_candidate(&value, session)?;
                      runtime.save(saved, None, false)?;
-@@ -4379,9 +5122,11 @@ fn handle_action(
+@@ -4379,9 +5126,11 @@ fn handle_action(
                      runtime.save(saved, None, true)?;
                  } else if key == "remote.address" {
                      let candidate = remote_settings::candidate(runtime, &value)?;
@@ -50702,7 +52786,7 @@ index 9681ec31..553d6501 100644
                  } else {
                      let mut profile = runtime.edit_profile.clone()
                          .ok_or("Profile editor is no longer active")?;
-@@ -4392,6 +5137,12 @@ fn handle_action(
+@@ -4392,6 +5141,12 @@ fn handle_action(
                      }
                      profile.validate().map_err(|_| "Invalid profile source or name")?;
                      let original = runtime.edit_profile_original.clone();
@@ -50715,7 +52799,7 @@ index 9681ec31..553d6501 100644
                      let saved = runtime.profile_candidate(profile, original.as_ref())?;
                      runtime.save(saved, None, true)?;
                  }
-@@ -4452,13 +5203,15 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4452,13 +5207,15 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
          app.ott = Some(runtime);
          return true;
      }
@@ -50732,7 +52816,7 @@ index 9681ec31..553d6501 100644
          let key = if current.starts_with("favorite:") {
              "favorites".into()
          } else {
-@@ -4479,12 +5232,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4479,12 +5236,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
      }
      let ids = runtime.ordered_ids();
      let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
@@ -50751,7 +52835,7 @@ index 9681ec31..553d6501 100644
      if let Some(playing) = runtime.playing.as_mut() {
          playing.advance_on_failure = true;
      }
-@@ -4569,8 +5322,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4569,8 +5326,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
      source: ReadySource,
      resources: &mut R,
  ) -> Result<(), &'static str> {
@@ -50765,7 +52849,7 @@ index 9681ec31..553d6501 100644
      if let Err(error) = runtime.validate_archive_admission(&request, &profile, &entry, &source) {
          runtime.retire_result(Ok((entry, source)));
          return Err(error);
-@@ -4601,10 +5359,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4601,10 +5363,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
      } else {
          plx_media::route::cancel_play(&mut app.player.session);
      }
@@ -50779,7 +52863,7 @@ index 9681ec31..553d6501 100644
      let advance_on_failure = request.advance_on_failure;
      let mut owned_source = None;
      match source {
-@@ -4668,12 +5429,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4668,12 +5433,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
              } else {
                  0
              };
@@ -50794,7 +52878,7 @@ index 9681ec31..553d6501 100644
                  None,
                  &mut app.pages,
                  &mut app.bridge,
-@@ -4713,8 +5475,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4713,8 +5479,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
              }
          }
      }
@@ -50809,7 +52893,7 @@ index 9681ec31..553d6501 100644
          kiosk_selection: request.kiosk_selection,
          archive: request.archive,
          identity: plx_media::route::playback_identity(&app.player.session),
-@@ -4727,10 +5495,19 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4727,10 +5499,19 @@ fn start_resolved_with<R: playback::PlaybackResources>(
          advance_on_failure,
          requires_server_lease,
      });
@@ -50829,7 +52913,7 @@ index 9681ec31..553d6501 100644
          if playing.archive.is_none() && transient::plex_remote::choice(runtime, &playing.entry.id).is_none() {
              if runtime.playing_attachment.is_some() && playing.selection_id.starts_with("favorite:") {
                  let _=runtime.request_favorite_metadata(&playing.selection_id);
-@@ -4738,6 +5515,9 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4738,6 +5519,9 @@ fn start_resolved_with<R: playback::PlaybackResources>(
                  runtime.request_metadata(playing.profile.clone(), playing.entry.clone());
              }
          }
@@ -50839,7 +52923,7 @@ index 9681ec31..553d6501 100644
          runtime.transient_checkpoint(&playing,position_ms);
      }
      Ok(())
-@@ -4830,7 +5610,13 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
+@@ -4830,7 +5614,13 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
      let start=playing.identity.as_ref().and_then(|identity|app.player.programme.started_at(identity));
      let next=if runtime.play_target.is_some() || runtime.transient.owns_playback() {None} else {
          let ids=runtime.ordered_ids();let refs:Vec<&str>=ids.iter().map(String::as_str).collect();
@@ -50854,7 +52938,7 @@ index 9681ec31..553d6501 100644
              let title=if let Some(identity)=id.strip_prefix("favorite:") {
                  runtime.saved.favorites.entries().iter().find(|favorite|favorite.identity()==identity).map(|favorite|favorite.title.clone())
              } else {runtime.catalog.entries.iter().find(|entry|entry.id==id).map(|entry|entry.title.clone())}?;
-@@ -4855,7 +5641,8 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
+@@ -4855,7 +5645,8 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
          entry_poster(entry).or_else(|| leaf_owner.and_then(|_|leaf.as_ref())
              .and_then(|leaf| programme_leaf_art(leaf, plx_media::route::cur_sid(&app.player.session))))
      };
@@ -50864,7 +52948,7 @@ index 9681ec31..553d6501 100644
      let mut now=leaf.unwrap_or_else(||NowPlaying {
          ott:None,is_episode:false,is_real_episode:false,title:entry.title.clone(),ep_title:String::new(),season:0,index:0,
          summary:entry.description.clone(),year:0,dur_ms:duration.unwrap_or(0),rating:String::new(),thumb:String::new(),detail_rk:String::new(),
-@@ -4958,6 +5745,12 @@ pub(super) fn foreign_content_allowed(app:&mut App)->bool {
+@@ -4958,6 +5749,12 @@ pub(super) fn foreign_content_allowed(app:&mut App)->bool {
  #[path = "ott_reminder_wiring_tests.rs"]
  mod reminder_wiring_tests;
  
@@ -57858,7 +59942,7 @@ index 00000000..f85de514
 +    assert!(runtime.play_target.is_none() && runtime.resolver_next.is_none());
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/remote_address.rs b/rust-modules/src/app/ott_runtime_tests/remote_address.rs
-index b8d4c56e..55516774 100644
+index b8d4c56e..6ec7f93a 100644
 --- a/rust-modules/src/app/ott_runtime_tests/remote_address.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/remote_address.rs
 @@ -1,4 +1,4 @@
@@ -58040,7 +60124,7 @@ index b8d4c56e..55516774 100644
      let runtime = app.ott.as_ref().unwrap();
      assert_eq!(remote_settings::address_input(runtime), "https://control.invalid:443/retry");
      assert_eq!(runtime.remote.snapshot()["state"], "discovering");
-@@ -784,3 +803,152 @@ fn manual_multi_server_rows_bound_domain_labels_without_changing_choices() {
+@@ -784,3 +803,223 @@ fn manual_multi_server_rows_bound_domain_labels_without_changing_choices() {
      assert_eq!(selected["enabled"], false);
      assert_eq!(selected["saving"], false);
  }
@@ -58191,6 +60275,77 @@ index b8d4c56e..55516774 100644
 +    assert_ne!(after.title, before.title);
 +    assert_ne!(after.id, before.id, "a new choice must not inherit the old presented/armed row key");
 +    assert_eq!(runtime.remote.snapshot()["enabled"], false);
++    assert_eq!(runtime.remote.snapshot()["pairing_code"], "");
++}
++
++
++#[test]
++fn discovered_server_choices_follow_find_and_clear_on_retry() {
++    let _serial = plx_base::testlock::serial();
++    let mut runtime = runtime_fixture();
++    runtime.page = "settings";
++    runtime.remote_snapshot = runtime.remote.snapshot();
++    let original_ids: Vec<_> = runtime.raw_view().rows.into_iter().map(|row| row.id).collect();
++    let body = serde_json::to_vec(&json!({"version":1,"servers":[
++        {"id":"one", "domain":"test.invalid", "address":"https://one.invalid/control"},
++        {"id":"two", "domain":"test.invalid", "address":"https://two.invalid/control"}
++    ]})).unwrap();
++    runtime.remote.find_catalog_for_test(&body, 100).unwrap();
++    runtime.remote_snapshot = runtime.remote.snapshot();
++    let snapshot = runtime.remote_snapshot.clone();
++    let view = runtime.raw_view();
++    let find = view.rows.iter().position(|row| row.id == "remote.find").unwrap();
++    let servers = snapshot["servers"].as_array().unwrap();
++    assert_eq!(servers.len(), 2);
++    for (offset, server) in servers.iter().enumerate() {
++        let row = &view.rows[find + 1 + offset];
++        let token = server["choice"].as_str().unwrap();
++        assert_eq!(row.id, format!("remote.server:{offset}:{token}"));
++        assert_eq!(row.action, OttAction::EditSetting(format!("remote.choice:{token}")));
++        assert_eq!(row.title, server["address"].as_str().unwrap());
++    }
++    assert_eq!(view.rows[find + 1 + servers.len()].id, "uiFontScale");
++    assert_eq!(view.rows.into_iter().filter(|row| !row.id.starts_with("remote.server:"))
++        .map(|row| row.id).collect::<Vec<_>>(), original_ids);
++    assert_eq!(runtime.remote_snapshot, snapshot, "rendering must not consume a choice");
++
++    // Real Find admission retires the previous table before its next completion.
++    runtime.remote.find_servers(200).unwrap();
++    runtime.remote_snapshot = runtime.remote.snapshot();
++    assert_eq!(runtime.remote_snapshot["find_state"], "discovering");
++    assert_eq!(runtime.raw_view().rows.into_iter().map(|row| row.id).collect::<Vec<_>>(), original_ids);
++}
++
++#[test]
++fn manual_server_choices_follow_address_when_find_is_unavailable() {
++    let _serial = plx_base::testlock::serial();
++    let mut runtime = runtime_fixture();
++    runtime.page = "settings";
++    let body = serde_json::to_vec(&json!({"version":1,"servers":[
++        {"id":"one", "domain":"test.invalid", "address":"https://one.invalid/control"},
++        {"id":"two", "domain":"test.invalid", "address":"https://two.invalid/control"}
++    ]})).unwrap();
++    runtime.remote.find_manual_for_test("https://control.invalid", &body, 100).unwrap();
++    runtime.remote_snapshot = runtime.remote.snapshot();
++    assert_eq!(runtime.remote_snapshot["state"], "choose");
++    // Exercise the existing no-Find presentation branch with a real manual result.
++    runtime.remote_snapshot["find_configured"] = json!(false);
++    let snapshot = runtime.remote_snapshot.clone();
++    let saved = serde_json::to_value(&runtime.saved).unwrap();
++    let view = runtime.raw_view();
++    assert!(!view.rows.iter().any(|row| row.id == "remote.find"));
++    let address = view.rows.iter().position(|row| row.id == "remote.address").unwrap();
++    let servers = snapshot["servers"].as_array().unwrap();
++    assert_eq!(servers.len(), 2);
++    for (offset, server) in servers.iter().enumerate() {
++        let row = &view.rows[address + 1 + offset];
++        let token = server["choice"].as_str().unwrap();
++        assert_eq!(row.id, format!("remote.server:{offset}:{token}"));
++        assert_eq!(row.action, OttAction::EditSetting(format!("remote.choice:{token}")));
++    }
++    assert_eq!(view.rows[address + 1 + servers.len()].id, "uiFontScale");
++    assert_eq!(runtime.remote_snapshot, snapshot);
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
 +    assert_eq!(runtime.remote.snapshot()["pairing_code"], "");
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/restart.rs b/rust-modules/src/app/ott_runtime_tests/restart.rs
@@ -70400,7 +72555,7 @@ index 49278834..91b254c2 100644
              &mut app.pages,
              &mut app.bridge,
 diff --git a/rust-modules/src/port.rs b/rust-modules/src/port.rs
-index f7fbbbc7..a49f5fff 100644
+index f7fbbbc7..3d08ba3c 100644
 --- a/rust-modules/src/port.rs
 +++ b/rust-modules/src/port.rs
 @@ -14,8 +14,8 @@ const SINK: &dyn plx_platform::tv::sink::VideoSink = &plx_media::player::ffi_hos
@@ -70414,7 +72569,7 @@ index f7fbbbc7..a49f5fff 100644
      probe_device: plx_platform::webos::probe,
      start_capability_probe: plx_platform::webos::caps::start_probe,
      repair_sandbox: || Err(plx_platform::tv::sandbox::Failure::Unsupported),
-@@ -52,9 +52,162 @@ pub extern "C" fn plex_run(pms_host: *const c_char, pms_port: c_int) -> c_int {
+@@ -52,9 +52,173 @@ pub extern "C" fn plex_run(pms_host: *const c_char, pms_port: c_int) -> c_int {
      let _ = plx_platform::tv::install(&PORT);
      #[cfg(target_os = "linux")]
      let _ = plx_platform::storage::client::install_activator(plx_platform::webos::activate_storage_helper);
@@ -70502,7 +72657,18 @@ index f7fbbbc7..a49f5fff 100644
 +    let started = std::time::Instant::now();
 +    // No activation, normal Hello, retry, or application bootstrap: the helper must already
 +    // be available. The client authenticates its peer and private descriptor nonce itself.
-+    match plx_platform::storage::client::probe_keymanager() {
++    let result = plx_platform::storage::client::probe_keymanager();
++    // Cold diagnostic exits immediately: publish the closed result synchronously,
++    // without starting the normal diagnostics worker or changing probe/exit policy.
++    #[cfg(all(feature = "devtriggers", target_os = "linux", target_arch = "arm", not(feature = "hostsim")))]
++    if plx_platform::storage::diagnostics::canary_result(
++        env!("PLX_VERSION"), &request, started.elapsed().as_millis(), &result,
++    ).is_err() {
++        plx_base::eventlog::log(&format!(
++            "storage-canary request_id={request} pid={pid} shared_export=unavailable"
++        ));
++    }
++    match result {
 +        Ok(result) => {
 +            let complete = result.complete();
 +            match serde_json::to_string(&result) {
@@ -70577,7 +72743,7 @@ index f7fbbbc7..a49f5fff 100644
  /// `src/main.c` hands over SAM's launch payload (`argv[1]`) before `plex_run`. Kept raw in
  /// `tv::launch`; `app::deeplink` reads it once the app has a session to act in.
  ///
-@@ -95,3 +248,18 @@ fn open_named(namespace: plx_platform::tv::secure::Namespace, sealed: &plx_platf
+@@ -95,3 +259,18 @@ fn open_named(namespace: plx_platform::tv::secure::Namespace, sealed: &plx_platf
  pub fn activate_fixture(args: &[String]) -> Result<Option<Vec<String>>, &'static str> {
      plx_platform::tv::secure::fixture::activate_from_args(args)
  }
