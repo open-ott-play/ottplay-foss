@@ -465,6 +465,8 @@ jobs:
   native-build-bench:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_bench }}
     runs-on: ubuntu-24.04-arm
+    # Compared sources use local scratch caches, never the shared Actions cache.
+    cache-mode: none
     timeout-minutes: 180
     env:
       JOBS: "2"
