@@ -17305,10 +17305,21 @@ index d117a9a8..9ec5d9ed 100644
  /// rules P2 and P3): an Arabic or Hebrew letter, or a right-to-left mark, makes it right to left;
  /// any other letter, or no letter at all, left to right. Pure and cheap (it stops at the first
 diff --git a/rust-modules/media/src/ff.rs b/rust-modules/media/src/ff.rs
-index 03ceb88a..c33860eb 100644
+index 03ceb88a..8723041d 100644
 --- a/rust-modules/media/src/ff.rs
 +++ b/rust-modules/media/src/ff.rs
-@@ -22,10 +22,18 @@ use std::sync::atomic::{AtomicBool, Ordering};
+@@ -13,19 +13,28 @@
+ #![allow(dead_code)]
+ use crate::aq::AuQueue;
+ use crate::player::threads::SendPtr;
++use crate::player::report::IoFailureDetails;
+ use crate::player::SHARED;
+ use plx_net::stream::HttpStream;
+-use plx_telemetry::telemetry::classes::DemuxExitClass;
++use plx_telemetry::telemetry::classes::{DemuxExitClass, TraceOutcome};
+ use std::ffi::CString;
+ use std::os::raw::{c_char, c_int, c_long, c_uchar, c_uint, c_void};
+ use std::sync::atomic::{AtomicBool, Ordering};
  use std::sync::Once;
  
  pub mod inspect;
@@ -17327,7 +17338,7 @@ index 03ceb88a..c33860eb 100644
  #[cfg(test)]
  #[path = "ff/external_tests.rs"]
  mod external_tests;
-@@ -50,8 +58,8 @@ impl std::fmt::Debug for ExternalSource {
+@@ -50,8 +59,8 @@ impl std::fmt::Debug for ExternalSource {
      }
  }
  
@@ -17338,7 +17349,7 @@ index 03ceb88a..c33860eb 100644
  static FEED_AUDIO: AtomicBool = AtomicBool::new(true);
  /// Does the FFmpeg on this device have the ABI these offsets were written for? Set once by
  /// [`boot`]; read by [`demux`]. Starts FALSE so the gate is closed until boot has actually looked
-@@ -70,6 +78,9 @@ static PUSHED_ANY: AtomicBool = AtomicBool::new(false);
+@@ -70,6 +79,9 @@ static PUSHED_ANY: AtomicBool = AtomicBool::new(false);
  static SWS_OK: AtomicBool = AtomicBool::new(false);
  pub fn set_feed_audio(on: bool) {
      FEED_AUDIO.store(on, Ordering::Relaxed);
@@ -17348,7 +17359,7 @@ index 03ceb88a..c33860eb 100644
  }
  
  /// The PCM the current Load declared for app-decoded audio (`route::stream_pcm`), packed into one word:
-@@ -418,6 +429,7 @@ plx_base::dynlib! {
+@@ -418,6 +430,7 @@ plx_base::dynlib! {
      fn avformat_version() -> c_uint;
      fn avformat_network_init() -> c_int;
      fn avformat_alloc_context() -> *mut AVFormatContext;
@@ -17356,7 +17367,7 @@ index 03ceb88a..c33860eb 100644
      fn avformat_open_input(
          ps: *mut *mut AVFormatContext,
          url: *const c_char,
-@@ -1759,19 +1771,20 @@ const SEEK_CUR: c_int = 1;
+@@ -1759,19 +1772,20 @@ const SEEK_CUR: c_int = 1;
  const SEEK_END: c_int = 2;
  const AVSEEK_SIZE: c_int = 0x10000;
  
@@ -17383,7 +17394,25 @@ index 03ceb88a..c33860eb 100644
  ///   `avformat_close_input` may still invoke AVIO; this arm refuses I/O instead of dialing a
  ///   dummy socket.
  enum Src {
-@@ -4201,21 +4214,7 @@ fn packet_has_adts(data: &[u8]) -> bool {
+@@ -3107,7 +3121,7 @@ extern "C" fn seek_cb(op: *mut c_void, offset: i64, whence: c_int) -> i64 {
+ }
+ 
+ /// Settle one `av_read_frame` result against errors observed by its AVIO callbacks.
+-fn frame_read_failed(state: &mut AvioState, result: c_int) -> bool {
++fn frame_read_failed(state: &mut AvioState, result: c_int, native_epoch: u32) -> bool {
+     if result >= 0 {
+         return false;
+     }
+@@ -3138,6 +3152,8 @@ fn frame_read_failed(state: &mut AvioState, result: c_int) -> bool {
+                 .dg_transport_reopen_failed
+                 .store(f.reopen_failed, Ordering::Release);
+         }
++        let (rc, reopen_failed) = failure.map_or((0, false), |f| (f.rc, f.reopen_failed));
++        SHARED.note_io_failure_for(native_epoch, IoFailureDetails::source_io(rc, reopen_failed));
+         SHARED.demux_io_failed.store(true, Ordering::Release);
+     }
+     true
+@@ -4201,21 +4217,7 @@ fn packet_has_adts(data: &[u8]) -> bool {
  }
  
  fn adts_duration_ns(data: &[u8]) -> Option<i64> {
@@ -17406,7 +17435,7 @@ index 03ceb88a..c33860eb 100644
  }
  
  #[derive(Clone, Copy, Debug)]
-@@ -4315,8 +4314,42 @@ fn hls_open_source(
+@@ -4315,8 +4317,42 @@ fn hls_open_source(
      }
  }
  
@@ -17451,7 +17480,7 @@ index 03ceb88a..c33860eb 100644
  fn hls_open_curl(
      url: &str,
      aq: *mut AuQueue,
-@@ -4824,6 +4857,7 @@ unsafe fn hls_input(
+@@ -4824,6 +4860,7 @@ unsafe fn hls_input(
      reserve_deadline: ReserveDeadlineState,
      transport_watchdog: TransportWatchdog,
      mut acquisition: AcquisitionRuntime,
@@ -17459,7 +17488,7 @@ index 03ceb88a..c33860eb 100644
  ) -> Result<HlsInput, HlsExit> {
      let request_started = acquisition.request_started();
      acquisition.enter(Phase::Body);
-@@ -4874,10 +4908,17 @@ unsafe fn hls_input(
+@@ -4874,10 +4911,17 @@ unsafe fn hls_input(
      }
      (*input.fmt).pb = input.avio;
      input.state.io_failed = false;
@@ -17478,7 +17507,7 @@ index 03ceb88a..c33860eb 100644
          std::ptr::null_mut(),
      );
      if crate::aq::aq_is_aborted(aq) {
-@@ -4995,6 +5036,12 @@ fn resolve_audio_stamps(stamps: &mut [AudioStamp]) -> Result<usize, &'static str
+@@ -4995,6 +5039,12 @@ fn resolve_audio_stamps(stamps: &mut [AudioStamp]) -> Result<usize, &'static str
      Ok(missing)
  }
  
@@ -17491,7 +17520,7 @@ index 03ceb88a..c33860eb 100644
  struct HlsSegmentOutput {
      aus: Vec<HlsAu>,
      transfer: SegmentTransfer,
-@@ -5024,13 +5071,18 @@ unsafe fn hls_demux_segment(
+@@ -5024,13 +5074,18 @@ unsafe fn hls_demux_segment(
      let path = auth
          .request_path(&segment.resource)
          .map_err(|_| HlsExit::Failed("segment credential rejected"))?;
@@ -17511,7 +17540,7 @@ index 03ceb88a..c33860eb 100644
  }
  
  /// Shared MPEG-TS decoder; callers own authentication and pass the exact request path.
-@@ -5044,7 +5096,11 @@ unsafe fn hls_demux_segment_path(
+@@ -5044,7 +5099,11 @@ unsafe fn hls_demux_segment_path(
      acodec: &str,
      acquisition: SegmentAcquisition,
  ) -> Result<HlsSegmentOutput, HlsExit> {
@@ -17524,7 +17553,7 @@ index 03ceb88a..c33860eb 100644
      // The ONE runtime for this fetch: the open and the `NotReady` wait below consult it as their
      // checkpoint, then it moves into the AVIO for the probe and body reads — never re-armed.
      let (mut reserve_deadline, mut runtime) = acquisition.begin(aq);
-@@ -5053,7 +5109,8 @@ unsafe fn hls_demux_segment_path(
+@@ -5053,7 +5112,8 @@ unsafe fn hls_demux_segment_path(
      }
      let request_started = runtime.request_started();
      let audio_expected =
@@ -17534,7 +17563,7 @@ index 03ceb88a..c33860eb 100644
      let retry_budget = segment
          .duration
          .saturating_mul(3)
-@@ -5080,13 +5137,14 @@ unsafe fn hls_demux_segment_path(
+@@ -5080,13 +5140,14 @@ unsafe fn hls_demux_segment_path(
          let reserve_snapshot = reserve_deadline.active(rebuffering);
          let effective = transport_watchdog.effective(reserve_snapshot);
          runtime.enter(Phase::Opening);
@@ -17550,7 +17579,7 @@ index 03ceb88a..c33860eb 100644
          );
          // Every unsuccessful open is SETTLED by a fresh check before it is classified: a transport
          // deadline shorter than the checkpoint slice ends the wait without asking again.
-@@ -5171,8 +5229,13 @@ unsafe fn hls_demux_segment_path(
+@@ -5171,8 +5232,13 @@ unsafe fn hls_demux_segment_path(
          return Err(HlsExit::Failed("HLS segment exceeds size limit"));
      }
      let body_started = std::time::Instant::now();
@@ -17565,7 +17594,7 @@ index 03ceb88a..c33860eb 100644
      let streams = (*input.fmt).streams;
      let vi = av_find_best_stream(
          input.fmt,
-@@ -5182,26 +5245,35 @@ unsafe fn hls_demux_segment_path(
+@@ -5182,26 +5248,35 @@ unsafe fn hls_demux_segment_path(
          std::ptr::null_mut(),
          0,
      );
@@ -17618,7 +17647,7 @@ index 03ceb88a..c33860eb 100644
          if (*acp).codec_id != AV_CODEC_ID_AAC {
              return Err(HlsExit::Failed("HLS segment audio is not AAC"));
          }
-@@ -5210,11 +5282,6 @@ unsafe fn hls_demux_segment_path(
+@@ -5210,11 +5285,6 @@ unsafe fn hls_demux_segment_path(
          None
      };
  
@@ -17630,7 +17659,7 @@ index 03ceb88a..c33860eb 100644
      let mut params = H264ParamSets::default();
      let mut aubuf = Vec::with_capacity(4 * 1024 * 1024);
      let mut video_packets = 0usize;
-@@ -5239,7 +5306,7 @@ unsafe fn hls_demux_segment_path(
+@@ -5239,7 +5309,7 @@ unsafe fn hls_demux_segment_path(
              &input.state,
              read < 0,
              request_started,
@@ -17639,7 +17668,7 @@ index 03ceb88a..c33860eb 100644
          ) {
              return Err(exit);
          }
-@@ -5247,7 +5314,10 @@ unsafe fn hls_demux_segment_path(
+@@ -5247,7 +5317,10 @@ unsafe fn hls_demux_segment_path(
              break;
          }
          let si = (*input.pkt).stream_index;
@@ -17651,7 +17680,7 @@ index 03ceb88a..c33860eb 100644
              let Some(raw_pts) = pts_ns_opt(input.pkt, vst) else {
                  av_packet_unref(input.pkt);
                  return Err(HlsExit::Failed("HLS video packet has no timestamp"));
-@@ -5277,8 +5347,12 @@ unsafe fn hls_demux_segment_path(
+@@ -5277,8 +5350,12 @@ unsafe fn hls_demux_segment_path(
              video_packets += 1;
              first_au_at.get_or_insert_with(std::time::Instant::now);
              av_packet_unref(input.pkt);
@@ -17666,7 +17695,7 @@ index 03ceb88a..c33860eb 100644
              let raw_pts = pts_ns_opt(input.pkt, ast);
              let packet_duration = ((*input.pkt).duration > 0)
                  .then(|| av_rescale_q((*input.pkt).duration, stream_time_base(ast), NS_TB))
-@@ -5352,11 +5426,27 @@ unsafe fn hls_demux_segment_path(
+@@ -5352,11 +5429,27 @@ unsafe fn hls_demux_segment_path(
          return Err(HlsExit::Failed("segment body ended before Content-Length"));
      }
  
@@ -17695,7 +17724,7 @@ index 03ceb88a..c33860eb 100644
      let synthesized_audio = resolve_audio_stamps(&mut audio_stamps).map_err(HlsExit::Failed)?;
      for stamp in &audio_stamps {
          let pts = clock
-@@ -5381,7 +5471,7 @@ unsafe fn hls_demux_segment_path(
+@@ -5381,7 +5474,7 @@ unsafe fn hls_demux_segment_path(
          bytes: input.state.body_bytes,
          active_us: input.state.body_active_us,
          total_us: request_started.elapsed().as_micros().max(1) as u64,
@@ -17704,7 +17733,7 @@ index 03ceb88a..c33860eb 100644
      };
      crate::player::log(&format!(
          "hls: segment={} bytes={} raster={}x{} v={} a={} tail_skew_ms={} audio_pts_recovered={} \
-@@ -5405,6 +5495,8 @@ unsafe fn hls_demux_segment_path(
+@@ -5405,6 +5498,8 @@ unsafe fn hls_demux_segment_path(
          first_ms,
          transfer.total_us / 1_000,
      ));
@@ -17713,12 +17742,82 @@ index 03ceb88a..c33860eb 100644
      if let Some(cs) = input.state.src.take_curl() {
          net.curl = Some(cs);
      }
-@@ -9124,12 +9216,20 @@ pub fn demux(
+@@ -9104,6 +9199,57 @@ mod pre_audio_headroom_tests {
+     }
+ }
+ 
++/// Publish the terminal HLS observation without changing the existing failure policy.
++/// The epoch was captured before this producer started; a retired producer cannot
++/// attach details to the next Load, even when its existing failure flag is raised.
++fn settle_hls_demux(native_epoch: u32, outcome: std::thread::Result<Result<(), HlsExit>>) {
++    match outcome {
++        Ok(Ok(())) | Ok(Err(HlsExit::Aborted)) => {}
++        Ok(Err(HlsExit::Failed(why))) => {
++            crate::player::log(&format!("hls: demux failed: {why}"));
++            if PUSHED_ANY.load(Ordering::Relaxed) {
++                SHARED.note_io_failure_for(native_epoch, IoFailureDetails::Hls {
++                    exit: hls_failure::classify(why), outcome: None,
++                });
++                SHARED.demux_io_failed.store(true, Ordering::Release);
++            } else {
++                SHARED.fail_demux(hls_failure::classify(why));
++            }
++        }
++        Ok(Err(HlsExit::NotReady)) => {
++            crate::player::log("hls: demux failed: playlist resource was not ready");
++            if PUSHED_ANY.load(Ordering::Relaxed) {
++                SHARED.note_io_failure_for(native_epoch, IoFailureDetails::Hls {
++                    exit: DemuxExitClass::HlsNotReady, outcome: None,
++                });
++                SHARED.demux_io_failed.store(true, Ordering::Release);
++            } else {
++                SHARED.fail_demux(DemuxExitClass::HlsNotReady);
++            }
++        }
++        Ok(Err(HlsExit::PrimeExpired)) => {
++            crate::player::log("hls: demux failed: unexpected active-stream prime deadline");
++            SHARED.note_io_failure_for(native_epoch, IoFailureDetails::Hls {
++                exit: DemuxExitClass::Other, outcome: Some(TraceOutcome::Deadline),
++            });
++            SHARED.demux_io_failed.store(true, Ordering::Release);
++        }
++        Ok(Err(HlsExit::StallAbort(_))) => {
++            // The abort rule is handled where it fires, inside the segment loop; reaching here
++            // means it escaped one of the candidate paths, which do not arm it.
++            crate::player::log("hls: demux failed: stall abort escaped the segment loop");
++            SHARED.note_io_failure_for(native_epoch, IoFailureDetails::Hls {
++                exit: DemuxExitClass::Other, outcome: None,
++            });
++            SHARED.demux_io_failed.store(true, Ordering::Release);
++        }
++        Err(_) => {
++            crate::player::log("hls: demux panicked");
++            SHARED.fail_demux(DemuxExitClass::DemuxPanicked);
++        }
++    }
++}
++
+ /// The demux thread body (spawned by `engine::start_bufferfeed`).
+ ///
+ /// Takes an [`Origin`](plx_plex::plex::Origin) rather than a `(host, port)` pair because **the scheme
+@@ -9112,8 +9258,11 @@ mod pre_audio_headroom_tests {
+ /// what keeps the `plex.direct` hostname TLS validates against intact all the way down here
+ /// (`net/origin.rs`). `hs` is still passed on both paths — it is the Engine's, and it stays
+ /// unused (fd = -1, published as `SHARED.hs_ptr`) when the origin turns out to be https.
++/// `native_epoch` is captured by the Engine before spawn and scopes failure details;
++/// callers without a native session pass zero, which cannot publish those details.
+ pub fn demux(
+     off: &plx_base::task::OffFrame,
++    native_epoch: u32,
+     origin: plx_plex::plex::Origin,
+     path: String,
+     acodec: String,
+@@ -9124,12 +9273,20 @@ pub fn demux(
      hs: SendPtr<HttpStream>,
      text_style: crate::player::text_style::TextStyle,
  ) {
 -    demux_inner(off,Some(origin),path,None,acodec,abr,auto_original,aq,aqa,hs,text_style)
-+    demux_inner(off,Some(origin),path,None,None,acodec,abr,auto_original,aq,aqa,hs,text_style)
++    demux_inner(off,native_epoch,Some(origin),path,None,None,acodec,abr,auto_original,aq,aqa,hs,text_style)
 +}
 +
 +/// Distinct selection namespaces: an embedded TS track is not an external
@@ -17730,28 +17829,30 @@ index 03ceb88a..c33860eb 100644
  }
  
  pub fn demux_external(
-     off:&plx_base::task::OffFrame, source:ExternalSource, acodec:String,
+-    off:&plx_base::task::OffFrame, source:ExternalSource, acodec:String,
 -    aq:SendPtr<AuQueue>,aqa:SendPtr<AuQueue>,hs:SendPtr<HttpStream>,
++    off:&plx_base::task::OffFrame, native_epoch:u32, source:ExternalSource, acodec:String,
 +    audio:Option<HlsTrackSelection>, aq:SendPtr<AuQueue>,aqa:SendPtr<AuQueue>,hs:SendPtr<HttpStream>,
      text_style: crate::player::text_style::TextStyle,
  ) {
      let (origin,path)=match &source {
-@@ -9138,12 +9238,12 @@ pub fn demux_external(
+@@ -9138,12 +9295,12 @@ pub fn demux_external(
              let parsed=plx_plex::plex::StreamUrl::parse(url);(Some(parsed.origin),parsed.path)
          }
      };
 -    demux_inner(off,origin,path,Some(source),acodec,None,None,aq,aqa,hs,text_style)
-+    demux_inner(off,origin,path,Some(source),audio,acodec,None,None,aq,aqa,hs,text_style)
++    demux_inner(off,native_epoch,origin,path,Some(source),audio,acodec,None,None,aq,aqa,hs,text_style)
  }
  
  fn demux_inner(
-     off:&plx_base::task::OffFrame, origin:Option<plx_plex::plex::Origin>,path:String,
+-    off:&plx_base::task::OffFrame, origin:Option<plx_plex::plex::Origin>,path:String,
 -    external:Option<ExternalSource>,acodec:String,
++    off:&plx_base::task::OffFrame, native_epoch:u32, origin:Option<plx_plex::plex::Origin>,path:String,
 +    external:Option<ExternalSource>,audio:Option<HlsTrackSelection>,acodec:String,
      abr:Option<(crate::route::HlsAbrControl,crate::route::WorkerTicket)>,
      auto_original:Option<crate::route::AutoOriginalWatch>,
      aq:SendPtr<AuQueue>,aqa:SendPtr<AuQueue>,hs:SendPtr<HttpStream>,
-@@ -9174,7 +9274,14 @@ fn demux_inner(
+@@ -9174,44 +9331,19 @@ fn demux_inner(
          crate::player::log("hls: segmented demux start");
          let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
              if let Some(ExternalSource::Hls(url))=&external {
@@ -17767,16 +17868,86 @@ index 03ceb88a..c33860eb 100644
              } else {
                  hls_demux(off, origin.as_ref().expect("HTTP HLS origin"), &path, &acodec, abr, aq_p, aqa_p, hs_p)
              }
-@@ -9186,7 +9293,7 @@ fn demux_inner(
-                 if PUSHED_ANY.load(Ordering::Relaxed) {
-                     SHARED.demux_io_failed.store(true, Ordering::Release);
-                 } else {
+         }));
+-        match outcome {
+-            Ok(Ok(())) | Ok(Err(HlsExit::Aborted)) => {}
+-            Ok(Err(HlsExit::Failed(why))) => {
+-                crate::player::log(&format!("hls: demux failed: {why}"));
+-                if PUSHED_ANY.load(Ordering::Relaxed) {
+-                    SHARED.demux_io_failed.store(true, Ordering::Release);
+-                } else {
 -                    SHARED.fail_demux(DemuxExitClass::HlsFailed);
-+                    SHARED.fail_demux(hls_failure::classify(why));
-                 }
-             }
-             Ok(Err(HlsExit::NotReady)) => {
-@@ -10384,3 +10491,37 @@ mod companion_namespace_tests {
+-                }
+-            }
+-            Ok(Err(HlsExit::NotReady)) => {
+-                crate::player::log("hls: demux failed: playlist resource was not ready");
+-                if PUSHED_ANY.load(Ordering::Relaxed) {
+-                    SHARED.demux_io_failed.store(true, Ordering::Release);
+-                } else {
+-                    SHARED.fail_demux(DemuxExitClass::HlsNotReady);
+-                }
+-            }
+-            Ok(Err(HlsExit::PrimeExpired)) => {
+-                crate::player::log("hls: demux failed: unexpected active-stream prime deadline");
+-                SHARED.demux_io_failed.store(true, Ordering::Release);
+-            }
+-            Ok(Err(HlsExit::StallAbort(_))) => {
+-                // The abort rule is handled where it fires, inside the segment loop; reaching here
+-                // means it escaped one of the candidate paths, which do not arm it.
+-                crate::player::log("hls: demux failed: stall abort escaped the segment loop");
+-                SHARED.demux_io_failed.store(true, Ordering::Release);
+-            }
+-            Err(_) => {
+-                crate::player::log("hls: demux panicked");
+-                SHARED.fail_demux(DemuxExitClass::DemuxPanicked);
+-            }
+-        }
++        settle_hls_demux(native_epoch, outcome);
+         finish_demux_queues(aq_p, aqa_p, PUSHED_ANY.load(Ordering::Relaxed), false);
+         crate::player::log("hls: segmented demux ended");
+         return;
+@@ -9887,7 +10019,7 @@ fn demux_inner(
+                         SHARED.first_audio_pts.store(i64::MIN, Ordering::Release);
+                     }
+                     let r = av_read_frame(fmt, pkt);
+-                    if frame_read_failed(&mut state, r) {
++                    if frame_read_failed(&mut state, r, native_epoch) {
+                         // Genuine end of stream, teardown, or an unrecovered I/O error published by
+                         // `frame_read_failed`. NOT an app seek — that is serviced at the top of this
+                         // loop and never surfaces as a read error.
+@@ -9986,6 +10118,7 @@ fn demux_inner(
+                                     crate::aq::aq_cap(aq_p),
+                                     PRE_AUDIO_VIDEO_HEADROOM
+                                 ));
++                                SHARED.note_io_failure_for(native_epoch, IoFailureDetails::Unclassified);
+                                 SHARED.fail_demux(DemuxExitClass::NoAudioAu);
+                                 SHARED.demux_io_failed.store(true, Ordering::Release);
+                                 av_packet_unref(pkt);
+@@ -10055,6 +10188,7 @@ fn demux_inner(
+                                         "ff: {} decode failed — {why}; refusing audio feed",
+                                         app_decoded.as_deref().unwrap_or("audio")
+                                     ));
++                                    SHARED.note_io_failure_for(native_epoch, IoFailureDetails::AudioDecode);
+                                     SHARED.demux_failed.store(true, Ordering::Release);
+                                     SHARED.demux_io_failed.store(true, Ordering::Release);
+                                     av_packet_unref(pkt);
+@@ -10072,6 +10206,7 @@ fn demux_inner(
+                             let raw = std::slice::from_raw_parts((*pkt).data, (*pkt).size.max(0) as usize);
+                             let Some(core) = dts_core_packet(raw) else {
+                                 crate::player::log("ff: DTS packet has no complete supported core; refusing audio feed");
++                                SHARED.note_io_failure_for(native_epoch, IoFailureDetails::Unclassified);
+                                 SHARED.fail_demux(DemuxExitClass::DtsCoreMissing);
+                                 SHARED.demux_io_failed.store(true, Ordering::Release);
+                                 av_packet_unref(pkt);
+@@ -10107,6 +10242,7 @@ fn demux_inner(
+                                 AUDIO_AHEAD_HEADROOM,
+                                 headroom.video_reach_ns() / 1_000_000
+                             ));
++                            SHARED.note_io_failure_for(native_epoch, IoFailureDetails::Unclassified);
+                             SHARED.fail_demux(DemuxExitClass::NoUsableVideo);
+                             SHARED.demux_io_failed.store(true, Ordering::Release);
+                             break;
+@@ -10384,3 +10520,37 @@ mod companion_namespace_tests {
          assert!(matches!(result, Err(HlsExit::Failed("insecure credential transport refused"))));
      }
  }
@@ -18002,7 +18173,7 @@ index 116ac0e9..ddffcfab 100644
 +    }
 +}
 diff --git a/rust-modules/media/src/ff/external_tests.rs b/rust-modules/media/src/ff/external_tests.rs
-index 5cc7412c..f2770e37 100644
+index 5cc7412c..7ee5ed90 100644
 --- a/rust-modules/media/src/ff/external_tests.rs
 +++ b/rust-modules/media/src/ff/external_tests.rs
 @@ -59,7 +59,7 @@ fn decode(source: ExternalSource, seek: i64) -> Vec<i64> {
@@ -18010,7 +18181,7 @@ index 5cc7412c..f2770e37 100644
          plx_base::eventlog::with_private_log(|| {
              let off = plx_base::task::OffFrame::for_test();
 -            demux_external(&off, source, String::new(), v, a, h, crate::player::text_style::TextStyle::current(Default::default()));
-+            demux_external(&off, source, String::new(), None, v, a, h, crate::player::text_style::TextStyle::current(Default::default()));
++            demux_external(&off, 0, source, String::new(), None, v, a, h, crate::player::text_style::TextStyle::current(Default::default()));
              std::fs::read_to_string(plx_base::eventlog::events_log()).unwrap_or_default()
          })
      });
@@ -18421,7 +18592,7 @@ index 5cc7412c..f2770e37 100644
 +        let source = ExternalSource::Hls(plx_data::ott::http_url(&url).unwrap());
 +        let worker = std::thread::spawn(move || {
 +            let off = plx_base::task::OffFrame::for_test();
-+            demux_external(&off, source, "aac".into(), Some(HlsTrackSelection::Rendition(selected)),
++            demux_external(&off, 0, source, "aac".into(), Some(HlsTrackSelection::Rendition(selected)),
 +                v, a, h, crate::player::text_style::TextStyle::current(Default::default()));
 +        });
 +        let mut video_pts = Vec::new();
@@ -20917,6 +21088,206 @@ index 2c1d481e..77295d98 100644
 +        audio_bit_depth: track.bit_depth, dovi: plx_data::metadata::Dovi::NONE,
 +    })
 +}
+diff --git a/rust-modules/media/src/ff_eof_seek_tests.rs b/rust-modules/media/src/ff_eof_seek_tests.rs
+index 99e8d746..bb3ef151 100644
+--- a/rust-modules/media/src/ff_eof_seek_tests.rs
++++ b/rust-modules/media/src/ff_eof_seek_tests.rs
+@@ -682,6 +682,7 @@ fn demux_video_aus(file: Virtual, want: usize) -> (usize, Vec<(Option<u64>, u16)
+         let off = plx_base::task::OffFrame::for_test();
+         demux(
+             &off,
++            0,
+             origin,
+             "/library/parts/1/file.mp4".into(),
+             "aac".into(),
+diff --git a/rust-modules/media/src/ff_late_audio_tests.rs b/rust-modules/media/src/ff_late_audio_tests.rs
+index 29fe3e43..8dee4d4a 100644
+--- a/rust-modules/media/src/ff_late_audio_tests.rs
++++ b/rust-modules/media/src/ff_late_audio_tests.rs
+@@ -303,7 +303,7 @@ impl DemuxRun {
+         let thread = std::thread::spawn(move || {
+             let off = plx_base::task::OffFrame::for_test();
+             // `acodec` is the Load payload's audio codec: the demuxer feeds the track that matches.
+-            demux(&off, origin, "/library/parts/1/file.mkv".into(), "eac3".into(), None, None, vp, ap, hp, crate::player::text_style::TextStyle::current(Default::default()))
++            demux(&off, 0, origin, "/library/parts/1/file.mkv".into(), "eac3".into(), None, None, vp, ap, hp, crate::player::text_style::TextStyle::current(Default::default()))
+         });
+         DemuxRun { video, audio, thread: Some(thread), hs }
+     }
+diff --git a/rust-modules/media/src/ff_source_teardown_tests.rs b/rust-modules/media/src/ff_source_teardown_tests.rs
+index 18cccfaa..cac83e6d 100644
+--- a/rust-modules/media/src/ff_source_teardown_tests.rs
++++ b/rust-modules/media/src/ff_source_teardown_tests.rs
+@@ -696,7 +696,7 @@ fn a_curl_transport_failure_crosses_avio_as_io_error_not_eof() {
+             "a callback alone is not fatal because libavformat may still recover via seek"
+         );
+         assert!(
+-            !frame_read_failed(&mut st, 0),
++            !frame_read_failed(&mut st, 0, 0),
+             "a successful packet is not a demux failure"
+         );
+         assert!(
+@@ -708,7 +708,7 @@ fn a_curl_transport_failure_crosses_avio_as_io_error_not_eof() {
+         let terminal = read_cb(op, dst.as_mut_ptr(), dst.len() as c_int);
+         assert_eq!(terminal, AVERROR_IO);
+         assert!(
+-            frame_read_failed(&mut st, terminal),
++            frame_read_failed(&mut st, terminal, 0),
+             "an unrecovered frame read ends the demux loop"
+         );
+         assert!(
+@@ -737,6 +737,7 @@ fn a_frame_read_failure_names_the_curl_rc_and_publishes_it_for_the_report() {
+         }
+         let _clear = Clear;
+         SHARED.reset_session();
++        let plain_epoch = SHARED.begin_native_session().expect("plain-source session");
+ 
+         fn state(src: Src, aq: *mut crate::aq::AuQueue) -> AvioState {
+             AvioState {
+@@ -759,16 +760,19 @@ fn a_frame_read_failure_names_the_curl_rc_and_publishes_it_for_the_report() {
+         }
+         let mut aq = crate::aq::aq_new(1 << 20);
+ 
+-        // Not a curl transfer: the old line, and nothing published.
++        // Not a curl transfer: no curl code, but an attributed IO failure without curl detail.
+         let mut idle = state(Src::Idle, &mut *aq);
+         let plain = plx_base::eventlog::with_private_log(|| {
+-            assert!(frame_read_failed(&mut idle, -5));
++            assert!(frame_read_failed(&mut idle, -5, plain_epoch));
+             std::fs::read_to_string(plx_base::eventlog::events_log()).unwrap_or_default()
+         });
+         assert!(plain.contains("media transport failed during av_read_frame r=-5"), "{plain}");
+         assert!(!plain.contains("curl_rc="), "no curl code was known: {plain}");
+         assert_eq!(SHARED.dg_transport_rc.load(Ordering::Acquire), 0);
++        assert_eq!(SHARED.io_failure(), Some(IoFailureDetails::source_io(0, false)));
+         SHARED.demux_io_failed.store(false, Ordering::Relaxed);
++        SHARED.reset_session();
++        let curl_epoch = SHARED.begin_native_session().expect("curl-source session");
+ 
+         // A curl transfer that died mid-body.
+         let mut cs = crate::curlio::CurlSource::open(&format!("http://127.0.0.1:{port}/f.mkv"), 0)
+@@ -776,7 +780,7 @@ fn a_frame_read_failure_names_the_curl_rc_and_publishes_it_for_the_report() {
+         cs.fail_body_for_test(56);
+         let mut st = state(Src::Curl(cs), &mut *aq);
+         let line = plx_base::eventlog::with_private_log(|| {
+-            assert!(frame_read_failed(&mut st, -5));
++            assert!(frame_read_failed(&mut st, -5, curl_epoch));
+             std::fs::read_to_string(plx_base::eventlog::events_log()).unwrap_or_default()
+         });
+         assert!(
+@@ -785,6 +789,7 @@ fn a_frame_read_failure_names_the_curl_rc_and_publishes_it_for_the_report() {
+         );
+         assert!(SHARED.demux_io_failed.load(Ordering::Acquire));
+         assert_eq!(SHARED.dg_transport_rc.load(Ordering::Acquire), 56);
++        assert_eq!(SHARED.io_failure(), Some(IoFailureDetails::source_io(56, false)));
+         assert!(SHARED.dg_transport_age_ms.load(Ordering::Acquire) >= 0);
+         assert!(!SHARED.dg_transport_reopen_failed.load(Ordering::Acquire));
+         crate::aq::aq_destroy(&mut *aq);
+@@ -1004,3 +1009,105 @@ fn a_cut_hls_segment_read_is_not_reopened_by_the_read_callback() {
+     assert_eq!(seen.lock().unwrap().len(), 1, "no reopen: the cut is the retry policy's");
+     crate::aq::aq_destroy(&mut *aq);
+ }
++
++
++/// The producer attributes only an unrecovered IO error, and only to its captured native epoch.
++#[test]
++fn frame_read_failure_context_requires_terminal_io_and_its_native_epoch() {
++    let _serial = plx_base::testlock::serial();
++    struct Reset;
++    impl Drop for Reset {
++        fn drop(&mut self) { SHARED.reset_session(); }
++    }
++    let _reset = Reset;
++    SHARED.reset_session();
++    let epoch = SHARED.begin_native_session().expect("native session");
++    let mut state = AvioState {
++        src: Src::Idle,
++        aq: std::ptr::null_mut(),
++        off: 0,
++        size: 0,
++        io_failed: false,
++        body_active_us: 0,
++        body_bytes: 0,
++        first_byte_at: None,
++        reserve_deadline: ReserveDeadlineState::new(None, false),
++        transport_watchdog: None,
++        acquisition: None,
++        bounce: Vec::new(),
++        bounce_pos: 0,
++        parked_at_end: false,
++        heal: HealBudget::default(),
++    };
++    assert!(frame_read_failed(&mut state, -5, epoch));
++    assert_eq!(SHARED.io_failure(), None, "a non-IO read error is not source IO");
++    assert!(!SHARED.demux_io_failed.load(Ordering::Acquire));
++
++    state.io_failed = true;
++    assert!(!frame_read_failed(&mut state, 0, epoch));
++    assert_eq!(SHARED.io_failure(), None, "a recovered packet is not fatal");
++    assert!(!SHARED.demux_io_failed.load(Ordering::Acquire));
++    assert!(frame_read_failed(&mut state, -5, epoch));
++    assert_eq!(SHARED.io_failure(), Some(IoFailureDetails::source_io(0, false)),
++        "source IO without curl detail is observed, not absent");
++    assert!(SHARED.demux_io_failed.load(Ordering::Acquire));
++
++    SHARED.reset_session();
++    let replacement = SHARED.begin_native_session().expect("replacement session");
++    assert_ne!(epoch, replacement);
++    assert!(frame_read_failed(&mut state, -5, epoch));
++    assert_eq!(SHARED.io_failure(), None, "an old producer cannot attribute the replacement");
++    assert!(SHARED.demux_io_failed.load(Ordering::Acquire), "legacy flag behavior is unchanged");
++    assert!(frame_read_failed(&mut state, -5, replacement));
++    assert_eq!(SHARED.io_failure(), Some(IoFailureDetails::source_io(0, false)));
++}
++
++/// Exercise the production HLS terminal reducer, including its pre/post-output split.
++#[test]
++fn hls_terminal_context_preserves_failure_flags_and_closed_classes() {
++    let _serial = plx_base::testlock::serial();
++    struct Reset;
++    impl Drop for Reset {
++        fn drop(&mut self) {
++            SHARED.reset_session();
++            PUSHED_ANY.store(false, Ordering::Relaxed);
++        }
++    }
++    let _reset = Reset;
++    let transfer = SegmentTransfer { bytes: 0, active_us: 0, total_us: 1, audio_expected: true };
++    for pushed in [false, true] {
++        for (result, exit, detail, io_failed) in [
++            (Ok(()), DemuxExitClass::None, None, false),
++            (Err(HlsExit::Aborted), DemuxExitClass::None, None, false),
++            (Err(HlsExit::Failed("segment body transport failed")),
++                if pushed { DemuxExitClass::None } else { DemuxExitClass::HlsTransportFailed },
++                pushed.then_some(IoFailureDetails::Hls { exit: DemuxExitClass::HlsTransportFailed, outcome: None }), pushed),
++            (Err(HlsExit::Failed("private unknown failure")),
++                if pushed { DemuxExitClass::None } else { DemuxExitClass::HlsFailed },
++                pushed.then_some(IoFailureDetails::Hls { exit: DemuxExitClass::HlsFailed, outcome: None }), pushed),
++            (Err(HlsExit::NotReady),
++                if pushed { DemuxExitClass::None } else { DemuxExitClass::HlsNotReady },
++                pushed.then_some(IoFailureDetails::Hls { exit: DemuxExitClass::HlsNotReady, outcome: None }), pushed),
++            (Err(HlsExit::PrimeExpired), DemuxExitClass::None,
++                Some(IoFailureDetails::Hls { exit: DemuxExitClass::Other, outcome: Some(TraceOutcome::Deadline) }), true),
++            (Err(HlsExit::StallAbort(transfer)), DemuxExitClass::None,
++                Some(IoFailureDetails::Hls { exit: DemuxExitClass::Other, outcome: None }), true),
++        ] {
++            SHARED.reset_session();
++            let epoch = SHARED.begin_native_session().expect("native session");
++            PUSHED_ANY.store(pushed, Ordering::Relaxed);
++            settle_hls_demux(epoch, Ok(result));
++            assert_eq!(SHARED.io_failure(), detail, "pushed={pushed}, result={result:?}");
++            assert_eq!(SHARED.demux_io_failed.load(Ordering::Acquire), io_failed);
++            assert_eq!(SHARED.dg_demux_exit.load(Ordering::Acquire), exit.latch());
++            assert_eq!(SHARED.demux_failed.load(Ordering::Acquire), exit != DemuxExitClass::None);
++        }
++    }
++    SHARED.reset_session();
++    let epoch = SHARED.begin_native_session().expect("native session");
++    settle_hls_demux(epoch, Err(Box::new("synthetic panic")));
++    assert_eq!(SHARED.io_failure(), None, "a panic retains its existing demux cause");
++    assert!(!SHARED.demux_io_failed.load(Ordering::Acquire));
++    assert!(SHARED.demux_failed.load(Ordering::Acquire));
++    assert_eq!(SHARED.dg_demux_exit.load(Ordering::Acquire), DemuxExitClass::DemuxPanicked.latch());
++}
 diff --git a/rust-modules/media/src/player/CLAUDE.md b/rust-modules/media/src/player/CLAUDE.md
 index 68ff404c..fd567e80 100644
 --- a/rust-modules/media/src/player/CLAUDE.md
@@ -20938,7 +21309,7 @@ index 68ff404c..fd567e80 100644
  `curlio::abort_active()` at the curl source's wake pipe, since a thread parked in `curl_multi_wait`
  is not one any `shutdown(2)` of ours can reach. Exactly one of the two ever has anything to do. Ours ships beside the binary as `libav*-plx.so.*`, is `dlopen`'d by absolute path
 diff --git a/rust-modules/media/src/player/engine.rs b/rust-modules/media/src/player/engine.rs
-index 89261b42..5e77c6b2 100644
+index 89261b42..41e12b9d 100644
 --- a/rust-modules/media/src/player/engine.rs
 +++ b/rust-modules/media/src/player/engine.rs
 @@ -565,7 +565,7 @@ fn run_release_effects(
@@ -21063,7 +21434,13 @@ index 89261b42..5e77c6b2 100644
              SHARED.dg_load_a.store(0, Ordering::Relaxed);
              // A static payload declares its own envelope; say so on the `load:` line.
              sink_env = static_envelope(lv);
-@@ -2117,6 +2158,12 @@ fn start_bufferfeed_inner(
+@@ -2113,10 +2154,18 @@ fn start_bufferfeed_inner(
+             return Err(crate::route::RouteStartResult::StartFailed);
+         }
+     };
++    // Both producer and native callbacks carry this same Load's immutable epoch.
++    let native_epoch = native_start.epoch();
+     let Some(route_attempt) = crate::route::claim_route_start_attempt(route_start) else {
          log("start_bufferfeed: prepared route lost before native construction");
          return Err(crate::route::RouteStartResult::StartFailed);
      };
@@ -21076,7 +21453,7 @@ index 89261b42..5e77c6b2 100644
  
      // fd = -1 (CLOSED) so a teardown before/without http_open doesn't close(0)
      let mut hs = plx_net::stream::http_stream_boxed();
-@@ -2186,9 +2233,24 @@ fn start_bufferfeed_inner(
+@@ -2186,11 +2235,26 @@ fn start_bufferfeed_inner(
              // Before the demuxer exists, so what it publishes is this session's.
              crate::ff::native_audio::reset();
              SHARED.side_subs_owner.store(side_target.is_some(), Ordering::Release);
@@ -21098,14 +21475,18 @@ index 89261b42..5e77c6b2 100644
 +                }
                  if let Some(source)=external {
 -                    crate::ff::demux_external(off,source,acodec,aqp,aqap,hsp,text_style)
-+                    crate::ff::demux_external(off,source,acodec,hls_audio,aqp,aqap,hsp,text_style)
++                    crate::ff::demux_external(off,native_epoch,source,acodec,hls_audio,aqp,aqap,hsp,text_style)
                  } else if let Some((origin,path))=transport {
-                     crate::ff::demux(off, origin, path, acodec, abr, auto_original, aqp, aqap, hsp, text_style)
+-                    crate::ff::demux(off, origin, path, acodec, abr, auto_original, aqp, aqap, hsp, text_style)
++                    crate::ff::demux(off, native_epoch, origin, path, acodec, abr, auto_original, aqp, aqap, hsp, text_style)
                  }
-@@ -2212,8 +2274,8 @@ fn start_bufferfeed_inner(
+             });
+             if stream_th.is_none() {
+@@ -2211,9 +2275,8 @@ fn start_bufferfeed_inner(
+ 
      // the media thread constructs + loads + runs the loop (owns the GMainContext)
      let payload_ptr = threads::SendPtr(payload_c.as_ptr() as *mut c_char);
-     let native_epoch = native_start.epoch();
+-    let native_epoch = native_start.epoch();
 -    let load_th = plx_base::task::spawn("media", move || {
 -        threads::load_thread(payload_ptr, native_epoch, Some(route_attempt), audio_lead)
 +    let load_th = plx_base::task::spawn_off_frame_keeping("media", move |worker| {
@@ -21113,7 +21494,7 @@ index 89261b42..5e77c6b2 100644
      });
      if load_th.is_none() {
          // Without the media thread nothing is ever Loaded and nothing drains the AU queues, so the
-@@ -2515,7 +2577,8 @@ fn settle_missing_route_start() {
+@@ -2515,7 +2578,8 @@ fn settle_missing_route_start() {
      }
  }
  
@@ -21123,7 +21504,7 @@ index 89261b42..5e77c6b2 100644
      let ticket = crate::route::begin_route_start()?;
      if crate::route::prepare_route_start(ticket) {
          Some(ticket)
-@@ -2525,18 +2588,6 @@ fn prepare_reload_transaction() -> Option<crate::route::RouteStartTransaction> {
+@@ -2525,18 +2589,6 @@ fn prepare_reload_transaction() -> Option<crate::route::RouteStartTransaction> {
      }
  }
  
@@ -21142,7 +21523,7 @@ index 89261b42..5e77c6b2 100644
  /// Start the side subtitle reader for the live remux this engine run plays, drawing the track
  /// the route's target names.
  fn start_side_reader(target: &crate::route::SideReaderTarget, style: super::text_style::TextStyle) {
-@@ -2551,7 +2602,7 @@ fn start_side_reader(target: &crate::route::SideReaderTarget, style: super::text
+@@ -2551,7 +2603,7 @@ fn start_side_reader(target: &crate::route::SideReaderTarget, style: super::text
  }
  
  fn reload_transcode_start(ps: &mut crate::route::PlaybackSession, pa: &mut super::adapter::PlayerAdapter, offset_ns: i64) -> Option<BufferfeedStartOutcome> {
@@ -21151,7 +21532,7 @@ index 89261b42..5e77c6b2 100644
      log(&format!(
          "reload_transcode: fresh Load at offset {}s",
          offset_ns / 1_000_000_000
-@@ -2589,25 +2640,52 @@ pub fn reload_at(ps: &mut crate::route::PlaybackSession, pa: &mut super::adapter
+@@ -2589,25 +2641,52 @@ pub fn reload_at(ps: &mut crate::route::PlaybackSession, pa: &mut super::adapter
          settle_missing_route_start();
          return ReloadOutcome::NoRoute;
      }
@@ -21217,7 +21598,7 @@ index 89261b42..5e77c6b2 100644
  /// request was accepted, not that a new first frame has already been presented.
  pub fn restart_current(
      ps: &mut crate::route::PlaybackSession,
-@@ -2620,6 +2698,10 @@ pub fn restart_current(
+@@ -2620,6 +2699,10 @@ pub fn restart_current(
      if crate::route::external_source(ps).is_some() {
          return reload_at(ps, pa, position) == ReloadOutcome::Started;
      }
@@ -21228,7 +21609,7 @@ index 89261b42..5e77c6b2 100644
      // Validate before teardown: a source that cannot be reconstructed must retain
      // its current picture/error state instead of being replaced with an idle frame.
      if !crate::route::can_retry_current_play(ps) {
-@@ -2735,7 +2817,8 @@ mod external_restart_tests {
+@@ -2735,7 +2818,8 @@ mod external_restart_tests {
          crate::route::reset_player_control_for_test(&ps);
          let info = crate::ff::inspect::MediaInfo {
              tracks: Default::default(),
@@ -21238,7 +21619,7 @@ index 89261b42..5e77c6b2 100644
              width: 1280, height: 720, fps: 25.0, duration_ns: 0,
              audio_channels: 2, audio_sample_rate: 48000, audio_bit_depth: 16,
              dovi: plx_data::metadata::Dovi::NONE,
-@@ -2825,7 +2908,11 @@ pub fn release_failed_engine(ps: &mut crate::route::PlaybackSession, pa: &mut su
+@@ -2825,7 +2909,11 @@ pub fn release_failed_engine(ps: &mut crate::route::PlaybackSession, pa: &mut su
      }
      FAILED_ENGINE_RELEASE_ARMED.store(false, Ordering::Release);
      let cause = super::live_runtime_failure(ps);
@@ -21250,7 +21631,7 @@ index 89261b42..5e77c6b2 100644
      log("player: the failed Engine's pipeline is released under the failure read-out");
      teardown(ps, pa, true);
      true
-@@ -3907,7 +3994,16 @@ pub fn try_prime(mt: &MainThread, eng: &mut Engine, volume: &mut super::volume::
+@@ -3907,7 +3995,16 @@ pub fn try_prime(mt: &MainThread, eng: &mut Engine, volume: &mut super::volume::
          }
          HlsPrimeKind::Fresh | HlsPrimeKind::Resume => balanced_runway_ready,
      };
@@ -21268,7 +21649,7 @@ index 89261b42..5e77c6b2 100644
          let Some((play_token, recovery)) =
              SHARED.reserve_hls_prime_play(prime_kind, candidate_generation, recovery)
          else {
-@@ -4021,6 +4117,7 @@ fn feed_stream(mt: &MainThread, eng: &mut Engine, volume: &mut super::volume::Vo
+@@ -4021,6 +4118,7 @@ fn feed_stream(mt: &MainThread, eng: &mut Engine, volume: &mut super::volume::Vo
              if es == 1 && key != 0 {
                  let completing_in_place_seek = eng.flushed;
                  let mut segment_installed = false;
@@ -21276,7 +21657,7 @@ index 89261b42..5e77c6b2 100644
                  // In-place seek: drop a keyframe that landed well AHEAD of the target — it's a stale
                  // frame from the pre-flush read position (the reopen+av_seek hasn't taken effect yet),
                  // not the real post-seek keyframe. Capped so a failed av_seek can't hang the rebase.
-@@ -4056,8 +4153,13 @@ fn feed_stream(mt: &MainThread, eng: &mut Engine, volume: &mut super::volume::Vo
+@@ -4056,8 +4154,13 @@ fn feed_stream(mt: &MainThread, eng: &mut Engine, volume: &mut super::volume::Vo
                      // refuses it, and a negative PTS is unparseable by Feed.
                      SHARED.pts_shift.store(0, Ordering::Relaxed);
                      let ms = super::to_sink_ns(pts.max(0)) / 1_000_000;
@@ -21292,7 +21673,7 @@ index 89261b42..5e77c6b2 100644
                      if rv == 0 {
                          // A refused Seek can leave the pipeline refusing every Feed. Drop the rest
                          // of THIS SESSION's seeks to the reload path and redo THIS one as a
-@@ -4137,7 +4239,7 @@ fn feed_stream(mt: &MainThread, eng: &mut Engine, volume: &mut super::volume::Vo
+@@ -4137,7 +4240,7 @@ fn feed_stream(mt: &MainThread, eng: &mut Engine, volume: &mut super::volume::Vo
                      SHARED.pts_shift.store(-pts, Ordering::Relaxed);
                  }
                  eng.rebase_pending = false; // releases the AUDIO lane (which holds until this clears)
@@ -21301,7 +21682,7 @@ index 89261b42..5e77c6b2 100644
                                                                                      // Installing a SEGMENT is not acceptance of the AU which establishes it. Keep
                                                                                      // callbacks fenced across BufferFull/error and arm only below, after this exact
                                                                                      // retained keyframe has returned `O` from sf_feed.
-@@ -6362,6 +6464,79 @@ mod off_frame_release_tests {
+@@ -6362,6 +6465,97 @@ mod off_frame_release_tests {
          crate::player::adapter::PlayerAdapter::new(unsafe { MainThread::assume() })
      }
  
@@ -21323,7 +21704,7 @@ index 89261b42..5e77c6b2 100644
 +
 +    #[test]
 +    fn failure_details_keep_zero_frame_first_cause_but_reject_a_new_load_owner() {
-+        use super::super::report::{failure_details_now, DemuxExitClass, FailureDetails};
++        use super::super::report::{failure_details_now, DemuxExitClass, FailureDetails, IoFailureDetails};
 +        let _serial = plx_base::testlock::serial();
 +        let mut ps = crate::route::PlaybackSession::IDLE;
 +        let mut pa = arm(&ps);
@@ -21332,13 +21713,23 @@ index 89261b42..5e77c6b2 100644
 +        let epoch = diagnostic_engine(&mut ps, &mut pa);
 +        assert_eq!(SHARED.frames.load(Ordering::Relaxed), 0);
 +        assert_eq!(failure_details_now(&ps, &mut pa), Some(FailureDetails {
-+            demux_exit: DemuxExitClass::None, pipeline_error: 0,
++            demux_exit: DemuxExitClass::None, pipeline_error: 0, io_failure: None,
 +        }));
++        assert!(!SHARED.note_io_failure_for(0, IoFailureDetails::AudioDecode));
++        assert_eq!(SHARED.io_failure(), None);
++        assert!(SHARED.note_io_failure_for(epoch, IoFailureDetails::AutoFallback));
++        assert!(!SHARED.note_io_failure_for(epoch, IoFailureDetails::AudioDecode));
++        assert_eq!(SHARED.io_failure(), Some(IoFailureDetails::AutoFallback));
++        assert!(!SHARED.demux_io_failed.load(Ordering::Acquire), "diagnostic evidence must not raise IO failure");
++        assert!(!SHARED.demux_failed.load(Ordering::Acquire), "diagnostic evidence must not raise demux failure");
 +        SHARED.fail_demux(DemuxExitClass::HttpsOpenFailed);
 +        SHARED.note_demux_exit(DemuxExitClass::NoAccessUnits);
 +        super::super::sf_on_event(epoch, 18, 601, c"private callback text".as_ptr());
 +        super::super::sf_on_event(epoch, 18, 602, c"later callback".as_ptr());
-+        let expected = Some(FailureDetails { demux_exit: DemuxExitClass::HttpsOpenFailed, pipeline_error: 601 });
++        let expected = Some(FailureDetails {
++            demux_exit: DemuxExitClass::HttpsOpenFailed, pipeline_error: 601,
++            io_failure: Some(IoFailureDetails::AutoFallback),
++        });
 +        assert_eq!(failure_details_now(&ps, &mut pa), expected);
 +        crate::route::fail_current_engine();
 +        assert_eq!(failure_details_now(&ps, &mut pa), expected, "terminal reducer phase still owns this Engine");
@@ -21353,7 +21744,7 @@ index 89261b42..5e77c6b2 100644
 +
 +    #[test]
 +    fn failure_details_reject_retired_native_epoch_and_pre_engine_refusal() {
-+        use super::super::report::{failure_details_now, DemuxExitClass};
++        use super::super::report::{failure_details_now, DemuxExitClass, IoFailureDetails};
 +        let _serial = plx_base::testlock::serial();
 +        let mut ps = crate::route::PlaybackSession::IDLE;
 +        let mut pa = arm(&ps);
@@ -21361,14 +21752,22 @@ index 89261b42..5e77c6b2 100644
 +        TX.reset();
 +        let epoch = diagnostic_engine(&mut ps, &mut pa);
 +        SHARED.fail_demux(DemuxExitClass::HttpOpenFailed);
-+        assert!(failure_details_now(&ps, &mut pa).is_some());
++        assert!(SHARED.note_io_failure_for(epoch, IoFailureDetails::AutoFallback));
++        assert_eq!(failure_details_now(&ps, &mut pa).unwrap().io_failure, Some(IoFailureDetails::AutoFallback));
 +        ps.jail_load_blocked = true;
 +        assert_eq!(failure_details_now(&ps, &mut pa), None, "pre-Engine failure owns no native detail");
 +        ps.jail_load_blocked = false;
 +        assert!(SHARED.retire_native_session(epoch));
++        assert!(!SHARED.note_io_failure_for(epoch, IoFailureDetails::AudioDecode));
 +        SHARED.reset_session();
++        assert_eq!(SHARED.io_failure(), None, "reset clears the retired epoch evidence");
++        assert!(!SHARED.note_io_failure_for(epoch, IoFailureDetails::AudioDecode));
 +        let next_epoch = SHARED.begin_native_session().expect("different native epoch");
 +        assert_ne!(epoch, next_epoch);
++        assert!(!SHARED.note_io_failure_for(epoch, IoFailureDetails::AutoFallback));
++        assert_eq!(SHARED.io_failure(), None, "a late producer cannot contaminate its successor");
++        assert!(SHARED.note_io_failure_for(next_epoch, IoFailureDetails::AudioDecode));
++        assert_eq!(SHARED.io_failure(), Some(IoFailureDetails::AudioDecode));
 +        super::super::sf_on_event(epoch, 18, 601, c"stale callback".as_ptr());
 +        assert_eq!(SHARED.dg_cb_err_num.load(Ordering::Relaxed), 0);
 +        SHARED.pb_state.store(super::super::PlaybackState::Error as u8, Ordering::Relaxed);
@@ -21381,7 +21780,7 @@ index 89261b42..5e77c6b2 100644
      #[test]
      fn a_stop_returns_before_the_unload_and_the_next_start_is_deferred_until_its_tail_ran() {
          let mut ps = crate::route::PlaybackSession::IDLE;
-@@ -7504,7 +7679,7 @@ mod load_in_flight_tests {
+@@ -7504,7 +7698,7 @@ mod load_in_flight_tests {
          let start = crate::route::begin_route_start().expect("a completed stop grants a start owner");
          // No URL is set, so an unguarded start would answer `NoRoute`; `StartFailed` is the refusal.
          assert_eq!(
@@ -21390,7 +21789,7 @@ index 89261b42..5e77c6b2 100644
              Some(crate::route::RouteStartResult::StartFailed),
              "a later playback must not be handed the object an abandoned Load still owns"
          );
-@@ -8753,6 +8928,50 @@ mod native_seek_tests {
+@@ -8753,6 +8947,50 @@ mod native_seek_tests {
          assert_eq!(crate::player::seek_mode(), SeekMode::NativeSeek);
      }
  
@@ -21441,7 +21840,7 @@ index 89261b42..5e77c6b2 100644
      #[test]
      fn a_pre_zero_keyframe_seeks_to_zero_not_negative() {
          let _serial = plx_base::testlock::serial();
-@@ -9459,3 +9678,49 @@ mod pcm_sink_lead_tests {
+@@ -9459,3 +9697,49 @@ mod pcm_sink_lead_tests {
          );
      }
  }
@@ -21782,7 +22181,7 @@ index 059ba39d..b88d56aa 100644
              )
          );
 diff --git a/rust-modules/media/src/player/pump.rs b/rust-modules/media/src/player/pump.rs
-index efd720df..fd74c926 100644
+index efd720df..dbd1cce9 100644
 --- a/rust-modules/media/src/player/pump.rs
 +++ b/rust-modules/media/src/player/pump.rs
 @@ -1233,6 +1233,12 @@ fn native_audio_tail(
@@ -21798,7 +22197,17 @@ index efd720df..fd74c926 100644
      let idx = SHARED.desired_audio_idx.load(Relaxed);
      land_prepared_route(
          ps,
-@@ -1441,7 +1447,14 @@ fn settle_paused_seek(pa: &mut super::adapter::PlayerAdapter, now: u32) {
+@@ -1326,6 +1332,9 @@ fn land_automatic_hls(
+                 return false;
+             }
+             super::log(msg);
++            if let Some(engine) = pa.engine() {
++                SHARED.note_io_failure_for(engine.native_epoch, super::report::IoFailureDetails::AutoFallback);
++            }
+             SHARED.demux_io_failed.store(true, Relaxed);
+             false
+         }
+@@ -1441,7 +1450,14 @@ fn settle_paused_seek(pa: &mut super::adapter::PlayerAdapter, now: u32) {
          && SHARED.frames.load(Relaxed) >= 1
          && plane_shows_the_picture(eng)
          && SHARED.playpos_ns.load(Relaxed) + 15 * 1_000_000_000 >= target;
@@ -21814,7 +22223,7 @@ index efd720df..fd74c926 100644
          super::finish_paused_seek(pa);
      }
  }
-@@ -1580,6 +1593,12 @@ fn pump_with_before_feed(
+@@ -1580,6 +1596,12 @@ fn pump_with_before_feed(
      // result here, after installation and before any worker publication can be accepted.
      crate::route::drain_route_start_results(ps);
      inject_refuse601(ps, eng);
@@ -21827,7 +22236,7 @@ index efd720df..fd74c926 100644
      // A failed open's recovery flight (the Original rollback's rebase, the unopened source's HLS
      // fallback, the refused native audio's conversion): land it, or wait for it. Ahead of every
      // failure branch below, whose flags stay up
-@@ -1733,6 +1752,8 @@ fn pump_with_before_feed(
+@@ -1733,6 +1755,8 @@ fn pump_with_before_feed(
          // `Applying` the whole time, so `claim_route_action` below never fires for the SAME action
          // while this is pending; it only starts returning `Some` again once `run_claim_tail`
          // settles the drained landing.
@@ -21836,7 +22245,7 @@ index efd720df..fd74c926 100644
          let ready = crate::route::take_ready_flight(ps, TX.seek_to_ns.load(Relaxed) >= 0);
          if let Some(crate::route::ReadyFlight::Claim { action, tail, pending_seek, user_target }) = ready {
              // The claim held presentation at its offset for the flight (`claim_hold`). Give play
-@@ -2145,6 +2166,7 @@ fn pump_with_before_feed(
+@@ -2145,6 +2169,7 @@ fn pump_with_before_feed(
                  super::sink().flush(mt); // drop decoded/queued frames only after the clock is really held
              }
          }
@@ -21844,7 +22253,7 @@ index efd720df..fd74c926 100644
          drain_aq(eng);
          // in-place direct-play seek: publish the target and let the DEMUX THREAD av_seek_frame
          // between two reads (ff.rs's inner loop). Nothing here interrupts the socket: the pump
-@@ -2489,7 +2511,15 @@ fn pump_with_before_feed(
+@@ -2489,7 +2514,15 @@ fn pump_with_before_feed(
      if eng.eos_pushed && !SHARED.ended.load(Relaxed) {
          let dur = SHARED.duration_ns.load(Relaxed);
          let pos = SHARED.playpos_ns.load(Relaxed);
@@ -21861,7 +22270,16 @@ index efd720df..fd74c926 100644
              SHARED.ended.store(true, Relaxed);
              super::log(&format!(
                  "EOS reached: playpos={}s/{}s → ended",
-@@ -3425,15 +3455,35 @@ mod flight_tests {
+@@ -3411,6 +3444,8 @@ mod flight_tests {
+         assert!(!crate::route::is_segmented_hls(&rig.ps));
+         assert_eq!(engine_epoch(&mut rig), epoch, "a rejection reloads nothing");
+         assert!(SHARED.demux_io_failed.load(Acquire), "the handoff's producer is gone: the pump's recovery owns it");
++        assert_eq!(SHARED.io_failure(), Some(super::super::report::IoFailureDetails::AutoFallback),
++            "the accepted refusal records why its producer can no longer continue");
+         assert!(!super::super::claim_hold::active() && !TX.paused.load(Acquire));
+         rig.flight.wait_for("the refused replacement's stop", |f| {
+             f.stopped().iter().any(|s| s.starts_with("rig-logical-abr-"))
+@@ -3425,15 +3460,39 @@ mod flight_tests {
      #[test]
      fn a_terminal_error_releases_the_pipeline_and_keeps_the_read_out() {
          let mut rig = Rig::new(120);
@@ -21874,6 +22292,8 @@ index efd720df..fd74c926 100644
 +        SHARED.note_demux_exit(super::super::report::DemuxExitClass::HttpsOpenFailed);
 +        SHARED.note_demux_exit(super::super::report::DemuxExitClass::NoAccessUnits);
 +        let epoch = engine_epoch(&mut rig).expect("current Engine epoch");
++        assert!(SHARED.note_io_failure_for(epoch, super::super::report::IoFailureDetails::AutoFallback));
++        assert!(!SHARED.note_io_failure_for(epoch, super::super::report::IoFailureDetails::AudioDecode));
 +        super::super::sf_on_event(epoch, 18, 601, c"private failure text".as_ptr());
          SHARED.demux_io_failed.store(true, Release);
          let cause_before = crate::player::error_now(&rig.ps).kind;
@@ -21888,16 +22308,18 @@ index efd720df..fd74c926 100644
          assert_eq!(crate::player::error_now(&rig.ps).kind, cause_before, "and keeps its cause");
 +        assert_eq!(SHARED.dg_demux_exit.load(Relaxed), 0, "the real teardown cleared live diagnostics");
 +        assert_eq!(SHARED.dg_cb_err_num.load(Relaxed), 0);
++        assert_eq!(SHARED.io_failure(), None, "teardown resets the live IO evidence");
 +        let details_after = super::super::report::error_context_for_test(&rig.ps);
 +        assert_eq!(details_after.demux_exit, details_before.demux_exit, "the released failure keeps its first demux cause");
 +        assert_eq!(details_after.pipeline_error, details_before.pipeline_error, "the released failure keeps its callback number");
 +        assert_eq!(super::super::report::failure_details_now(&rig.ps, &mut rig.pa), Some(super::super::report::FailureDetails {
 +            demux_exit: details_before.demux_exit, pipeline_error: details_before.pipeline_error,
++            io_failure: Some(super::super::report::IoFailureDetails::AutoFallback),
 +        }), "shipping reader uses the same retained context without an Engine");
          assert_eq!(
              crate::route::unpresented_resume_ns(&rig.ps),
              60_000_000_000,
-@@ -3441,6 +3491,36 @@ mod flight_tests {
+@@ -3441,6 +3500,38 @@ mod flight_tests {
          );
          rig.frame();
          assert_eq!(crate::player::state(&rig.ps), crate::player::PlaybackState::Error, "still, a frame later");
@@ -21918,6 +22340,8 @@ index efd720df..fd74c926 100644
 +        assert_eq!(crate::player::error_now(&rig.ps).kind, cause_before, "the existing read-out retains A's kind");
 +        assert_eq!(super::super::report::failure_details_now(&rig.ps, &mut rig.pa), None,
 +            "healthy B must not borrow released A's details");
++        assert!(!SHARED.note_io_failure_for(epoch, super::super::report::IoFailureDetails::AutoFallback));
++        assert!(SHARED.note_io_failure_for(next_epoch, super::super::report::IoFailureDetails::AudioDecode));
 +        SHARED.fail_demux(super::super::report::DemuxExitClass::NoFraming);
 +        super::super::sf_on_event(next_epoch, 18, 602, c"replacement failure".as_ptr());
 +        SHARED.load_timed_out.store(true, Release);
@@ -21934,7 +22358,7 @@ index efd720df..fd74c926 100644
      }
  
      /// Back from the read-out after the release still ends the playback, once: the real stop runs
-@@ -5534,6 +5614,67 @@ mod native_seek_pump_tests {
+@@ -5534,6 +5625,67 @@ mod native_seek_pump_tests {
          viewer_paused_seek_lands_in_place(SeekMode::NativeSeek);
      }
  
@@ -22032,30 +22456,56 @@ index c7add836..bcb503be 100644
  
      fn run(m: &mut NativeRelease, ev: ReleaseEvent) -> Vec<ReleaseEffect> {
 diff --git a/rust-modules/media/src/player/report.rs b/rust-modules/media/src/player/report.rs
-index 512682ee..98b6d465 100644
+index 512682ee..8fadfe97 100644
 --- a/rust-modules/media/src/player/report.rs
 +++ b/rust-modules/media/src/player/report.rs
-@@ -609,6 +609,66 @@ fn transport_classes(
+@@ -609,6 +609,92 @@ fn transport_classes(
      (class, TransferAgeClass::from_ms(age_ms))
  }
  
++/// First terminal producer-IO observation, separate from the playback failure policy.
++/// Only closed diagnostic classes cross this boundary; no source or error text is retained.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum IoFailureDetails {
++    /// The frame read failed after its source reported an unrecovered IO error.
++    /// `None` means no curl-specific cause was available, not that IO succeeded.
++    SourceIo { transport: TransportClass },
++    Hls { exit: DemuxExitClass, outcome: Option<TraceOutcome> },
++    /// The still-current automatic handoff was rejected, not necessarily by the server.
++    AutoFallback,
++    /// An audio decoder returned an error; its private diagnostic text is not retained.
++    AudioDecode,
++    /// An existing producer-IO failure outside the branches above. `demux_exit` may
++    /// still carry its more specific cause (for example, audio/video starvation).
++    Unclassified,
++}
++
++impl IoFailureDetails {
++    pub fn source_io(rc: i32, reopen_failed: bool) -> Self {
++        Self::SourceIo { transport: transport_classes(rc, -1, reopen_failed).0 }
++    }
++}
++
 +/// Closed, source-free details of one attributed native error observation.
 +/// `None` from [`failure_details_now`] means no current native evidence; a value
-+/// containing `DemuxExitClass::None` and zero means the current Engine recorded neither.
++/// containing `DemuxExitClass::None` and zero means neither demux exit nor pipeline
++/// error was recorded; `io_failure` may still explain the producer's terminal failure.
 +#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 +pub struct FailureDetails {
 +    pub demux_exit: DemuxExitClass,
 +    pub pipeline_error: i32,
++    pub io_failure: Option<IoFailureDetails>,
 +}
 +
 +impl FailureDetails {
-+    const NONE: Self = Self { demux_exit: DemuxExitClass::None, pipeline_error: 0 };
++    const NONE: Self = Self { demux_exit: DemuxExitClass::None, pipeline_error: 0, io_failure: None };
 +}
 +
 +fn live_failure_details() -> FailureDetails {
 +    FailureDetails {
 +        demux_exit: DemuxExitClass::from_latch(super::SHARED.dg_demux_exit.load(Relaxed)),
 +        pipeline_error: super::SHARED.dg_cb_err_num.load(Relaxed),
++        io_failure: super::SHARED.io_failure(),
 +    }
 +}
 +
@@ -22102,7 +22552,7 @@ index 512682ee..98b6d465 100644
  fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
      let delivery = delivery_class(ps);
      let selected = selected_quality_class(crate::route::quality());
-@@ -628,6 +688,13 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
+@@ -628,6 +714,13 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
      };
      let http_status = super::SHARED.dg_http_status.load(Relaxed);
      let (attempt_origin, attempt_ordinal) = attempt_snapshot();
@@ -22116,7 +22566,7 @@ index 512682ee..98b6d465 100644
      let context = PlaybackErrorContext {
          delivery,
          selected,
-@@ -640,7 +707,7 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
+@@ -640,7 +733,7 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
          buffer: BufferClass::from_ms(super::SHARED.dg_abr_buffer_ms.load(Relaxed)),
          transport,
          transfer_age,
@@ -22125,7 +22575,7 @@ index 512682ee..98b6d465 100644
          started: SAW_START.load(Relaxed),
          // A refusal names the route it asked the server for; else the route a noted switch is
          // opening; else the session's own, which is also the attempt's when nothing was switched.
-@@ -649,7 +716,7 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
+@@ -649,7 +742,7 @@ fn error_context(ps: &crate::route::PlaybackSession) -> PlaybackErrorContext {
          attempt_origin,
          attempt_ordinal,
          http_status: HttpClass::exact_status(http_status),
@@ -22134,6 +22584,69 @@ index 512682ee..98b6d465 100644
          refusal,
      };
      if crate::route::preview_request(ps) {
+diff --git a/rust-modules/media/src/player/shared.rs b/rust-modules/media/src/player/shared.rs
+index 7b665dc8..df510eff 100644
+--- a/rust-modules/media/src/player/shared.rs
++++ b/rust-modules/media/src/player/shared.rs
+@@ -909,6 +909,9 @@ pub struct Shared {
+     /// teardown cascade that follows it must not overwrite it. Read by the handled playback error
+     /// as a class. Cleared per session beside the other `dg_*` latches.
+     pub dg_demux_exit: AtomicU8,
++    /// First whole IO observation. Writers hold `native_session` before this lock;
++    /// reset uses the same order, so an old producer cannot label a new epoch.
++    io_failure: Mutex<Option<super::report::IoFailureDetails>>,
+     /// SDL ticks when `loadCompleted` landed, and when `frames` last CHANGED. A photograph has no
+     /// time axis: "Load completed, 0 frames" is innocent at 2 s and damning at 4 minutes, and the
+     /// panel cannot tell the difference without these. Stamped in the pump, never in `app::diagnostics` —
+@@ -1037,6 +1040,24 @@ impl Shared {
+             .compare_exchange(0, exit.latch(), Ordering::AcqRel, Ordering::Relaxed);
+     }
+ 
++    /// Attribute the first terminal IO detail to the producer's captured native
++    /// epoch. This is diagnostic only: callers retain their existing failure flags.
++    /// Keep lock ordering identical to reset: native session, then IO observation.
++    pub fn note_io_failure_for(&self, epoch: u32, detail: super::report::IoFailureDetails) -> bool {
++        self.with_native_session(epoch, NativeEventClass::Other, 0, || {
++            let mut first = self.io_failure.lock().unwrap_or_else(|e| e.into_inner());
++            if first.is_some() { return false; }
++            *first = Some(detail);
++            true
++        }).unwrap_or(false)
++    }
++
++    /// A snapshot, never a live lookup by the remote reader. Native attribution
++    /// is checked by `failure_details_now` before this is included in a reply.
++    pub(crate) fn io_failure(&self) -> Option<super::report::IoFailureDetails> {
++        *self.io_failure.lock().unwrap_or_else(|e| e.into_inner())
++    }
++
+     /// Raise `demux_failed` AND name the exit that raised it (first wins, see `note_demux_exit`).
+     /// The one way the demuxer or the Load builder fails the session through that flag.
+     pub fn fail_demux(&self, exit: plx_telemetry::telemetry::classes::DemuxExitClass) {
+@@ -1069,6 +1090,7 @@ impl Shared {
+             dg_transport_age_ms: AtomicI64::new(-1),
+             dg_transport_reopen_failed: AtomicBool::new(false),
+             dg_demux_exit: AtomicU8::new(0),
++            io_failure: Mutex::new(None),
+             dg_net_rx: AtomicI64::new(0),
+             side_anchor: Mutex::new(None),
+             side_subs_owner: AtomicBool::new(false),
+@@ -1187,6 +1209,7 @@ impl Shared {
+             return None;
+         }
+         let epoch = state.next();
++        *self.io_failure.lock().unwrap_or_else(|e| e.into_inner()) = None;
+         state.phase = NativeSessionPhase::Active {
+             epoch,
+             presentation_gate: NativePresentationGate::Armed,
+@@ -1786,6 +1809,7 @@ impl Shared {
+         self.dg_transport_age_ms.store(-1, Ordering::Relaxed);
+         self.dg_transport_reopen_failed.store(false, Ordering::Relaxed);
+         self.dg_demux_exit.store(0, Ordering::Relaxed);
++        *self.io_failure.lock().unwrap_or_else(|e| e.into_inner()) = None;
+         self.dg_net_rx.store(0, Ordering::Relaxed);
+         self.dg_load_at.store(0, Ordering::Relaxed);
+         self.dg_frame_at.store(0, Ordering::Relaxed);
 diff --git a/rust-modules/media/src/player/sidecar.rs b/rust-modules/media/src/player/sidecar.rs
 index af84e521..c9df751c 100644
 --- a/rust-modules/media/src/player/sidecar.rs
@@ -59869,7 +60382,7 @@ index 00000000..e49c5e6a
 +    Ok(true)
 +}
 diff --git a/rust-modules/src/app/ott_commands.rs b/rust-modules/src/app/ott_commands.rs
-index 4ee617b9..8b6ce010 100644
+index 4ee617b9..f832eaa5 100644
 --- a/rust-modules/src/app/ott_commands.rs
 +++ b/rust-modules/src/app/ott_commands.rs
 @@ -4,9 +4,40 @@ use super::*;
@@ -60088,7 +60601,7 @@ index 4ee617b9..8b6ce010 100644
          return Some(category_select_rejection(runtime, inv, "restricted")
              .unwrap_or_else(|| policy_rejection(inv, error)));
      }
-@@ -947,6 +1042,7 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -947,13 +1042,24 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
          favorites_items::ACTION => favorites_items::command(runtime, app, inv),
          "kiosk" => kiosk::command(runtime, app, inv),
          "media_tracks" => media_tracks::command(runtime,app,inv,Runtime::track_selection_kiosk),
@@ -60096,16 +60609,27 @@ index 4ee617b9..8b6ce010 100644
          "local_media" => super::transient::command(runtime,app,inv),
          "plex_queue" | "plex_library" => super::transient::plex_remote::command(runtime, app, inv),
          "state" | "status" => {
-@@ -954,6 +1050,8 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
-                 return Some(rejected("The state query accepts no parameters"));
-             }
+-            if !fields(p, &[]) {
+-                return Some(rejected("The state query accepts no parameters"));
+-            }
++            let version = if fields(p, &[]) {
++                playback_failure::Version::V2
++            } else if fields(p, &["playback_failure_version"]) {
++                match p["playback_failure_version"].as_u64() {
++                    Some(2) => playback_failure::Version::V2,
++                    Some(3) => playback_failure::Version::V3,
++                    _ => return Some(rejected("playback_failure_version must be 2 or 3")),
++                }
++            } else {
++                return Some(rejected("The state query accepts only playback_failure_version"));
++            };
              let mut value = state(app, runtime);
 +            value["row_guide"] = runtime.row_guide_diagnostics();
 +            value["provider_context"] = provider_context(runtime);
              value["uuid"] = json!(runtime.remote.device_id());
              if value.get("provider").is_none() {
                  value["provider"] = json!(wire_provider(runtime.effective_provider()));
-@@ -962,11 +1060,17 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -962,11 +1068,20 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
                  runtime.loaded && (!runtime.catalog_loading || !runtime.catalog.entries.is_empty())
              );
              value["channels"] = json!(runtime.catalog.entries.len());
@@ -60114,7 +60638,10 @@ index 4ee617b9..8b6ce010 100644
 +                runtime.generation, runtime.catalog_loading, runtime.catalog_complete,
 +                runtime.catalog.entries.len()));
 +            value["preplay"] = json!(runtime.preplay.snapshot(runtime.now_ms()));
-+            value["playback_failure"] = json!(runtime.playback_failure.snapshot());
++            value["playback_failure"] = json!(match version {
++                playback_failure::Version::V2 => runtime.playback_failure.snapshot(),
++                playback_failure::Version::V3 => runtime.playback_failure.snapshot_version(version),
++            });
              Some(ok(value))
          }
          "capabilities" => {
@@ -60125,9 +60652,11 @@ index 4ee617b9..8b6ce010 100644
                      .iter()
                      .any(|key| p.get(*key).is_some_and(|value| value.as_bool() != Some(true)))
              {
-@@ -988,11 +1092,16 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+@@ -987,12 +1102,18 @@ pub(super) fn command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) ->
+                 "vportal_settings":{"version":1},"player_settings":{"version":1,"operations":["schema","get","set"],"max_page_size":20},
                  "favorites_global":plx_data::ott::favorites_wire::Protocol::capability(),
                  "favorites_global_items":{"version":1}});
++            data["playback_failure_versions"] = json!([2, 3]);
              data["favorites_global_recovery"] = favorites_recovery::capability();
 +            if runtime.usb_remote_capable() {
 +                data["local_browser"] = json!({"version":1,"operations":["roots","list","more","select"],"max_entries":64});
@@ -60142,7 +60671,7 @@ index 4ee617b9..8b6ce010 100644
              data["plex_library"] = crate::app::ott_plex_queue::library_capability();
              data["plex_library_truncation"] = json!({"version":1});
              if media_tracks::supports_current(runtime, app, Runtime::track_selection_kiosk) {
-@@ -1274,11 +1383,21 @@ pub(super) fn track_request_pending(runtime: &Runtime) -> bool {
+@@ -1274,11 +1395,21 @@ pub(super) fn track_request_pending(runtime: &Runtime) -> bool {
      media_tracks::has_pending(runtime)
  }
  
@@ -60164,7 +60693,7 @@ index 4ee617b9..8b6ce010 100644
      let now = runtime.now_ms();
      media_tracks::poll_pending(runtime, app, Runtime::track_selection_kiosk, Some(now));
      media_tracks::retire_stale(runtime,app,Runtime::track_selection_kiosk);
-@@ -1509,6 +1628,95 @@ mod tests {
+@@ -1509,6 +1640,95 @@ mod tests {
              .to_string()
              .contains("fixture"));
      }
@@ -60260,7 +60789,7 @@ index 4ee617b9..8b6ce010 100644
      #[test]
      fn invalid_source_is_atomic_and_sparse_slots_keep_their_numbers() {
          let mut saved = Saved::default();
-@@ -1587,3 +1795,7 @@ pub(super) fn category_select_settled(runtime: &Runtime, inv: &Invocation, saved
+@@ -1587,3 +1807,7 @@ pub(super) fn category_select_settled(runtime: &Runtime, inv: &Invocation, saved
      applied: bool, response: Value) -> Value {
      catalog_remote::select_settled(runtime, inv, saved, applied, response)
  }
@@ -77763,14 +78292,15 @@ index d4e13b20..8a2e0a9d 100644
 +}
 diff --git a/rust-modules/src/app/ott_playback_failure.rs b/rust-modules/src/app/ott_playback_failure.rs
 new file mode 100644
-index 00000000..96bca325
+index 00000000..f61999fa
 --- /dev/null
 +++ b/rust-modules/src/app/ott_playback_failure.rs
-@@ -0,0 +1,82 @@
+@@ -0,0 +1,135 @@
 +//! One passive, process-local failure observation after native admission.
 +//! Private playback ownership never enters the live command reply.
 +//! Details are captured with the cause, never sampled from a later playback during a read.
-+use plx_media::{player::{report::FailureDetails, FailureKind}, route::PlaybackIdentity};
++use plx_media::{player::{report::{FailureDetails, IoFailureDetails}, FailureKind}, route::PlaybackIdentity};
++use plx_telemetry::telemetry::classes::{DemuxExitClass, TraceOutcome};
 +use serde::Serialize;
 +
 +// No Debug or Serialize: ownership is internal, not remote metadata.
@@ -77790,6 +78320,9 @@ index 00000000..96bca325
 +    details: Option<FailureDetails>,
 +}
 +
++#[derive(Clone, Copy)]
++pub(super) enum Version { V2, V3 }
++
 +#[derive(Serialize)]
 +pub(super) struct Snapshot {
 +    version: u8,
@@ -77799,9 +78332,47 @@ index 00000000..96bca325
 +}
 +
 +#[derive(Serialize)]
-+struct ContextSnapshot {
-+    demux_exit: &'static str,
-+    pipeline_error: i32,
++#[serde(untagged)]
++enum ContextSnapshot {
++    V2 { demux_exit: &'static str, pipeline_error: i32 },
++    V3 { demux_exit: &'static str, pipeline_error: i32, io_failure: Option<IoFailureSnapshot> },
++}
++
++#[derive(Serialize)]
++#[serde(rename_all = "snake_case")]
++enum IoFailureSnapshot {
++    SourceIo { transport: &'static str },
++    Hls { exit: &'static str, outcome: Option<&'static str> },
++    AutoFallback { outcome: &'static str },
++    AudioDecode { outcome: &'static str },
++    Unclassified { outcome: &'static str },
++}
++
++impl From<IoFailureDetails> for IoFailureSnapshot {
++    fn from(details: IoFailureDetails) -> Self {
++        match details {
++            IoFailureDetails::SourceIo { transport } => Self::SourceIo { transport: transport.code() },
++            IoFailureDetails::Hls { exit, outcome } => Self::Hls {
++                exit: match exit {
++                    DemuxExitClass::HlsFailed | DemuxExitClass::HlsNotReady | DemuxExitClass::Other
++                    | DemuxExitClass::HlsPlaylistFetchFailed | DemuxExitClass::HlsPlaylistInvalid
++                    | DemuxExitClass::HlsPlaylistWindow | DemuxExitClass::HlsTransportOpenFailed
++                    | DemuxExitClass::HlsSegmentProbeFailed | DemuxExitClass::HlsSegmentCodec
++                    | DemuxExitClass::HlsVideoFraming | DemuxExitClass::HlsFirstIdr
++                    | DemuxExitClass::HlsShortBody | DemuxExitClass::HlsAudioIdentity
++                    | DemuxExitClass::HlsAudioEmpty | DemuxExitClass::HlsVideoTimestamp
++                    | DemuxExitClass::HlsAudioTimestamp | DemuxExitClass::HlsAudioFraming
++                    | DemuxExitClass::HlsNoVideoAu | DemuxExitClass::HlsSizeLimit
++                    | DemuxExitClass::HlsTransportFailed => exit.code(),
++                    _ => DemuxExitClass::Other.code(),
++                },
++                outcome: outcome.filter(|value| *value == TraceOutcome::Deadline).map(TraceOutcome::code),
++            },
++            IoFailureDetails::AutoFallback => Self::AutoFallback { outcome: "refused" },
++            IoFailureDetails::AudioDecode => Self::AudioDecode { outcome: "inconclusive" },
++            IoFailureDetails::Unclassified => Self::Unclassified { outcome: "inconclusive" },
++        }
++    }
 +}
 +
 +impl State {
@@ -77836,15 +78407,26 @@ index 00000000..96bca325
 +    }
 +
 +    pub(super) fn snapshot(&self) -> Option<Snapshot> {
++        self.snapshot_version(Version::V2)
++    }
++
++    pub(super) fn snapshot_version(&self, version: Version) -> Option<Snapshot> {
 +        let owner = self.owner.as_ref()?;
 +        let failure = self.failure.as_ref()?;
 +        Some(Snapshot {
-+            version: 2,
++            version: match version { Version::V2 => 2, Version::V3 => 3 },
 +            play_generation: owner.generation,
 +            code: failure.kind.code(),
-+            context: failure.details.map(|details| ContextSnapshot {
-+                demux_exit: details.demux_exit.code(),
-+                pipeline_error: details.pipeline_error,
++            context: failure.details.map(|details| match version {
++                Version::V2 => ContextSnapshot::V2 {
++                    demux_exit: details.demux_exit.code(),
++                    pipeline_error: details.pipeline_error,
++                },
++                Version::V3 => ContextSnapshot::V3 {
++                    demux_exit: details.demux_exit.code(),
++                    pipeline_error: details.pipeline_error,
++                    io_failure: details.io_failure.map(IoFailureSnapshot::from),
++                },
 +            }),
 +        })
 +    }
@@ -81773,6 +82355,84 @@ index 94aab814..8124bda6 100644
      let Some(DiscoveryTarget::CatalogUrl(profile)) = remote.discover_address.take() else { panic!("catalog") };
      remote.launch(Kind::Catalog(profile),None,3);
      assert_eq!(remote.snapshot()["find_state"],"error");
+diff --git a/rust-modules/src/app/ott_remote/display.rs b/rust-modules/src/app/ott_remote/display.rs
+index 95d3f007..3f3e58eb 100644
+--- a/rust-modules/src/app/ott_remote/display.rs
++++ b/rust-modules/src/app/ott_remote/display.rs
+@@ -74,7 +74,8 @@ fn private_text(value: &str) -> bool {
+     false
+ }
+ 
+-pub(super) fn media_id(value: &str) -> Option<&str> {
++/// The retained player-state v1 protocol accepts only its original simple IDs.
++pub(super) fn retained_media_id(value: &str) -> Option<&str> {
+     (!value.is_empty()
+         && value.len() <= 128
+         && value
+@@ -83,6 +84,27 @@ pub(super) fn media_id(value: &str) -> Option<&str> {
+     .then_some(value)
+ }
+ 
++/// Live status additionally preserves generated catalog IDs for correlation.
++pub(super) fn media_id(value: &str) -> Option<&str> {
++    if let Some(id) = retained_media_id(value) {
++        return Some(id);
++    }
++    // Catalog identity is the validated profile ID plus ':' and the existing
++    // 16-digit lowercase fingerprint. Keep the full ID for correlation, but
++    // do not admit arbitrary colon-bearing text, URLs or credential syntax.
++    if value.len() > 128 + 1 + 16 {
++        return None;
++    }
++    let (profile, fingerprint) = value.rsplit_once(':')?;
++    (!profile.is_empty()
++        && profile.len() <= 128
++        && profile.bytes().all(|c| c.is_ascii_alphanumeric() || b"_.:-".contains(&c))
++        && fingerprint.len() == 16
++        && fingerprint.bytes().all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
++        && !private_text(value))
++        .then_some(value)
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -160,4 +182,35 @@ mod tests {
+         assert!(media_id("private:42").is_none());
+         assert!(media_id(&"a".repeat(129)).is_none());
+     }
++
++    #[test]
++    fn generated_catalog_media_ids_preserve_the_full_profile_and_fingerprint() {
++        for profile in ["portal-home".to_string(), "native:vportal:Home_2.1".into(), "p".repeat(128)] {
++            let id = format!("{profile}:0123456789abcdef");
++            assert_eq!(media_id(&id), Some(id.as_str()), "{id}");
++        }
++        assert!(media_id(&format!("{}:0123456789abcdef", "p".repeat(129))).is_none());
++        // A larger bound applies only to the generated form, never arbitrary wire IDs.
++        assert!(media_id(&"p".repeat(145)).is_none());
++    }
++
++    #[test]
++    fn generated_catalog_media_ids_reject_private_or_noncanonical_input() {
++        for id in [
++            "private:42", ":0123456789abcdef", "portal:",
++            "portal:0123456789abcde", "portal:0123456789abcdef0",
++            "portal:0123456789abcdeF", "portal:0123456789abcdeg",
++            " portal:0123456789abcdef", "portal:0123456789abcdef ",
++            "portal:0123456789abcdef\n", "portal:\u{200b}0123456789abcdef",
++            "https://example.invalid:0123456789abcdef", "/private:0123456789abcdef",
++            "~/private:0123456789abcdef", "C:\\private:0123456789abcdef",
++            "portal:0123456789abcdef?token=sentinel", "user:password@host:0123456789abcdef",
++            "token:0123456789abcdef", "safe:password:0123456789abcdef",
++            "Authorization:0123456789abcdef", "api_key:0123456789abcdef",
++            "secret:0123456789abcdef", "data:0123456789abcdef",
++            "BLOB:0123456789abcdef", "file:0123456789abcdef",
++        ] {
++            assert!(media_id(id).is_none(), "private or malformed media ID: {id:?}");
++        }
++    }
+ }
 diff --git a/rust-modules/src/app/ott_remote/ingress.rs b/rust-modules/src/app/ott_remote/ingress.rs
 index 257ba7ea..f5afaece 100644
 --- a/rust-modules/src/app/ott_remote/ingress.rs
@@ -82047,7 +82707,7 @@ index 00000000..dd3017f3
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_remote/mod.rs b/rust-modules/src/app/ott_remote/mod.rs
-index 9787079a..bbeaecb5 100644
+index 9787079a..ac2db7d7 100644
 --- a/rust-modules/src/app/ott_remote/mod.rs
 +++ b/rust-modules/src/app/ott_remote/mod.rs
 @@ -7,6 +7,7 @@ use discovery::{CatalogProfile, ControllerBase, DiscoveryTarget};
@@ -82058,6 +82718,15 @@ index 9787079a..bbeaecb5 100644
  mod ingress;
  pub(crate) use protocol::{Config, Invocation};
  use protocol::{Delivery, PairResult, Pairing, Request, SendKind};
+@@ -19,7 +20,7 @@ fn display_text(value: &Value, limit: usize) -> Value {
+         .map_or(Value::Null, Value::String)
+ }
+ 
+-/// One closed, credential-free playback shape for pull status and pushed presence.
++/// Closed, credential-free live playback shape. Retained presence further limits IDs to v1.
+ pub(crate) fn project_playback(value: &Value) -> Value {
+     let mut playback = serde_json::Map::new();
+     playback.insert("title".into(), display_text(&value["title"], 256));
 @@ -60,6 +61,7 @@ enum Kind {
      Delivery(SendKind),
      Discovery,
@@ -82223,7 +82892,22 @@ index 9787079a..bbeaecb5 100644
          } else if let Some(target) = self.discover_address.take() {
              let request = target.request();
              let limit = target.body_limit();
-@@ -767,6 +814,34 @@ impl Remote {
+@@ -670,7 +717,13 @@ impl Remote {
+         // Projection prevents a rich local status snapshot from leaking provider URLs,
+         // credentials, or unsupported metadata into the server's closed presence schema.
+         let p = &state["player"];
+-        let playback = project_playback(&state["playback"]);
++        let mut playback = project_playback(&state["playback"]);
++        // Live status permits generated catalog IDs; retained player-state v1
++        // still requires simple IDs. Omit an unsupported ID, not the whole report.
++        playback["media_id"] = playback["media_id"]
++            .as_str()
++            .and_then(display::retained_media_id)
++            .map_or(Value::Null, |id| json!(id));
+         let platform = display_text(&p["platform"], 32);
+         let platform = if platform.is_null() {
+             json!("webos-native")
+@@ -767,6 +820,34 @@ impl Remote {
                  }
              },
              (Kind::CancelPairing, _) => {}
@@ -82258,7 +82942,7 @@ index 9787079a..bbeaecb5 100644
              (Kind::Catalog(profile), Outcome::Http { response, .. }) => {
                  let parsed = response.ok().filter(|r| r.status == 200)
                      .ok_or("Discovery request failed")
-@@ -881,11 +956,11 @@ impl Remote {
+@@ -881,11 +962,11 @@ impl Remote {
                  }
                  let parsed = match &kind {
                      SendKind::Poll => ingress::decode_poll(&response.body)
@@ -82273,7 +82957,7 @@ index 9787079a..bbeaecb5 100644
                      self.fail(now, "Invalid command server response");
                      return actions;
                  };
-@@ -898,6 +973,9 @@ impl Remote {
+@@ -898,6 +979,9 @@ impl Remote {
                                  if invocation.expects_response() && invocation.action == "media_tracks" {
                                      invocation.media_tracks_raw = media_tracks_raw.clone();
                                  }
@@ -82283,7 +82967,7 @@ index 9787079a..bbeaecb5 100644
                              }
                              actions = incoming;
                              self.advertisement(&value);
-@@ -948,7 +1026,7 @@ impl Remote {
+@@ -948,7 +1032,7 @@ impl Remote {
                      };
                  }
              }
@@ -82292,7 +82976,70 @@ index 9787079a..bbeaecb5 100644
              _ => self.fail(now, "Invalid control worker response"),
          }
          actions
-@@ -1211,3 +1289,10 @@ mod discovery_tests;
+@@ -1167,6 +1251,62 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn live_status_preserves_vportal_ids_while_presence_keeps_retained_v1_ids() {
++        for profile_id in ["native:vportal:home".to_string(), "p".repeat(128)] {
++            let profile = plx_data::ott::ProviderProfile {
++                id: profile_id, name: "Home".into(),
++                kind: plx_data::ott::ProviderKind::VPortal,
++                source: "portal::[key:synthetic-secret]https://portal.invalid/api".into(),
++                source_alias: String::new(), enabled: true,
++            };
++            let page = plx_data::ott::parse_vportal_response(
++                r#"{"type":"stream","title":"Fixture movie","id":42,"request":{"id":42}}"#,
++                &profile, "Movies",
++            ).expect("synthetic VPortal catalog");
++            let entry = &page.catalog.entries[0];
++            assert!(entry.id.starts_with(&format!("{}:", profile.id)));
++            let mut remote = Remote::from_install("dev_test", "runtime");
++            for phase in ["loading", "playing", "paused", "buffering", "error", "idle", "ended", "standby"] {
++                let input = json!({"state":phase,"kind":"vod","title":entry.title,
++                    "provider":"vportal","media_id":entry.id,"position":12.5,
++                    "duration":120.0,"volume":null,"channel_number":null});
++                let playback = project_playback(&input);
++                let presence = remote.presence(&json!({"player":{},"playback":playback}));
++                let mut retained = playback.clone();
++                retained["media_id"] = Value::Null;
++                assert_eq!(presence["playback"], retained);
++                assert_eq!(project_playback(&playback), playback);
++                if matches!(phase, "idle" | "ended" | "standby") {
++                    assert!(playback["media_id"].is_null());
++                } else {
++                    assert_eq!(playback["media_id"].as_str(), Some(entry.id.as_str()), "{phase}");
++                }
++                assert!(!presence.to_string().contains("synthetic-secret"));
++                assert!(!presence.to_string().contains("portal.invalid"));
++            }
++        }
++    }
++
++    #[test]
++    fn retained_presence_keeps_legacy_media_id_bounds() {
++        let mut remote = Remote::from_install("dev_test", "runtime");
++        for (id, accepted) in [
++            ("local_42-a.b".to_string(), true),
++            ("p".repeat(128), true),
++            ("p".repeat(129), false),
++            ("p".repeat(145), false),
++        ] {
++            let input = json!({"state":"playing","kind":"vod","media_id":id});
++            let playback = project_playback(&input);
++            let presence = remote.presence(&json!({"player":{},"playback":input}));
++            assert_eq!(presence["playback"], playback);
++            assert_eq!(presence["version"], 1);
++            assert_eq!(presence["playback"].as_object().unwrap().len(), 9);
++            assert_eq!(presence["playback"]["media_id"].as_str(), accepted.then_some(id.as_str()));
++        }
++    }
++
+     #[test]
+     fn presence_projects_closed_wire_shape_and_omits_secret_metadata() {
+         let mut remote = Remote::from_install("dev_test", "runtime");
+@@ -1211,3 +1351,10 @@ mod discovery_tests;
  
  #[cfg(test)]
  mod discovery_compat_tests;
@@ -97961,17 +98708,18 @@ index 00000000..8f87ff06
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/playback_diagnostics.rs b/rust-modules/src/app/ott_runtime_tests/playback_diagnostics.rs
 new file mode 100644
-index 00000000..48547c7b
+index 00000000..dfa0d7c9
 --- /dev/null
 +++ b/rust-modules/src/app/ott_runtime_tests/playback_diagnostics.rs
-@@ -0,0 +1,426 @@
+@@ -0,0 +1,583 @@
 +//! Post-admission evidence through real admission, failure cleanup and status ingress.
 +//! Only decoder resources and terminal native signals are modeled. No resolver,
 +//! decoder, network, protected writer or device operation is started.
-+//! Deliberately uses only base APIs: the regression oracle is the new wire value.
++//! The nullable-context regression uses base APIs; typed-cause cases use the
++//! native diagnostic API without starting a producer.
 +use super::*;
-+use plx_media::player::{FailureKind, PlaybackState};
-+use plx_telemetry::telemetry::classes::DemuxExitClass;
++use plx_media::player::{report::IoFailureDetails, FailureKind, PlaybackState};
++use plx_telemetry::telemetry::classes::{DemuxExitClass, TraceOutcome, TransportClass};
 +
 +const PRIVATE_URL: &str = "https://diag.invalid/media?token=diag-token";
 +const PRIVATE_ERROR: &str = "provider refused private-diagnostic-title at https://diag.invalid/private?token=diag-token";
@@ -98125,6 +98873,39 @@ index 00000000..48547c7b
 +
 +fn read(app: &mut App, action: &str, serial: u64) -> Value {
 +    super::provider_context::read_status(app, action, serial)
++}
++
++fn read_params(app: &mut App, action: &str, serial: u64, params: Value) -> Value {
++    let mut runtime = app.ott.take().unwrap();
++    let saved = serde_json::to_value(&runtime.saved).unwrap();
++    let presence = state(app, &runtime);
++    let source = (runtime.generation, runtime.catalog_revision, runtime.navigation_epoch,
++        runtime.saving, runtime.catalog_loading);
++    assert!(runtime.resolver_next.is_none());
++    let now = runtime.now_ms();
++    let body = json!({"commands":[], "server_time":1000, "requests":[{
++        "id":format!("{serial:032x}"), "action":action, "params":params, "expires_at":1020
++    }]}).to_string();
++    let mut incoming = runtime.remote.raw_poll_for_test(&body, now);
++    assert_eq!(incoming.len(), 1);
++    let invocation = incoming.pop().unwrap();
++    assert!(runtime.remote.invocation_is_current(&invocation));
++    let response = commands::command(&mut runtime, app, &invocation)
++        .expect("diagnostic queries return synchronously");
++    assert_eq!(serde_json::to_value(&runtime.saved).unwrap(), saved);
++    assert_eq!(state(app, &runtime), presence);
++    assert_eq!((runtime.generation, runtime.catalog_revision, runtime.navigation_epoch,
++        runtime.saving, runtime.catalog_loading), source);
++    assert!(runtime.resolver_next.is_none());
++    runtime.remote.complete(invocation, response.clone());
++    app.ott = Some(runtime);
++    response
++}
++
++fn read_v3(app: &mut App, action: &str, serial: u64) -> Value {
++    let response = read_params(app, action, serial, json!({"playback_failure_version":3}));
++    assert_eq!(response["status"], "ok");
++    response
 +}
 +
 +fn failure(reply: &Value) -> &Value {
@@ -98387,6 +99168,129 @@ index 00000000..48547c7b
 +    assert_eq!(json!(runtime.preplay.snapshot(snapshot_at)), pending);
 +    assert!(!app.adapters.player.is_live());
 +    assert!(failure(&read(&mut app, "state", 3)).is_null());
++}
++
++#[test]
++fn native_failure_v3_includes_nullable_io_context_after_cleanup() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = fixture();
++    let generation = admit(&mut app, "first");
++    let epoch = install_owned_engine(&mut app);
++    plx_media::player::sf_on_event(epoch, 18, 601, std::ptr::null());
++    signal_error(&app, FailureKind::TvPipeline);
++    reconcile(&mut app);
++    assert!(app.ott.as_ref().unwrap().playing.is_none());
++    assert!(!app.adapters.player.is_live());
++    assert_eq!(plx_media::player::state(&app.player.session), PlaybackState::Idle);
++    let expected = json!({
++        "version": 3,
++        "play_generation": generation,
++        "code": FailureKind::TvPipeline.code(),
++        "context": {"demux_exit": "none", "pipeline_error": 601, "io_failure": null},
++    });
++    assert_eq!(failure(&read_v3(&mut app, "status", 1)), &expected);
++    assert_eq!(failure(&read_v3(&mut app, "state", 2)), &expected);
++}
++
++
++#[test]
++fn owned_io_failure_v3_keeps_closed_cause_after_cleanup() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    for (detail, expected_io) in [
++        (IoFailureDetails::SourceIo { transport: TransportClass::None },
++            json!({"source_io":{"transport":"none"}})),
++        (IoFailureDetails::SourceIo { transport: TransportClass::RecvError },
++            json!({"source_io":{"transport":"recv_error"}})),
++        (IoFailureDetails::Hls { exit: DemuxExitClass::HlsFailed, outcome: None },
++            json!({"hls":{"exit":"hls_failed","outcome":null}})),
++        (IoFailureDetails::Hls { exit: DemuxExitClass::HlsNotReady, outcome: None },
++            json!({"hls":{"exit":"hls_not_ready","outcome":null}})),
++        (IoFailureDetails::Hls { exit: DemuxExitClass::HlsShortBody, outcome: None },
++            json!({"hls":{"exit":"hls_short_body","outcome":null}})),
++        (IoFailureDetails::Hls { exit: DemuxExitClass::Other, outcome: Some(TraceOutcome::Deadline) },
++            json!({"hls":{"exit":"other","outcome":"deadline"}})),
++        // The public diagnostic enums are wider than this closed wire contract.
++        (IoFailureDetails::Hls { exit: DemuxExitClass::NoVideoStream, outcome: Some(TraceOutcome::Started) },
++            json!({"hls":{"exit":"other","outcome":null}})),
++        (IoFailureDetails::AutoFallback, json!({"auto_fallback":{"outcome":"refused"}})),
++        (IoFailureDetails::AudioDecode, json!({"audio_decode":{"outcome":"inconclusive"}})),
++        (IoFailureDetails::Unclassified, json!({"unclassified":{"outcome":"inconclusive"}})),
++    ] {
++        let mut app = fixture();
++        let generation = admit(&mut app, "first");
++        let epoch = install_owned_engine(&mut app);
++        let shared = &plx_media::player::SHARED;
++        assert!(shared.note_io_failure_for(epoch, detail));
++        assert!(!shared.note_io_failure_for(epoch, IoFailureDetails::AutoFallback),
++            "the first complete cause must survive a later observation");
++        signal_error(&app, FailureKind::PlaybackInterrupted);
++        reconcile(&mut app);
++        assert!(!app.adapters.player.is_live());
++        assert_eq!(plx_media::player::state(&app.player.session), PlaybackState::Idle);
++        assert!(!shared.demux_io_failed.load(Ordering::Acquire), "cleanup clears the live producer-error signal");
++        let expected = json!({
++            "version":3, "play_generation":generation, "code":"playback_interrupted",
++            "context":{"demux_exit":"none", "pipeline_error":0, "io_failure":expected_io},
++        });
++        assert_failure_context(&read(&mut app, "status", 4), generation,
++            FailureKind::PlaybackInterrupted, Some(("none", 0)));
++        assert_eq!(failure(&read_v3(&mut app, "status", 1)), &expected);
++        poison_unowned_details();
++        reconcile(&mut app);
++        assert_eq!(failure(&read_v3(&mut app, "state", 2)), &expected,
++            "a later read must use the captured cause, not process-wide native state");
++        assert_failure_context(&read(&mut app, "state", 5), generation,
++            FailureKind::PlaybackInterrupted, Some(("none", 0)));
++        let next = queue(&mut app, "second");
++        assert_ne!(generation, next);
++        assert!(failure(&read_v3(&mut app, "status", 3)).is_null());
++    }
++}
++
++
++#[test]
++fn playback_failure_version_is_explicit_and_validated() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = fixture();
++    let capability = read_params(&mut app, "capabilities", 1, json!({}));
++    assert_eq!(capability["status"], "ok");
++    assert_eq!(capability["data"]["playback_failure_versions"], json!([2, 3]));
++    assert!(failure(&read_v3(&mut app, "status", 2)).is_null());
++    let generation = admit(&mut app, "first");
++    signal_error(&app, FailureKind::MediaSource);
++    reconcile(&mut app);
++    let mut serial = 3;
++    for action in ["status", "state"] {
++        let legacy = read(&mut app, action, serial);
++        serial += 1;
++        assert_failure(&legacy, generation, FailureKind::MediaSource);
++        let explicit = read_params(&mut app, action, serial, json!({"playback_failure_version":2}));
++        serial += 1;
++        assert_eq!(explicit["status"], "ok");
++        assert_eq!(failure(&explicit), failure(&legacy));
++        let detailed = read_v3(&mut app, action, serial);
++        serial += 1;
++        assert_eq!(failure(&detailed), &json!({"version":3, "play_generation":generation,
++            "code":"media_source", "context":null}));
++        for value in [json!(0), json!(1), json!(4), json!(-1), json!(3.0), json!(2.5),
++            json!(true), json!(false), json!(null), json!("3"), json!([]), json!({})] {
++            let response = read_params(&mut app, action, serial,
++                json!({"playback_failure_version":value}));
++            serial += 1;
++            assert_eq!(response["status"], "rejected");
++            assert!(response["data"].get("playback_failure").is_none());
++        }
++        for params in [json!({"unknown":3}), json!({"playback_failure_version":3,"unknown":true})] {
++            assert_eq!(read_params(&mut app, action, serial, params)["status"], "rejected");
++            serial += 1;
++        }
++        assert_eq!(failure(&read(&mut app, action, serial)), failure(&legacy),
++            "version negotiation must not change the retained observation or default");
++        serial += 1;
++    }
 +}
 +
 +#[path = "playback_eof_priority.rs"]
@@ -124886,9 +125790,21 @@ index f7fbbbc7..f3e2e04d 100644
 +    plx_platform::webos::removable_identity::identity_snapshot(off, mounts, check)
 +}
 diff --git a/rust-modules/telemetry/src/telemetry/classes.rs b/rust-modules/telemetry/src/telemetry/classes.rs
-index 595b6906..44202c59 100644
+index 595b6906..b0ea0f1f 100644
 --- a/rust-modules/telemetry/src/telemetry/classes.rs
 +++ b/rust-modules/telemetry/src/telemetry/classes.rs
+@@ -788,9 +788,9 @@ pub enum DemuxExitClass {
+     NoUsableVideo = 10,
+     /// A DTS packet had no complete supported core to feed.
+     DtsCoreMissing = 11,
+-    /// The HLS demuxer failed before delivering anything.
++    /// The HLS demuxer failed; IO diagnostics can also record this after output began.
+     HlsFailed = 12,
+-    /// The HLS playlist resource was not ready before anything was delivered.
++    /// The HLS playlist resource was not ready, including after earlier output.
+     HlsNotReady = 13,
+     /// The demux thread panicked.
+     DemuxPanicked = 14,
 @@ -800,10 +800,44 @@ pub enum DemuxExitClass {
      LoadRefused = 16,
      /// Any other exit.

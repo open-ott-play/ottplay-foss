@@ -189,22 +189,54 @@ This remains an experimental target. Host and ARM checks do not establish physic
 In builds providing this extension, authenticated `state` and `status` replies
 include `data.playback_failure`, beside `data.playback` and `data.preplay`.
 Older builds may omit it or return the version-1 object containing only
-`version`, `play_generation` and `code`. The current value is `null` or a
-version-2 object with these four fields:
+`version`, `play_generation` and `code`. By default, current replies retain
+version 2: `context` is null or contains only `demux_exit` and `pipeline_error`.
+The capability `playback_failure_versions: [2, 3]` advertises explicit version
+selection. Send `playback_failure_version: 3` in the command parameters to request
+the additional typed IO cause. The version-3 value is `null` or an object:
 
 ```json
-{"version":2,"play_generation":5,"code":"media_source","context":{"demux_exit":"https_open_failed","pipeline_error":0}}
+{"version":3,"play_generation":5,"code":"playback_interrupted","context":{"demux_exit":"none","pipeline_error":0,"io_failure":{"hls":{"exit":"hls_transport_failed","outcome":null}}}}
 ```
 
-`context` is `null` when no native details can be attributed to the failed
-attempt. Otherwise it contains exactly `demux_exit` and `pipeline_error`.
+In version 3, `context` is `null` when no native details can be attributed to the failed
+attempt. Otherwise it contains exactly `demux_exit`, `pipeline_error` and `io_failure`.
 `demux_exit` uses the closed `DemuxExitClass::code()` vocabulary in the
 native telemetry schema;
 `pipeline_error` is the signed 32-bit native callback error number. An observed
-`{"demux_exit":"none","pipeline_error":0}` means the matching Engine recorded
-neither detail. It differs from unavailable context and does not imply success.
+`{"demux_exit":"none","pipeline_error":0,"io_failure":null}` means the matching
+Engine recorded none of these details. It differs from unavailable context and
+does not imply success.
 Clients should preserve unknown diagnostic versions and codes when forwarding
 JSON; do not interpret them as successful playback.
+
+`io_failure` is `null` when no terminal producer-IO cause was recorded. Otherwise
+it has exactly one of these members:
+
+- `source_io: {transport: ...}`: an unrecovered source read error. Transport is
+  `none`, `partial`, `recv_error`, `send_error`, `got_nothing`, `timeout`, `http2`,
+  `reopen_failed` or `other`. Here `none` means that the read failed without a
+  recorded curl-specific cause; it does not mean a successful read.
+- `hls: {exit: ..., outcome: ...}`: an HLS terminal error. `outcome` is `null` or
+  `deadline`; the latter identifies an expired active-stream prime deadline.
+  The closed exit set is `hls_failed`, `hls_not_ready`, `hls_playlist_fetch_failed`,
+  `hls_playlist_invalid`, `hls_playlist_window`, `hls_transport_open_failed`,
+  `hls_segment_probe_failed`, `hls_segment_codec`, `hls_video_framing`,
+  `hls_first_idr`, `hls_short_body`, `hls_audio_identity`, `hls_audio_empty`,
+  `hls_video_timestamp`, `hls_audio_timestamp`, `hls_audio_framing`,
+  `hls_no_video_au`, `hls_size_limit`, `hls_transport_failed` and `other`.
+- `auto_fallback: {outcome: "refused"}`: the current automatic handoff was
+  rejected. This does not by itself establish a server rejection.
+- `audio_decode: {outcome: "inconclusive"}`: an audio decoder returned an error;
+  the lower-level cause is not classified.
+- `unclassified: {outcome: "inconclusive"}`: another observed terminal producer
+  failure. The sibling `demux_exit` may provide more detail.
+
+The first complete IO observation wins within its captured native epoch. It is
+frozen with the matching failure before cleanup; a new native session clears the
+live observation. The epoch remains internal and is not an extra wire identifier.
+These fields add evidence without changing retries, fallback or playback policy.
+They contain no source URL, credentials, raw error text or media title.
 
 `play_generation` is an unsigned 64-bit integer
 captured when that OTT request was admitted to native playback. It identifies
