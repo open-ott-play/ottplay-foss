@@ -66,6 +66,16 @@ inspection, but retained state is not a fresh playback observation. Do not use
 verbs as media searches and start playback. The helper uses the real CLI API
 with an explicit read-only request list; it does not invent CLI verbs.
 
+New native builds include a `catalog` object in the authenticated status/state
+response. Its `scope: "source"` count describes the source catalogue, before
+category or Favorites filtering. Check `loading`, `complete`, `count` and
+`error_code` together: an empty Favorites view does not imply that loading
+failed, and zero entries with `complete: true` and no error is an empty successful
+result. The `generation` identifies the current load. Failure codes are
+`catalog_failed`, `source_unavailable`, `loader_unavailable` or `catalog_limit`;
+they contain no provider URL, credentials or raw error text. Older builds can
+omit this object. It does not change the legacy `ready` field or prove playback.
+
 ## Read the result by evidence type
 
 An installed application or a successful launch request establishes neither a
