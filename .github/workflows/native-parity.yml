@@ -385,7 +385,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Check controller contracts without native execution
         run: python3 tests/test_ci_macos_desktop_preflight.py -v
       - name: Check GUI capability without building or launching OTTPlay
@@ -420,7 +420,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Check pure capture-controller contracts
         run: |
           python3 tests/test_ci_macos_desktop_preflight.py -v
@@ -429,7 +429,7 @@ jobs:
         run: python3 scripts/ci-macos-desktop.py preflight
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
