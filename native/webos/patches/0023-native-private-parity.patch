@@ -1817,10 +1817,46 @@ index 00000000..67539c1d
 +audio/video synchronization, an in-session UI/remote language switch, or a
 +successful native deployment.
 diff --git a/docs/native-media-sources.md b/docs/native-media-sources.md
-index 2ad7eebd..ccf976a2 100644
+index 2ad7eebd..c4c3a2d9 100644
 --- a/docs/native-media-sources.md
 +++ b/docs/native-media-sources.md
-@@ -41,6 +41,19 @@ as the local interface selector. Writes remain subject to the installed player's
+@@ -13,18 +13,23 @@ these sources do not require signing in to Plex. This is separate from the
+ harness's `--guest` option, which selects a test identity and is not a setup step
+ for an ordinary installation.
+ 
+-For remote control, builds configured with a public discovery catalog offer
+-**Settings → Find command server**. Choose it, review the displayed server address
+-and identity, then select the intended server. Selection is required even when
+-there is only one result. Opening Settings does not start discovery or pairing.
+-If discovery fails or finds no servers, choose **Find command server** again or
+-use manual setup.
+-
+-Without a configured catalog, **Remote control server** explains that discovery
+-is not configured. Open that entry and save the HTTPS base address of your
+-command server. After the address save completes, the player discovers servers;
+-select one if more than one is offered. This manual path remains available on
+-builds with discovery as well.
++For remote control, open **Settings → Remote control → Find command server**
++once preferences are ready and access-policy checks permit it. Linux builds
++can discover `_ottplay-ctrl._tcp` through the system resolver and network search
++domains without a configured public catalog. This is unicast DNS-SD, not
++multicast mDNS. Only a successful empty DNS result can fall back to an explicitly
++configured, digest-verified public catalog; lookup errors and timeouts do not.
++Builds without Linux DNS-SD support use the catalog path.
++
++Review the displayed server address and identity, then select the intended
++server, even when there is only one result. Opening Settings does not start
++discovery or pairing. If discovery is unavailable, fails or finds no servers,
++use manual setup; retry Find after any previous lookup has finished.
++
++For manual setup, open **Remote control server** and save the HTTPS base address
++of your command server. After the address save completes, the player discovers
++servers; select one if more than one is offered. This manual path remains
++available on builds with discovery as well.
+ 
+ Approve the displayed pairing code with your controller and wait for **Remote
+ control connected**. Saving an address, finding a server or seeing a pairing code
+@@ -41,6 +46,19 @@ as the local interface selector. Writes remain subject to the installed player's
  schema and current settings policy. Shared command names do not imply that every
  browser-player setting is writable or that every provider action exists.
  
@@ -1840,7 +1876,7 @@ index 2ad7eebd..ccf976a2 100644
  ## M3U with an attached media portal
  
  An ordinary M3U profile can retain its live playlist and a private VPortal media
-@@ -62,9 +75,11 @@ Configure the receiving player's M3U profile first. The native authenticated
+@@ -62,9 +80,11 @@ Configure the receiving player's M3U profile first. The native authenticated
     runtime or consumed revision requires a fresh `get`; do not reuse stale
     transaction tokens.
  
@@ -1855,7 +1891,7 @@ index 2ad7eebd..ccf976a2 100644
  The source must be a valid VPortal link accepted by the player, such as the
  shape `portal::[key:YOUR_PRIVATE_KEY]https://media.example/api/`. Keep the real
  link private. A blank value removes an attachment from a live-playlist profile.
-@@ -78,9 +93,26 @@ source to an empty link; replace the source or delete the profile explicitly.
+@@ -78,9 +98,26 @@ source to an empty link; replace the source or delete the profile explicitly.
  Favorites keep the parent profile and item identity. Copying Favorites does
  not transfer private portal credentials: configure the corresponding profile
  and attachment on the receiving player. Missing or ambiguous bindings are
@@ -1885,7 +1921,7 @@ index 2ad7eebd..ccf976a2 100644
  
  ## Torrent and the local companion
  
-@@ -97,8 +129,9 @@ Torrent playback downloads pieces into this bounded cache; it is different
+@@ -97,8 +134,9 @@ Torrent playback downloads pieces into this bounded cache; it is different
  from Local-folder playback, which reads existing files without importing them.
  This is not a permanent offline-download library.
  
@@ -44051,7 +44087,7 @@ index 00000000..95166997
 +    assert!(!expired.iter().any(|run| run.text.contains("NOW_A") || run.text.contains("NOW_B")));
 +}
 diff --git a/rust-modules/screens/src/ott/tests/classic_presentation.rs b/rust-modules/screens/src/ott/tests/classic_presentation.rs
-index f9c66174..202b4acd 100644
+index f9c66174..3dc3f048 100644
 --- a/rust-modules/screens/src/ott/tests/classic_presentation.rs
 +++ b/rust-modules/screens/src/ott/tests/classic_presentation.rs
 @@ -2,6 +2,76 @@ use super::*;
@@ -44499,7 +44535,7 @@ index f9c66174..202b4acd 100644
 +            plx_gfx::gfx::without_frame_clear(|| screen.draw(&mut frame));
 +        }).into_iter().filter(|run| run.ink[3] > 0.0).map(|run| run.text).collect::<Vec<_>>()
 +    };
-+    for language in [plx_platform::i18n::Preference::En, plx_platform::i18n::Preference::Fr] {
++    for language in plx_platform::i18n::SHIPPED {
 +        let _locale = plx_platform::i18n::language_on_this_thread_for_test(language);
 +        let expected = msg::ott_classic_channel_category("News");
 +        assert!(draw(&mut screen).iter().any(|text| text == &expected));
@@ -49805,10 +49841,10 @@ index a3b41bb6..e68e0a67 100644
                  Edge::Up => {
                      if self.transport_tap {
 diff --git a/rust-modules/screens/src/preferences.rs b/rust-modules/screens/src/preferences.rs
-index d3a6f6eb..73344e6c 100644
+index d3a6f6eb..9f620488 100644
 --- a/rust-modules/screens/src/preferences.rs
 +++ b/rust-modules/screens/src/preferences.rs
-@@ -98,6 +98,21 @@ enum Value { InstantDpadSeeking(InstantDpadSeeking), Quality(Quality), DirectPla
+@@ -98,6 +98,22 @@ enum Value { InstantDpadSeeking(InstantDpadSeeking), Quality(Quality), DirectPla
  /// The hashed half of a transaction: what the page shows while a load or save is in flight.
  struct Io { busy: bool, status: String }
  
@@ -49817,6 +49853,7 @@ index d3a6f6eb..73344e6c 100644
 +enum Status { Clear, AccountLoading, AccountSaving, LocalSaving, AccountError(PreferenceError), SignInAgain, SaveFailed }
 +impl Status {
 +    fn text(self) -> String { match self {
++        // placeholder-exempt: formats stored copy only; both preference views count busy captions at draw via Header::working_suffix
 +        Self::Clear => String::new(),
 +        Self::AccountLoading => plx_platform::i18n::msg::settings_audio_loading().into(),
 +        Self::AccountSaving => plx_platform::i18n::msg::settings_audio_saving().into(),
@@ -49830,7 +49867,7 @@ index d3a6f6eb..73344e6c 100644
  /// What the copy under a title explains: a field-list page, or one field's picker.
  #[derive(Clone, Copy, Debug, PartialEq, Eq)]
  enum Subject { Page(Kind), Picker(PickerKind) }
-@@ -116,7 +131,7 @@ impl Subject {
+@@ -116,7 +132,7 @@ impl Subject {
  /// replay) the rows show the legacy fallback values and the data layer refuses
  /// a write, so the page shows them read-only instead of offering a pick that cannot land.
  #[derive(Clone, Debug, PartialEq, Eq)]
@@ -49839,7 +49876,7 @@ index d3a6f6eb..73344e6c 100644
  impl Whose {
      /// The seated profile as the profile chip names it (`chrome.rs`): the active profile's title,
      /// else the roster's owner, else the Account label of a signed-in owner with no name. It reads
-@@ -127,8 +142,7 @@ impl Whose {
+@@ -127,8 +143,7 @@ impl Whose {
          let profile = plx_plex::plex::session::current_snapshot();
          if profile.seat() == plx_plex::plex::session::Seat::Unseated { return (profile.generation, Self::Nobody); }
          let account = plx_plex::plex::session::peek().account(profile.user.as_ref());
@@ -49849,7 +49886,7 @@ index d3a6f6eb..73344e6c 100644
      }
      /// The Playback list's Profile rows cannot be changed.
      fn read_only(&self, kind: Kind) -> bool { kind == Kind::Playback && *self == Self::Nobody }
-@@ -151,12 +165,14 @@ fn copy_text<'a>(subject: Subject, status: &'a str, direct_play: DirectPlayMode,
+@@ -151,12 +166,14 @@ fn copy_text<'a>(subject: Subject, status: &'a str, direct_play: DirectPlayMode,
      if subject == Subject::Page(Kind::Playback) {
          // The page's own line wins over the bare Force note: Settings has no other place that names
          // the profile, and with nobody seated the Force advice cannot be acted on from read-only rows.
@@ -49869,7 +49906,7 @@ index d3a6f6eb..73344e6c 100644
      }
      if forced { return Cow::Borrowed(plx_platform::i18n::msg::settings_playback_force_note()); }
      Cow::Borrowed(match subject {
-@@ -189,6 +205,7 @@ struct Txn {
+@@ -189,6 +206,7 @@ struct Txn {
      saving: bool,
      /// The [`CONFIRMED`] generation this transaction has already taken.
      seen: u64,
@@ -49877,7 +49914,7 @@ index d3a6f6eb..73344e6c 100644
  }
  /// What one [`Txn::poll`] found.
  #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-@@ -196,11 +213,18 @@ enum Landed { Nothing, Changed, Saved }
+@@ -196,11 +214,18 @@ enum Landed { Nothing, Changed, Saved }
  
  impl Txn {
      fn new(adopt_existing: bool) -> Self {
@@ -49897,10 +49934,11 @@ index d3a6f6eb..73344e6c 100644
      fn prefs(&self) -> Option<&AudioPreferences> { self.snapshot.as_ref().map(|s| &s.preferences) }
      fn stale(&self) -> bool { self.request.as_ref().is_some_and(|r| !r.is_current()) }
      /// Publish the confirmed snapshot for the other page of the pair.
-@@ -244,9 +268,7 @@ impl Txn {
+@@ -243,10 +268,7 @@ impl Txn {
+             _ => PreferenceCmd::Load { reply },
          };
          self.saving = matches!(&command, PreferenceCmd::Save { .. });
-         // placeholder-exempt: SCOPE decision, not a non-placeholder: this is a real wait caption, left uncounted because the demo storyboard never shows Settings (a driver that does must count it)
+-        // placeholder-exempt: SCOPE decision, not a non-placeholder: this is a real wait caption, left uncounted because the demo storyboard never shows Settings (a driver that does must count it)
 -        io.status = if self.saving {
 -            plx_platform::i18n::msg::settings_audio_saving()
 -        } else { plx_platform::i18n::msg::settings_audio_loading() }.into();
@@ -49955,7 +49993,7 @@ index d3a6f6eb..73344e6c 100644
  }
  impl PreferencesPage {
      pub fn new(entry: EntryId, kind: Kind) -> Self {
-@@ -391,7 +416,7 @@ impl PreferencesPage {
+@@ -391,13 +416,15 @@ impl PreferencesPage {
              copy: String::new(), txn: Txn::new(false),
              look: (plx_media::route::subtitle_size(), plx_media::route::subtitle_position(), plx_media::route::hdr_overlay_brightness()),
              next_episode: plx_media::route::next_episode_mode(), deck_press: plx_media::route::deck_press(),
@@ -49964,7 +50002,17 @@ index d3a6f6eb..73344e6c 100644
          s.rebuild(None);
          s
      }
-@@ -421,14 +446,18 @@ impl PreferencesPage {
+     fn view(&self) -> TableScreen<'_> {
+-        TableScreen::new(Header::new(RouteLayout::screen(), Some(plx_platform::i18n::msg::settings_title()),
+-            self.state.kind.title(), &self.copy), &self.form.table, GroupId(0), self.entry).keyed(&self.form)
++        let mut header = Header::new(RouteLayout::screen(), Some(plx_platform::i18n::msg::settings_title()),
++            self.state.kind.title(), &self.copy);
++        header.working_suffix = self.state.io.busy.then_some((self.copy.as_str(), "preferences-status"));
++        TableScreen::new(header, &self.form.table, GroupId(0), self.entry).keyed(&self.form)
+     }
+     fn focus(&self, fx: &mut Effects<'_, InnerHost>) {
+         let key = self.form.key_at(self.form.table.sel.max(0) as usize).map_or(0, |k| k.0);
+@@ -421,14 +448,18 @@ impl PreferencesPage {
          self.skip_interval = plx_media::route::skip_interval();
          self.instant_dpad_seeking = plx_media::route::instant_dpad_seeking();
          self.whose = Whose::now();
@@ -49986,7 +50034,7 @@ index d3a6f6eb..73344e6c 100644
          self.form.table.compact = false; self.form.table.header_ink = theme::TEXT_READING; self.form.table.list_focused = true;
          self.form.set(field_form(&inputs), keep.as_ref());
          self.state.selected = self.form.key_at(self.form.table.sel.max(0) as usize).map_or(0, |k| k.0);
-@@ -480,65 +509,81 @@ fn resolve_value(field: PickerKind, quality: Quality, direct_play: DirectPlayMod
+@@ -480,65 +511,81 @@ fn resolve_value(field: PickerKind, quality: Quality, direct_play: DirectPlayMod
          PickerKind::ForcedSubtitles => Value::Forced(prefs.map_or(0, |p| p.subtitle_forced)),
      }
  }
@@ -50119,7 +50167,7 @@ index d3a6f6eb..73344e6c 100644
  }
  
  /// The inputs [`field_form`] builds a `Kind`'s field list from, so the builder reads no global.
-@@ -557,9 +602,12 @@ struct FieldListInputs<'a> {
+@@ -557,9 +604,12 @@ struct FieldListInputs<'a> {
  /// The page's field list as a [`Form`]: each field a `Nav` item onto its picker page, plus the
  /// Audio & Subtitles Retry button, built from [`FieldListInputs`] alone.
  fn field_form(inputs: &FieldListInputs<'_>) -> Form<RowId, Action, SettingsPage> {
@@ -50133,7 +50181,7 @@ index d3a6f6eb..73344e6c 100644
          let mut row = Row::new(field.title()).value(&value).chevron(true).dim(inputs.busy);
          if field == PickerKind::Quality && inputs.direct_play == DirectPlayMode::Forced {
              row = row.detail(plx_platform::i18n::msg::settings_playback_overridden());
-@@ -694,6 +742,17 @@ impl Machine<InnerHost> for PreferencesPage {
+@@ -694,6 +744,17 @@ impl Machine<InnerHost> for PreferencesPage {
  plx_ui::focusable_via_view!(PreferencesPage, InnerHost, view);
  
  impl Screen<InnerHost> for PreferencesPage {
@@ -50151,7 +50199,7 @@ index d3a6f6eb..73344e6c 100644
      fn name(&self) -> &'static str { self.state.kind.word() }
      fn state(&self) -> &dyn LogicalState {
          &self.state
-@@ -736,3 +795,60 @@ mod tests;
+@@ -736,3 +797,60 @@ mod tests;
  #[cfg(test)]
  #[path = "preferences_text_fit_tests.rs"]
  mod text_fit_tests;
@@ -50213,7 +50261,7 @@ index d3a6f6eb..73344e6c 100644
 +
 +}
 diff --git a/rust-modules/screens/src/preferences/picker.rs b/rust-modules/screens/src/preferences/picker.rs
-index 3d081335..c000741e 100644
+index 3d081335..2a68911e 100644
 --- a/rust-modules/screens/src/preferences/picker.rs
 +++ b/rust-modules/screens/src/preferences/picker.rs
 @@ -56,6 +56,7 @@ pub struct PickerPage {
@@ -50233,7 +50281,20 @@ index 3d081335..c000741e 100644
              alert: DecisionPrompt::new(ALERT_GROUP, ALERT, ALERT + 1, plx_platform::i18n::msg::settings_cancel_c(), plx_platform::i18n::msg::settings_playback_enable_force_c()) };
          s.rebuild(true);
          s
-@@ -130,10 +131,12 @@ impl PickerPage {
+@@ -108,8 +109,10 @@ impl PickerPage {
+             .iter().position(|(_, v)| *v == current).map_or(u32::MAX, |i| i as u32)
+     }
+     fn view(&self) -> TableScreen<'_> {
+-        TableScreen::new(Header::new(RouteLayout::screen(), Some(self.state.field.parent_title()),
+-            self.state.field.title(), &self.copy), &self.form.table, GroupId(0), self.entry).keyed(&self.form)
++        let mut header = Header::new(RouteLayout::screen(), Some(self.state.field.parent_title()),
++            self.state.field.title(), &self.copy);
++        header.working_suffix = self.state.io.busy.then_some((self.copy.as_str(), "preference-picker-status"));
++        TableScreen::new(header, &self.form.table, GroupId(0), self.entry).keyed(&self.form)
+     }
+     fn focus(&self, fx: &mut Effects<'_, InnerHost>, group: GroupId) {
+         fx.push(Fx::Deliver(MachineId::Instance(InstanceId(0)),
+@@ -130,10 +133,12 @@ impl PickerPage {
      fn rebuild(&mut self, seat_current: bool) {
          self.state.quality = plx_media::route::quality();
          self.state.direct_play = plx_media::route::direct_play_mode();
@@ -50247,7 +50308,7 @@ index 3d081335..c000741e 100644
          let options = field_options(self.state.field, self.state.quality, self.state.direct_play, self.txn.prefs());
          self.state.checked = options.iter().position(|(_, v)| *v == current).map_or(u32::MAX, |i| i as u32);
          let keep = if seat_current { OptionId::Choice(current.clone()) } else {
-@@ -323,6 +326,22 @@ impl Focusable<InnerHost> for PickerPage {
+@@ -323,6 +328,22 @@ impl Focusable<InnerHost> for PickerPage {
  }
  
  impl Screen<InnerHost> for PickerPage {
@@ -50270,7 +50331,7 @@ index 3d081335..c000741e 100644
      fn name(&self) -> &'static str { word::PICKER }
      fn state(&self) -> &dyn LogicalState { &self.state }
      fn crumb(&self, _cx: &Cx<'_, InnerHost>) -> Option<Cow<'_, str>> {
-@@ -341,3 +360,38 @@ impl Screen<InnerHost> for PickerPage {
+@@ -341,3 +362,38 @@ impl Screen<InnerHost> for PickerPage {
  #[cfg(test)]
  #[path = "picker_tests.rs"]
  mod tests;
