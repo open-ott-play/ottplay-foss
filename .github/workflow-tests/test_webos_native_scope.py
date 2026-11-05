@@ -281,7 +281,7 @@ class NativeScopeTests(unittest.TestCase):
                           "settings": [{"id": f"setting{n}"} for n in range(20)]}},
                 {"request": {"op": "schema", "runtime": "fixture", "cursor": "context:20"},
                  "data": {"context": dict(context), "next_cursor": None,
-                          "settings": [{"id": f"setting{n}"} for n in range(20, 35)]}},
+                          "settings": [{"id": f"setting{n}"} for n in range(20, 39)]}},
             ]
             if case == "missing-page":
                 pages.pop()
@@ -345,7 +345,7 @@ class NativeScopeTests(unittest.TestCase):
             if case == "success":
                 binding = json.loads((evidence / "schema-binding.json").read_text())
                 self.assertEqual((binding["status"], binding["raw_exit"], binding["descriptor_count"], binding["page_count"]),
-                                 ("PASS", 0, 35, 2))
+                                 ("PASS", 0, 39, 2))
                 self.assertEqual(json.loads((evidence / "schema-pages.json").read_text()), pages)
             else:
                 self.assertFalse((evidence / "schema-pages.json").exists())
