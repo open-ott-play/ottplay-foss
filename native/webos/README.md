@@ -696,9 +696,11 @@ also accepts an absolute file path in `OTTPLAY_PLEX_PROFILE`. Remove the
 transferred file to stop applying it on later starts; a saved session may
 still need to be signed out in the app.
 
-This is a managed server connection: before an explicit local-data reset, a
-valid file restores it on each cold launch. Sign-out revokes it for the running
-session; remove the file and restart to stop future startup imports. In native
+A valid file can supply the managed Plex connection on later starts. Automatic
+selection respects the saved provider and startup intent: a non-Plex provider,
+an active profile, a Favorites selection or newer navigation takes precedence.
+Sign-out revokes the connection for the running session; remove the file and
+restart to stop future startup imports. In native
 0.2, `Delete all local data` also clears app-owned provisioning and persistently
 blocks managed startup imports, including `OTTPLAY_PLEX_PROFILE`; replacing a
 file does not lift that block. See [local-data reset](../../docs/native-webos-delivery.md#delete-local-data-native-02)
