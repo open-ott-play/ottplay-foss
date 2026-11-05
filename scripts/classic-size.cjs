@@ -797,8 +797,8 @@ const AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE = Object.freeze({
 // additional reserve; aggregate entry and appearance exactly once.
 // Evidence: docs/evidence/classic-presentation-settings-size-20261105.json.
 const CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE = Object.freeze({
-    entry: Object.freeze({ bytes: 2281, gzipBytes: 1049 }),
     appearance: Object.freeze({ bytes: 195, gzipBytes: 74 }),
+    entry: Object.freeze({ bytes: 2281, gzipBytes: 1049 }),
 });
 const BUDGET = Object.freeze({
     bytes:
@@ -2011,9 +2011,9 @@ function writeBuildBundleReport(
                 CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
             categoryVisibilityEntryAllowance:
                 CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
-            collectedAt: new Date().toISOString(),
             classicPresentationSettingsAllowance:
                 CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
+            collectedAt: new Date().toISOString(),
             companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
             complete: !inputErrors.length,
             desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
