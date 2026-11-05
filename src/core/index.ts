@@ -219,9 +219,8 @@ var _coreNativeHls: ReturnType<typeof createNativeHlsTransport> = null;
 var _coreNativeAttempt = 0;
 var _coreNativeHlsCleanup: (() => void) | null = null;
 
-function cancelCoreNativeHls(preserveAttempt?: boolean): void {
-    // A direct transport retry keeps its existing playback attempt.
-    if (!preserveAttempt) _coreNativeAttempt++;
+function cancelCoreNativeHls(): void {
+    _coreNativeAttempt++;
     if (_coreNativeHls) _coreNativeHls.cancel();
     _coreNativeHls = null;
     if (_coreNativeHlsCleanup) _coreNativeHlsCleanup();
@@ -240,13 +239,6 @@ function cancelCoreAutoPlayback(modeChange?: boolean): void {
         if (_corePipAutoCancel) _corePipAutoCancel(true);
         _corePipAutoCancel = null;
     }
-}
-
-/** Main and PiP watchers each retain their own readiness and ownership callback. */
-function loadCoreAutoHls(ready: (hls: any) => void): void {
-    loadCoreMediaEngine("hls", function (ok) {
-        ready(ok && typeof Hls !== "undefined" ? Hls : null);
-    });
 }
 
 function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
@@ -2416,7 +2408,10 @@ function startCorePlayback(
                     position = resumePosition();
                     cancelCoreAutoPlayback();
                     cancelCoreSeek();
-                    cancelCoreNativeHls(true);
+                    if (_coreNativeHls) _coreNativeHls.cancel();
+                    _coreNativeHls = null;
+                    if (_coreNativeHlsCleanup) _coreNativeHlsCleanup();
+                    _coreNativeHlsCleanup = null;
                     resetCoreNativeBitrate();
                     attachNative(url, true);
                 };
@@ -2454,7 +2449,15 @@ function startCorePlayback(
                                 originalUrl
                             );
                         },
-                        loadHls: loadCoreAutoHls,
+                        loadHls: function (ready) {
+                            loadCoreMediaEngine("hls", function (ok) {
+                                ready(
+                                    ok && typeof Hls !== "undefined"
+                                        ? Hls
+                                        : null
+                                );
+                            });
+                        },
                         monitorDroppedFrames: !!(
                             (window as any).__TAURI__ ||
                             (window as any).__TAURI_INTERNALS__
@@ -3250,7 +3253,13 @@ function startCorePipEngine(
                             }
                         });
                     },
-                    loadHls: loadCoreAutoHls,
+                    loadHls: function (ready) {
+                        loadCoreMediaEngine("hls", function (ok) {
+                            ready(
+                                ok && typeof Hls !== "undefined" ? Hls : null
+                            );
+                        });
+                    },
                     restore: function () {
                         _corePipAutoCancel = null;
                         media.src = url;
