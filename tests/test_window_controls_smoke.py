@@ -339,5 +339,139 @@ class RestorationTests(unittest.TestCase):
                 runner.validate_restoration_evidence(report, "unpin")
 
 
+
+def appkit_native(active=False, *, full=False, zoom=False):
+    return {"label": "main", "window_number": 42, "level": 0, "frame": [40.0, 40.0, 640.0, 428.0],
+            "content_size": [640.0, 400.0], "content_aspect": [16.0, 9.0] if active else [0.0, 0.0],
+            "resize_increments": [1.0, 1.0], "fullscreen": full, "zoomed": zoom, "miniaturized": False}
+
+
+def appkit_evidence(missing=False):
+    commands = (["set_always_on_top", "set_fullscreen", "toggle_fullscreen"] if missing
+                else ["set_always_on_top"]) + ["get_window_aspect_lock", "set_window_aspect_lock"]
+    return {"status": "pass", "platform": "macos", "owned_labels": ["main", "pip"],
+            "cleanup_errors": [], "mode": "missing-permission" if missing else "production-permissions",
+            "denials": [{"command": command, "window": "main" if missing else "pip",
+                        "error": "command not allowed"} for command in commands],
+            "aux_unchanged": True, "baseline": appkit_native(), "initial": appkit_native(),
+            "initial_state": aspect_state(), "final": appkit_native(), "final_state": aspect_state(),
+            "set_sequence": [{"state": aspect_state(v), "native": appkit_native(v)}
+                             for v in [True, True, False, False]],
+            "transitions": [{"kind": kind, "target": target, "state": aspect_state(True, not target),
+                             "native": appkit_native(not target,
+                                                     full=kind != "zoom" and target,
+                                                     zoom=kind == "zoom" and target)}
+                            for kind in ["toggle_fullscreen", "set_fullscreen", "zoom"]
+                            for target in [True, False]]}
+
+
+def appkit_restoration(phase, initial):
+    final = phase == "pin"
+    return {"status": "pass", "platform": "macos", "owned_labels": ["main", "pip"],
+            "cleanup_errors": [], "mode": "preference-restoration", "phase": phase,
+            "aux_unchanged": True, "baseline": appkit_native(),
+            "initial": appkit_native(initial), "initial_state": aspect_state(initial),
+            "final": appkit_native(final), "final_state": aspect_state(final)}
+
+
+class AppKitEvidenceTests(unittest.TestCase):
+    def test_appkit_native_evidence_requires_all_states_and_original_constraint(self):
+        for missing in [False, True]:
+            runner.validate_evidence(appkit_evidence(missing), missing, platform="macos")
+        mutations = [
+            lambda r: r["set_sequence"].pop(),
+            lambda r: r["set_sequence"][0]["native"].update(content_aspect=[0, 0]),
+            lambda r: r["set_sequence"][0]["native"].update(frame=[40, 40, 800, 450]),
+            lambda r: r["transitions"].pop(),
+            lambda r: r["transitions"][0]["state"].update(active=True),
+            lambda r: r["transitions"][0]["native"].update(fullscreen=False),
+            lambda r: r["transitions"][4]["native"].update(zoomed=False),
+            lambda r: r["final"].update(resize_increments=[2, 2]),
+            lambda r: r["final"].update(window_number=43),
+            lambda r: r["final"].update(fullscreen=0),
+            lambda r: r["final"].update(content_aspect=[float("nan"), 0]),
+            lambda r: r.update(aux_unchanged=False),
+            lambda r: r.update(platform="windows"),
+        ]
+        for mutate in mutations:
+            report = appkit_evidence()
+            mutate(report)
+            with self.assertRaises(RuntimeError):
+                runner.validate_evidence(report, False, platform="macos")
+        report = appkit_evidence(True)
+        report["denials"][0]["error"] = "IPC deadline"
+        with self.assertRaises(RuntimeError):
+            runner.validate_evidence(report, True, platform="macos")
+
+    def test_appkit_restoration_is_fresh_native_evidence_not_a_requested_value(self):
+        for phase in ["pin", "unpin", "verify-off"]:
+            report = appkit_restoration(phase, phase == "unpin")
+            runner.validate_restoration_evidence(report, phase, platform="macos")
+            report["initial"]["content_aspect"] = [99, 1]
+            with self.assertRaises(RuntimeError):
+                runner.validate_restoration_evidence(report, phase, platform="macos")
+
+    def test_appkit_processes_use_private_sessions_and_actual_saved_bytes(self):
+        for skip_write in [None, "unpin"]:
+            captured = []
+            class Process:
+                pid = 45683
+                done = False
+                def __init__(self, command, **kwargs):
+                    self.directory = Path(command[1])
+                    self.phase = command[3]
+                    self.preferences = Path(kwargs["env"]["OTTPLAY_DATA_DIR"])
+                    self.stored = self.preferences / "window-aspect-lock"
+                    self.initial = self.stored.exists() and self.stored.read_bytes() == b"1\n"
+                    captured.append((self.directory, self.preferences, self.phase, kwargs))
+                def wait(self, timeout):
+                    self.done = True
+                    if self.phase not in {"verify-off", skip_write}:
+                        self.stored.write_bytes(b"1\n" if self.phase == "pin" else b"0\n")
+                    (self.directory / "result.json").write_text(
+                        json.dumps(appkit_restoration(self.phase, self.initial)))
+                    return 0
+                def poll(self):
+                    return 0 if self.done else None
+            with tempfile.TemporaryDirectory() as directory:
+                with patch.object(runner.subprocess, "Popen", Process):
+                    result = runner.run_restoration_sequence(Path("fixture"), Path(directory), platform="macos")
+                self.assertEqual(result["status"], "pass" if skip_write is None else "fail")
+                if skip_write:
+                    self.assertIn("aspect preference bytes were not retained", result["runs"][-1]["error"])
+                self.assertTrue(result["preferences_removed"])
+                self.assertEqual(len(captured), 3 if skip_write is None else 2)
+                self.assertEqual(len({item[1] for item in captured}), 1)
+                for data, preferences, phase, kwargs in captured:
+                    self.assertTrue(kwargs["start_new_session"])
+                    self.assertNotIn("OTTPLAY_INSTANCE", kwargs["env"])
+                    self.assertFalse(data.exists())
+                    self.assertFalse(preferences.exists())
+
+    def test_appkit_deadline_signals_only_the_owned_process_group(self):
+        class Process:
+            pid = 45684
+            waits = 0
+            done = False
+            def poll(self):
+                return 0 if self.done else None
+            def wait(self, timeout):
+                self.waits += 1
+                if self.waits == 1:
+                    raise subprocess.TimeoutExpired("fixture", timeout)
+                self.done = True
+                return -9
+        process = Process()
+        with (patch.object(runner.os, "killpg", create=True) as kill,
+              patch.object(runner.signal, "SIGKILL", 9, create=True),
+              patch.object(runner.subprocess, "run") as windows_kill):
+            runner.stop_owned_process(process, platform="macos")
+            runner.stop_owned_process(process, platform="macos")
+            self.assertEqual(kill.call_args_list,
+                             [unittest.mock.call(45684, runner.signal.SIGTERM),
+                              unittest.mock.call(45684, 9)])
+            windows_kill.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

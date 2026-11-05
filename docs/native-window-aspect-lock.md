@@ -28,3 +28,35 @@ python scripts/check-window-controls.py
 ```
 
 The commands above are a gate definition, not an assertion that they ran. Windows real drag edges, maximize/restore, fractional DPI and monitor transfer; macOS native transitions; X11 behavior; and any future Wayland support still need execution evidence. No new workflow or duplicate fixture launcher is added.
+
+## Hosted macOS constraint smoke
+
+The same window_controls_smoke example and Python checker now have a macOS
+branch. Build and run it only in the approved disposable GitHub-hosted macOS job:
+
+```text
+cargo build --locked -p ottplay-tauri --example window_controls_smoke
+python3 scripts/check-window-controls.py --output build/macos-window-controls-report
+```
+
+The existing borderless main/PiP fixture, bundled local page, production IPC
+handlers, permission configurations, 30-second child deadline, 40-second parent
+deadline, and three fresh preference processes are reused. No installed player,
+Finder, Accessibility input, TCC edit, user profile or network origin is involved.
+
+The macOS observer captures the initial native frame, content size, aspect and
+resize increments before production preference initialization. It then requires
+native AppKit readback for repeated on/on/off/off requests, unchanged initial
+geometry, fullscreen/restore via both production commands, zoom/restore, denied
+main/PiP commands, restoration of original constraints, and eager saved-state
+restoration before the first getter. Native transition observations precede GET,
+so a getter's lazy refresh cannot supply missing callback evidence. Geometry is
+reported in AppKit points with a two-point tolerance. The parent requires the
+complete native report, retained preference bytes and owned-process cleanup.
+
+This is constraint and programmatic native-transition evidence, not a physical
+drag, multi-monitor or pixel acceptance result. The macOS runner uses its own
+process session for bounded cleanup; Windows retains the owned-PID tree cleanup
+and its existing message-probe assertions. Linux remains outside this fixture:
+Wayland is explicitly unsupported, and the X11 initial-layout/WM acceptance gap
+described above remains open. A successful macOS run does not close those gaps.

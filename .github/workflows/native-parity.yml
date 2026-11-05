@@ -252,6 +252,57 @@ jobs:
         run: node scripts/check-block-backport.cjs --runtime
       - name: Test compiled Tauri HTTP bridge
         run: cargo test --locked -p ottplay-tauri
+      - name: Check native window smoke runner contracts
+        run: python3 tests/test_window_controls_smoke.py
+      - name: Build isolated AppKit window controls fixture
+        run: cargo build --locked -p ottplay-tauri --example window_controls_smoke
+      - name: Exercise AppKit aspect constraints through native IPC
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git diff --exit-code HEAD --
+          report="$RUNNER_TEMP/ott-macos-window-controls"
+          mkdir "$report"
+          git rev-parse HEAD > "$report/source-commit.txt"
+          sw_vers > "$report/host.txt"
+          uname -m >> "$report/host.txt"
+          shasum -a 256 target/debug/examples/window_controls_smoke > "$report/binary-before.sha256"
+          set +e
+          python3 scripts/check-window-controls.py --output "$report"
+          outcome=$?
+          set -e
+          shasum -a 256 target/debug/examples/window_controls_smoke > "$report/binary-after.sha256"
+          cmp "$report/binary-before.sha256" "$report/binary-after.sha256"
+          git diff --exit-code HEAD --
+          exit "$outcome"
+      - name: Prepare bounded AppKit failure logs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$RUNNER_TEMP/ott-macos-window-controls"
+          if [ -d "$report" ]; then
+            shopt -s nullglob
+            for log in "$report"/*.log; do
+              shasum -a 256 "$log" >> "$report/logs.sha256"
+              wc -c "$log" >> "$report/log-bytes.txt"
+              tail -c 2097152 "$log" > "$log.tail"
+            done
+          fi
+      - name: Preserve AppKit window controls evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-window-controls-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ott-macos-window-controls/*.json
+            ${{ runner.temp }}/ott-macos-window-controls/*.sha256
+            ${{ runner.temp }}/ott-macos-window-controls/*.txt
+            ${{ runner.temp }}/ott-macos-window-controls/*.log.tail
+          if-no-files-found: warn
+          retention-days: 14
       - name: Exercise screenshot permissions through real native IPC
         run: |
           screenshot_smoke_dir="$RUNNER_TEMP/ottplay-screenshot-ipc"

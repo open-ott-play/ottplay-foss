@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Run the already-built Windows fixture; never launch installed players."""
+"""Run the already-built Windows/macOS fixture; never launch installed players."""
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -66,7 +69,10 @@ def validate_sizing_probe(probe, enabled):
             require(after[1] == before[1], "Opposite top edge moved")
 
 
-def validate_evidence(report, missing):
+def validate_evidence(report, missing, *, platform="windows"):
+    require(platform in {"windows", "macos"}, "Unsupported native fixture platform")
+    if platform == "macos":
+        require(report.get("platform") == "macos", "Wrong native fixture platform")
     validate_common_evidence(report)
     denials = report.get("denials", [])
     expected = ({"set_always_on_top", "set_fullscreen", "toggle_fullscreen"} if missing else {"set_always_on_top"}) | {"get_window_aspect_lock", "set_window_aspect_lock"}
@@ -77,6 +83,8 @@ def validate_evidence(report, missing):
     require(report.get("mode") == ("missing-permission" if missing else "production-permissions"), "Wrong ACL mode")
     if missing:
         return
+    if platform == "macos":
+        return validate_appkit_evidence(report)
     require(report.get("aux_unchanged") is True, "Auxiliary window changed")
     top = report.get("topmost_sequence", [])
     full = report.get("fullscreen_sequence", [])
@@ -117,7 +125,9 @@ def validate_evidence(report, missing):
     validate_sizing_probe(aspect.get("sizing_disabled", {}), False)
 
 
-def validate_restoration_evidence(report, phase):
+def validate_restoration_evidence(report, phase, *, platform="windows"):
+    if platform == "macos":
+        return validate_appkit_restoration(report, phase)
     validate_common_evidence(report)
     require(report.get("mode") == "preference-restoration" and report.get("phase") == phase,
             "Wrong preference restoration phase")
@@ -132,9 +142,105 @@ def validate_restoration_evidence(report, phase):
     validate_sizing_probe(report.get("aspect_sizing", {}), phase == "pin")
 
 
-def stop_owned_process(process):
+def validate_appkit_snapshot(value, baseline, *, active, fullscreen=False,
+                             zoomed=False, original_geometry=True):
+    require(isinstance(value, dict) and value.get("label") == "main",
+            "Missing owned AppKit main-window observation")
+    require(type(value.get("window_number")) is int
+            and value["window_number"] == baseline.get("window_number"),
+            "AppKit observation changed native window identity")
+    require(type(value.get("level")) is int, "Missing AppKit window level")
+    for key, size in [("frame", 4), ("content_size", 2), ("content_aspect", 2),
+                      ("resize_increments", 2)]:
+        items = value.get(key)
+        require(isinstance(items, list) and len(items) == size
+                and all(type(v) in (int, float) and math.isfinite(v) for v in items),
+                f"Invalid AppKit {key}")
+    require(all(v > 0 for v in value["frame"][2:] + value["content_size"]),
+            "Empty AppKit geometry")
+    for key in ["fullscreen", "zoomed", "miniaturized"]:
+        require(type(value.get(key)) is bool, f"Invalid AppKit {key}")
+    require(value["fullscreen"] is fullscreen and value["miniaturized"] is False
+            and (zoomed is None or value["zoomed"] is zoomed),
+            "Wrong native AppKit window state")
+    require(value["content_aspect"] == ([16, 9] if active else baseline["content_aspect"]),
+            "Native AppKit aspect readback disagrees")
+    if not active:
+        require(value["resize_increments"] == baseline["resize_increments"],
+                "Original AppKit resize increments were not restored")
+    if original_geometry:
+        require(value["level"] == baseline["level"], "AppKit window level changed")
+        require(all(abs(a - b) <= 2 for key in ["frame", "content_size"]
+                    for a, b in zip(value[key], baseline[key])),
+                "AppKit aspect operation changed original geometry")
+
+
+def validate_appkit_baseline(report):
+    baseline = report.get("baseline")
+    require(isinstance(baseline, dict), "Missing pre-initialize AppKit baseline")
+    validate_appkit_snapshot(baseline, baseline, active=False)
+    require(baseline["content_aspect"] != [16, 9],
+            "AppKit fixture already constrained before initialization")
+    width, height = baseline["content_size"]
+    require(abs(width * 9 - height * 16) > 4, "AppKit fixture did not start off-ratio")
+    return baseline
+
+
+def validate_appkit_evidence(report):
+    baseline = validate_appkit_baseline(report)
+    require(report.get("aux_unchanged") is True, "Auxiliary AppKit window changed")
+    validate_aspect_state(report.get("initial_state"), False, False)
+    validate_appkit_snapshot(report.get("initial"), baseline, active=False)
+    sequence = report.get("set_sequence", [])
+    require(len(sequence) == 4, "Incomplete AppKit idempotence sequence")
+    for item, enabled in zip(sequence, [True, True, False, False]):
+        validate_aspect_state(item.get("state"), enabled, enabled)
+        validate_appkit_snapshot(item.get("native"), baseline, active=enabled)
+    transitions = report.get("transitions", [])
+    expected = [(kind, target) for kind in ["toggle_fullscreen", "set_fullscreen", "zoom"]
+                for target in [True, False]]
+    require(len(transitions) == len(expected), "Incomplete AppKit native transitions")
+    for item, (kind, target) in zip(transitions, expected):
+        require(item.get("kind") == kind and item.get("target") is target,
+                "Wrong AppKit transition order")
+        validate_aspect_state(item.get("state"), True, not target)
+        validate_appkit_snapshot(item.get("native"), baseline, active=not target,
+                                 fullscreen=target if kind != "zoom" else False,
+                                 zoomed=(None if target else False) if kind != "zoom" else target,
+                                 original_geometry=not target)
+    validate_aspect_state(report.get("final_state"), False, False)
+    validate_appkit_snapshot(report.get("final"), baseline, active=False)
+
+
+def validate_appkit_restoration(report, phase):
+    require(report.get("platform") == "macos", "Wrong native fixture platform")
+    validate_common_evidence(report)
+    require(report.get("mode") == "preference-restoration" and report.get("phase") == phase,
+            "Wrong AppKit preference phase")
+    require(report.get("aux_unchanged") is True, "Auxiliary AppKit window changed")
+    baseline = validate_appkit_baseline(report)
+    for name, enabled in [("initial", phase == "unpin"), ("final", phase == "pin")]:
+        validate_aspect_state(report.get(name + "_state"), enabled, enabled)
+        validate_appkit_snapshot(report.get(name), baseline, active=enabled)
+
+
+def stop_owned_process(process, *, platform="windows"):
     """PID comes only from this runner's Popen. Never terminate by image name."""
     if process.poll() is not None:
+        return
+    if platform == "macos":
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait(timeout=5)
         return
     subprocess.run(["taskkill.exe", "/PID", str(process.pid), "/T", "/F"],
                    check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
@@ -153,7 +259,7 @@ def remove_private_data(directory):
             time.sleep(0.1)
 
 
-def run_case(binary, output, missing, *, phase=None, preferences=None):
+def run_case(binary, output, missing, *, phase=None, preferences=None, platform="windows"):
     require(phase in {None, "pin", "unpin", "verify-off"}, "Unknown preference phase")
     require((phase is None) == (preferences is None), "Preference phases need an owned shared directory")
     require(phase is None or not missing, "Preference phases require production permissions")
@@ -169,32 +275,35 @@ def run_case(binary, output, missing, *, phase=None, preferences=None):
         environment["OTTPLAY_DATA_DIR"] = str(preferences if phase else directory / "preferences")
         environment.pop("OTTPLAY_INSTANCE", None)
         with (output / f"{name}.log").open("w", encoding="utf-8") as log:
-            process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=environment)
+            platform_options = {"start_new_session": True} if platform == "macos" else {}
+            process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=environment, **platform_options)
             result["pid"] = process.pid
             try:
                 result["exit_code"] = process.wait(timeout=40)
             finally:
-                stop_owned_process(process)
+                stop_owned_process(process, platform=platform)
         native = directory / "result.json"
         require(native.is_file(), "Native fixture produced no evidence")
         result["native"] = json.loads(native.read_text(encoding="utf-8"))
         require(result["exit_code"] == 0, f"Fixture exited {result['exit_code']}")
         if phase:
-            validate_restoration_evidence(result["native"], phase)
-            stored = preferences / "window-always-on-top"
-            require(stored.is_file() and not stored.is_symlink(), "Preference file is missing or invalid")
-            with stored.open("rb") as stream:
-                require(stream.read(3) == (b"1\n" if phase == "pin" else b"0\n"),
-                        "Confirmed preference bytes were not retained")
+            validate_restoration_evidence(result["native"], phase, platform=platform)
+            if platform == "windows":
+                stored = preferences / "window-always-on-top"
+                require(stored.is_file() and not stored.is_symlink(), "Preference file is missing or invalid")
+                with stored.open("rb") as stream:
+                    require(stream.read(3) == (b"1\n" if phase == "pin" else b"0\n"),
+                            "Confirmed preference bytes were not retained")
             aspect_stored = preferences / "window-aspect-lock"
             require(aspect_stored.is_file() and not aspect_stored.is_symlink(), "Aspect preference file is missing or invalid")
             with aspect_stored.open("rb") as stream:
                 require(stream.read(3) == (b"1\n" if phase == "pin" else b"0\n"),
                         "Confirmed aspect preference bytes were not retained")
-            result["saved_preference"] = phase == "pin"
+            if platform == "windows":
+                result["saved_preference"] = phase == "pin"
             result["saved_aspect_preference"] = phase == "pin"
         else:
-            validate_evidence(result["native"], missing)
+            validate_evidence(result["native"], missing, platform=platform)
         result["status"] = "pass"
     except Exception as error:
         result["error"] = str(error)
@@ -207,7 +316,7 @@ def run_case(binary, output, missing, *, phase=None, preferences=None):
     finally:
         try:
             if process is not None:
-                stop_owned_process(process)
+                stop_owned_process(process, platform=platform)
             remove_private_data(directory)
             result["private_data_removed"] = True
         except Exception as error:
@@ -217,12 +326,13 @@ def run_case(binary, output, missing, *, phase=None, preferences=None):
     return result
 
 
-def run_restoration_sequence(binary, output):
+def run_restoration_sequence(binary, output, *, platform="windows"):
     preferences = Path(tempfile.mkdtemp(prefix="ott-window-preferences-"))
     summary = {"status": "fail", "runs": []}
     try:
         for phase in ["pin", "unpin", "verify-off"]:
-            result = run_case(binary, output, False, phase=phase, preferences=preferences)
+            result = run_case(binary, output, False, phase=phase, preferences=preferences,
+                              **({"platform": platform} if platform != "windows" else {}))
             summary["runs"].append(result)
             require(result["status"] == "pass", f"Preference phase failed: {phase}")
         summary["status"] = "pass"
@@ -240,16 +350,17 @@ def run_restoration_sequence(binary, output):
 
 
 def main():
+    platform = "macos" if sys.platform == "darwin" else "windows"
+    require(sys.platform == "darwin" or os.name == "nt", "Native window fixture requires Windows or macOS")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--binary", type=Path, default=Path("target/debug/examples/window_controls_smoke.exe"))
-    parser.add_argument("--output", type=Path, default=Path("build/windows-window-controls-report"))
+    parser.add_argument("--binary", type=Path, default=Path("target/debug/examples/window_controls_smoke" + (".exe" if platform == "windows" else "")))
+    parser.add_argument("--output", type=Path, default=Path("build/" + platform + "-window-controls-report"))
     args = parser.parse_args()
-    require(os.name == "nt", "Native window fixture requires Windows")
     binary = args.binary.resolve()
     require(binary.is_file(), "Build window_controls_smoke before running the fixture")
     args.output.mkdir(parents=True, exist_ok=True)
-    reports = [run_case(binary, args.output, missing) for missing in [True, False]]
-    restoration = run_restoration_sequence(binary, args.output)
+    reports = [run_case(binary, args.output, missing, platform=platform) for missing in [True, False]]
+    restoration = run_restoration_sequence(binary, args.output, platform=platform)
     passed = all(item["status"] == "pass" for item in reports) and restoration["status"] == "pass"
     summary = {"status": "pass" if passed else "fail", "runs": reports, "restoration": restoration}
     (args.output / "result.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")

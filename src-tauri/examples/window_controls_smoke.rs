@@ -1,8 +1,8 @@
-//! Isolated Windows WebView2 fixture. No installed player, profiles or network.
+//! Isolated native window fixture. No installed player, profiles or network.
 //! Build with cargo build --locked -p ottplay-tauri --example window_controls_smoke,
 //! then run scripts/check-window-controls.py. Both paths use production IPC handlers.
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 mod smoke {
     use ottplay_tauri_lib::native_window_smoke_commands::{
         tauri_commands, window_aspect, window_controls,
@@ -18,6 +18,7 @@ mod smoke {
     static REQUEST: AtomicUsize = AtomicUsize::new(0);
     static EXIT_CODE: AtomicI32 = AtomicI32::new(1);
 
+    #[cfg(target_os = "windows")]
     #[repr(C)]
     #[derive(Default)]
     struct Rect {
@@ -27,18 +28,21 @@ mod smoke {
         bottom: i32,
     }
 
+    #[cfg(target_os = "windows")]
     #[link(name = "user32")]
     extern "system" {
         fn GetWindowLongW(hwnd: *mut std::ffi::c_void, index: i32) -> i32;
         fn GetWindowRect(hwnd: *mut std::ffi::c_void, rect: *mut Rect) -> i32;
         fn GetWindowThreadProcessId(hwnd: *mut std::ffi::c_void, pid: *mut u32) -> u32;
     }
+    #[cfg(target_os = "windows")]
     #[link(name = "kernel32")]
     extern "system" {
         fn SetLastError(code: u32);
         fn GetLastError() -> u32;
     }
 
+    #[cfg(target_os = "windows")]
     #[derive(Clone, Debug, PartialEq, serde::Serialize)]
     struct Snapshot {
         fullscreen: bool,
@@ -47,6 +51,7 @@ mod smoke {
         rect: [i32; 4],
     }
 
+    #[cfg(target_os = "windows")]
     fn snapshot(window: &tauri::WebviewWindow) -> Result<Snapshot, String> {
         let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
         let mut pid = 0;
@@ -125,6 +130,7 @@ mod smoke {
         Ok(reply["value"].clone())
     }
 
+    #[cfg(target_os = "windows")]
     async fn denied(
         window: &tauri::WebviewWindow,
         command: &str,
@@ -146,6 +152,7 @@ mod smoke {
 
     // Style/geometry changes can finish after the command's cached state update.
     // Poll only our window for a bounded interval; never repeat the mutation.
+    #[cfg(target_os = "windows")]
     async fn settled(
         window: &tauri::WebviewWindow,
         topmost: bool,
@@ -185,12 +192,14 @@ mod smoke {
         Ok(())
     }
 
+    #[cfg(target_os = "windows")]
     #[repr(C)]
     #[derive(Default, Clone, Copy)]
     struct Point {
         x: i32,
         y: i32,
     }
+    #[cfg(target_os = "windows")]
     #[repr(C)]
     #[derive(Default)]
     struct MinMax {
@@ -200,15 +209,20 @@ mod smoke {
         min_track: Point,
         max_track: Point,
     }
+    #[cfg(target_os = "windows")]
     type Hwnd = *mut std::ffi::c_void;
+    #[cfg(target_os = "windows")]
     type Subclass = unsafe extern "system" fn(Hwnd, u32, usize, isize, usize, usize) -> isize;
+    #[cfg(target_os = "windows")]
     const PROBE_ID: usize = 0x4f545450;
+    #[cfg(target_os = "windows")]
     #[link(name = "comctl32")]
     extern "system" {
         fn SetWindowSubclass(w: Hwnd, callback: Option<Subclass>, id: usize, data: usize) -> i32;
         fn RemoveWindowSubclass(w: Hwnd, callback: Option<Subclass>, id: usize) -> i32;
         fn DefSubclassProc(w: Hwnd, message: u32, wparam: usize, lparam: isize) -> isize;
     }
+    #[cfg(target_os = "windows")]
     #[link(name = "user32")]
     extern "system" {
         fn GetClientRect(w: Hwnd, rect: *mut Rect) -> i32;
@@ -223,11 +237,13 @@ mod smoke {
         ) -> i32;
         fn SendMessageW(w: Hwnd, message: u32, wparam: usize, lparam: isize) -> isize;
     }
+    #[cfg(target_os = "windows")]
     #[derive(Default)]
     struct Probe {
         captures: usize,
         limits: [i32; 4],
     }
+    #[cfg(target_os = "windows")]
     unsafe extern "system" fn observe_bounds(
         w: Hwnd,
         message: u32,
@@ -250,10 +266,12 @@ mod smoke {
         }
         result
     }
+    #[cfg(target_os = "windows")]
     struct ProbeGuard {
         hwnd: Hwnd,
         data: *mut Probe,
     }
+    #[cfg(target_os = "windows")]
     impl ProbeGuard {
         unsafe fn finish(&mut self) -> Result<(), String> {
             if RemoveWindowSubclass(self.hwnd, Some(observe_bounds), PROBE_ID) == 0 {
@@ -264,6 +282,7 @@ mod smoke {
             Ok(())
         }
     }
+    #[cfg(target_os = "windows")]
     impl Drop for ProbeGuard {
         fn drop(&mut self) {
             if !self.data.is_null() {
@@ -277,6 +296,7 @@ mod smoke {
             }
         }
     }
+    #[cfg(target_os = "windows")]
     fn coordinates(rect: &Rect) -> [i32; 4] {
         [rect.left, rect.top, rect.right, rect.bottom]
     }
@@ -284,6 +304,7 @@ mod smoke {
     // Real owned HWND dispatch, not a copy of production geometry. SetWindowPos
     // provokes OS-initialized tracking bounds; never send a fabricated MINMAXINFO.
     // WM_SIZING below is a deliberate message probe, not a claimed mouse gesture.
+    #[cfg(target_os = "windows")]
     async fn sizing_probe(window: &tauri::WebviewWindow, enabled: bool) -> Result<Value, String> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         let target = window.clone();
@@ -416,6 +437,7 @@ mod smoke {
         Ok(reply)
     }
 
+    #[cfg(target_os = "windows")]
     async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, String> {
         let aux = main
             .app_handle()
@@ -536,6 +558,7 @@ mod smoke {
         }
     }
 
+    #[cfg(target_os = "windows")]
     async fn exercise_preference(
         main: tauri::WebviewWindow,
         phase: PreferencePhase,
@@ -572,6 +595,9 @@ mod smoke {
         )
     }
 
+    #[cfg(target_os = "macos")]
+    include!("window_controls_smoke/appkit.rs");
+
     pub fn run() -> Result<i32, Box<dyn std::error::Error>> {
         let output = PathBuf::from(
             std::env::args()
@@ -606,7 +632,7 @@ mod smoke {
                     deadline_output.join("result.json"),
                     "{\"status\":\"fail\",\"error\":\"30-second internal deadline\"}",
                 );
-                // Exit only this isolated process. Windows destroys its owned HWNDs.
+                // Exit only this isolated process; no installed player is targeted.
                 // The parent runner subsequently removes its private WebView data.
                 std::process::exit(1);
             }
@@ -650,6 +676,8 @@ mod smoke {
                     .data_directory(data.join(label))
                     .build()?;
                 }
+                #[cfg(target_os = "macos")]
+                appkit_prepare(app)?;
                 if let Some(webview) = app.get_webview_window("main") {
                     let window = webview.as_ref().window();
                     let handle = app.handle().clone();
@@ -733,7 +761,7 @@ mod smoke {
     }
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn main() {
     match smoke::run() {
         Ok(code) => std::process::exit(code),
@@ -743,8 +771,8 @@ fn main() {
         }
     }
 }
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn main() {
-    eprintln!("This fixture requires Windows with WebView2.");
+    eprintln!("This fixture requires Windows with WebView2 or macOS with AppKit.");
     std::process::exit(2);
 }
