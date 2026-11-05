@@ -53,12 +53,20 @@ Finder, Accessibility input, TCC edit, user profile or network origin is involve
 The macOS observer captures the initial native frame, content size, aspect and
 resize increments before production preference initialization. It then requires
 native AppKit readback for repeated on/on/off/off requests, unchanged initial
-geometry, fullscreen/restore via both production commands, zoom/restore, denied
+geometry, fullscreen/restore via both production commands, Tauri maximize/unmaximize, denied
 main/PiP commands, restoration of original constraints, and eager saved-state
 restoration before the first getter. Native transition observations precede GET,
 so a getter's lazy refresh cannot supply missing callback evidence. Geometry is
 reported in AppKit points with a two-point tolerance. The parent requires the
 complete native report, retained preference bytes and owned-process cleanup.
+
+For the borderless main window, maximize uses Tauri's production API and its
+Tao visible-frame geometry, rather than raw `NSWindow.zoom`. The observer checks
+the captured target's origin and size before GET, unchanged native state after
+GET, and the original frame/content size after unmaximize. Raw `isZoomed` remains
+diagnostic data: changing AppKit constraint mode can change that derived value
+without changing the frame. Separate raw-zoom crash diagnostics are not evidence
+that this production path passed or that raw `NSWindow.zoom` has been repaired.
 
 This is constraint and programmatic native-transition evidence, not a physical
 drag, multi-monitor or pixel acceptance result. The macOS runner uses its own

@@ -157,7 +157,7 @@ def validate_restoration_evidence(report, phase, *, platform="windows"):
 
 
 def validate_appkit_snapshot(value, baseline, *, active, simple_fullscreen=False,
-                             zoomed=False, original_geometry=True):
+                             zoomed=False, original_geometry=True, target_frame=None):
     require(isinstance(value, dict) and value.get("label") == "main",
             "Missing owned AppKit main-window observation")
     require(type(value.get("window_number")) is int
@@ -198,6 +198,14 @@ def validate_appkit_snapshot(value, baseline, *, active, simple_fullscreen=False
     if not active:
         require(value["resize_increments"] == baseline["resize_increments"],
                 "Original AppKit resize increments were not restored")
+    if target_frame is not None:
+        require(isinstance(target_frame, list) and len(target_frame) == 4
+                and all(type(v) in (int, float) and math.isfinite(v) for v in target_frame)
+                and all(v > 0 for v in target_frame[2:]), "Invalid AppKit maximize target")
+        require(all(abs(a - b) <= 2 for a, b in zip(value["frame"], target_frame)),
+                "AppKit maximize did not reach the captured visible frame")
+        require(all(abs(a - b) <= 2 for a, b in zip(value["content_size"], target_frame[2:])),
+                "AppKit maximized content did not fill the borderless frame")
     if original_geometry:
         require(value["level"] == baseline["level"], "AppKit window level changed")
         require(all(abs(a - b) <= 2 for key in ["frame", "content_size"]
@@ -227,17 +235,26 @@ def validate_appkit_evidence(report):
         validate_aspect_state(item.get("state"), enabled, enabled)
         validate_appkit_snapshot(item.get("native"), baseline, active=enabled)
     transitions = report.get("transitions", [])
-    expected = [(kind, target) for kind in ["toggle_fullscreen", "set_fullscreen", "zoom"]
+    expected = [(kind, target) for kind in ["toggle_fullscreen", "set_fullscreen", "maximize"]
                 for target in [True, False]]
     require(len(transitions) == len(expected), "Incomplete AppKit native transitions")
     for item, (kind, target) in zip(transitions, expected):
         require(item.get("kind") == kind and item.get("target") is target,
                 "Wrong AppKit transition order")
         validate_aspect_state(item.get("state"), True, not target)
+        if kind == "maximize":
+            require(item.get("target_visible_frame") is not None,
+                    "Missing AppKit maximize target")
+            require(item.get("target_visible_frame") == transitions[4].get("target_visible_frame"),
+                    "AppKit maximize target changed between transitions")
         validate_appkit_snapshot(item.get("native"), baseline, active=not target,
-                                 simple_fullscreen=target if kind != "zoom" else False,
-                                 zoomed=(None if target else False) if kind != "zoom" else target,
-                                 original_geometry=not target)
+                                 simple_fullscreen=target if kind != "maximize" else False,
+                                 zoomed=(None if target else False) if kind != "maximize" else None,
+                                 original_geometry=not target,
+                                 target_frame=item.get("target_visible_frame") if kind == "maximize" and target else None)
+        if kind == "maximize":
+            require(item.get("native_after_get") == item.get("native"),
+                    "Aspect getter changed settled AppKit maximize state")
     validate_aspect_state(report.get("final_state"), False, False)
     validate_appkit_snapshot(report.get("final"), baseline, active=False)
 

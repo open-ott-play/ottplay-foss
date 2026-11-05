@@ -13,6 +13,19 @@ thread_local! { static WINDOWS:RefCell<HashMap<usize,State>>=RefCell::new(HashMa
 fn same_size(left: NSSize, right: NSSize) -> bool {
     left.width == right.width && left.height == right.height
 }
+fn maximized(native: &NSWindow) -> bool {
+    // Match Tao's borderless maximize path; raw AppKit zoom depends on aspect.
+    let required = NSWindowStyleMask::Titled | NSWindowStyleMask::Resizable;
+    if !native.styleMask().contains(required) {
+        if let Some(screen) = native.screen() {
+            let frame = native.frame();
+            let visible = screen.visibleFrame();
+            return (frame.size.width - visible.size.width).abs() < 1.0
+                && (frame.size.height - visible.size.height).abs() < 1.0;
+        }
+    }
+    native.isZoomed()
+}
 fn refresh(key: usize) -> Result<(bool, bool), String> {
     MainThreadMarker::new().ok_or("Aspect constraint requires the AppKit thread")?;
     let state = WINDOWS
@@ -22,7 +35,7 @@ fn refresh(key: usize) -> Result<(bool, bool), String> {
     let native = &state.native;
     let active = state.enabled
         && !crate::commands::tauri_commands::macos_simple_fullscreen_active()
-        && !native.isZoomed()
+        && !maximized(native)
         && !native.isMiniaturized()
         && !native.styleMask().contains(NSWindowStyleMask::FullScreen);
     let expected = if active {
@@ -38,11 +51,8 @@ fn refresh(key: usize) -> Result<(bool, bool), String> {
         if active {
             native.setContentAspectRatio(NSSize::new(16.0, 9.0));
         } else {
-            native.setContentAspectRatio(NSSize::new(0.0, 0.0));
-            // Even an equal-value write can invalidate AppKit's native zoom state.
-            if !same_size(native.contentResizeIncrements(), state.increments) {
-                native.setContentResizeIncrements(state.increments);
-            }
+            // Increment mode clears the aspect constraint without installing a zero ratio.
+            native.setContentResizeIncrements(state.increments);
             if state.previous.width > 0.0 && state.previous.height > 0.0 {
                 native.setContentAspectRatio(state.previous);
             }

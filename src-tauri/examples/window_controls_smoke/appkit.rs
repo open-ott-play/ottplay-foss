@@ -2,7 +2,7 @@
 // Native snapshots use AppKit points and constraints, not video geometry or
 // an assertion that a physical interactive drag occurred.
 use objc2::{rc::Retained, MainThreadMarker};
-use objc2_app_kit::{NSApp, NSApplicationPresentationOptions, NSWindow, NSWindowStyleMask};
+use objc2_app_kit::{NSApp, NSApplicationPresentationOptions, NSScreen, NSWindow, NSWindowStyleMask};
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 struct AppKitSnapshot {
@@ -121,6 +121,7 @@ async fn appkit_settled(
     simple_fullscreen: bool,
     zoomed: Option<bool>,
     original_geometry: bool,
+    target_frame: Option<[f64; 4]>,
 ) -> Result<AppKitSnapshot, String> {
     let start = Instant::now();
     let mut previous: Option<AppKitSnapshot> = None;
@@ -135,6 +136,11 @@ async fn appkit_settled(
             && !value.miniaturized
             && zoomed.map(|expected| value.zoomed == expected).unwrap_or(true)
             && (!original_geometry || appkit_geometry_equal(&value, baseline))
+            && target_frame.map(|frame| {
+                value.frame.iter().zip(frame).all(|(actual, expected)| (actual - expected).abs() <= 2.0)
+                    && value.content_size.iter().zip(frame[2..].iter())
+                        .all(|(actual, expected)| (actual - expected).abs() <= 2.0)
+            }).unwrap_or(true)
         {
             if previous.as_ref() == Some(&value) {
                 return Ok(value);
@@ -144,22 +150,27 @@ async fn appkit_settled(
             previous = None;
         }
         if start.elapsed() >= Duration::from_secs(4) {
-            return Err(format!("AppKit native state did not settle (simple_fullscreen={simple_fullscreen}, active={active}, zoomed={zoomed:?}, original_geometry={original_geometry}): {value:?}"));
+            return Err(format!("AppKit native state did not settle (simple_fullscreen={simple_fullscreen}, active={active}, zoomed={zoomed:?}, original_geometry={original_geometry}, target_frame={target_frame:?}): {value:?}"));
         }
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
 }
 
-async fn appkit_zoom(window: &tauri::WebviewWindow) -> Result<(), String> {
+async fn appkit_maximize_target(window: &tauri::WebviewWindow) -> Result<[f64; 4], String> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    let target = window.clone();
     window.run_on_main_thread(move || {
-        let result = appkit_native(&target).map(|native| native.zoom(None));
+        let result = MainThreadMarker::new().ok_or("AppKit target requires main thread".to_owned())
+            .and_then(|mtm| NSScreen::mainScreen(mtm).ok_or("AppKit main screen unavailable".to_owned()))
+            .map(|screen| {
+                // Independent observation of the target used by Tao set_maximized_async.
+                let frame = screen.visibleFrame();
+                [frame.origin.x, frame.origin.y, frame.size.width, frame.size.height]
+            });
         let _ = sender.send(result);
     }).map_err(|e| e.to_string())?;
     tokio::time::timeout(Duration::from_secs(4), receiver).await
-        .map_err(|_| "AppKit zoom deadline".to_owned())?
-        .map_err(|_| "AppKit zoom channel closed".to_owned())?
+        .map_err(|_| "AppKit target deadline".to_owned())?
+        .map_err(|_| "AppKit target channel closed".to_owned())?
 }
 
 async fn denied(
@@ -204,7 +215,7 @@ async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, St
     ] {
         denials.push(denied(&aux, command, args).await?);
     }
-    let initial = appkit_settled(&main, &baseline, false, false, Some(false), true).await?;
+    let initial = appkit_settled(&main, &baseline, false, false, Some(false), true, None).await?;
     if (initial.content_size[0] * 9.0 - initial.content_size[1] * 16.0).abs() <= 4.0 {
         return Err("AppKit fixture must start with non-16:9 content".into());
     }
@@ -212,7 +223,7 @@ async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, St
     let mut sequence = Vec::new();
     for enabled in [true, true, false, false] {
         let state = aspect(&main, Some(enabled), enabled).await?;
-        let native = appkit_settled(&main, &baseline, enabled, false, Some(false), true).await?;
+        let native = appkit_settled(&main, &baseline, enabled, false, Some(false), true, None).await?;
         sequence.push(json!({"state": state, "native": native}));
     }
     aspect(&main, Some(true), true).await?;
@@ -230,20 +241,29 @@ async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, St
                 return Err(format!("Unconfirmed fullscreen transition: {reply}"));
             }
             let native = appkit_settled(&main, &baseline, !target, target,
-                if target { None } else { Some(false) }, !target).await?;
+                if target { None } else { Some(false) }, !target, None).await?;
             let state = aspect_state(&main, true, !target).await?;
             transitions.push(json!({"kind": if explicit { "set_fullscreen" } else { "toggle_fullscreen" },
                 "target": target, "native": native, "state": state}));
         }
     }
+    let target_visible_frame = appkit_maximize_target(&main).await?;
     for target in [true, false] {
-        appkit_zoom(&main).await?;
-        let native = appkit_settled(&main, &baseline, !target, false, Some(target), !target).await?;
+        // Use the production API used by Tauri's drag-region maximize handler.
+        let request = if target { main.maximize() } else { main.unmaximize() };
+        request.map_err(|e| e.to_string())?;
+        let native = appkit_settled(&main, &baseline, !target, false, None, !target,
+            if target { Some(target_visible_frame) } else { None }).await?;
         let state = aspect_state(&main, true, !target).await?;
-        transitions.push(json!({"kind": "zoom", "target": target, "native": native, "state": state}));
+        let native_after_get = appkit_snapshot(&main).await?;
+        if native_after_get != native {
+            return Err("Aspect getter changed settled AppKit maximize state".into());
+        }
+        transitions.push(json!({"kind": "maximize", "target": target, "native": native,
+            "state": state, "target_visible_frame": target_visible_frame, "native_after_get": native_after_get}));
     }
     let final_state = aspect(&main, Some(false), false).await?;
-    let final_native = appkit_settled(&main, &baseline, false, false, Some(false), true).await?;
+    let final_native = appkit_settled(&main, &baseline, false, false, Some(false), true, None).await?;
     if appkit_snapshot(&aux).await? != aux_before {
         return Err("Main aspect operations changed the auxiliary AppKit window".into());
     }
@@ -264,13 +284,13 @@ async fn exercise_preference(
     let aux_before = appkit_snapshot(&aux).await?;
     let enabled = matches!(phase, PreferencePhase::Unpin);
     // First observe eager initialization, before GET could perform lazy restore.
-    let initial = appkit_settled(&main, &baseline, enabled, false, Some(false), true).await?;
+    let initial = appkit_settled(&main, &baseline, enabled, false, Some(false), true, None).await?;
     let initial_state = aspect_state(&main, enabled, enabled).await?;
     let target = matches!(phase, PreferencePhase::Pin);
     if !matches!(phase, PreferencePhase::VerifyOff) {
         aspect(&main, Some(target), target).await?;
     }
-    let final_native = appkit_settled(&main, &baseline, target, false, Some(false), true).await?;
+    let final_native = appkit_settled(&main, &baseline, target, false, Some(false), true, None).await?;
     let final_state = aspect_state(&main, target, target).await?;
     if appkit_snapshot(&aux).await? != aux_before {
         return Err("Aspect preference restoration changed the auxiliary AppKit window".into());
