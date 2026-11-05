@@ -233,7 +233,7 @@ index 11c4591d..f59249d1 100755
          "features:+tel:abc\n+control:none",
          "features:--features lab-diagnostics+tel:abc+unknown:abc",
 diff --git a/ci/list-caps.ini b/ci/list-caps.ini
-index f1287e64..abc81301 100644
+index f1287e64..1852e6de 100644
 --- a/ci/list-caps.ini
 +++ b/ci/list-caps.ini
 @@ -1348,7 +1348,7 @@ reason = Acknowledges a bounded batch of queued command IDs; remaining IDs stay
@@ -245,7 +245,7 @@ index f1287e64..abc81301 100644
  class = not-a-list
  reason = Uses a fixed prefix of a hash for an opaque native profile identity; no content list is sliced.
  
-@@ -1676,3 +1676,105 @@ reason = Public discovery catalogs are bounded to 8192 bytes during transfer and
+@@ -1676,3 +1676,109 @@ reason = Public discovery catalogs are bounded to 8192 bytes during transfer and
  [src/app/ott_remote/discovery.rs::CONTROLLER_BODY_LIMIT]
  class = format
  reason = Manual command-server discovery retains its 65536-byte document bound and rejects oversized envelopes atomically.
@@ -351,6 +351,10 @@ index f1287e64..abc81301 100644
 +[net/src/control_discovery/system.rs::query]
 +class = format
 +reason = Only the fixed 12-byte DNS header is readable after libc reports an error without a response length.
++
++[platform/src/storage/public_preferences.rs::patch_guarded]
++class = not-a-list
++reason = Reads eight bytes from a fixed sixteen-byte random generation to form a 64-bit storage epoch; no catalogue or user-visible list is truncated.
 diff --git a/ci/mkipk.py b/ci/mkipk.py
 index 15838a23..056253d3 100644
 --- a/ci/mkipk.py
