@@ -25,7 +25,7 @@ From the repository root:
 ```sh
 python3 scripts/smoke-webos-native-cli.py \
   --player YOUR_NATIVE_PLAYER \
-  --expected-version 0.2.0
+  --expected-version 0.3.0
 ```
 
 To select the installation and bound the observation explicitly:
@@ -33,7 +33,7 @@ To select the installation and bound the observation explicitly:
 ```sh
 python3 scripts/smoke-webos-native-cli.py \
   --player YOUR_NATIVE_PLAYER \
-  --expected-version 0.2.0 \
+  --expected-version 0.3.0 \
   --config /path/to/ott-config.json \
   --cli /path/to/ott \
   --samples 3 \
