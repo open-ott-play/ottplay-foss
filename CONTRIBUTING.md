@@ -50,7 +50,7 @@ Install coverage with `python3 -m pip install --require-hashes --only-binary=:al
 regenerate the reviewed cross-platform hashes with:
 
 ```sh
-uv pip compile requirements-test.in --generate-hashes --universal --python-version 3.12 --output-file requirements-test.txt
+uv pip compile requirements-test.in --generate-hashes --universal --python-version=3.12 --output-file=requirements-test.txt
 ```
 
 Run `npm run test:python` in the resulting Python environment.
