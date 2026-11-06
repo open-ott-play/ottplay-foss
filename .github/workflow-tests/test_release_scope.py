@@ -1,5 +1,6 @@
 """Prevent an older generator from skipping main-branch release qualification."""
 
+import json
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -61,6 +62,22 @@ class ReleaseScopeTests(unittest.TestCase):
                 raise
         else:
             self.fail("Invalid channel-wrapper force-full value was accepted")
+
+    def test_existing_documentation_validator_runs_before_heavy_ci(self):
+        quality = yaml.safe_load((ROOT / ".github/workflows/quality-gate.yml").read_text())
+        contracts = quality["jobs"]["workflow-contracts"]
+        self.assertNotIn("if", contracts)
+        step = next(
+            step for step in contracts["steps"] if step.get("name") == "Validate documentation with the locked compiler"
+        )
+        self.assertNotIn("if", step)
+        self.assertNotIn("continue-on-error", step)
+        self.assertIn("node tests/test_readme_docs.cjs", step["run"])
+        self.assertIn("npm ci --ignore-scripts", step["run"])
+        self.assertIn('NODE_PATH="$RUNNER_TEMP/ottplay-docs-validation/node_modules"', step["run"])
+        self.assertIn("workflow-contracts", quality["jobs"]["gate"]["needs"])
+        lock = json.loads((ROOT / "package-lock.json").read_text())
+        self.assertIn("integrity", lock["packages"]["node_modules/typescript"])
 
     def test_old_generator_documentation_skip_is_rejected(self):
         workflow = deepcopy(self.workflow)

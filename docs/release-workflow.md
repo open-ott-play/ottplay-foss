@@ -438,3 +438,13 @@ python3 -m unittest discover -s .github/workflow-tests -p test_release_scope.py
 The existing `toolkit_revision` fields record historical release-engine
 provenance. The always-run contract rejects an older generator's documentation
 skip; ordinary-documentation skipping applies only to PR and merge-group CI.
+
+### Documentation validation
+
+Documentation-only pull requests still run the existing README, translation,
+manual navigation, source-digest and local-link checks in the CI configuration
+contracts job. The job calls `tests/test_readme_docs.cjs` unchanged and installs
+only TypeScript, using the exact version, registry URL and integrity hash from
+`package-lock.json`. It does not install the frontend or native build toolchains.
+Missing documents and stale translated manuals fail this gate. Full source and
+release validation remain unchanged.
