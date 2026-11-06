@@ -57,7 +57,7 @@ pub fn set_size_constraints<W: GtkWindowExt + WidgetExt>(
     }
   };
   state.borrow_mut().constraints = constraints;
-  publish_geometry(window, &state, true);
+  publish_geometry(window, &state, true, true);
 }
 
 const GEOMETRY_STATE: &str = "tao-x11-geometry-state-v1";
@@ -115,7 +115,12 @@ fn native_state(window: &gtk::Window) -> gdk::WindowState {
     .unwrap_or_else(gdk::WindowState::empty)
 }
 
-fn publish_geometry(window: &gtk::Window, state: &Rc<RefCell<GeometryState>>, force: bool) {
+fn publish_geometry(
+  window: &gtk::Window,
+  state: &Rc<RefCell<GeometryState>>,
+  force: bool,
+  synchronous: bool,
+) {
   let (constraints, active, observed) = {
     let mut state = state.borrow_mut();
     let active = state
@@ -161,10 +166,12 @@ fn publish_geometry(window: &gtk::Window, state: &Rc<RefCell<GeometryState>>, fo
     )),
     geom_mask,
   );
-  if observed {
-    // Flush GTK's own complete hints, including its requisition/min/max rules.
-    // This may normalize the current size. Do not pump events or issue a second
-    // competing GDK/Xlib hints write; later GTK layout uses this same geometry.
+  if observed && synchronous {
+    // Explicit commands and pre-transition barriers require immediate native
+    // hints. GTK signal callbacks must keep its queued layout: a window-state
+    // signal runs before GTK updates its own flags and consumes restored sizes.
+    // Flushing there can resize the window using its old fullscreen allocation.
+    // Do not pump events or issue a competing GDK/Xlib hints write.
     #[allow(deprecated)]
     window.check_resize();
   }
@@ -195,7 +202,9 @@ pub(crate) fn aspect_transition<W: GtkWindowExt + WidgetExt>(
       *pending = Some(enabled);
     }
   }
-  publish_geometry(window, &state, false);
+  // A callback may have queued these same hints without flushing them yet.
+  // Bypass that cache before issuing the native transition request.
+  publish_geometry(window, &state, true, true);
 }
 
 pub(crate) fn gtk_window_aspect_lock(
@@ -226,25 +235,25 @@ pub(crate) fn gtk_window_aspect_lock(
           .borrow_mut()
           .aspect
           .observe(event.changed_mask(), native);
-        publish_geometry(window, &state, false);
+        publish_geometry(window, &state, false, false);
       }
       glib::Propagation::Proceed
     });
     window.connect_resizable_notify(|window| {
       if let Some(state) = geometry_state(window) {
-        publish_geometry(window, &state, false);
+        publish_geometry(window, &state, false, false);
       }
     });
     window.connect_scale_factor_notify(|window| {
       if let Some(state) = geometry_state(window) {
-        publish_geometry(window, &state, true);
+        publish_geometry(window, &state, true, false);
       }
     });
   }
   let previous = state.borrow().aspect.enabled;
   if let Some(enabled) = enabled {
     state.borrow_mut().aspect.enabled = enabled;
-    publish_geometry(window, &state, true);
+    publish_geometry(window, &state, true, true);
   }
   let aspect = state.borrow().aspect;
   let expected = aspect.active(native_state(window), window.is_resizable());
@@ -262,7 +271,7 @@ pub(crate) fn gtk_window_aspect_lock(
         // Do not leave a failed SET queued in GTK or remembered by later native
         // state callbacks. Geometry already changed by a WM is not rolled back.
         state.borrow_mut().aspect.enabled = previous;
-        publish_geometry(window, &state, true);
+        publish_geometry(window, &state, true, true);
       }
       return Err(error);
     }

@@ -24,6 +24,10 @@ without confirming the state change, the constraint remains inactive until a
 matching native transition is observed. `enabled:true, active:false` describes
 that state without claiming that resizing is constrained. A successful setter
 requires native hint readback; actual behavior still depends on the window manager.
+Explicit setters and pre-transition suspension flush GTK's composed hints before
+readback. Native state and property callbacks retain GTK's queued layout instead
+of forcing a resize inside the signal, so fullscreen/maximize restoration can
+consume the window manager's restored geometry before applying layout.
 
 Wayland reports `{ok:true, supported:false, enabled:false, active:false}`. SET
 rejects with `Native aspect constraint is unavailable on this backend` and does

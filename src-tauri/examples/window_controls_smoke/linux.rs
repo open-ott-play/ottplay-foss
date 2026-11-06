@@ -149,6 +149,12 @@ async fn x11_settled_bounds(window: &tauri::WebviewWindow, active: bool,
     let start = Instant::now();
     let mut previous = None;
     let mut stable = 0;
+    trace("x11-settle-start", json!({
+        "window": window.label(), "expected_active": active,
+        "expected_fullscreen": fullscreen, "expected_maximized": maximized,
+        "expected_geometry": geometry, "original_size": original_size,
+        "expected_bounds": bounds,
+    }));
     loop {
         // Observe actual X11 state before GET; GET must not supply the evidence.
         let value = x11_snapshot(window).await?;
@@ -162,11 +168,16 @@ async fn x11_settled_bounds(window: &tauri::WebviewWindow, active: bool,
             && value.maximized == maximized && position_matches && requested_size && bounded
             && (!active || x11_ratio(value.rect)) {
             if previous.as_ref() == Some(&value) { stable += 1; } else { stable = 0; }
-            if stable >= 2 { return Ok(value); }
+            if stable >= 2 {
+                trace("x11-settle-success", json!({
+                    "window": window.label(), "stable_count": stable, "actual": &value,
+                }));
+                return Ok(value);
+            }
             previous = Some(value.clone());
         } else { stable = 0; previous = None; }
         if start.elapsed() >= Duration::from_secs(4) {
-            return Err(format!("X11 native state did not settle: {value:?}"));
+            return Err(format!("X11 native state did not settle (expected_active={active}, expected_fullscreen={fullscreen}, expected_maximized={maximized}, expected_geometry={geometry:?}, original_size={original_size}, expected_bounds={bounds:?}, stable_count={stable}): {value:?}"));
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
