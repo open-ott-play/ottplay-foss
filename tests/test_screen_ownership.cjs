@@ -144,6 +144,11 @@ function fixture() {
     );
     w.eval(localizationRuntime());
     w.eval(
+        functions("src/ui/notification-banners.ts", [
+            "createNotificationBanners",
+        ])
+    );
+    w.eval(
         functions("src/ui/index.ts", [
             "_changeEdit",
             "infoBox",
@@ -1903,45 +1908,49 @@ test("explicit picker decoration preserves its owner, input dispatch and stale g
     assert.equal(calls, 2);
     assert.deepEqual(chosen, [1]);
 });
-test("notification replacement cancels the earlier hide timer", ({
+test("notification replacement cancels the earlier animation and expiry timers", ({
     w,
     jobs,
 }) => {
-    const info = w.document.createElement("div");
-    info.id = "info";
-    w.document.body.appendChild(info);
+    Object.defineProperty(w.document, "hidden", { value: false });
+    Object.defineProperty(w.document, "visibilityState", { value: "visible" });
+    const container = w.document.createElement("div");
+    container.id = "notifications";
+    w.document.body.appendChild(container);
     w.showShift("First");
+    const firstJobs = jobs.slice();
     w.showShift("Settings saved");
-    assert.equal(jobs.filter((job) => job.active).length, 1);
-    assert.equal(jobs[0].active, false);
-    assert.equal(info.style.display, "block");
-    assert.equal(info.textContent, "Settings saved");
-    jobs[1].callback();
-    assert.equal(info.style.display, "none");
+    assert(firstJobs.every((job) => !job.active));
+    assert.equal(jobs.filter((job) => job.active).length, 2);
+    assert.equal(container.children.length, 1);
+    assert.equal(container.textContent, "Settings saved");
+    jobs.find((job) => job.active && job.delay === 3000).callback();
+    assert.equal(container.children.length, 0);
 });
 test("notification delay belongs to its node after replacement", ({
     w,
     jobs,
 }) => {
+    Object.defineProperty(w.document, "hidden", { value: false });
+    Object.defineProperty(w.document, "visibilityState", { value: "visible" });
     w.showShift("Missing node");
     assert.equal(jobs.length, 0);
-    const oldInfo = w.document.createElement("div");
-    oldInfo.id = "info";
-    w.document.body.appendChild(oldInfo);
+    const oldContainer = w.document.createElement("div");
+    oldContainer.id = "notifications";
+    w.document.body.appendChild(oldContainer);
     w.showShift("Old node");
-    oldInfo.remove();
-    const info = w.document.createElement("div");
-    info.id = "info";
-    info.style.display = "inline";
-    w.document.body.appendChild(info);
+    const oldExpiry = jobs.find((job) => job.delay === 3000);
+    oldContainer.remove();
+    const container = w.document.createElement("div");
+    container.id = "notifications";
+    w.document.body.appendChild(container);
     w.showShift("Replacement node");
-    assert.equal(info.style.display, "block");
-    jobs[0].callback();
-    assert.equal(oldInfo.style.display, "none");
-    assert.equal(info.style.display, "block");
-    assert.equal(info.textContent, "Replacement node");
-    jobs[1].callback();
-    assert.equal(info.style.display, "none");
+    oldExpiry.callback();
+    assert.equal(oldContainer.children.length, 0);
+    assert.equal(container.children.length, 1);
+    assert.equal(container.textContent, "Replacement node");
+    jobs.find((job) => job.active && job.delay === 3000).callback();
+    assert.equal(container.children.length, 0);
 });
 test("settings value clicks honor filtered indices and the current overlay", ({
     w,
@@ -2139,7 +2148,65 @@ function colorSnapshot(w, setting) {
         visible: w.$("#listAbout").is(":visible"),
     };
 }
+// Historical captures used saturation for the background. Production stores H,V;
+// retain every other captured field while correcting these specific preview RGBs.
+const backgroundPreviews = [
+    [
+        [0, 0, 0],
+        [0, 0, 0],
+        [5, 0, 13],
+    ],
+    [
+        [255, 0, 0],
+        [255, 0, 0],
+        [255, 0, 0],
+        [242, 0, 0],
+        [242, 0, 0],
+    ],
+    [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [13, 0, 0],
+    ],
+    [
+        [0, 115, 29],
+        [217, 181, 0],
+        [108, 217, 0],
+        [0, 217, 217],
+    ],
+    [
+        [0, 115, 29],
+        [0, 115, 48],
+        [0, 128, 53],
+    ],
+    [
+        [217, 181, 0],
+        [217, 181, 0],
+        [217, 181, 0],
+    ],
+    [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [108, 217, 0],
+    ],
+    [
+        [217, 181, 0],
+        [230, 191, 0],
+    ],
+    [
+        [217, 181, 0],
+        [230, 191, 0],
+    ],
+];
+let backgroundCase = 0;
 for (const scenario of colorCases.records) {
+    const background =
+        scenario.name === "backColorDialog"
+            ? backgroundPreviews[backgroundCase++]
+            : null;
     test(
         "captured color input " +
             scenario.name +
@@ -2166,7 +2233,14 @@ for (const scenario of colorCases.records) {
             // Keep the historical capture immutable. Only its two full-turn
             // previews are intentionally corrected; every other field is exact.
             let expected = scenario.states;
-            if (scenario.initial === "360,100") {
+            if (background) {
+                expected = JSON.parse(JSON.stringify(expected));
+                assert.equal(background.length, expected.length - 1);
+                background.forEach((rgb, i) => {
+                    expected[i].preview =
+                        `font-size: 150%; background-color: rgb(${rgb.join(", ")});`;
+                });
+            } else if (scenario.initial === "360,100") {
                 expected = JSON.parse(JSON.stringify(expected));
                 const color =
                     scenario.name === "colorDialog"
@@ -2416,6 +2490,73 @@ test("foreground mouse arrows and color presets dispatch the same owned input", 
     );
     assert.equal(w.eSHLcolor, "90,85");
 });
+for (const name of ["selColorDialog", "backColorDialog"]) {
+    test(
+        "background picker exposes working mouse controls and production color " +
+            name,
+        ({ w, key }) => {
+            const setting = colorSetting(name);
+            w[setting] = "120,50";
+            w._doKey = key;
+            w[name]();
+            assert.equal(
+                w.document.getElementById("colorHueValue").textContent,
+                "120°"
+            );
+            assert.equal(
+                w.document.getElementById("colorLevelValue").textContent,
+                "50%"
+            );
+            assert.match(
+                w.document.getElementById("listAbout").textContent,
+                name === "backColorDialog" ? /Brightness/ : /Saturation/
+            );
+            for (const arrow of ["LEFT", "RIGHT", "UP", "DOWN"]) {
+                clickColorControl(
+                    w,
+                    w.document.querySelector(
+                        '#listAbout [data-ott-key="' + w.keys[arrow] + '"]'
+                    )
+                );
+            }
+            assert.equal(
+                w.document.getElementById("colorHueValue").textContent,
+                "120°"
+            );
+            assert.equal(
+                w.document.getElementById("colorLevelValue").textContent,
+                "50%"
+            );
+            const preview =
+                w.document.getElementById("step").style.backgroundColor;
+            assert.equal(
+                preview,
+                name === "backColorDialog"
+                    ? "rgb(0, 128, 0)"
+                    : "rgb(64, 128, 64)"
+            );
+            clickColorControl(
+                w,
+                w.listFooterElement.querySelector('[aria-label="Set"]')
+            );
+            assert.equal(w[setting], "120,50");
+            w.eval(functions("src/index.ts", ["classicColorRgb"]));
+            assert.equal(
+                "rgb(" +
+                    w
+                        .classicColorRgb(
+                            w[setting],
+                            name === "backColorDialog" ? undefined : 50
+                        )
+                        .split(",")
+                        .join(", ") +
+                    ")",
+                preview,
+                "Accepted preview uses the same color as theme publication"
+            );
+        }
+    );
+}
 test("menu IDs survive labels, host function names and legacy hide imports", ({
     w,
 }) => {

@@ -305,10 +305,15 @@ function fixture(
         w
     );
     vm.runInContext(
+        compile(selectedSource("src/ui/index.ts", ["hsvToRgb"])),
+        w
+    );
+    vm.runInContext(
         compile(
             selectedSource(
                 "src/index.ts",
                 [
+                    "classicColorRgb",
                     "createSettingsPage",
                     "setListArrays",
                     "loadSubtitleAppearance",
@@ -417,6 +422,244 @@ function fixture(
 function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
 }
+
+// Interface presentation regression; kept before the broad platform matrix.
+{
+    const { w, typed, stored } = fixture("tauri");
+    vm.runInContext(
+        compile(
+            selectedSource(
+                "src/localization/index.ts",
+                ["translate"],
+                [],
+                ["translations", "useGraphicIcons"]
+            )
+        ),
+        w
+    );
+    w._ = w.translate;
+    w.sGrapI = 1;
+    w.settingsInterface();
+    const row = (id) => w.listArray.find((entry) => entry.settingId === id);
+    const sleep = w.getListItem(row("sleepTimeout"));
+    assert.match(sleep, />Off&nbsp;/);
+    assert.doesNotMatch(sleep, /fontello/);
+    assert.match(w.getListItem(row("useGraphicalIndicators")), /fontello/);
+    for (const [id, color] of [
+        ["highlightColor", "#FFDB26"],
+        ["highlightColorSel", "#606080"],
+        ["highlightColorB", "#000000"],
+    ]) {
+        assert.match(w.getListItem(row(id)), new RegExp(color));
+        assert.match(row(id).cur, /background:/);
+        assert.doesNotMatch(row(id).cur, /select|undefined|NaN/);
+    }
+    w.eSHLcolorB = "120,50";
+    assert.match(w.getListItem(row("highlightColorB")), /#008000/);
+    assert.equal(
+        typed().highlightColorB,
+        "255,0",
+        "Color preview stays in the settings draft"
+    );
+    assert.equal(typed().interfaceTheme, 2);
+    w.listKeyHandlerFn(w.keys.RETURN);
+    assert.equal(
+        typed().highlightColorB,
+        "255,0",
+        "Cancel preserves the saved palette"
+    );
+    w.settingsInterface();
+    assert.match(w.getListItem(row("highlightColorB")), /#000000/);
+    w.eSHLcolorB = "120,50";
+    save(w);
+    assert.equal(typed().highlightColorB, "120,50");
+    assert.equal(
+        typed().interfaceTheme,
+        0,
+        "Accepted custom color selects Classic only on Save"
+    );
+    assert.equal(stored.get("sSHLcolorB"), "120,50");
+}
+console.log("PASS Interface text, color swatches and draft Save/Cancel");
+for (const [id, bridge, initial, expected, selector, property] of [
+    [
+        "highlightColor",
+        "eSHLcolor",
+        "50,85",
+        "rgb(255, 255, 25)",
+        "#progress",
+        "backgroundColor",
+    ],
+    [
+        "highlightColorSel",
+        "eSHLcolSel",
+        "240,25",
+        "rgb(96, 89, 128)",
+        null,
+        null,
+    ],
+    [
+        "highlightColorB",
+        "eSHLcolorB",
+        "255,0",
+        "rgb(5, 0, 13)",
+        ".list_back",
+        "backgroundColor",
+    ],
+]) {
+    const { JSDOM } = require("jsdom");
+    const dom = new JSDOM(
+        '<div id="listAbout" style="display:none"></div><div id="listCaption"></div><div id="listPodval"></div><div id="listDetail"></div><div id="progress"></div><div class="list_back"></div>',
+        { runScripts: "outside-only" }
+    );
+    try {
+        dom.window.eval(
+            fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8")
+        );
+        const { w, typed, stored } = fixture("tauri");
+        Object.assign(w, {
+            $: dom.window.$,
+            $tooltipSpan: null,
+            document: dom.window.document,
+            jQuery: dom.window.jQuery,
+            strDOWN: "Down",
+            strENTER: "OK",
+            strLEFT: "Left",
+            strRETURN: "Back",
+            strRIGHT: "Right",
+            strUP: "Up",
+            tooltip: null,
+        });
+        Object.assign(w.keys, {
+            BLUE: 406,
+            DOWN: 40,
+            RED: 403,
+            UP: 38,
+            YELLOW: 405,
+        });
+        require("./helpers/screen-runtime.cjs")(w);
+        vm.runInContext(
+            compile(
+                selectedSource("src/utils/helpers.ts", [
+                    "metadataText",
+                    "metadataHtml",
+                ])
+            ),
+            w
+        );
+        vm.runInContext(
+            compile(
+                selectedSource("src/ui/index.ts", [
+                    "uiInit",
+                    "localizedTextHtml",
+                    "renderButtonHint",
+                    "saveListPanelState",
+                    "restoreListPanelState",
+                    "bindColorDialogInput",
+                    "showColorDialog",
+                    "colorDialog",
+                    "selColorDialog",
+                    "backColorDialog",
+                    "epgTimeCssColor",
+                ])
+            ),
+            w
+        );
+        vm.runInContext(
+            compile(selectedSource("src/index.ts", ["setColor"])),
+            w
+        );
+        w._doKey = (code) => w.aboutKeyHandler(code);
+        w.uiInit();
+        const open = () => {
+            w.settingsInterface();
+            const row = w.listArray.find((entry) => entry.settingId === id);
+            w.selIndex = w.listArray.indexOf(row);
+            row.values();
+            return row;
+        };
+        const click = (key, footer = false) => {
+            const control = w.document.querySelector(
+                (footer ? "#listPodval" : "#listAbout") +
+                    ' [data-ott-key="' +
+                    w.keys[key] +
+                    '"]'
+            );
+            assert(control, id + " renders " + key);
+            control.click();
+        };
+        const row = open();
+        click("LEFT");
+        click("RIGHT");
+        click("UP");
+        click("DOWN");
+        // Key and actual delegated click routes both reach the owned picker.
+        w.aboutKeyHandler(w.keys.RIGHT);
+        w.aboutKeyHandler(w.keys.UP);
+        const preview =
+            w.document.getElementById("step").style[
+                id === "highlightColor" ? "color" : "backgroundColor"
+            ];
+        assert.equal(
+            preview,
+            expected,
+            id + " uses the production HSV interpretation"
+        );
+        click("ENTER", true);
+        assert.equal(
+            typed()[id],
+            initial,
+            "Set only commits to the page draft"
+        );
+        assert.notEqual(w[bridge], initial);
+        const swatch = w.document.createElement("div");
+        swatch.innerHTML = row.cur;
+        assert.equal(
+            swatch.firstChild.style.backgroundColor,
+            preview,
+            "The parent swatch matches the accepted preview"
+        );
+        save(w);
+        assert.equal(typed().interfaceTheme, 0);
+        assert.equal(
+            selector
+                ? w.document.querySelector(selector).style[property]
+                : w.curColorB.replace(/,/g, ", "),
+            preview,
+            "Main Save publishes exactly the preview using real setColor"
+        );
+        const saved = typed()[id];
+        const persisted = [...stored];
+        open();
+        click("BLUE");
+        click("RETURN", true);
+        assert.equal(
+            w[bridge],
+            saved,
+            "Picker Cancel leaves the page draft intact"
+        );
+        w.listKeyHandlerFn(w.keys.RETURN);
+        assert.equal(typed()[id], saved);
+        assert.deepEqual([...stored], persisted);
+        open();
+        click("BLUE");
+        click("ENTER", true);
+        w.listKeyHandlerFn(w.keys.RETURN);
+        assert.equal(
+            typed()[id],
+            saved,
+            "Page Cancel discards an accepted picker edit"
+        );
+        assert.deepEqual([...stored], persisted);
+        console.log(
+            "PASS Interface actual picker, Set/Save and both Cancel routes " +
+                id
+        );
+    } finally {
+        dom.window.close();
+    }
+}
+// End Interface presentation regression.
 
 for (const profile of [
     "server",
