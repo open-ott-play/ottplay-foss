@@ -8,7 +8,6 @@
     "dockerfile",
     "github-actions",
     "gradle",
-    "gradle-wrapper",
     "npm",
     "pep621",
     "pip-compile",
