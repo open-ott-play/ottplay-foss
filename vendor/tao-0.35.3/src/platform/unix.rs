@@ -32,6 +32,21 @@ use crate::{
 #[cfg(feature = "x11")]
 use self::x11::xdisplay::XConnection;
 
+/// Query or set a 16:9 constraint on a Tao-owned GTK window.
+///
+/// Call on GTK's main thread. X11 enabling may normalize the current size.
+/// The returned pair is `(enabled, active)`; active is verified against native
+/// geometry hints and is false during fullscreen/maximize transitions. `None`
+/// means the backend is unsupported. Passing `None` performs a passive query.
+/// Wayland remains unsupported because GTK3 applies aspect hints to fixed-state
+/// configures too. This does not affect a different window (including PiP).
+pub fn gtk_window_aspect_lock(
+  window: &gtk::ApplicationWindow,
+  enabled: Option<bool>,
+) -> Result<Option<(bool, bool)>, String> {
+  UnixWindow::gtk_window_aspect_lock(window, enabled)
+}
+
 /// Additional methods on `EventLoop` that are specific to Unix.
 pub trait EventLoopBuilderExtUnix {
   /// Whether to allow the event loop to be created off of the main thread.
