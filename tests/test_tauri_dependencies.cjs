@@ -348,11 +348,26 @@ try {
             });
         });
 
-    rejectsBackport("bad aspect hunk count with updated patch hash", (io) => {
-        editAspectPatch(io, (text) =>
-            text.replace("@@ -31,6 +31,21 @@", "@@ -31,7 +31,21 @@")
+    {
+        const text = fs.readFileSync(
+            path.join(fixtureRoot, aspectPatch),
+            "utf8"
         );
-    });
+        const header = /^@@ -(\d+),(\d+) (\+\d+,\d+ @@)$/m.exec(text);
+        assert(header, "negative fixture needs an actual aspect hunk header");
+        const count = Number(header[2]);
+        const invalidHeader = `@@ -${header[1]},${count + 1} ${header[3]}`;
+        rejectsBackport(
+            "bad aspect hunk count with updated patch hash",
+            (io) => {
+                editAspectPatch(io, (current) => {
+                    assert.equal(current, text, "mutate the inspected patch");
+                    return current.replace(header[0], invalidHeader);
+                });
+            },
+            new RegExp(`${count} !== ${count + 1}[\\s\\S]*at originalSource`)
+        );
+    }
     rejectsBackport("reverse context with updated patchedFile hash", (io) => {
         let modified;
         io.edit(taoRoot + aspectSource, (text) => {
