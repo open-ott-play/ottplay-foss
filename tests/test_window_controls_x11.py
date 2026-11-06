@@ -24,6 +24,7 @@ def native(active=True, fullscreen=False, maximized=False, rect=None):
             "hints": 48 | (128 if active else 0), "min_size": [320, 180],
             "max_size": [1600, 1000], "min_aspect": [16, 9] if active else [0, 0],
             "max_aspect": [16, 9] if active else [0, 0], "fullscreen": fullscreen,
+            "non_aspect_hints": [48, 0, 0, 0, 0, 320, 180, 1600, 1000, 0, 0, 0, 0, 0],
             "maximized": maximized, "above": False, "wm_present": True}
 
 
@@ -44,6 +45,21 @@ def drag_probe(enabled):
                         "after": native(enabled, rect=[left, top, width, height]),
                         "input_start": [x, y], "input_end": [x + dx, y + dy]})
     return {"kind": "owned-x11-xtest-edge-drag", "enabled": enabled, "samples": samples}
+
+
+def pending_resize(kind):
+    initially_on = kind in ("control", "warm-off", "rapid-off-on")
+    final_on = kind in ("control", "rapid-off-on")
+    initial = [40, 40, 640, 400 if kind == "cold-off" else 360]
+    layout = [960, 540] if final_on else [800, 500]
+    return {"kind": kind, "request": [800, 450],
+            "before": native(initially_on, rect=initial), "queued": native(initially_on, rect=initial),
+            "queued_callbacks": 0, "during_off_callbacks": 0,
+            "off_state": None if kind == "control" else [False, False],
+            "immediate": native(kind == "control", rect=initial),
+            "after_on": native(True, rect=[40, 40, 800, 450]) if kind == "rapid-off-on" else None,
+            "settled": native(final_on, rect=[40, 40, 800, 450]), "layout_request": layout,
+            "after_layout": native(final_on, rect=[40, 40] + layout)}
 
 
 def evidence(missing=False):
@@ -68,6 +84,8 @@ def evidence(missing=False):
                                        for target in (True, False)],
                        "bounds_updates": [tight, native()],
                        "sizing_enabled": drag_probe(True), "sizing_disabled": drag_probe(False),
+                       "pending_resizes": [pending_resize(kind) for kind in
+                                           ("control", "warm-off", "repeat-off", "rapid-off-on")],
                        "final": native(False), "final_state": state(False)})
     return report
 
@@ -85,10 +103,86 @@ def restoration(phase):
     if phase == "cold-off":
         report.update({"initial_state": None, "first_command": "set_window_aspect_lock",
                        "first_set": state(False), "startup_initialization_skipped": True})
+    if phase == "cold-pending-off":
+        report.update({"initial_state": None, "first_command": "set_window_aspect_lock",
+                       "first_native_aspect_call": "OFF", "startup_initialization_skipped": True,
+                       "pending_resize": pending_resize("cold-off"),
+                       "final": native(False, rect=[40, 40, 800, 500])})
     return report
 
 
 class X11WindowEvidenceTests(unittest.TestCase):
+    def test_raw_non_aspect_hint_words_preserve_inactive_and_unknown_values(self):
+        for length in (11, 14):
+            row = pending_resize("warm-off")
+            for step in ("before", "queued", "immediate"):
+                row[step]["non_aspect_hints"] = row[step]["non_aspect_hints"][:length]
+                row[step]["non_aspect_hints"][0] |= 1 << 30
+                row[step]["non_aspect_hints"][1] = 0xffffffff
+            runner.validate_x11_pending_resize(row, "warm-off", native())
+            for index, value in ((0, 48), (1, 0), (1, 1 << 32)):
+                changed = json.loads(json.dumps(row))
+                changed["immediate"]["non_aspect_hints"][index] = value
+                with self.subTest(length=length, index=index, value=value), self.assertRaises(RuntimeError):
+                    runner.validate_x11_pending_resize(changed, "warm-off", native())
+
+    def test_pending_off_requires_unflushed_callback_and_native_invariants(self):
+        for index in range(4):
+            for key, value in (("queued_callbacks", 1), ("during_off_callbacks", 1),
+                               ("during_off_callbacks", False), ("request", [640, 360])):
+                report = evidence(); report["pending_resizes"][index][key] = value
+                with self.subTest(index=index, key=key), self.assertRaises(RuntimeError):
+                    runner.validate_evidence(report, False, platform="linux")
+        for index in (1, 2):
+            for step, key, value in (("queued", "rect", [40, 40, 800, 450]),
+                                      ("immediate", "rect", [40, 40, 800, 450]),
+                                      ("immediate", "hints", 176),
+                                      ("immediate", "min_size", [300, 180]),
+                                      ("immediate", "non_aspect_hints", [0] * 14),
+                                      ("immediate", "xid", 43),
+                                      ("settled", "rect", [40, 40, 640, 360]),
+                                      ("after_layout", "hints", 176)):
+                report = evidence(); report["pending_resizes"][index][step][key] = value
+                with self.subTest(index=index, step=step, key=key), self.assertRaises(RuntimeError):
+                    runner.validate_evidence(report, False, platform="linux")
+
+    def test_pending_resize_requires_matched_control_and_rapid_on_hint_survival(self):
+        report = evidence(); report["pending_resizes"].pop()
+        with self.assertRaises(RuntimeError): runner.validate_evidence(report, False, platform="linux")
+        report = evidence(); report["pending_resizes"][0]["before"]["non_aspect_hints"][13] = 1
+        with self.assertRaises(RuntimeError): runner.validate_evidence(report, False, platform="linux")
+        for step in ("after_on", "settled", "after_layout"):
+            report = evidence(); report["pending_resizes"][3][step]["hints"] = 48
+            with self.subTest(step=step), self.assertRaises(RuntimeError):
+                runner.validate_evidence(report, False, platform="linux")
+
+    def test_cold_pending_off_has_its_own_uninitialized_native_boundary(self):
+        runner.validate_restoration_evidence(restoration("cold-pending-off"), "cold-pending-off", platform="linux")
+        for key, value in (("startup_initialization_skipped", False), ("initial_state", state()),
+                           ("first_native_aspect_call", "GET"), ("first_set", state(True))):
+            report = restoration("cold-pending-off"); report[key] = value
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                runner.validate_restoration_evidence(report, "cold-pending-off", platform="linux")
+        for key, value in (("during_off_callbacks", 1), ("off_state", [True, True]), ("off_state", [0, 0])):
+            report = restoration("cold-pending-off"); report["pending_resize"][key] = value
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                runner.validate_restoration_evidence(report, "cold-pending-off", platform="linux")
+
+    def test_cold_pending_off_uses_separate_owned_preference_directory(self):
+        observed = []
+        def run_case(binary, output, missing, *, phase, preferences, platform):
+            observed.append((phase, preferences))
+            self.assertTrue(preferences.is_dir())
+            return {"status": "pass"}
+        with tempfile.TemporaryDirectory() as tmp, patch.object(runner, "run_case", run_case):
+            result = runner.run_restoration_sequence(Path("fixture"), Path(tmp), platform="linux")
+        self.assertEqual(result["status"], "pass", result)
+        self.assertEqual([phase for phase, _ in observed],
+                         ["pin", "unpin", "verify-off", "cold-off", "cold-pending-off"])
+        self.assertEqual(len({directory for _, directory in observed[:4]}), 1)
+        self.assertNotEqual(observed[3][1], observed[4][1])
+        self.assertTrue(result["preferences_removed"])
+
     def test_complete_native_acl_drag_bounds_and_preference_evidence(self):
         for missing in (True, False):
             runner.validate_evidence(evidence(missing), missing, platform="linux")
@@ -193,7 +287,7 @@ class X11WindowEvidenceTests(unittest.TestCase):
             with self.assertRaises(RuntimeError): runner.validate_evidence(report, False, platform="linux")
 
     def test_sequential_preferences_and_cold_off_seed_are_verified(self):
-        for phase in ("pin", "unpin", "verify-off", "cold-off"):
+        for phase in ("pin", "unpin", "verify-off", "cold-off", "cold-pending-off"):
             for corrupt in (False, True):
                 observed = []
                 class Process:

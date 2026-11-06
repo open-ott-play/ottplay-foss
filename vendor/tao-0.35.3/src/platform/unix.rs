@@ -37,7 +37,10 @@ use self::x11::xdisplay::XConnection;
 /// Call on GTK's main thread. X11 enabling may normalize the current size.
 /// The returned pair is `(enabled, active)`; active is verified against native
 /// geometry hints and is false during fullscreen/maximize transitions. `None`
-/// means the backend is unsupported. Passing `None` performs a passive query.
+/// means the backend or window is unsupported. Passing `None` performs a passive query.
+/// An externally supplied GTK window without Tao's geometry owner, including one
+/// adopted with [`WindowExtUnix::new_from_gtk_window`], returns `Ok(None)`. This
+/// helper does not implicitly adopt or replace that window's existing constraints.
 /// Wayland remains unsupported because GTK3 applies aspect hints to fixed-state
 /// configures too. This does not affect a different window (including PiP).
 pub fn gtk_window_aspect_lock(

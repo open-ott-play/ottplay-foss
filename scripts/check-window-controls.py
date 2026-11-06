@@ -454,6 +454,47 @@ def validate_x11_drag_probe(probe, enabled, baseline):
             require(abs(new[1] - old[1]) <= 2, "X11 opposite top edge moved")
 
 
+def validate_x11_pending_resize(row, kind, baseline):
+    require(isinstance(row, dict) and row.get("kind") == kind, "Missing pending GTK resize probe")
+    initially_on = kind in ("control", "warm-off", "rapid-off-on")
+    final_on = kind in ("control", "rapid-off-on")
+    before, queued, immediate = (row.get(key) for key in ("before", "queued", "immediate"))
+    validate_x11_snapshot(before, baseline, active=initially_on)
+    require(row.get("request") == [800, 450] and before["rect"][2:] != [800, 450],
+            "Pending resize must request a different real size")
+    require(queued == before, "Resize must still be pending before OFF")
+    require(type(row.get("queued_callbacks")) is int and row["queued_callbacks"] == 0
+            and type(row.get("during_off_callbacks")) is int and row["during_off_callbacks"] == 0,
+            "OFF must not synchronously emit GTK check-resize")
+    validate_x11_snapshot(immediate, before, active=kind == "control")
+    require(immediate["rect"] == before["rect"], "OFF changed the immediate native frame")
+    hints = before.get("non_aspect_hints")
+    require(isinstance(hints, list) and len(hints) in (11, 14)
+            and all(type(value) is int and 0 <= value <= 0xffffffff for value in hints)
+            and hints[0] & 1023 == before["hints"] & ~128 & 1023
+            and immediate.get("non_aspect_hints") == hints
+            and immediate["hints"] & ~128 & 1023 == hints[0] & 1023,
+            "OFF changed non-aspect native hints")
+    off_state = row.get("off_state")
+    require(off_state is None if kind == "control" else
+            isinstance(off_state, list) and len(off_state) == 2 and all(value is False for value in off_state),
+            "OFF did not return confirmed disabled native state")
+    if kind == "rapid-off-on":
+        validate_x11_snapshot(row.get("after_on"), before, active=True, original_geometry=False)
+    else:
+        require(row.get("after_on") is None, "Unexpected ON in OFF/control probe")
+    settled = row.get("settled")
+    validate_x11_snapshot(settled, before, active=final_on, original_geometry=False)
+    require(settled["rect"] == before["rect"][:2] + [800, 450],
+            "Normal event loop did not apply the pending user resize")
+    target = [960, 540] if final_on else [800, 500]
+    require(row.get("layout_request") == target, "Missing later layout request")
+    later = row.get("after_layout")
+    validate_x11_snapshot(later, before, active=final_on, original_geometry=False)
+    require(later["rect"] == before["rect"][:2] + target,
+            "Later layout lost/restored the wrong native aspect hint")
+
+
 def validate_x11_evidence(report):
     require(report.get("requested_content") == [640, 400], "Wrong X11 setup geometry")
     startup = report.get("baseline")
@@ -489,6 +530,12 @@ def validate_x11_evidence(report):
     validate_x11_snapshot(updates[1], baseline, active=True)
     validate_x11_drag_probe(report.get("sizing_enabled"), True, baseline)
     validate_x11_drag_probe(report.get("sizing_disabled"), False, baseline)
+    pending = report.get("pending_resizes")
+    require(isinstance(pending, list) and len(pending) == 4, "All pending GTK resize probes are required")
+    for row, kind in zip(pending, ("control", "warm-off", "repeat-off", "rapid-off-on")):
+        validate_x11_pending_resize(row, kind, baseline)
+    require(pending[0]["before"] == pending[1]["before"],
+            "Control and OFF must start with identical native state and queued request")
     validate_aspect_state(report.get("final_state"), False, False)
     validate_x11_snapshot(report.get("final"), baseline, active=False)
 
@@ -498,6 +545,20 @@ def validate_x11_restoration(report, phase):
     validate_common_evidence(report)
     require(report.get("mode") == "preference-restoration" and report.get("phase") == phase,
             "Wrong X11 preference phase")
+    if phase == "cold-pending-off":
+        initial = report.get("initial")
+        validate_x11_snapshot(initial, initial, active=False, startup=True)
+        require(report.get("requested_content") == [640, 400] and report.get("aux_unchanged") is True
+                and report.get("initial_state") is None and report.get("startup_initialization_skipped") is True
+                and report.get("first_native_aspect_call") == "OFF"
+                and report.get("first_command") == "set_window_aspect_lock", "Cold pending OFF was not isolated")
+        validate_x11_pending_resize(report.get("pending_resize"), "cold-off", initial)
+        validate_aspect_state(report.get("first_set"), False, False)
+        validate_aspect_state(report.get("final_state"), False, False)
+        final = report.get("final")
+        validate_x11_snapshot(final, initial, active=False, original_geometry=False)
+        require(final["rect"] == initial["rect"][:2] + [800, 500], "Cold pending OFF geometry was lost")
+        return
     require(report.get("requested_content") == [640, 400] and report.get("aux_unchanged") is True,
             "Wrong X11 requested geometry or changed PiP")
     initial = report.get("initial")
@@ -556,8 +617,8 @@ def remove_private_data(directory):
 
 
 def run_case(binary, output, missing, *, phase=None, preferences=None, platform="windows"):
-    require(phase in {None, "pin", "unpin", "verify-off", "cold-off"}
-            and (phase != "cold-off" or platform == "linux"), "Unknown preference phase")
+    require(phase in {None, "pin", "unpin", "verify-off", "cold-off", "cold-pending-off"}
+            and (phase not in {"cold-off", "cold-pending-off"} or platform == "linux"), "Unknown preference phase")
     require((phase is None) == (preferences is None), "Preference phases need an owned shared directory")
     require(phase is None or not missing, "Preference phases require production permissions")
     name = f"restore-{phase}" if phase else ("missing-permission" if missing else "production-permissions")
@@ -571,9 +632,9 @@ def run_case(binary, output, missing, *, phase=None, preferences=None, platform=
         environment = os.environ.copy()
         environment["OTTPLAY_DATA_DIR"] = str(preferences if phase else directory / "preferences")
         environment.pop("OTTPLAY_INSTANCE", None)
-        if phase == "cold-off":
-            # Only this isolated case skips fixture startup initialization. It
-            # must prove a first explicit OFF never activates the saved ON.
+        if phase in {"cold-off", "cold-pending-off"}:
+            # These isolated cases skip fixture startup initialization. Neither
+            # first explicit OFF may activate the saved ON.
             aspect_stored = preferences / "window-aspect-lock"
             require(not aspect_stored.is_symlink(), "Invalid fixture preference seed path")
             aspect_stored.write_bytes(b"1\n")
@@ -658,6 +719,15 @@ def run_restoration_sequence(binary, output, *, platform="windows"):
                               **({"platform": platform} if platform != "windows" else {}))
             summary["runs"].append(result)
             require(result["status"] == "pass", f"Preference phase failed: {phase}")
+        if platform == "linux":
+            # Fresh process AND a distinct owned directory: do not change the
+            # original cold-off first-IPC or sequential persistence contract.
+            cold_preferences = preferences / "cold-pending-off"
+            cold_preferences.mkdir()
+            result = run_case(binary, output, False, phase="cold-pending-off",
+                              preferences=cold_preferences, platform=platform)
+            summary["runs"].append(result)
+            require(result["status"] == "pass", "Cold pending OFF phase failed")
         summary["status"] = "pass"
     except (OSError, RuntimeError) as error:
         summary["error"] = str(error)

@@ -1,6 +1,7 @@
 // Included only by the owned Linux/X11 smoke fixture. No production hooks.
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use tao::platform::unix::x11::ffi as x11;
+use gtk::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 struct X11Snapshot {
@@ -13,6 +14,7 @@ struct X11Snapshot {
     max_size: [i32; 2],
     min_aspect: [i32; 2],
     max_aspect: [i32; 2],
+    non_aspect_hints: Vec<u32>,
     fullscreen: bool,
     maximized: bool,
     above: bool,
@@ -104,12 +106,23 @@ fn x11_snapshot_now(window: &tauri::WebviewWindow) -> Result<X11Snapshot, String
             atom != 0 && states.contains(&atom)
         };
         let manager = x11_property(api, display, root, b"_NET_SUPPORTING_WM_CHECK\0", x11::XA_WINDOW)?;
+        // Xlib's decoded struct masks flags and inactive values. Compare raw
+        // protocol-32 words as well, preserving all but the four aspect words
+        // and PAspect itself. Both ICCCM property lengths are valid.
+        let raw_hints = x11_property(api, display, native.window,
+            b"WM_NORMAL_HINTS\0", x11::XA_WM_SIZE_HINTS)?;
+        if !matches!(raw_hints.len(), 15 | 18) { return Err("Invalid native hint property length".into()); }
+        let mut non_aspect_hints: Vec<u32> = raw_hints.into_iter().enumerate()
+            .filter(|(index, _)| !(11..=14).contains(index))
+            .map(|(_, value)| value as u32).collect();
+        non_aspect_hints[0] &= !(x11::PAspect as u32);
         Ok(X11Snapshot {
             label: window.label().to_owned(), xid: native.window as u64, pid: pid[0] as u32,
             rect: [x, y, width as i32, height as i32], hints: hints.flags as i64,
             min_size: [hints.min_width, hints.min_height], max_size: [hints.max_width, hints.max_height],
             min_aspect: [hints.min_aspect.x, hints.min_aspect.y],
             max_aspect: [hints.max_aspect.x, hints.max_aspect.y],
+            non_aspect_hints,
             fullscreen: has(b"_NET_WM_STATE_FULLSCREEN\0"),
             maximized: has(b"_NET_WM_STATE_MAXIMIZED_HORZ\0") && has(b"_NET_WM_STATE_MAXIMIZED_VERT\0"),
             above: has(b"_NET_WM_STATE_ABOVE\0"),
@@ -343,6 +356,103 @@ async fn x11_drag_probe(window: &tauri::WebviewWindow, baseline: [i32; 4], enabl
     Ok(json!({"kind": "owned-x11-xtest-edge-drag", "enabled": enabled, "samples": samples}))
 }
 
+// Queue and inspect on ONE GTK callback: no await, nested loop or check_resize
+// between resize() and OFF. A synchronous OFF flush cannot hide behind a later
+// settled frame. The no-OFF control uses the identical pending request.
+async fn x11_pending_resize_probe(
+    window: &tauri::WebviewWindow, kind: &'static str, initially_on: bool,
+    call_off: bool, turn_back_on: bool,
+) -> Result<Value, String> {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    let target = window.clone();
+    window.run_on_main_thread(move || {
+        let result = (|| -> Result<Value, String> {
+            let gtk_window = target.gtk_window().map_err(|error| error.to_string())?;
+            let before = x11_snapshot_now(&target)?;
+            if !x11_hints_match(&before, initially_on, [[320, 180], [1600, 1000]]) {
+                return Err("Pending-resize probe has the wrong initial native hints".into());
+            }
+            let count = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+            let observed = count.clone();
+            let signal = gtk_window.connect_check_resize(move |_| observed.set(observed.get() + 1));
+            let result = (|| -> Result<Value, String> {
+                gtk_window.resize(800, 450);
+                let queued = x11_snapshot_now(&target)?;
+                let queued_callbacks = count.get();
+                if queued != before || queued_callbacks != 0 {
+                    return Err("GTK resize was not pending at the OFF boundary".into());
+                }
+                let off_state = if call_off {
+                    Some(tao::platform::unix::gtk_window_aspect_lock(&gtk_window, Some(false))?
+                        .ok_or("Owned X11 OFF unexpectedly unsupported")?)
+                } else { None };
+                let during_off_callbacks = count.get() - queued_callbacks;
+                let immediate = x11_snapshot_now(&target)?;
+                let immediate_active = initially_on && !call_off;
+                if during_off_callbacks != 0 || immediate.rect != before.rect
+                    || immediate.non_aspect_hints != before.non_aspect_hints
+                    || !x11_hints_match(&immediate, immediate_active, [[320, 180], [1600, 1000]])
+                    || (call_off && off_state != Some((false, false))) {
+                    return Err(format!("OFF disturbed pending GTK resize: callbacks={during_off_callbacks}, before={before:?}, immediate={immediate:?}"));
+                }
+                // No event loop between OFF and ON either: exercise GTK's
+                // cached hint equality, not only its next configure callback.
+                let after_on = if turn_back_on {
+                    let state = tao::platform::unix::gtk_window_aspect_lock(&gtk_window, Some(true))?;
+                    let native = x11_snapshot_now(&target)?;
+                    if state != Some((true, true))
+                        || !x11_hints_match(&native, true, [[320, 180], [1600, 1000]]) {
+                        return Err("Immediate OFF/ON did not restore native PAspect".into());
+                    }
+                    Some(native)
+                } else { None };
+                Ok(json!({"kind": kind, "request": [800,450], "before": before, "queued": queued,
+                    "queued_callbacks": queued_callbacks, "during_off_callbacks": during_off_callbacks,
+                    "off_state": off_state, "immediate": immediate, "after_on": after_on}))
+            })();
+            gtk_window.disconnect(signal);
+            result
+        })();
+        let _ = sender.send(result);
+    }).map_err(|error| error.to_string())?;
+    let mut report = tokio::time::timeout(Duration::from_secs(4), receiver).await
+        .map_err(|_| "Pending GTK resize callback deadline")?
+        .map_err(|_| "Pending GTK resize callback dropped")??;
+    let active = turn_back_on || (initially_on && !call_off);
+    let before: [i32; 4] = serde_json::from_value(report["before"]["rect"].clone())
+        .map_err(|error| error.to_string())?;
+    let pending = [before[0], before[1], 800, 450];
+    let settled = x11_settled(window, active, false, false, Some(pending), false).await?;
+    // A later normal layout must neither restore PAspect after OFF nor lose it
+    // after rapid OFF/ON. The disabled target deliberately is not 16:9.
+    let layout = if active { [before[0], before[1], 960, 540] }
+        else { [before[0], before[1], 800, 500] };
+    let after_layout = x11_restore(window, layout, active).await?;
+    report["settled"] = json!(settled);
+    report["layout_request"] = json!([layout[2], layout[3]]);
+    report["after_layout"] = json!(after_layout);
+    Ok(report)
+}
+
+async fn x11_cold_pending_off(main: tauri::WebviewWindow) -> Result<Value, String> {
+    let initial = x11_settled(&main, false, false, false, None, true).await?;
+    let aux = main.app_handle().get_webview_window("pip").ok_or("Auxiliary fixture missing")?;
+    let aux_before = x11_settled(&aux, false, false, false, None, true).await?;
+    // This is a separate process: no eager initialize, GET or native aspect
+    // setter has run. Existing cold-off's first-IPC premise stays independent.
+    let probe = x11_pending_resize_probe(&main, "cold-off", false, true, false).await?;
+    let first_set = x11_aspect(&main, Some(false), false, false).await?;
+    let final_native = x11_settled(&main, false, false, false,
+        Some([initial.rect[0], initial.rect[1], 800, 500]), false).await?;
+    if x11_snapshot(&aux).await? != aux_before { return Err("Cold pending OFF changed PiP".into()); }
+    Ok(json!({"status": "pass", "platform": "linux-x11", "mode": "preference-restoration",
+        "phase": "cold-pending-off", "requested_content": [640,400], "initial": initial,
+        "initial_state": Value::Null, "startup_initialization_skipped": true,
+        "first_native_aspect_call": "OFF", "first_command": "set_window_aspect_lock",
+        "first_set": first_set, "pending_resize": probe, "final": final_native,
+        "final_state": x11_aspect(&main, None, false, false).await?, "aux_unchanged": true}))
+}
+
 async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, String> {
     let baseline = x11_settled(&main, true, false, false, None, false).await?;
     let aux = main.app_handle().get_webview_window("pip").ok_or("Auxiliary fixture missing")?;
@@ -374,6 +484,16 @@ async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, St
         return Err("Manual enable did not normalize the non-16:9 native size".into());
     }
     let manual_enable = json!({"before": manual_before, "after": manual_after, "state": manual_state});
+    x11_restore(&main, baseline.rect, true).await?;
+    let mut pending_resizes = Vec::new();
+    for (kind, initially_on, call_off, turn_back_on) in [
+        ("control", true, false, false), ("warm-off", true, true, false),
+        ("repeat-off", false, true, false), ("rapid-off-on", true, true, true),
+    ] {
+        x11_aspect(&main, Some(initially_on), initially_on, initially_on).await?;
+        x11_restore(&main, baseline.rect, initially_on).await?;
+        pending_resizes.push(x11_pending_resize_probe(&main, kind, initially_on, call_off, turn_back_on).await?);
+    }
     x11_restore(&main, baseline.rect, true).await?;
     let mut sequence = Vec::new();
     for enabled in [true, true, false, false] {
@@ -419,6 +539,7 @@ async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, St
     Ok(json!({"status": "pass", "platform": "linux-x11", "mode": "production-permissions",
         "requested_content": [640,400], "baseline": baseline, "initial_state": initial_state,
         "manual_enable": manual_enable, "set_sequence": sequence, "transitions": transitions,
+        "pending_resizes": pending_resizes,
         "bounds_updates": [tight, restored_bounds], "sizing_enabled": sizing_enabled,
         "sizing_disabled": sizing_disabled, "final": final_native,
         "final_state": final_state, "denials": denials, "aux_unchanged": true,
@@ -426,6 +547,7 @@ async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, St
 }
 
 async fn exercise_preference(main: tauri::WebviewWindow, phase: PreferencePhase) -> Result<Value, String> {
+    if matches!(phase, PreferencePhase::ColdPendingOff) { return x11_cold_pending_off(main).await; }
     let cold_off = matches!(phase, PreferencePhase::ColdOff);
     let initially_on = matches!(phase, PreferencePhase::Pin | PreferencePhase::Unpin);
     let initial = x11_settled(&main, initially_on, false, false, None, !initially_on).await?;

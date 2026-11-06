@@ -720,6 +720,8 @@ mod smoke {
         VerifyOff,
         #[cfg(target_os = "linux")]
         ColdOff,
+        #[cfg(target_os = "linux")]
+        ColdPendingOff,
     }
 
     impl PreferencePhase {
@@ -730,6 +732,8 @@ mod smoke {
                 Self::VerifyOff => "verify-off",
                 #[cfg(target_os = "linux")]
                 Self::ColdOff => "cold-off",
+                #[cfg(target_os = "linux")]
+                Self::ColdPendingOff => "cold-pending-off",
             }
         }
     }
@@ -802,12 +806,15 @@ mod smoke {
                 "verify-off" => PreferencePhase::VerifyOff,
                 #[cfg(target_os = "linux")]
                 "cold-off" => PreferencePhase::ColdOff,
+                #[cfg(target_os = "linux")]
+                "cold-pending-off" => PreferencePhase::ColdPendingOff,
                 _ => return Err("Unknown preference phase".into()),
             }),
             _ => return Err("Unsupported fixture arguments".into()),
         };
         #[cfg(target_os = "linux")]
-        let eager_aspect_initialize = !matches!(phase, Some(PreferencePhase::ColdOff));
+        let eager_aspect_initialize = !matches!(phase,
+            Some(PreferencePhase::ColdOff | PreferencePhase::ColdPendingOff));
         #[cfg(not(target_os = "linux"))]
         let eager_aspect_initialize = true;
         let started = Instant::now();

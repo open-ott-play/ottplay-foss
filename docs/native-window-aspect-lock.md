@@ -14,8 +14,18 @@ saved or default-on preference at startup. This follows
 [GDK's geometry-hint contract](https://docs.gtk.org/gdk3/method.Window.set_geometry_hints.html).
 Disabling it removes the aspect constraint without requesting a new window
 size. An explicit first disable request does not apply the saved on value first.
-The same hint owner composes current minimum and maximum sizes and scale changes;
-there is no JavaScript resize loop or competing direct-X11 hint writer.
+The same per-window Tao geometry owner composes current minimum and maximum sizes
+and scale changes. Explicit setters update the GTK policy and publish only the
+aspect bit and ratio words in the native `WM_NORMAL_HINTS` property, preserving
+its other words and flag bits. This bounded path accepts the 15-word and 18-word
+32-bit `WM_SIZE_HINTS` layouts and verifies the complete updated property. There
+is no JavaScript resize loop or separate geometry owner.
+
+An externally supplied GTK window without Tao's geometry owner is unsupported,
+including a window adopted through `new_from_gtk_window` without that state.
+The aspect helper does not infer or replace its existing constraints. It returns
+the same unsupported result as an unsupported backend; GET does not write the
+saved preference, and SET rejects before persistence.
 
 The X11 constraint is suspended for fullscreen, maximized, tiled and nonresizable
 windows. Application-owned fullscreen and maximize transitions suspend it before
@@ -24,10 +34,14 @@ without confirming the state change, the constraint remains inactive until a
 matching native transition is observed. `enabled:true, active:false` describes
 that state without claiming that resizing is constrained. A successful setter
 requires native hint readback; actual behavior still depends on the window manager.
-Explicit setters and pre-transition suspension flush GTK's composed hints before
-readback. Native state and property callbacks retain GTK's queued layout instead
-of forcing a resize inside the signal, so fullscreen/maximize restoration can
-consume the window manager's restored geometry before applying layout.
+Enabling and pre-transition suspension may flush GTK's composed layout. Disabling
+and failed-set rollback leave GTK layout queued and publish aspect hints without
+requesting a resize. Rollback restores the prior requested policy and merges the
+original aspect bit and ratios into freshly read native hints, preserving newer
+non-aspect fields; failure to confirm restoration remains an error. Native state
+and property callbacks also retain GTK's queued layout instead of forcing a
+resize inside the signal, so fullscreen/maximize restoration can consume the
+window manager's restored geometry before applying layout.
 
 Wayland reports `{ok:true, supported:false, enabled:false, active:false}`. SET
 rejects with `Native aspect constraint is unavailable on this backend` and does
@@ -143,13 +157,24 @@ both enabled and disabled. Geometry restoration between samples is setup, not
 drag evidence. Each sample must change the requested axes, retain the opposite
 anchor, respect bounds and have the expected constrained or free aspect.
 
+Pending-resize probes queue a GTK size request and call the native setter in
+the same main-thread callback, without processing the event loop between them.
+A matched control, OFF, repeated OFF and immediate OFF-to-ON sequence verify
+that OFF emits no synchronous `check-resize`, leaves the frame and all unrelated
+hint words unchanged, and removes native `PAspect`. Normal event processing must
+then apply the queued size, and a later layout must retain the intended aspect
+state.
+
 The production run requires all five main-window commands to be denied from
 PiP without native state changes; the missing-permission run denies the same
 commands from main. Four fresh preference
 processes check saved on, saved off, off restoration, and an explicit first
 SET(false) against a saved-on preference before startup initialization or GET.
-The last case must leave the original unconstrained geometry unchanged. The
-parent verifies saved bytes and removes its private data and owned processes.
+The last case must leave the original unconstrained geometry unchanged. A fifth
+process, with a separate preference directory, checks pending resize before the
+first native OFF call; it does not replace or pre-initialize the original
+first-IPC case. The parent verifies saved bytes and removes its private data and
+owned processes.
 
 These assertions describe the acceptance gate, not a completed run of this
 revision. Passing Openbox/Xvfb evidence does not establish behavior on every
