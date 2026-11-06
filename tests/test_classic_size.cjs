@@ -5651,13 +5651,13 @@ try {
     for (const [key, allowance] of Object.entries({
         autoRelayStallRecoveryEntryAllowance:
             AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
-        interfaceNotificationSettingsAllowance:
-            INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE,
         classicPresentationSettingsAllowance:
             CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
         desktopVideoQueueAllowance: DESKTOP_VIDEO_QUEUE_ALLOWANCE,
         favoritesCategoryPersistenceAllowance:
             FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
+        interfaceNotificationSettingsAllowance:
+            INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE,
         localFavoritesPathAllowance: LOCAL_FAVORITES_PATH_ALLOWANCE,
         localFavoriteWriteRecoveryAllowance:
             LOCAL_FAVORITE_WRITE_RECOVERY_ALLOWANCE,

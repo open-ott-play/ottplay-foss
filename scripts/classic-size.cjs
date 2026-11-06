@@ -1698,8 +1698,6 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         categorySelectionFavoritesAllowance:
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
         categoryVisibilityEntryAllowance: CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
-        interfaceNotificationSettingsAllowance:
-            INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE,
         classicPresentationSettingsAllowance:
             CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
         companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
@@ -1715,6 +1713,8 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         favoritesTransferOptionalAllowance:
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
         favoritesTransferPlexAllowance: FAVORITES_TRANSFER_PLEX_ALLOWANCE,
+        interfaceNotificationSettingsAllowance:
+            INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE,
         legacyTotalBudget: LEGACY_TOTAL_BUDGET,
         localCommandSessionAllowance: LOCAL_COMMAND_SESSION_ALLOWANCE,
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
@@ -2052,8 +2052,6 @@ function writeBuildBundleReport(
                 CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
             categoryVisibilityEntryAllowance:
                 CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
-            interfaceNotificationSettingsAllowance:
-                INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE,
             classicPresentationSettingsAllowance:
                 CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
             collectedAt: new Date().toISOString(),
@@ -2073,6 +2071,8 @@ function writeBuildBundleReport(
                 FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
             favoritesTransferPlexAllowance: FAVORITES_TRANSFER_PLEX_ALLOWANCE,
             inputErrors,
+            interfaceNotificationSettingsAllowance:
+                INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE,
             legacyTotalBudget: LEGACY_TOTAL_BUDGET,
             localFavoritesPathAllowance: LOCAL_FAVORITES_PATH_ALLOWANCE,
             localFavoriteWriteRecoveryAllowance:
@@ -2187,7 +2187,6 @@ module.exports = {
     CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
     CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
     CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
-    INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE,
     COMPANION_DIAGNOSTICS_ALLOWANCE,
     clearBuildSizeReports,
     collectBundleMeasurement,
@@ -2201,6 +2200,7 @@ module.exports = {
     FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
     FAVORITES_TRANSFER_PLEX_ALLOWANCE,
+    INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE,
     inspectBundleSets,
     inspectBundles,
     LEGACY_TOTAL_BUDGET,
