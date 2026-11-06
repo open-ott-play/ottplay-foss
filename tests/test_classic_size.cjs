@@ -7,6 +7,7 @@ const ts = require("typescript");
 let {
     CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
     DESKTOP_DROP_ALLOWANCE,
+    DESKTOP_VIDEO_QUEUE_ALLOWANCE,
     AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
     NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE,
     FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
@@ -148,10 +149,149 @@ function capsWithoutAllowances(names) {
         );
     return baseline.exports;
 }
+// The queue is a separately emitted optional chunk. Keep its measured increment
+// out of older receipts and never treat the version-mismatched entry delta as cost.
+const preQueueCaps = capsWithoutAllowances(["DESKTOP_VIDEO_QUEUE_ALLOWANCE"]);
+const queueEvidence = require("../docs/evidence/desktop-video-queue-size-20261105.json");
+assert.equal(queueEvidence.schema, 1);
+assert.deepEqual(DESKTOP_VIDEO_QUEUE_ALLOWANCE, { bytes: 407, gzipBytes: 169 });
+assert(Object.isFrozen(DESKTOP_VIDEO_QUEUE_ALLOWANCE));
+assert.deepEqual(
+    DESKTOP_VIDEO_QUEUE_ALLOWANCE,
+    queueEvidence.measured_allowance
+);
+assert.deepEqual(queueEvidence.reference_cap, { bytes: 5400, gzipBytes: 2200 });
+assert.deepEqual(queueEvidence.proposed_cap, { bytes: 5807, gzipBytes: 2369 });
+assert.deepEqual(queueEvidence.headroom, { bytes: 44, gzipBytes: 96 });
+assert.deepEqual(
+    preQueueCaps.OPTIONAL_BUDGETS["local-drop"],
+    queueEvidence.reference_cap
+);
+assert.deepEqual(
+    latestCaps.OPTIONAL_BUDGETS["local-drop"],
+    queueEvidence.proposed_cap
+);
+for (const side of ["baseline", "candidate"]) {
+    assert.match(queueEvidence[side].head, /^[0-9a-f]{40}$/);
+    assert.match(queueEvidence[side].report_sha256, /^[0-9a-f]{64}$/);
+}
+assert.notEqual(queueEvidence.baseline.head, queueEvidence.candidate.head);
+assert.notEqual(
+    queueEvidence.baseline.version,
+    queueEvidence.candidate.version
+);
+assert.equal(queueEvidence.compatibility.same_version_envelope, false);
+assert.equal(queueEvidence.compatibility.optional_feature_cost_qualified, true);
+assert.equal(
+    queueEvidence.compatibility.entry_total_feature_cost_qualified,
+    false
+);
+assert.equal(
+    queueEvidence.compatibility.final_combined_head_gate_required,
+    true
+);
+const queuePaths = new Map();
+for (const entry of ARTIFACTS) {
+    queuePaths.set(entry, "entry");
+    const directory = path.posix.dirname(entry);
+    for (const name of Object.keys(CLASSIC_PROVIDER_BUNDLES))
+        queuePaths.set(directory + "/provider-" + name + ".js", "provider");
+    for (const name of Object.keys(CLASSIC_OPTIONAL_BUNDLES))
+        queuePaths.set(directory + "/" + name + ".js", "optional");
+}
+assert.equal(queueEvidence.assets.length, 78);
+assert.deepEqual(
+    queueEvidence.assets.map((asset) => asset.path).sort(),
+    [...queuePaths.keys()].sort()
+);
+let unchangedQueueAssets = 0;
+const queueChunks = [];
+for (const asset of queueEvidence.assets) {
+    assert.equal(asset.kind, queuePaths.get(asset.path));
+    for (const side of ["baseline", "candidate"]) {
+        assert.match(asset[side].sha256, /^[0-9a-f]{64}$/);
+        for (const metric of ["bytes", "gzipBytes"])
+            assert(
+                Number.isSafeInteger(asset[side][metric]) &&
+                    asset[side][metric] > 0
+            );
+    }
+    if (asset.path.endsWith("/local-drop.js")) {
+        queueChunks.push(asset);
+        assert.notEqual(asset.baseline.sha256, asset.candidate.sha256);
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                asset.candidate[metric] - asset.baseline[metric],
+                DESKTOP_VIDEO_QUEUE_ALLOWANCE[metric]
+            );
+            assert.equal(
+                queueEvidence.reference_cap[metric] - asset.baseline[metric],
+                queueEvidence.headroom[metric]
+            );
+            assert.equal(
+                queueEvidence.proposed_cap[metric] - asset.candidate[metric],
+                queueEvidence.headroom[metric]
+            );
+        }
+    } else if (asset.kind === "entry") {
+        // Record the changed entry envelope, without allocating its net delta.
+        assert.notEqual(asset.baseline.sha256, asset.candidate.sha256);
+    } else {
+        assert.deepEqual(asset.baseline, asset.candidate, asset.path);
+        unchangedQueueAssets++;
+    }
+}
+assert.equal(queueChunks.length, 3);
+for (const side of ["baseline", "candidate"])
+    for (const asset of queueChunks)
+        assert.deepEqual(
+            asset[side],
+            queueChunks[0][side],
+            "identical optional bytes across all three targets"
+        );
+assert.equal(unchangedQueueAssets, 72);
+assert.equal(
+    queueEvidence.compatibility.unchanged_assets,
+    unchangedQueueAssets
+);
+for (const metric of ["bytes", "gzipBytes"]) {
+    assert.equal(
+        latestCaps.OPTIONAL_BUDGETS["local-drop"][metric] -
+            preQueueCaps.OPTIONAL_BUDGETS["local-drop"][metric],
+        DESKTOP_VIDEO_QUEUE_ALLOWANCE[metric]
+    );
+    for (const name of ["BASE_TOTAL_BUDGET", "TOTAL_BUDGET"])
+        assert.equal(
+            latestCaps[name][metric] - preQueueCaps[name][metric],
+            DESKTOP_VIDEO_QUEUE_ALLOWANCE[metric],
+            name +
+                " includes one optional increment, not three target copies or the entry delta"
+        );
+}
+for (const name of [
+    "BUDGET",
+    "LEGACY_TOTAL_BUDGET",
+    "PROVIDER_BUDGET",
+    "OPTIONAL_BUDGET",
+])
+    assert.deepEqual(
+        require("../scripts/classic-size.cjs")[name],
+        preQueueCaps[name],
+        name + " is unchanged by the optional queue allowance"
+    );
+assert.deepEqual(
+    Object.keys(latestCaps.OPTIONAL_BUDGETS).sort(),
+    Object.keys(preQueueCaps.OPTIONAL_BUDGETS).sort()
+);
+for (const [name, cap] of Object.entries(latestCaps.OPTIONAL_BUDGETS))
+    if (name !== "local-drop")
+        assert.deepEqual(cap, preQueueCaps.OPTIONAL_BUDGETS[name], name);
+
 // The paired presentation/settings receipt includes all three platform
 // inventories. Allocate the largest per-platform delta, never their sum.
 const presentationEvidence = require("../docs/evidence/classic-presentation-settings-size-20261105.json");
 const presentationBaseline = capsWithoutAllowances([
+    "DESKTOP_VIDEO_QUEUE_ALLOWANCE",
     "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE",
 ]);
 assert.deepEqual(
@@ -245,7 +385,7 @@ for (const variant of presentationEvidence.variants) {
                     variant.entry + " " + scope + " includes every asset once"
                 );
             assert(
-                latestCaps[name][metric] - variant.candidate[scope][metric] >=
+                preQueueCaps[name][metric] - variant.candidate[scope][metric] >=
                     presentationBaseline[name][metric] -
                         variant.baseline[scope][metric],
                 variant.entry + " preserves measured headroom"
@@ -259,8 +399,8 @@ for (const [name, before] of Object.entries(presentationEvidence.caps_before)) {
             : presentationBaseline[name];
     const newCap =
         name === "appearance"
-            ? latestCaps.OPTIONAL_BUDGETS["subtitle-appearance"]
-            : latestCaps[name];
+            ? preQueueCaps.OPTIONAL_BUDGETS["subtitle-appearance"]
+            : preQueueCaps[name];
     assert.deepEqual(
         oldCap,
         before,
@@ -288,7 +428,7 @@ for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
         require("../scripts/classic-size.cjs")[name],
         presentationBaseline[name]
     );
-for (const [name, cap] of Object.entries(latestCaps.OPTIONAL_BUDGETS))
+for (const [name, cap] of Object.entries(preQueueCaps.OPTIONAL_BUDGETS))
     if (name !== "subtitle-appearance")
         assert.deepEqual(
             cap,
@@ -299,6 +439,7 @@ for (const [name, cap] of Object.entries(latestCaps.OPTIONAL_BUDGETS))
 // Qualify desktop startup and its new optional asset independently. Earlier
 // receipts predate both; remove them only from the historical cap projections.
 const desktopBaseline = capsWithoutAllowances([
+    "DESKTOP_VIDEO_QUEUE_ALLOWANCE",
     "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE",
     "DESKTOP_DROP_ALLOWANCE",
 ]);
@@ -366,6 +507,7 @@ CLASSIC_OPTIONAL_BUNDLES = Object.fromEntries(
 // Remove only those named features from historical projections. Live checks
 // below retain the complete merged caps and restore the full asset inventory.
 const preRecoveryCaps = capsWithoutAllowances([
+    "DESKTOP_VIDEO_QUEUE_ALLOWANCE",
     "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE",
     "DESKTOP_DROP_ALLOWANCE",
     "AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE",
@@ -375,6 +517,7 @@ const withoutAutoRecovery = capsWithoutAllowances([
 ]);
 function historicalCapsWithoutAllowances(names) {
     return capsWithoutAllowances([
+        "DESKTOP_VIDEO_QUEUE_ALLOWANCE",
         "CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE",
         "DESKTOP_DROP_ALLOWANCE",
         "AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE",
@@ -5321,6 +5464,7 @@ try {
             AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE,
         classicPresentationSettingsAllowance:
             CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
+        desktopVideoQueueAllowance: DESKTOP_VIDEO_QUEUE_ALLOWANCE,
         favoritesCategoryPersistenceAllowance:
             FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
         localFavoritesPathAllowance: LOCAL_FAVORITES_PATH_ALLOWANCE,
@@ -5951,6 +6095,10 @@ try {
     );
     const report = writeBundleReport(root, optimizer, ["entry.js"]);
     assert.deepEqual(report.baseTotalBudget, BASE_TOTAL_BUDGET);
+    assert.deepEqual(
+        report.desktopVideoQueueAllowance,
+        DESKTOP_VIDEO_QUEUE_ALLOWANCE
+    );
     assert.deepEqual(
         report.localCompatibilityAllowance,
         LOCAL_COMPATIBILITY_ALLOWANCE

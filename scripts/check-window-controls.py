@@ -255,6 +255,24 @@ def validate_appkit_evidence(report):
         if kind == "maximize":
             require(item.get("native_after_get") == item.get("native"),
                     "Aspect getter changed settled AppKit maximize state")
+    menu_transitions = report.get("menu_transitions", [])
+    require(report.get("native_menu_activations") == 2 and len(menu_transitions) == 2,
+            "Incomplete native Window menu activations")
+    for index, (item, target) in enumerate(zip(menu_transitions, [True, False]), 1):
+        require(item.get("kind") == "native_menu_zoom" and item.get("menu_id") == "ott.window.zoom"
+                and item.get("target") is target and type(item.get("event_count")) is int
+                and item.get("event_count") == index,
+                "Wrong native Window menu event or transition order")
+        target_frame = item.get("target_visible_frame")
+        require(target_frame is not None
+                and target_frame == menu_transitions[0].get("target_visible_frame"),
+                "Missing or changed native Window menu target")
+        validate_aspect_state(item.get("state"), True, not target)
+        validate_appkit_snapshot(item.get("native"), baseline, active=not target,
+                                 zoomed=None, original_geometry=not target,
+                                 target_frame=target_frame if target else None)
+        require(item.get("native_after_get") == item.get("native"),
+                "Aspect getter changed settled native Window menu state")
     validate_aspect_state(report.get("final_state"), False, False)
     validate_appkit_snapshot(report.get("final"), baseline, active=False)
 

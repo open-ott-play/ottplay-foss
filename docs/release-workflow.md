@@ -76,6 +76,10 @@ checks overlap. A beta cannot be promoted to stable; it needs a fully validated 
 The [release strategy](../RELEASING.md) defines versioning, channels, acceptance,
 ownership, hotfixes and rollback. This document is the operational runbook.
 
+The standalone macOS ARM64 server has a separate
+[build, acceptance and preparation path](macos-server-release.md). Its executable
+is not replaced by updating the web archive or the Tauri application.
+
 ## Nightly, beta and RC
 
 During rollout, checks and builds run but public candidate publication is disabled

@@ -783,6 +783,15 @@ const DESKTOP_DROP_ALLOWANCE = Object.freeze({
     entry: Object.freeze({ bytes: 4000, gzipBytes: 1200 }),
     optional: Object.freeze({ bytes: 5400, gzipBytes: 2200 }),
 });
+// Ordered desktop queues add 407 raw / 169 gzip bytes to the optional drop
+// asset on the same Node 22 toolchain, preserving its measured 44 / 96 reserve.
+// Entry and whole-payload deltas are not isolated across the two version
+// envelopes. Allocate only this optional component, once per complete player.
+// Evidence: docs/evidence/desktop-video-queue-size-20261105.json.
+const DESKTOP_VIDEO_QUEUE_ALLOWANCE = Object.freeze({
+    bytes: 407,
+    gzipBytes: 169,
+});
 // Bounded recovery after relay failure adds 425 raw and at most 259 gzip bytes.
 // Existing raw caps cover the change. Count the measured gzip cost once per
 // entry and aggregate; preserve identity headroom and unrelated asset caps.
@@ -1208,7 +1217,14 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // existing code off startup. Every emitted asset remains counted once.
     // Isolated raw/gzip: compatibility3527/1529, UI8453/3297, runner2460/1155.
     "local-compatibility": LOCAL_SOURCE_DIAGNOSTICS_ALLOWANCE.optional,
-    "local-drop": DESKTOP_DROP_ALLOWANCE.optional,
+    "local-drop": Object.freeze({
+        bytes:
+            DESKTOP_DROP_ALLOWANCE.optional.bytes +
+            DESKTOP_VIDEO_QUEUE_ALLOWANCE.bytes,
+        gzipBytes:
+            DESKTOP_DROP_ALLOWANCE.optional.gzipBytes +
+            DESKTOP_VIDEO_QUEUE_ALLOWANCE.gzipBytes,
+    }),
     "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
     "media-companion": Object.freeze({
         bytes:
@@ -1308,6 +1324,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        DESKTOP_VIDEO_QUEUE_ALLOWANCE.bytes +
         CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.bytes +
         CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.appearance.bytes +
         DESKTOP_DROP_ALLOWANCE.entry.bytes +
@@ -1396,6 +1413,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        DESKTOP_VIDEO_QUEUE_ALLOWANCE.gzipBytes +
         CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.gzipBytes +
         CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.appearance.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
@@ -1664,6 +1682,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
             CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE,
         companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
         desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
+        desktopVideoQueueAllowance: DESKTOP_VIDEO_QUEUE_ALLOWANCE,
         epgPresentationEntryAllowance: EPG_PRESENTATION_ENTRY_ALLOWANCE,
         favoritesCategoryPersistenceAllowance:
             FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
@@ -2017,6 +2036,7 @@ function writeBuildBundleReport(
             companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
             complete: !inputErrors.length,
             desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
+            desktopVideoQueueAllowance: DESKTOP_VIDEO_QUEUE_ALLOWANCE,
             diagnostic: true,
             epgPresentationEntryAllowance: EPG_PRESENTATION_ENTRY_ALLOWANCE,
             favoritesCategoryPersistenceAllowance:
@@ -2148,6 +2168,7 @@ module.exports = {
     collectBundleMeasurement,
     DESKTOP_DROP_ALLOWANCE,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
+    DESKTOP_VIDEO_QUEUE_ALLOWANCE,
     EPG_PRESENTATION_ENTRY_ALLOWANCE,
     FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
     FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
