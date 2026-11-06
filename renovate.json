@@ -1,8 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "local>victron-venus/venus-os-ci-toolkit:renovate-fleet"
-  ],
+  "extends": ["local>victron-venus/venus-os-ci-toolkit:renovate-fleet"],
   "enabledManagers": [
     "cargo",
     "custom.jsonata",
@@ -26,112 +24,64 @@
   ],
   "packageRules": [
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "/^[^/]+$/"
-      ],
-      "matchPackageNames": [
-        "*"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["/^[^/]+$/"],
+      "matchPackageNames": ["*"],
       "groupName": "npm-lockfile",
       "groupSlug": "npm-lockfile",
       "separateMajorMinor": false,
       "separateMinorPatch": false
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "/^[^/]+$/"
-      ],
-      "matchPackageNames": [
-        "@tauri-apps/api"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["/^[^/]+$/"],
+      "matchPackageNames": ["@tauri-apps/api"],
       "allowedVersions": "<2.12.0"
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "/^[^/]+$/"
-      ],
-      "matchPackageNames": [
-        "ultracite"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["/^[^/]+$/"],
+      "matchPackageNames": ["ultracite"],
       "allowedVersions": "<7.10.3 || >8.0.1"
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "/^[^/]+$/"
-      ],
-      "matchPackageNames": [
-        "typescript"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["/^[^/]+$/"],
+      "matchPackageNames": ["typescript"],
       "allowedVersions": "<6"
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "/^[^/]+$/"
-      ],
-      "matchPackageNames": [
-        "video.js"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["/^[^/]+$/"],
+      "matchPackageNames": ["video.js"],
       "allowedVersions": "<8"
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "/^[^/]+$/"
-      ],
-      "matchPackageNames": [
-        "@videojs/http-streaming"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["/^[^/]+$/"],
+      "matchPackageNames": ["@videojs/http-streaming"],
       "allowedVersions": "<3"
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "package.json"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["package.json"],
       "groupName": "npm-lockfile",
       "groupSlug": "npm-lockfile",
       "separateMajorMinor": false
     },
     {
       "description": "General Cargo updates require the reviewed native migration; the coupled updater exception follows below.",
-      "matchManagers": [
-        "cargo"
-      ],
+      "matchManagers": ["cargo"],
       "enabled": false
     },
     {
       "description": "Update both updater bindings together; 2.13 requires migrating the patched native WebView stack.",
-      "matchManagers": [
-        "npm",
-        "cargo"
-      ],
+      "matchManagers": ["npm", "cargo"],
       "matchPackageNames": [
         "@tauri-apps/plugin-updater",
         "tauri-plugin-updater"
       ],
-      "matchFileNames": [
-        "package.json",
-        "src-tauri/Cargo.toml"
-      ],
+      "matchFileNames": ["package.json", "src-tauri/Cargo.toml"],
       "enabled": true,
       "groupName": "Tauri updater bindings",
       "groupSlug": "tauri-updater",
@@ -145,9 +95,7 @@
     }
   ],
   "pip_requirements": {
-    "managerFilePatterns": [
-      "/(^|/)requirements[^/]*\\.(txt|pip)$/"
-    ],
+    "managerFilePatterns": ["/(^|/)requirements[^/]*\\.(txt|pip)$/"],
     "ignorePaths": [
       "**/vendor/**",
       "**/node_modules/**",
@@ -167,8 +115,6 @@
     "GitHub vulnerability alerts and normal scheduled updates remain enabled; automatic security overrides must not bypass these constraints."
   ],
   "pip-compile": {
-    "managerFilePatterns": [
-      "/^requirements\\-test\\.txt$/"
-    ]
+    "managerFilePatterns": ["/^requirements\\-test\\.txt$/"]
   }
 }
