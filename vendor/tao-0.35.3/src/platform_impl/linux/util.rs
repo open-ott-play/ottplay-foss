@@ -282,18 +282,18 @@ fn x11_aspect(window: &gtk::Window) -> Result<Option<bool>, String> {
   // The caller proved this is an X11 GTK window. Use GTK's connection and its
   // error trap; do not open a second display or install a global X error handler.
   unsafe {
-    let gd = display.as_ptr() as *mut gdkx11_sys::GdkX11Display;
-    let xdisplay = gdkx11_sys::gdk_x11_display_get_xdisplay(gd);
+    let gd = display.as_ptr() as *mut gdk_x11_sys::GdkX11Display;
+    let xdisplay = gdk_x11_sys::gdk_x11_display_get_xdisplay(gd);
     let xid =
-      gdkx11_sys::gdk_x11_window_get_xid(native.as_ptr() as *mut gdkx11_sys::GdkX11Window);
+      gdk_x11_sys::gdk_x11_window_get_xid(native.as_ptr() as *mut gdk_x11_sys::GdkX11Window);
     if xdisplay.is_null() || xid == 0 {
       return Err("Native X11 window is unavailable".into());
     }
     let mut hints: xlib::XSizeHints = std::mem::zeroed();
     let mut supplied = 0;
-    gdkx11_sys::gdk_x11_display_error_trap_push(gd);
+    gdk_x11_sys::gdk_x11_display_error_trap_push(gd);
     let found = (xlib.XGetWMNormalHints)(xdisplay.cast(), xid, &mut hints, &mut supplied);
-    let error = gdkx11_sys::gdk_x11_display_error_trap_pop(gd);
+    let error = gdk_x11_sys::gdk_x11_display_error_trap_pop(gd);
     if error != 0 || found == 0 {
       return Err("Native X11 geometry hints are unavailable".into());
     }
