@@ -506,6 +506,11 @@ struct TransientReservation {
     source_id: String,
     armed: bool,
 }
+impl TransientReservation {
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
 impl Drop for TransientReservation {
     fn drop(&mut self) {
         if self.armed {
@@ -1185,7 +1190,7 @@ impl Library {
                 return Err("Another local drop is pending");
             }
         }
-        let mut reservation = TransientReservation {
+        let reservation = TransientReservation {
             library: self.clone(),
             source_id: source_id.clone(),
             armed: true,
@@ -1195,6 +1200,9 @@ impl Library {
             &work,
             Some(std::time::Instant::now() + NATIVE_SOURCE_PROBE_TIMEOUT),
             move |owner| async move {
+                // Keep the complete reservation in the reader until its file
+                // operations finish, including after caller cancellation.
+                let mut reservation = reservation;
                 let mut entries = Vec::with_capacity(requested.len());
                 let live = Arc::new(AtomicBool::new(true));
                 for (path, name, extension) in requested {
@@ -1280,7 +1288,7 @@ impl Library {
                     for entry in &entries {
                         state.entries.insert(entry.record.id.clone(), entry.clone());
                     }
-                    reservation.armed = false;
+                    reservation.disarm();
                     Ok(TransientVideos {
                         library: library.clone(),
                         entries,
@@ -4619,6 +4627,12 @@ mod tests {
             .await
             .unwrap();
         let active_id = active.entries[0].record.id.clone();
+        {
+            let state = library.transient.lock().unwrap();
+            assert_eq!(state.groups.len(), 1);
+            assert!(state.groups.contains(&active_id));
+            assert_eq!(state.entries.len(), MAX_DROPPED_VIDEOS);
+        }
         assert!(library.transient_videos(Vec::new()).await.is_err());
         assert!(library
             .transient_videos(vec![path.clone(); MAX_DROPPED_VIDEOS + 1])
@@ -4775,8 +4789,19 @@ mod tests {
         let first = library.transient_video(path.clone()).await.unwrap();
         let first_id = first.entry.record.id.clone();
         let second = library.transient_video(path.clone()).await.unwrap();
+        {
+            let state = library.transient.lock().unwrap();
+            assert_eq!(state.groups.len(), 2);
+            assert_eq!(state.entries.len(), 2);
+        }
         assert!(library.transient_video(path.clone()).await.is_err());
         drop(first);
+        {
+            let state = library.transient.lock().unwrap();
+            assert_eq!(state.groups.len(), 1);
+            assert!(state.groups.contains(&second.entry.record.id));
+            assert_eq!(state.entries.len(), 1);
+        }
         assert_eq!(
             dropped_response(&library, &first_id, None).await.status(),
             StatusCode::NOT_FOUND
@@ -4790,6 +4815,11 @@ mod tests {
         let third = library.transient_video(path).await.unwrap();
         drop(third);
         drop(second);
+        {
+            let state = library.transient.lock().unwrap();
+            assert!(state.groups.is_empty());
+            assert!(state.entries.is_empty());
+        }
         fs::remove_dir_all(root).await.unwrap();
     }
     #[tokio::test]

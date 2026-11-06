@@ -114,7 +114,8 @@ pub(crate) fn handle<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     if event.id().as_ref() != ZOOM_ID {
         return;
     }
-    if let Some(window) = app.get_window("main") {
+    if let Some(webview) = app.get_webview_window("main") {
+        let window: Window<R> = webview.as_ref().window();
         if let Err(error) = dispatch(ZOOM_ID, &window) {
             tracing::warn!(%error, "Native Window Zoom failed");
         }
@@ -124,8 +125,11 @@ pub(crate) fn handle<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
 
 pub(crate) fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let enabled = app
-        .get_window("main")
-        .and_then(|window| window.zoom_state().ok())
+        .get_webview_window("main")
+        .and_then(|webview| {
+            let window: Window<R> = webview.as_ref().window();
+            window.zoom_state().ok()
+        })
         .and_then(ZoomState::action)
         .is_some();
     let Some(menu) = app.menu() else { return };
