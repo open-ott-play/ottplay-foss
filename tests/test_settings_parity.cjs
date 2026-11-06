@@ -506,6 +506,14 @@ for (const [id, bridge, initial, expected, selector, property] of [
         ".list_back",
         "backgroundColor",
     ],
+    [
+        "epgTimeColor",
+        "eEpgTimeColor",
+        0,
+        "rgb(255, 255, 25)",
+        ":root",
+        "--ott-epg-time-color",
+    ],
 ]) {
     const { JSDOM } = require("jsdom");
     const dom = new JSDOM(
@@ -516,12 +524,20 @@ for (const [id, bridge, initial, expected, selector, property] of [
         dom.window.eval(
             fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8")
         );
+        const originalIs = dom.window.$.fn.is;
+        dom.window.$.fn.is = function (selector) {
+            return selector === ":visible"
+                ? !!this[0] && this[0].style.display !== "none"
+                : originalIs.call(this, selector);
+        };
         const { w, typed, stored } = fixture("tauri");
         Object.assign(w, {
             $: dom.window.$,
             $tooltipSpan: null,
             document: dom.window.document,
             jQuery: dom.window.jQuery,
+            nativeListInertia: null,
+            stbEventToKeyCode: (event) => event.keyCode,
             strDOWN: "Down",
             strENTER: "OK",
             strLEFT: "Left",
@@ -560,6 +576,7 @@ for (const [id, bridge, initial, expected, selector, property] of [
                     "colorDialog",
                     "selColorDialog",
                     "backColorDialog",
+                    "epgTimeColorDialog",
                     "epgTimeCssColor",
                 ])
             ),
@@ -569,14 +586,37 @@ for (const [id, bridge, initial, expected, selector, property] of [
             compile(selectedSource("src/index.ts", ["setColor"])),
             w
         );
-        w._doKey = (code) => w.aboutKeyHandler(code);
+        vm.runInContext(
+            compile(
+                selectedSource("src/key-handler/index.ts", [
+                    "cancelNativeListInertia",
+                    "keyHandler",
+                    "dispatchKey",
+                ])
+            ),
+            w
+        );
+        w._doKey = w.dispatchKey;
+        w.showPage = () => w.__ottClassicScreenPort.commitList();
+        w.document.addEventListener("keydown", w.keyHandler);
         w.uiInit();
         const open = () => {
-            w.settingsInterface();
+            if (id === "epgTimeColor") w.settingsChannels();
+            else w.settingsInterface();
             const row = w.listArray.find((entry) => entry.settingId === id);
             w.selIndex = w.listArray.indexOf(row);
-            row.values();
+            w.dispatchKey(w.keys.ENTER);
             return row;
+        };
+        const press = (key, target = w.document.body) => {
+            target.focus();
+            target.dispatchEvent(
+                new dom.window.KeyboardEvent("keydown", {
+                    bubbles: true,
+                    cancelable: true,
+                    keyCode: w.keys[key],
+                })
+            );
         };
         const click = (key, footer = false) => {
             const control = w.document.querySelector(
@@ -594,37 +634,50 @@ for (const [id, bridge, initial, expected, selector, property] of [
         click("UP");
         click("DOWN");
         // Key and actual delegated click routes both reach the owned picker.
-        w.aboutKeyHandler(w.keys.RIGHT);
-        w.aboutKeyHandler(w.keys.UP);
+        press("RIGHT");
+        press("UP");
         const preview =
             w.document.getElementById("step").style[
-                id === "highlightColor" ? "color" : "backgroundColor"
+                id === "highlightColor" || id === "epgTimeColor"
+                    ? "color"
+                    : "backgroundColor"
             ];
         assert.equal(
             preview,
             expected,
             id + " uses the production HSV interpretation"
         );
-        click("ENTER", true);
+        press(
+            "ENTER",
+            w.document.querySelector(
+                '#listAbout [data-ott-key="' + w.keys.LEFT + '"]'
+            )
+        );
         assert.equal(
             typed()[id],
             initial,
             "Set only commits to the page draft"
         );
         assert.notEqual(w[bridge], initial);
-        const swatch = w.document.createElement("div");
-        swatch.innerHTML = row.cur;
+        if (id !== "epgTimeColor") {
+            const swatch = w.document.createElement("div");
+            swatch.innerHTML = row.cur;
+            assert.equal(
+                swatch.firstChild.style.backgroundColor,
+                preview,
+                "The parent swatch matches the accepted preview"
+            );
+        }
+        press("GREEN");
+        assert.equal(typed().interfaceTheme, id === "epgTimeColor" ? 2 : 0);
         assert.equal(
-            swatch.firstChild.style.backgroundColor,
-            preview,
-            "The parent swatch matches the accepted preview"
-        );
-        save(w);
-        assert.equal(typed().interfaceTheme, 0);
-        assert.equal(
-            selector
-                ? w.document.querySelector(selector).style[property]
-                : w.curColorB.replace(/,/g, ", "),
+            id === "epgTimeColor"
+                ? w.document.documentElement.style
+                      .getPropertyValue(property)
+                      .replace(/,/g, ", ")
+                : selector
+                  ? w.document.querySelector(selector).style[property]
+                  : w.curColorB.replace(/,/g, ", "),
             preview,
             "Main Save publishes exactly the preview using real setColor"
         );
@@ -632,19 +685,19 @@ for (const [id, bridge, initial, expected, selector, property] of [
         const persisted = [...stored];
         open();
         click("BLUE");
-        click("RETURN", true);
+        press("RETURN");
         assert.equal(
-            w[bridge],
+            id === "epgTimeColor" ? w.__ottSettingsEditor.get(id) : w[bridge],
             saved,
             "Picker Cancel leaves the page draft intact"
         );
-        w.listKeyHandlerFn(w.keys.RETURN);
+        press("RETURN");
         assert.equal(typed()[id], saved);
         assert.deepEqual([...stored], persisted);
         open();
         click("BLUE");
         click("ENTER", true);
-        w.listKeyHandlerFn(w.keys.RETURN);
+        press("RETURN");
         assert.equal(
             typed()[id],
             saved,

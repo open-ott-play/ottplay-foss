@@ -369,7 +369,15 @@ export function uiInit(): void {
                 var owner = listButtons
                     ? port.listOwner()
                     : port.owner(overlay);
-                var key = Number(button.getAttribute("data-ott-key"));
+                // In the spectrum picker Enter accepts the preview; clicks and
+                // Space still activate an individual arrow or preset.
+                var key =
+                    id === "listAbout" &&
+                    event.type === "keydown" &&
+                    (event as KeyboardEvent).keyCode === 13 &&
+                    $(button).closest("[data-ott-color-picker]").length
+                        ? w.keys.ENTER
+                        : Number(button.getAttribute("data-ott-key"));
                 if (
                     owner &&
                     owner.foreground() &&
@@ -3059,7 +3067,16 @@ function bindColorDialogInput(
                 case keys.ENTER:
                     (window as any)[settingKey] = hue + "," + saturation;
                 case keys.RETURN:
-                    $("#listAbout").text("").hide();
+                    // Let the existing modal hide observer restore its saved
+                    // parent even when an explicit footer action owned focus.
+                    var panel = document.getElementById("listAbout");
+                    if (
+                        panel &&
+                        listFooterElement &&
+                        listFooterElement.contains(document.activeElement)
+                    )
+                        panel.focus();
+                    $("#listAbout").hide().text("");
                     restoreListPanelState();
                     if (typeof (window as any).showPage === "function")
                         (window as any).showPage();
@@ -3136,7 +3153,7 @@ function showColorDialog(
         renderButtonHint(keys.BLUE, "", "Blue");
     $("#listAbout")
         .html(
-            '<div style="font-size:larger;">' +
+            '<div data-ott-color-picker style="font-size:larger;">' +
                 _("Color") +
                 ":<br/><br/>&nbsp;" +
                 preview +

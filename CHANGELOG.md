@@ -150,6 +150,7 @@
 
 ### Changes
 
+- Fixed Enter confirmation and focus restoration in EPG and Classic color pickers.
 - Show confirmed native window state in Interface settings. Keep the current
   indicator until a change is acknowledged, report unavailable controls, and
   ignore replies that belong to an older settings page or request.
