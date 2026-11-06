@@ -2672,9 +2672,10 @@ require("node:test").test(
                     const ipc = [],
                         messages = [];
                     let acknowledge,
-                        enabled = false,
                         paints = 0,
                         closed = 0;
+                    const states = { alwaysOnTop: false, aspectLock: true };
+                    const desired = !states[kind];
                     w.navigator = { userAgent: "desktop" };
                     w.__TAURI__ = {
                         core: {
@@ -2685,26 +2686,34 @@ require("node:test").test(
                                 ]);
                                 if (command === "get_window_aspect_lock")
                                     return Promise.resolve({
-                                        active: false,
-                                        enabled,
+                                        active: states.aspectLock,
+                                        enabled: states.aspectLock,
                                         ok: true,
                                         supported: true,
                                     });
+                                assert.equal(
+                                    command,
+                                    kind === "alwaysOnTop"
+                                        ? "set_always_on_top"
+                                        : "set_window_aspect_lock"
+                                );
                                 return new Promise((resolve) => {
                                     acknowledge = () => {
-                                        enabled =
+                                        states[kind] =
                                             kind === "alwaysOnTop"
                                                 ? args.alwaysOnTop
                                                 : args.enabled;
                                         resolve(
                                             kind === "alwaysOnTop"
                                                 ? {
-                                                      alwaysOnTop: enabled,
+                                                      alwaysOnTop:
+                                                          states.alwaysOnTop,
                                                       ok: true,
                                                   }
                                                 : {
-                                                      active: enabled,
-                                                      enabled,
+                                                      active: states.aspectLock,
+                                                      enabled:
+                                                          states.aspectLock,
                                                       ok: true,
                                                       supported: true,
                                                   }
@@ -2715,7 +2724,10 @@ require("node:test").test(
                         },
                         window: {
                             getCurrentWindow: () => ({
-                                isAlwaysOnTop: () => Promise.resolve(enabled),
+                                isAlwaysOnTop: () => {
+                                    ipc.push(["isAlwaysOnTop", undefined]);
+                                    return Promise.resolve(states.alwaysOnTop);
+                                },
                                 label: "main",
                             }),
                         },
@@ -2744,14 +2756,12 @@ require("node:test").test(
                     assert(
                         rows
                             .slice(2, 4)
-                            .every(
-                                (row) => !row.settingId && row.cur === "select"
-                            )
+                            .every((row) => !row.settingId && row.cur === "…")
                     );
                     assert.deepEqual(
                         ipc,
                         [],
-                        "Opening Interface never queries or changes native state"
+                        "The initial render waits for asynchronous native readback"
                     );
                     const font = rows.find(
                         (row) => row.settingId === "uiFontScale"
@@ -2761,8 +2771,33 @@ require("node:test").test(
                         (row) => row.id === "window." + kind
                     );
                     w.selIndex = index;
-                    const before = [...stored],
-                        paintCount = paints;
+                    const before = [...stored];
+                    const openingPaints = paints;
+                    await settle();
+                    const openingReads = [
+                        ["isAlwaysOnTop", undefined],
+                        ["get_window_aspect_lock", undefined],
+                    ];
+                    assert.deepEqual(
+                        ipc,
+                        openingReads,
+                        "Opening probes both states without issuing a setter"
+                    );
+                    assert.deepEqual(
+                        Array.from(rows.slice(2, 4), (row) => row.cur),
+                        ["off", "yes"]
+                    );
+                    assert.equal(
+                        paints,
+                        openingPaints + 2,
+                        "Each completed readback paints its checkbox"
+                    );
+                    assert.equal(w.__ottClassicScreenPort.listOwner(), owner);
+                    assert.equal(w.__ottSettingsEditor, editor);
+                    assert.equal(editor.get("uiFontScale"), 130);
+                    assert.equal(w.selIndex, index);
+                    assert.deepEqual([...stored], before);
+                    const paintCount = paints;
                     assert.equal(w.listKeyHandlerFn(w.keys.ENTER), true);
                     await settle();
                     assert.equal(
@@ -2772,24 +2807,45 @@ require("node:test").test(
                     );
                     assert.deepEqual(
                         ipc,
-                        kind === "alwaysOnTop"
-                            ? [["set_always_on_top", { alwaysOnTop: true }]]
-                            : [
-                                  ["get_window_aspect_lock", undefined],
-                                  ["set_window_aspect_lock", { enabled: true }],
-                              ]
+                        openingReads.concat(
+                            kind === "alwaysOnTop"
+                                ? [
+                                      ["isAlwaysOnTop", undefined],
+                                      [
+                                          "set_always_on_top",
+                                          { alwaysOnTop: desired },
+                                      ],
+                                  ]
+                                : [
+                                      ["get_window_aspect_lock", undefined],
+                                      [
+                                          "set_window_aspect_lock",
+                                          { enabled: desired },
+                                      ],
+                                  ]
+                        )
                     );
                     assert.deepEqual(
                         messages,
                         [],
                         "No success before native acknowledgement"
                     );
+                    assert.equal(
+                        paints,
+                        paintCount,
+                        "The pending setter cannot optimistically repaint"
+                    );
+                    assert.equal(
+                        rows[index].cur,
+                        kind === "alwaysOnTop" ? "off" : "yes"
+                    );
                     acknowledge();
                     await settle();
                     assert.deepEqual(messages, [
                         (kind === "alwaysOnTop"
                             ? "Always on top"
-                            : "Lock window to 16:9") + ": on",
+                            : "Lock window to 16:9") +
+                            (desired ? ": On" : ": Off"),
                     ]);
                     assert.equal(w.listArray, rows);
                     assert.equal(w.__ottSettingsEditor, editor);
@@ -2797,9 +2853,10 @@ require("node:test").test(
                     assert.equal(w.selIndex, index);
                     assert.equal(
                         paints,
-                        paintCount,
-                        "A native acknowledgement does not repaint settings"
+                        paintCount + 1,
+                        "The acknowledged checkbox redraw preserves the settings page"
                     );
+                    assert.equal(rows[index].cur, desired ? "yes" : "off");
                     assert.equal(closed, 0);
                     assert(editor.active());
                     assert.equal(editor.get("uiFontScale"), 130);
@@ -2821,11 +2878,11 @@ require("node:test").test(
                         finish === "save" ? 130 : 100
                     );
                     assert.equal(
-                        enabled,
-                        true,
+                        states[kind],
+                        desired,
                         "Save/Cancel never replays or reverses a native action"
                     );
-                    assert.equal(ipc.length, kind === "alwaysOnTop" ? 1 : 2);
+                    assert.equal(ipc.length, 4);
                 }
             }
         }
@@ -2842,12 +2899,25 @@ require("node:test").test(
                 w.sInterfaceMode = mode;
                 const messages = [];
                 let finish,
-                    paints = 0;
+                    paints = 0,
+                    reads = 0,
+                    writes = 0;
                 w.navigator = { userAgent: "desktop" };
                 w.__TAURI__ = {
                     core: {
-                        invoke: () =>
-                            new Promise((resolve, fail) => {
+                        invoke: (command) => {
+                            if (command === "get_window_aspect_lock") {
+                                reads++;
+                                return Promise.resolve({
+                                    active: true,
+                                    enabled: true,
+                                    ok: true,
+                                    supported: true,
+                                });
+                            }
+                            assert.equal(command, "set_always_on_top");
+                            writes++;
+                            return new Promise((resolve, fail) => {
                                 finish = () =>
                                     reject
                                         ? fail(Error("denied"))
@@ -2855,11 +2925,15 @@ require("node:test").test(
                                               alwaysOnTop: true,
                                               ok: true,
                                           });
-                            }),
+                            });
+                        },
                     },
                     window: {
                         getCurrentWindow: () => ({
-                            isAlwaysOnTop: () => Promise.resolve(false),
+                            isAlwaysOnTop: () => {
+                                reads++;
+                                return Promise.resolve(false);
+                            },
                             label: "main",
                         }),
                     },
@@ -2892,6 +2966,19 @@ require("node:test").test(
                 );
                 font.val = font.settingValues.indexOf(140);
                 w.selIndex = 7;
+                const openingPaints = paints;
+                await settle();
+                assert.equal(
+                    paints,
+                    openingPaints + 2,
+                    "Only the replacement page's two readbacks paint before the old ACK"
+                );
+                assert.deepEqual(
+                    Array.from(rows.slice(2, 4), (row) => row.cur),
+                    ["off", "yes"]
+                );
+                assert.equal(reads, 5);
+                assert.equal(writes, 1);
                 const before = paints;
                 finish();
                 await pending;
@@ -2901,6 +2988,13 @@ require("node:test").test(
                 assert.equal(w.__ottClassicScreenPort.listOwner(), owner);
                 assert.equal(w.selIndex, 7);
                 assert.equal(paints, before);
+                assert.deepEqual(
+                    Array.from(rows.slice(2, 4), (row) => row.cur),
+                    ["off", "yes"],
+                    "An old ACK cannot replace the new page's confirmed checkbox states"
+                );
+                assert.equal(reads, 5);
+                assert.equal(writes, 1);
                 assert(editor.active());
                 assert.equal(editor.get("uiFontScale"), 140);
                 assert.equal(typed().uiFontScale, 100);
