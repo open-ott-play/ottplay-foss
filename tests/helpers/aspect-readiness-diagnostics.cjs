@@ -14,11 +14,64 @@ module.exports = async function observeAspectReadiness(
         crashed = true;
     };
     const transition = [];
+    const teardown = [];
+    const observeTeardown =
+        labels.phase === "open-channels" && labels.engine === "video.js";
     const observeTransition = labels.phase === "open-channels";
     const onConsole = (message) => {
         try {
-            if (transition.length >= 8) return;
             const text = message.text();
+            const teardownPrefix = "Plex teardown boundary: ";
+            if (
+                observeTeardown &&
+                typeof text === "string" &&
+                text.startsWith(teardownPrefix)
+            ) {
+                if (
+                    teardown.length >= 64 ||
+                    text.length > 512 ||
+                    Buffer.byteLength(text, "utf8") > 512
+                )
+                    return;
+                const value = JSON.parse(text.slice(teardownPrefix.length));
+                if (!value || typeof value !== "object" || Array.isArray(value))
+                    return;
+                const { hook, phase, receiver, sequence } = value;
+                if (
+                    ![
+                        "player.pause",
+                        "tech.disposeSourceHandler",
+                        "tech.clearTracks",
+                        "tech.reset",
+                        "media.load",
+                        "worker.terminate",
+                        "sourceBuffer.abort",
+                        "diagnostics",
+                    ].includes(hook) ||
+                    ![
+                        "attached",
+                        "unavailable",
+                        "entered",
+                        "returned",
+                        "threw",
+                        "restored",
+                        "superseded",
+                        "cleanup-failed",
+                        "limit",
+                    ].includes(phase) ||
+                    !Number.isInteger(receiver) ||
+                    receiver < 0 ||
+                    receiver > 16 ||
+                    !Number.isInteger(sequence) ||
+                    sequence < 1 ||
+                    sequence > 64 ||
+                    (teardown.length && sequence <= teardown.at(-1).sequence)
+                )
+                    return;
+                teardown.push({ hook, phase, receiver, sequence });
+                return;
+            }
+            if (transition.length >= 8) return;
             const prefix = "Plex channel transition: ";
             if (
                 typeof text !== "string" ||
@@ -103,6 +156,7 @@ module.exports = async function observeAspectReadiness(
                             ? labels.phase
                             : "unknown",
                         ...(observeTransition ? { transition } : {}),
+                        ...(observeTeardown ? { teardown } : {}),
                     })
             );
         } catch (_) {

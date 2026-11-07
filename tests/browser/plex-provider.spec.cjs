@@ -3,6 +3,7 @@ const path = require("node:path");
 const { test, expect } = require("../helpers/browser-test.cjs");
 const installShakaLifecycleDiagnostics = require("./shaka-lifecycle-diagnostics.cjs");
 const observeAspectReadiness = require("../helpers/aspect-readiness-diagnostics.cjs");
+const plexChannelTransition = require("../helpers/plex-channel-transition.cjs");
 
 // Serialized by Playwright: keep this predicate self-contained.
 function aspectMediaReady({ engine, previous, target }) {
@@ -429,70 +430,7 @@ async function openPlexChannels(page, engine) {
             !window.__ottActiveProviderDriver.catalogLoading()
     );
     await observeAspectReadiness(page, { engine, phase: "open-channels" }, () =>
-        page.evaluate(() => {
-            // Synchronous observations preserve the four calls and their order.
-            // An after mark means call return, not completion of asynchronous work.
-            // Console delivery may stop on a crash; a missing mark proves nothing.
-            function mark(step) {
-                try {
-                    let media = null;
-                    try {
-                        const video = window.video;
-                        const seconds = (value) =>
-                            Number.isFinite(value) && Math.abs(value) <= 1e9
-                                ? Math.round(value * 1000) / 1000
-                                : null;
-                        const integer = (value, max) =>
-                            Number.isInteger(value) &&
-                            value >= 0 &&
-                            value <= max
-                                ? value
-                                : null;
-                        const boolean = (value) =>
-                            typeof value === "boolean" ? value : null;
-                        if (video) {
-                            const ranges = video.buffered;
-                            const count = integer(ranges?.length, 100000);
-                            media = {
-                                bufferedRangeCount: count,
-                                currentTime: seconds(video.currentTime),
-                                duration: seconds(video.duration),
-                                ended: boolean(video.ended),
-                                errorCode: integer(video.error?.code, 4),
-                                lastBufferEnd:
-                                    count > 0
-                                        ? seconds(ranges.end(count - 1))
-                                        : null,
-                                networkState: integer(video.networkState, 3),
-                                paused: boolean(video.paused),
-                                readyState: integer(video.readyState, 4),
-                                sourcePresent: !!video.currentSrc,
-                            };
-                        }
-                    } catch (_) {
-                        // Even an unavailable media element can leave a step mark.
-                    }
-                    console.log(
-                        "Plex channel transition: " +
-                            JSON.stringify({ media, step })
-                    );
-                } catch (_) {
-                    // Observations must not suppress or replace the next call.
-                }
-            }
-            mark(0);
-            window.stbStop();
-            mark(1);
-            mark(2);
-            window.closeList();
-            mark(3);
-            mark(4);
-            window.__ottMedia.useSource(null);
-            mark(5);
-            mark(6);
-            window.__ottMedia.open(null);
-            mark(7);
-        })
+        page.evaluate(plexChannelTransition, engine)
     );
     await expect(page.locator("#listCaption")).toContainText(
         await page.evaluate(() => window._("Channel list. Category: "))
