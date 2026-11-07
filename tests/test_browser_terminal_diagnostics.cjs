@@ -349,7 +349,7 @@ function teardownFixture() {
     function method(name) {
         return function () {
             "use strict";
-            calls.push({ name, receiver: this, args: Array.from(arguments) });
+            calls.push({ args: Array.from(arguments), name, receiver: this });
             if (Object.hasOwn(failures, name)) throw failures[name];
             return results[name];
         };
@@ -361,17 +361,17 @@ function teardownFixture() {
     const mediaPrototype = { load: method("media.load") };
     const media = Object.assign(Object.create(mediaPrototype), {
         buffered: { length: 0 },
+        currentSrc: "private-src",
         currentTime: 0,
         duration: 2,
         ended: false,
         networkState: 2,
         paused: false,
         readyState: 0,
-        currentSrc: "private-src",
     });
     const techPrototype = {
-        disposeSourceHandler: method("tech.disposeSourceHandler"),
         clearTracks: method("tech.clearTracks"),
+        disposeSourceHandler: method("tech.disposeSourceHandler"),
         reset: method("tech.reset"),
     };
     const tech = Object.assign(Object.create(techPrototype), {
@@ -393,26 +393,26 @@ function teardownFixture() {
         originalDescriptors.push(Object.getOwnPropertyDescriptor(target, key));
     const operationCalls = [];
     const host = {
-        video: media,
-        videojs: { getPlayer: () => player },
-        Worker,
-        SourceBuffer,
-        stbStop() {
-            operationCalls.push("stop");
-        },
-        closeList() {
-            operationCalls.push("close");
-        },
         __ottMedia: {
-            useSource(value) {
-                assert.equal(value, null);
-                operationCalls.push("useSource");
-            },
             open(value) {
                 assert.equal(value, null);
                 operationCalls.push("open");
             },
+            useSource(value) {
+                assert.equal(value, null);
+                operationCalls.push("useSource");
+            },
         },
+        closeList() {
+            operationCalls.push("close");
+        },
+        SourceBuffer,
+        stbStop() {
+            operationCalls.push("stop");
+        },
+        video: media,
+        videojs: { getPlayer: () => player },
+        Worker,
     };
     const logger = {
         log(line) {
@@ -420,35 +420,6 @@ function teardownFixture() {
         },
     };
     return {
-        calls,
-        lines,
-        results,
-        failures,
-        targets,
-        host,
-        tech,
-        player,
-        media,
-        worker,
-        buffer,
-        logger,
-        operationCalls,
-        run(engine = "video.js") {
-            return vm.runInNewContext(
-                `(${plexChannelTransition.toString()})(${JSON.stringify(engine)})`,
-                {
-                    window: host,
-                    console: logger,
-                }
-            );
-        },
-        events() {
-            return lines
-                .filter((line) => line.startsWith("Plex teardown boundary: "))
-                .map((line) =>
-                    JSON.parse(line.slice("Plex teardown boundary: ".length))
-                );
-        },
         assertRestored() {
             for (let i = 0; i < targets.length; i++)
                 assert.deepEqual(
@@ -459,6 +430,35 @@ function teardownFixture() {
                     originalDescriptors[i]
                 );
         },
+        buffer,
+        calls,
+        events() {
+            return lines
+                .filter((line) => line.startsWith("Plex teardown boundary: "))
+                .map((line) =>
+                    JSON.parse(line.slice("Plex teardown boundary: ".length))
+                );
+        },
+        failures,
+        host,
+        lines,
+        logger,
+        media,
+        operationCalls,
+        player,
+        results,
+        run(engine = "video.js") {
+            return vm.runInNewContext(
+                `(${plexChannelTransition.toString()})(${JSON.stringify(engine)})`,
+                {
+                    console: logger,
+                    window: host,
+                }
+            );
+        },
+        targets,
+        tech,
+        worker,
     };
 }
 
@@ -671,8 +671,8 @@ test("inaccessible hooks are explicit and do not invoke getters", () => {
         },
     });
     Object.defineProperty(f.media, "load", {
-        value: function () {},
         configurable: false,
+        value: function () {},
         writable: false,
     });
     delete f.host.Worker;
@@ -721,9 +721,9 @@ test("cleanup failure remains diagnostic and cannot hide an operation error", ()
     const original = {};
     f.host.stbStop = () => {
         Object.defineProperty(f.media, "load", {
+            configurable: false,
             value: f.media.load,
             writable: false,
-            configurable: false,
         });
         throw original;
     };
@@ -785,32 +785,32 @@ function aspectHostFixture() {
             "utf8"
         ),
         {
-            module,
             Buffer,
+            clearTimeout: (timer) => timers.delete(timer),
+            console: { error: (value) => reports.push(value) },
+            module,
             require: (name) => {
                 assert.equal(name, "node:perf_hooks");
                 return { performance: { now: () => 10 } };
             },
-            console: { error: (value) => reports.push(value) },
             setTimeout: () => {
                 const timer = { unref() {} };
                 timers.add(timer);
                 return timer;
             },
-            clearTimeout: (timer) => timers.delete(timer),
         }
     );
     const page = {
-        on: (name, fn) => {
-            listeners[name] = fn;
-        },
+        context: () => ({ browser: () => ({ isConnected: () => true }) }),
+        isClosed: () => false,
         off: (name, fn) => {
             if (listeners[name] === fn) delete listeners[name];
         },
-        context: () => ({ browser: () => ({ isConnected: () => true }) }),
-        isClosed: () => false,
+        on: (name, fn) => {
+            listeners[name] = fn;
+        },
     };
-    return { page, reports, timers, listeners, observe: module.exports };
+    return { listeners, observe: module.exports, page, reports, timers };
 }
 
 test("host retains bounded allowlisted teardown evidence and cleans up without page calls", async () => {
@@ -857,8 +857,8 @@ test("host retains bounded allowlisted teardown evidence and cleans up without p
                         hook: "player.pause",
                         phase: "entered",
                         receiver: 1,
-                        sequence: 1,
                         secret: "x".repeat(1000),
+                        sequence: 1,
                     },
                 ])
                     send(invalid);
@@ -867,8 +867,8 @@ test("host retains bounded allowlisted teardown evidence and cleans up without p
                         hook: "player.pause",
                         phase: "entered",
                         receiver: 1,
-                        sequence,
                         secret: "discarded",
+                        sequence,
                     });
                     send({
                         hook: "player.pause",

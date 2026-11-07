@@ -76,11 +76,11 @@ module.exports = function plexChannelTransition(engine) {
                     : {
                           configurable: true,
                           enumerable: descriptor.enumerable,
-                          writable: true,
                           value: wrapped,
+                          writable: true,
                       }
             );
-            restores.push({ target, key, own, wrapped, label });
+            restores.push({ key, label, own, target, wrapped });
             emit(label, "attached", target);
         } catch (_) {
             emit(label, "unavailable", null);

@@ -364,18 +364,18 @@ function channelOpeningFixture({
     f.page.waitForFunction = async (predicate) => {
         assert.equal(predicate(), true);
     };
-    f.page.evaluate = async (callback) => {
+    f.page.evaluate = async (callback, argument) => {
         evaluations.push(callback.toString());
         if (callback.toString().includes("window.stbStop")) {
             if (error) {
                 f.page.emit("crash");
                 throw error;
             }
-            callback();
+            callback(argument);
             enter();
             return transition;
         }
-        return callback();
+        return callback(argument);
     };
     f.page.locator = (selector) => selector;
     const assertions = [];
@@ -387,8 +387,17 @@ function channelOpeningFixture({
         toContainText: async (value) => assertions.push([selector, value]),
         toHaveCount: async (value) => assertions.push([selector, value]),
     });
+    const transitionSource = fs.readFileSync(
+        path.join(__dirname, "helpers/plex-channel-transition.cjs"),
+        "utf8"
+    );
     const open = require("node:vm").runInNewContext(
-        source.slice(start, end) + "\nopenPlexChannels",
+        // Compile the serialized callback in this same VM realm and window.
+        "const plexChannelTransition = (() => { const module = { exports: {} };\n" +
+            transitionSource +
+            "\nreturn module.exports; })();\n" +
+            source.slice(start, end) +
+            "\nopenPlexChannels",
         {
             console: {
                 log(text) {
@@ -434,6 +443,18 @@ test("channel opening observes the original single-evaluate transition without c
         ["#mediaPlaybackControls", 0],
         ["#listPodval", "not", "Filter"],
     ]);
+    // The mock forwards the engine argument; this fixture has no Video.js.
+    // Its seven explicit unavailable hooks accompany the eight original marks.
+    assert.equal(f.messages.length, 15);
+    const unavailable = f.messages
+        .filter((line) => line.startsWith("Plex teardown boundary: "))
+        .map((line) =>
+            JSON.parse(line.slice("Plex teardown boundary: ".length))
+        );
+    assert.deepEqual(
+        unavailable.map((row) => row.phase),
+        Array(7).fill("unavailable")
+    );
     assert.equal(f.unrefed(), 1);
     assert.equal(f.timers.size, 0);
     assert.deepEqual(f.page.listeners("crash"), [external]);
@@ -458,6 +479,7 @@ test("channel opening crash retains the original error and identifies the pre-pl
             event: "rejected",
             pageClosed: false,
             phase: "open-channels",
+            teardown: [],
             transition: [],
         },
     ]);
@@ -545,7 +567,11 @@ test("channel transition marks bound each original call and retain its failure",
             f.records[0].transition.map((row) => row.step),
             expected
         );
-        assert.equal(f.messages.length, expected.length);
+        assert.equal(f.messages.length, expected.length + 7);
+        assert.equal(f.records[0].teardown.length, 7);
+        assert.ok(
+            f.records[0].teardown.every((row) => row.phase === "unavailable")
+        );
         assert.equal(f.calls.length, index);
         assert.equal(f.evaluations.length, 1);
         assert.deepEqual(f.assertions, []);
@@ -613,7 +639,7 @@ test("unavailable media and failed console logging do not change the channel cal
             ["open", null],
         ]);
         assert.equal(f.assertions.length, 3);
-        assert.equal(f.messages.length, brokenLogger ? 0 : 8);
+        assert.equal(f.messages.length, brokenLogger ? 0 : 15);
         assert.ok(!JSON.stringify(f.messages).includes("private"));
         assert.deepEqual(f.page.listeners("console"), [external]);
         assert.equal(f.timers.size, 0);
