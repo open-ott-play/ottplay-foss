@@ -232,6 +232,7 @@ jobs:
     name: Build
     outputs:
       browser-artifact-id: ${{ steps.browser-artifact.outputs.artifact-id }}
+      native-ui-artifact-id: ${{ steps.native-ui-artifact.outputs.artifact-id }}
     runs-on: ubuntu-26.04
     needs: [ typecheck, lint ]
 
@@ -417,9 +418,6 @@ jobs:
       - name: Test MSE aspect persistence in Linux WebKit
         run: npx playwright test tests/browser/plex-provider.spec.cjs --grep 'Plex aspect persists.*(hls\.js|video\.js)$' --browser=webkit
 
-      - name: Test native channel formatting with enforced CSP
-        run: npm run test:native:ui
-
       - name: Upload device browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -428,8 +426,6 @@ jobs:
           path: |
             build/device-browser-report/
             build/device-browser-results/
-            build/native-ui-report/
-            build/native-ui-results/
           if-no-files-found: ignore
           retention-days: 7
 
@@ -463,8 +459,76 @@ jobs:
             build/packages/ottplay-foss-modea.sha256
           retention-days: 14
 
-    # Device navigation and the final CSP suite share this total job budget.
+      # Preserve the exact outputs above rather than rebuilding for the CSP gate.
+      - name: Archive native UI candidate
+        run: |
+          tar -czf build/native-ui-candidate.tar.gz dist dist-mobile src-tauri/frontend js/ottplay-core.js
+          (cd build && sha256sum native-ui-candidate.tar.gz > native-ui-candidate.sha256)
+
+      - name: Upload native UI candidate
+        id: native-ui-artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-ui-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            build/native-ui-candidate.tar.gz
+            build/native-ui-candidate.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+    # CSP has its own budget; device tests and packaging remain bounded here.
     timeout-minutes: 40
+  native-ui:
+    name: Native UI CSP
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 25
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Require the exact native UI artifact
+        env:
+          ARTIFACT_ID: ${{ needs.build.outputs.native-ui-artifact-id }}
+        run: '[[ "$ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
+      - name: Download native UI candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.native-ui-artifact-id }}
+          path: build/native-ui-candidate
+          merge-multiple: true
+      - name: Verify and restore native UI candidate
+        run: |
+          (cd build/native-ui-candidate && sha256sum -c native-ui-candidate.sha256)
+          tar --no-same-owner -xzf build/native-ui-candidate/native-ui-candidate.tar.gz
+      - run: npm ci --ignore-scripts
+      - name: Verify Linux WebKit host
+        run: node scripts/check-linux-webkit-host.cjs
+      - name: Install browser dependencies
+        run: |
+          sudo env CI="$CI" python3 scripts/ci-apt-mirror.py
+          npx playwright install --with-deps chromium webkit
+      - name: Test native channel formatting with enforced CSP
+        run: npm run test:native:ui
+      - name: Upload native UI failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-ui-failures-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            build/native-ui-report/
+            build/native-ui-results/
+          if-no-files-found: ignore
+          retention-days: 7
   frontend-tests:
     name: Frontend Tests
     runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || '["ubuntu-latest"]') }}

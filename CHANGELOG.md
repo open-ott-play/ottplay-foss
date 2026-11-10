@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-- Keep the shared video surface full-sized while a new stream's dimensions are
-  loading, and refresh Fit/Fill geometry when decoded frame dimensions change.
-  Preserve fitted letterboxing, crop settings and channel-list previews.
-
 - Browse Modern media catalogues in separate category rows with keyboard,
   mouse-wheel and touch navigation. Preserve the selected occurrence and
   existing playback actions while rendering only a bounded window of cards.
@@ -170,6 +166,40 @@
 - Include tracks from selected Plex music libraries in the standard playlist.
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
+
+## [1.1.70] - 2026-11-10
+
+### Changes
+
+- Keep new streams full-sized while frame dimensions arrive, and refresh
+  Fit/Fill geometry and saved zoom when the decoder changes resolution.
+  Preserve letterboxing, crop settings and the smaller channel-list preview.
+- Refresh the shared media core, Shaka playback runtime and locked frontend
+  tooling. Keep generated runtime metadata and third-party notices consistent
+  with the shipped dependencies.
+- Update the pinned shared CI and release workflows together with their policy.
+  Document the initial picture sizing behavior in all supported manual languages.
+- Run native UI CSP checks in a separate bounded CI job against the exact
+  built assets, leaving enough of the build budget for packaging without
+  reducing browser coverage or changing test deadlines.
+
+### Upgrade
+
+Install the native package or deploy the web assets, then restart or reload the
+player. Existing profiles, Favorites, Local sources and playback settings are
+preserved. No profile conversion or new configuration is required.
+
+### Known issues
+
+Native permission queries after a browser Local profile reopen (#1004) and the
+historical Firefox 153 Video.js teardown crash (#1005) remain under investigation.
+The initial sizing regression has automated coverage; reproduction of the
+original first-frame symptom on a native Windows Tauri device is not claimed.
+
+### Security
+
+Existing source ownership, credential storage and remote-control authorization
+checks remain in place. This release does not change their permission model.
 
 ## [1.1.69] - 2026-11-09
 
