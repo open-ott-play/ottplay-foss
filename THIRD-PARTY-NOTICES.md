@@ -115,7 +115,7 @@ to particular build targets; this supplements the existing native inventory.
 
 Linux DEB and AppImage builds include an app-private modified
 `gst-plugins-base1.0` playback plugin from Ubuntu source version
-`1.24.2-1ubuntu0.5`. All 15 distribution patches are retained, followed by
+`1.24.2-1ubuntu0.6`. All 16 distribution patches are retained, followed by
 GStreamer's upstream stream-synchronizer flush correction
 [`03febb5048d0612157fad0ddadeaaeed924aadf0`](https://github.com/GStreamer/gstreamer/commit/03febb5048d0612157fad0ddadeaaeed924aadf0).
 The plugin remains under its upstream LGPL terms; the surrounding project's

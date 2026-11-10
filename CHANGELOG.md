@@ -198,6 +198,12 @@ original first-frame symptom on a native Windows Tauri device is not claimed.
 
 ### Security
 
+Refresh the app-private Noble playback recipe to Ubuntu security source
+`1.24.2-1ubuntu0.6`, retaining all 16 distribution patches, including the
+CVE-2026-111183 audio-channel fix. Verify both AMD64 and ARM64 host/plugin
+identities against signed archive indexes; preserve exact-version rejection,
+ABI/hardening, linkage and stream-synchronizer regression checks.
+
 Existing source ownership, credential storage and remote-control authorization
 checks remain in place. This release does not change their permission model.
 

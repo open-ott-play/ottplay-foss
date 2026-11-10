@@ -145,12 +145,25 @@ class BuilderTests(unittest.TestCase):
                 CONFIG["source_package_version"], CONFIG["architectures"]["aarch64"]["original_plugin_sha256"]]
         for index, value in [(1, {"ID": "ubuntu", "VERSION_ID": "26.04"}),
                              (1, {"ID": "debian", "VERSION_ID": "24.04"}),
-                             (2, "armv7l"), (3, "1.24.2-1ubuntu0.6")]:
+                             (2, "armv7l"), (3, CONFIG["source_package_version"] + ".unreviewed"),
+                             (3, "1.24.2-1ubuntu0.5")]:
             with self.subTest(index=index, value=value):
                 changed = copy.deepcopy(args)
                 changed[index] = value
                 with self.assertRaises(ValueError):
                     BUILDER.validate_host(*changed)
+
+    def test_debian_security_archive_follows_the_reviewed_package_revision(self):
+        expected = "gst-plugins-base1.0_" + CONFIG["source_package_version"] + ".debian.tar.xz"
+        self.assertEqual(BUILDER.debian_source_name(CONFIG), expected)
+        for entries in ([], [item for item in CONFIG["source_files"] if item["name"] != expected],
+                        CONFIG["source_files"] + [{"name": expected}]):
+            with self.subTest(entries=entries), self.assertRaisesRegex(ValueError, "archive differs"):
+                BUILDER.debian_source_name(dict(CONFIG, source_files=entries))
+        changed = copy.deepcopy(CONFIG)
+        changed["source_package_version"] += ".unreviewed"
+        with self.assertRaisesRegex(ValueError, "archive differs"):
+            BUILDER.debian_source_name(changed)
 
     def test_cache_requires_size_and_digest(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -13,7 +13,7 @@ use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
 use std::path::{Component, Path, PathBuf};
 
 const PRIVATE_ROOT: &str = "/usr/lib/ottplay-foss/compat/noble";
-const SOURCE_VERSION: &str = "1.24.2-1ubuntu0.5";
+const SOURCE_VERSION: &str = "1.24.2-1ubuntu0.6";
 const MAX_PLUGIN_BYTES: u64 = 8 * 1024 * 1024;
 
 #[derive(Debug, Deserialize)]
@@ -45,8 +45,8 @@ fn host_plugin(architecture: &str) -> Option<&'static str> {
 
 fn known_original(architecture: &str) -> Option<&'static str> {
     match architecture {
-        "aarch64" => Some("a5319c096d66691bc2da0a47bce8130473981e7b0ec15d321641f01ed8c93f42"),
-        "x86_64" => Some("c116ceccf67edc9d96dc6dfc63eb3bd6c380e2bd215be0c6aaba42d4bda5cb2f"),
+        "aarch64" => Some("f9c490eac865f4294b4f59f5b819f527e927439ca3e7ebfb2ad82b4f7fdde4a5"),
+        "x86_64" => Some("ba79059775cedb90a13084086d1d4fd9440b2a0b832ad41a0c9108c8df2c35ec"),
         _ => None,
     }
 }
@@ -310,6 +310,42 @@ mod tests {
     }
 
     #[test]
+    fn reviewed_builder_inputs_match_the_production_selector() {
+        let inputs: serde_json::Value = serde_json::from_str(include_str!(
+            "../../packaging/linux-playback-compat/sources.json"
+        ))
+        .unwrap();
+        let version = inputs["source_package_version"].as_str().unwrap();
+        assert_eq!(SOURCE_VERSION, version);
+        for (architecture, old_hash) in [
+            (
+                "aarch64",
+                "a5319c096d66691bc2da0a47bce8130473981e7b0ec15d321641f01ed8c93f42",
+            ),
+            (
+                "x86_64",
+                "c116ceccf67edc9d96dc6dfc63eb3bd6c380e2bd215be0c6aaba42d4bda5cb2f",
+            ),
+        ] {
+            let original = inputs["architectures"][architecture]["original_plugin_sha256"]
+                .as_str()
+                .unwrap();
+            assert_eq!(known_original(architecture), Some(original));
+            let mut value = manifest();
+            value.architecture = architecture.into();
+            value.source_package_version = version.into();
+            value.original_plugin_sha256 = original.into();
+            let replacement = value.replacement_plugin_sha256.clone();
+            assert!(qualify(&value, architecture, original, &replacement).is_ok());
+            value.source_package_version = "1.24.2-1ubuntu0.5".into();
+            assert!(qualify(&value, architecture, original, &replacement).is_err());
+            value.source_package_version = version.into();
+            value.original_plugin_sha256 = old_hash.into();
+            assert!(qualify(&value, architecture, old_hash, &replacement).is_err());
+        }
+    }
+
+    #[test]
     fn exact_known_host_and_replacement_are_required() {
         let mut value = manifest();
         assert!(qualify(
@@ -358,7 +394,7 @@ mod tests {
                 "schema" => value.schema = 2,
                 "id" => value.os_id = "debian".into(),
                 "version" => value.os_version = "26.04".into(),
-                "source" => value.source_package_version = "1.24.2-1ubuntu0.6".into(),
+                "source" => value.source_package_version = "1.24.2-1ubuntu0.7".into(),
                 _ => value.replacement_plugin_sha256 = "../bad".into(),
             }
             assert!(qualify(
