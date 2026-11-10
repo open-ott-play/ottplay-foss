@@ -179,6 +179,9 @@
   with the shipped dependencies.
 - Update the pinned shared CI and release workflows together with their policy.
   Document the initial picture sizing behavior in all supported manual languages.
+- Run native UI CSP checks in a separate bounded CI job against the exact
+  built assets, leaving enough of the build budget for packaging without
+  reducing browser coverage or changing test deadlines.
 
 ### Upgrade
 

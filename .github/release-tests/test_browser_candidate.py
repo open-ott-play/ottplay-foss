@@ -180,3 +180,37 @@ class CandidateTests(unittest.TestCase):
             self.assertEqual('--release' in job['with']['browser-prepare-command'], job_id == 'browser-release')
             if job_id == 'browser-release':
                 self.assertEqual(job['with']['browser-evidence-prefix'], 'browser-release')
+
+    def test_native_ui_has_a_separate_budget_and_consumes_the_build_outputs(self):
+        workflow = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())
+        build = workflow['jobs']['build']
+        job = workflow['jobs']['native-ui']
+        self.assertEqual(build['timeout-minutes'], 40)
+        self.assertEqual(job['timeout-minutes'], 25)
+        self.assertEqual(job['needs'], 'build')
+        self.assertEqual(job['runs-on'], build['runs-on'])
+        self.assertNotIn('if', job)  # A required reusable-workflow job, never optional.
+        self.assertNotIn('continue-on-error', job)
+        build_commands = '\n'.join(step.get('run', '') for step in build['steps'])
+        commands = '\n'.join(step.get('run', '') for step in job['steps'])
+        self.assertNotIn('test:native:ui', build_commands)
+        self.assertIn('tar -czf build/native-ui-candidate.tar.gz dist dist-mobile src-tauri/frontend js/ottplay-core.js', build_commands)
+        self.assertNotIn('npm run build', commands)
+        self.assertIn('sha256sum -c native-ui-candidate.sha256', commands)
+        self.assertEqual([s['run'] for s in job['steps'] if 'test:native:ui' in s.get('run', '')],
+                         ['npm run test:native:ui'])
+        self.assertTrue(all('continue-on-error' not in s for s in job['steps']))
+        self.assertEqual(build['outputs']['native-ui-artifact-id'],
+                         '${{ steps.native-ui-artifact.outputs.artifact-id }}')
+        upload = next(s for s in build['steps'] if s.get('id') == 'native-ui-artifact')
+        self.assertEqual(upload['with']['if-no-files-found'], 'error')
+        download = next(s for s in job['steps'] if s.get('name') == 'Download native UI candidate')
+        self.assertEqual(download['with']['artifact-ids'],
+                         '${{ needs.build.outputs.native-ui-artifact-id }}')
+        self.assertNotIn('name', download['with'])
+        guard = next(s for s in job['steps'] if s.get('name') == 'Require the exact native UI artifact')
+        self.assertLess(job['steps'].index(guard), job['steps'].index(download))
+        self.assertEqual(guard['env']['ARTIFACT_ID'], download['with']['artifact-ids'])
+        self.assertIn('^[1-9][0-9]*$', guard['run'])
+        checkout = next(s for s in job['steps'] if 'actions/checkout@' in s.get('uses', ''))
+        self.assertEqual(checkout['with']['ref'], '${{ github.sha }}')
