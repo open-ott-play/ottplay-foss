@@ -57,9 +57,18 @@ def validate_host(config, os_release, machine, package_version, plugin_hash):
             "Compatibility plugin must be built on Ubuntu 24.04")
     require(machine in config["architectures"], "Unsupported native build architecture")
     require(package_version == config["source_package_version"],
-            "Installed GStreamer package changed; review the pinned compatibility inputs")
+            "Installed GStreamer package changed (expected " + config["source_package_version"] +
+            ", got " + package_version + "); review the pinned compatibility inputs")
     require(plugin_hash == config["architectures"][machine]["original_plugin_sha256"],
             "Installed playback plugin differs from the reviewed official package")
+
+
+def debian_source_name(config):
+    """Bind the Debian security patch archive to the reviewed host revision."""
+    name = "gst-plugins-base1.0_" + config["source_package_version"] + ".debian.tar.xz"
+    require(sum(item["name"] == name for item in config["source_files"]) == 1,
+            "Debian source archive differs from the reviewed package revision")
+    return name
 
 
 def fetch(item, destination, cache=None):
@@ -208,6 +217,7 @@ def build(output, source_cache=None):
     require(platform.system() == "Linux", "Linux build host required")
     config = json.loads((CONFIG / "sources.json").read_text())
     require(config["schema"] == 1, "Unknown compatibility input schema")
+    debian_archive = debian_source_name(config)
     machine = platform.machine()
     require(machine in config["architectures"], "Unsupported native build architecture")
     arch = config["architectures"][machine]
@@ -229,7 +239,7 @@ def build(output, source_cache=None):
             fetch(item, downloaded[item["name"]], source_cache)
         extract_source(downloaded["gst-plugins-base1.0_1.24.2.orig.tar.xz"], work)
         source = work / "gst-plugins-base-1.24.2"
-        extract_source(downloaded["gst-plugins-base1.0_1.24.2-1ubuntu0.5.debian.tar.xz"], source)
+        extract_source(downloaded[debian_archive], source)
         require(sha(source / "COPYING") == sha(CONFIG / "COPYING"), "Upstream license changed")
         require(sha(source / "debian/copyright") == sha(CONFIG / "debian-copyright"),
                 "Distribution copyright changed")

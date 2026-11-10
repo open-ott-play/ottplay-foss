@@ -1,7 +1,7 @@
 # App-private Noble playback compatibility build
 
 This recipe builds only `libgstplayback.so` from Ubuntu's
-`gst-plugins-base1.0` source version `1.24.2-1ubuntu0.5`, preserving all 15
+`gst-plugins-base1.0` source version `1.24.2-1ubuntu0.6`, preserving all 16
 distribution patches. It then applies GStreamer's
 [stream-synchronizer flush fix](https://github.com/GStreamer/gstreamer/commit/03febb5048d0612157fad0ddadeaaeed924aadf0).
 `upstream.patch` preserves the original change; `backport.patch` adjusts only
@@ -75,3 +75,20 @@ ABI/hardening, and rerun actual native acceptance before updating pins.
 Retire the compatibility replacement when the supported host package
 includes the upstream fix. Do not weaken the exact host-byte check to retain
 an old override on newer, unknown, or customized systems.
+
+### Noble security input review (2026-11-10)
+
+The `1ubuntu0.6` update retains the earlier 15 distribution patches and adds
+`CVE-2026-111183.patch` in audio channel-position handling. Both AMD64 and ARM64
+package hashes and original playback-plugin hashes were reviewed against
+`noble-security` Packages indexes authenticated by Ubuntu archive key
+`F6ECB3762474EDA9D21B7022871920D1991BC93C`. `sources.json` records the signed
+InRelease digest, compressed by-hash package/source index URLs and digests,
+and exact package identities for both architectures. The source archives are
+authenticated by the same signed Sources index; no separate trust in a DSC
+uploader key is assumed.
+
+The compatibility backport and its before/after stream-synchronizer hashes
+remain unchanged. The builder derives the Debian archive name from the
+reviewed host-package revision and rejects a missing or ambiguous archive.
+Older or newer host revisions still fail closed, as do modified plugin bytes.
