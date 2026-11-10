@@ -6,6 +6,67 @@ const { test, expect } = require("@playwright/test");
 
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 
+test("initial video occupies the full plane and follows intrinsic resize", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const origin = new URL(baseURL).origin;
+    await context.route("**/*", (route) =>
+        new URL(route.request().url()).origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient")
+    );
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(() => window.__ottDevice);
+    const frames = await page.evaluate(() => {
+        window.stbStop();
+        window.stbToFullScreen();
+        const video = document.querySelector("#video");
+        const frames = [];
+        function size(width, height) {
+            Object.defineProperty(video, "videoWidth", {
+                configurable: true,
+                value: width,
+            });
+            Object.defineProperty(video, "videoHeight", {
+                configurable: true,
+                value: height,
+            });
+        }
+        function snapshot() {
+            const rect = video.getBoundingClientRect();
+            frames.push([rect.x, rect.y, rect.width, rect.height]);
+        }
+        for (let channel = 0; channel < 2; channel++) {
+            size(0, 0);
+            window.setAspect(0);
+            snapshot();
+            // Some decoders report usable dimensions after loadedmetadata.
+            size(640, 480);
+            video.dispatchEvent(new Event("resize"));
+            snapshot();
+            size(1920, 1080);
+            video.dispatchEvent(new Event("resize"));
+            snapshot();
+        }
+        return frames;
+    });
+    expect(frames).toEqual([
+        [0, 0, 1280, 720],
+        [160, 0, 960, 720],
+        [0, 0, 1280, 720],
+        [0, 0, 1280, 720],
+        [160, 0, 960, 720],
+        [0, 0, 1280, 720],
+    ]);
+});
+
 test("corrupt settings journal offers explicit recovery before provider hydration", async ({
     page,
     context,
