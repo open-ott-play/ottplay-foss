@@ -860,6 +860,33 @@ test("main engine restores aspect before metadata, including the next video", ()
     assert.equal(styles["#video"]["object-fit"], "contain");
     w.stbStop();
 });
+test("main video fills its plane before intrinsic dimensions arrive", () => {
+    const { w, styles } = fixture();
+    w.document.body.classList = { add() {}, remove() {} };
+    const box = { clientHeight: 360, clientWidth: 640, offsetWidth: 640 };
+    w.listPreviewRect = () => ({ height: 360, left: 0, top: 0, width: 640 });
+    w.document.getElementById = (id) => (id === "vdiv" ? box : null);
+    for (const full of [true, false]) {
+        if (full) w.stbToFullScreen();
+        else w.stbSetWindow();
+        for (const aspect of [0, 1]) {
+            w.video.videoWidth = 0;
+            w.video.videoHeight = 0;
+            w.setAspect(aspect);
+            assert.equal(styles["#video"].width, "100%");
+            assert.equal(styles["#video"].height, "100%");
+            assert.equal(
+                styles["#video"]["object-fit"],
+                aspect ? "cover" : "contain"
+            );
+        }
+        w.video.videoWidth = 640;
+        w.video.videoHeight = 480;
+        w.setAspect(0);
+        assert.equal(styles["#video"].width, full ? "960px" : "480px");
+        assert.equal(styles["#video"].height, full ? "720px" : "360px");
+    }
+});
 test("PiP starts after manifest and ignores callbacks after switch/stop", () => {
     const { w, players, hidden } = fixture();
     w.playerMode = 1;

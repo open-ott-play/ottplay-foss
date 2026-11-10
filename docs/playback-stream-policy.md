@@ -19,6 +19,15 @@ by its title.
 
 ![Recovery flow: one lease, finite retries, explicit backups](diagrams/stream-recovery.svg)
 
+## Picture size while a stream loads
+
+In the shared browser, Tauri and Capacitor player, a new stream occupies the
+current video area while its frame dimensions load. **Fit** keeps the complete
+picture visible with letterboxing; **Fill** can crop the picture. When the
+decoder reports its dimensions or changes resolution, the fitted geometry and
+saved zoom update immediately. The same behavior applies to the channel-list
+preview within its smaller video area; it does not enlarge the preview itself.
+
 ## Set a quality ceiling
 
 Open **Settings → Interface settings** and set **Maximum video height

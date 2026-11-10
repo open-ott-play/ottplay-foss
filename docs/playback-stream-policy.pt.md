@@ -16,6 +16,12 @@ O leitor HTML5/HLS/Shaka gerido mantém uma única concessão de reprodução du
 
 ![Recuperação: uma concessão, tentativas finitas e reservas explícitas](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Tamanho da imagem durante o carregamento de um fluxo
+
+No leitor comum ao navegador, Tauri e Capacitor, um novo fluxo ocupa a área de vídeo atual enquanto as dimensões dos fotogramas são carregadas. **Fit** mantém a imagem completa visível, com barras pretas quando necessário; **Fill** preenche a área e pode cortar parte da imagem. Quando o descodificador comunica as dimensões ou a resolução muda, a geometria ajustada da imagem e o zoom guardado são atualizados imediatamente. O mesmo comportamento aplica-se à pré-visualização na lista de canais, dentro da sua área de vídeo mais pequena; a pré-visualização em si não é ampliada.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Definir um limite de qualidade

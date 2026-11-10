@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep the shared video surface full-sized while a new stream's dimensions are
+  loading, and refresh Fit/Fill geometry when decoded frame dimensions change.
+  Preserve fitted letterboxing, crop settings and channel-list previews.
+
 - Browse Modern media catalogues in separate category rows with keyboard,
   mouse-wheel and touch navigation. Preserve the selected occurrence and
   existing playback actions while rendering only a bounded window of cards.

@@ -16,6 +16,12 @@ Yönetilen HTML5/HLS/Shaka oynatıcı, arızalı bir kaynaktan kurtulurken tek o
 
 ![Kurtarma: tek sahiplik, sonlu yeniden denemeler, açık yedekler](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Akış yüklenirken görüntü boyutu
+
+Tarayıcı, Tauri ve Capacitor için ortak oynatıcıda yeni bir akış, kare boyutları yüklenirken mevcut video alanını kullanır. **Fit**, gerektiğinde siyah şeritler ekleyerek görüntünün tamamını görünür tutar; **Fill** alanı doldurur ve görüntünün bir kısmını kırpabilir. Kod çözücü boyutları bildirdiğinde veya çözünürlük değiştiğinde, alana uyarlanan görüntü geometrisi ve kaydedilmiş yakınlaştırma hemen güncellenir. Aynı davranış kanal listesindeki önizleme için de kendi küçük video alanı içinde geçerlidir; önizlemenin kendisi büyütülmez.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Kalite üst sınırı belirleme

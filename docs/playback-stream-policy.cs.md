@@ -16,6 +16,12 @@ Spravovaný přehrávač HTML5/HLS/Shaka si při obnově po chybě zdroje ponech
 
 ![Obnova: jedno oprávnění, konečný počet pokusů a výslovné zálohy](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Velikost obrazu při načítání streamu
+
+Ve společném přehrávači v prohlížeči, Tauri a Capacitor zabírá nový stream aktuální plochu videa, zatímco se načítají rozměry jeho snímku. **Fit** zachová celý obraz viditelný a případně doplní černé pruhy; **Fill** může část obrazu oříznout. Jakmile dekodér oznámí rozměry nebo změnu rozlišení, přizpůsobení obrazu i uložené přiblížení se ihned aktualizují. Stejné chování platí pro náhled v seznamu kanálů v jeho menší ploše videa; samotný náhled se tím nezvětší.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Nastavení horního limitu kvality

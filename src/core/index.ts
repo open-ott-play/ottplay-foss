@@ -2913,11 +2913,13 @@ export function applyAspectRatio(): void {
         w = Math.max(1, Math.round(vw * scale));
         h = Math.max(1, Math.round(vh * scale));
     }
-    // Fallback before metadata: CSS contain max-box / cover fill + flex center.
+    // Before metadata, occupy the complete plane instead of the browser's
+    // intrinsic 300x150 video box. object-fit preserves the first frame's aspect
+    // until intrinsic dimensions arrive and explicit geometry takes over.
     // Keep crop offsets inside the object: selecting #video precedes their math.
     $("#video").css({
         bottom: measured || contain ? "" : 0,
-        height: measured ? h + "px" : contain ? "auto" : "100%",
+        height: measured ? h + "px" : "100%",
         left: contain ? "" : measured ? Math.round((cw - w) / 2) + "px" : 0,
         "max-height": contain ? "100%" : "",
         "max-width": contain ? "100%" : "",
@@ -2926,7 +2928,7 @@ export function applyAspectRatio(): void {
         position: contain ? "relative" : "absolute",
         right: measured || contain ? "" : 0,
         top: contain ? "" : measured ? Math.round((ch - h) / 2) + "px" : 0,
-        width: measured ? w + "px" : contain ? "auto" : "100%",
+        width: measured ? w + "px" : "100%",
     });
     refreshSubtitleStyle();
 }
@@ -3613,6 +3615,9 @@ export function stbInit(): void {
                 );
             });
             video!.addEventListener("resize", function () {
+                if (video !== feedbackMedia) return;
+                applyAspectRatio();
+                applyZoom();
                 updateCoreVideoInfo();
             });
             // Seeks may finish between footer ticks; discard any sample spanning one.

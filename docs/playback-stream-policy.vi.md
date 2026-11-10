@@ -16,6 +16,12 @@ Trình phát HTML5/HLS/Shaka được quản lý giữ một quyền phát duy n
 
 ![Khôi phục: một quyền phát, số lần thử hữu hạn và nguồn dự phòng rõ ràng](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Kích thước hình ảnh trong khi tải luồng
+
+Trong trình phát dùng chung cho trình duyệt, Tauri và Capacitor, luồng mới sử dụng vùng video hiện tại trong khi tải thông tin kích thước khung hình. **Fit** giữ toàn bộ hình ảnh hiển thị bằng cách thêm dải đen khi cần; **Fill** lấp đầy vùng video và có thể cắt bớt hình ảnh. Khi bộ giải mã báo kích thước hoặc độ phân giải thay đổi, kích thước và vị trí hình ảnh đã được điều chỉnh cho vừa vùng video cùng mức thu phóng đã lưu sẽ cập nhật ngay. Hành vi tương tự cũng áp dụng cho phần xem trước trong danh sách kênh, bên trong vùng video nhỏ hơn của nó; bản thân phần xem trước không bị phóng to.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Đặt trần chất lượng

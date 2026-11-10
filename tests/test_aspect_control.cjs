@@ -403,7 +403,7 @@ const measuredCover = {
 };
 const fallbackContain = {
     bottom: "",
-    height: "auto",
+    height: "100%",
     left: "",
     "max-height": "100%",
     "max-width": "100%",
@@ -412,7 +412,7 @@ const fallbackContain = {
     position: "relative",
     right: "",
     top: "",
-    width: "auto",
+    width: "100%",
 };
 const fallbackCover = {
     bottom: 0,
