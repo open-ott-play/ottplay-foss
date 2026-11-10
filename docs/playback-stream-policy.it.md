@@ -16,6 +16,12 @@ Il lettore HTML5/HLS/Shaka gestito mantiene un solo diritto di riproduzione ment
 
 ![Recupero: un diritto di riproduzione, tentativi finiti e riserve esplicite](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Dimensioni dell’immagine durante il caricamento di un flusso
+
+Nel lettore condiviso per browser, Tauri e Capacitor, un nuovo flusso occupa l’area video corrente mentre vengono caricate le dimensioni del fotogramma. **Fit** mantiene visibile l’intera immagine e aggiunge bande nere se necessario; **Fill** può ritagliarne una parte. Quando il decoder comunica le dimensioni o un cambio di risoluzione, l’adattamento dell’immagine e lo zoom salvato vengono aggiornati subito. Lo stesso comportamento vale per l’anteprima dell’elenco dei canali nella sua area video più piccola; l’anteprima non viene ingrandita.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Impostare un limite di qualità

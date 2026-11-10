@@ -16,6 +16,12 @@ Pemutar HTML5/HLS/Shaka yang dikelola mempertahankan satu hak pemutaran saat pul
 
 ![Pemulihan: satu hak, percobaan terbatas, dan cadangan eksplisit](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Ukuran gambar saat streaming dimuat
+
+Di pemutar bersama untuk browser, Tauri, dan Capacitor, stream baru menempati area video saat ini selama dimensi bingkainya dimuat. **Fit** menampilkan seluruh gambar dengan bilah hitam bila diperlukan; **Fill** dapat memotong sebagian gambar. Saat dekoder melaporkan dimensi gambar atau perubahan resolusi, penyesuaian tampilan dan zoom tersimpan langsung diperbarui. Perilaku yang sama berlaku untuk pratinjau daftar saluran di area videonya yang lebih kecil; ukuran pratinjau tidak diperbesar.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Menetapkan batas atas kualitas

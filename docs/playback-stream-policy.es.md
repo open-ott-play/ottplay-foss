@@ -16,6 +16,12 @@ El reproductor HTML5/HLS/Shaka gestionado conserva una única concesión de repr
 
 ![Recuperación: una concesión, reintentos finitos y respaldos explícitos](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Tamaño de imagen mientras se carga una transmisión
+
+En el reproductor compartido para navegador, Tauri y Capacitor, una transmisión nueva ocupa el área de vídeo actual mientras se cargan las dimensiones del fotograma. **Fit** mantiene visible la imagen completa y añade bandas negras cuando hace falta; **Fill** puede recortar parte de la imagen. Cuando el decodificador informa de sus dimensiones o de un cambio de resolución, el ajuste de la imagen y el zoom guardado se actualizan de inmediato. Lo mismo se aplica a la vista previa de la lista de canales dentro de su área de vídeo más pequeña; la vista previa no se amplía.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Establecer un límite de calidad

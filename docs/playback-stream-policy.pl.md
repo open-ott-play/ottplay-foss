@@ -16,6 +16,12 @@ Zarządzany odtwarzacz HTML5/HLS/Shaka zachowuje jedno uprawnienie do odtwarzani
 
 ![Odzyskiwanie: jedno uprawnienie, skończone próby i jawne zapasy](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Rozmiar obrazu podczas ładowania strumienia
+
+We wspólnym odtwarzaczu dla przeglądarki, Tauri i Capacitor nowy strumień zajmuje bieżący obszar wideo, zanim zostaną wczytane wymiary jego klatek. **Fit** dopasowuje cały obraz do obszaru, pozostawiając w razie potrzeby czarne pasy; **Fill** wypełnia obszar i może przycinać obraz. Gdy dekoder zgłosi wymiary lub zmieni się rozdzielczość, dopasowana geometria obrazu i zapisane ustawienie powiększenia są natychmiast aktualizowane. Tak samo działa podgląd na liście kanałów, ale tylko w jego mniejszym obszarze wideo; sam podgląd nie jest powiększany.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Ustawienie limitu jakości

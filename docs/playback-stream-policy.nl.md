@@ -16,6 +16,12 @@ De beheerde HTML5/HLS/Shaka-speler behoudt één afspeelrecht tijdens herstel va
 
 ![Herstel: één afspeelrecht, eindige herhalingen en expliciete reserves](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Beeldgrootte tijdens het laden van een stream
+
+In de gedeelde speler voor de browser, Tauri en Capacitor gebruikt een nieuwe stream het huidige videovlak terwijl de beeldafmetingen worden geladen. **Fit** houdt het volledige beeld zichtbaar en voegt zo nodig zwarte balken toe; **Fill** vult het vlak en kan delen van het beeld afsnijden. Zodra de decoder de afmetingen doorgeeft of de resolutie verandert, worden de aangepaste beeldgeometrie en de opgeslagen zoom onmiddellijk bijgewerkt. Hetzelfde geldt voor de voorvertoning in de zenderlijst, binnen het kleinere videovlak; de voorvertoning zelf wordt niet vergroot.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Een kwaliteitsplafond instellen

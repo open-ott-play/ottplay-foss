@@ -16,6 +16,12 @@ Der verwaltete HTML5/HLS/Shaka-Player behält während der Wiederherstellung nac
 
 ![Wiederherstellung: eine Berechtigung, begrenzte Wiederholungen, explizite Ersatzquellen](diagrams/stream-recovery.svg)
 
+<a id="picture-size-while-a-stream-loads"></a>
+
+## Bildgröße während ein Stream lädt
+
+Im gemeinsamen Player für Browser, Tauri und Capacitor belegt ein neuer Stream den aktuellen Videobereich, während die Bildabmessungen geladen werden. **Fit** zeigt das vollständige Bild und ergänzt bei Bedarf schwarze Balken; **Fill** kann Teile des Bildes abschneiden. Sobald der Decoder die Bildabmessungen meldet oder eine Auflösungsänderung erkennt, werden die Bildanpassung und der gespeicherte Zoom sofort aktualisiert. Dasselbe gilt für die Vorschau in der Kanalliste innerhalb ihres kleineren Videobereichs; die Vorschau selbst wird dadurch nicht vergrößert.
+
 <a id="set-a-quality-ceiling"></a>
 
 ## Qualitätsobergrenze einstellen
