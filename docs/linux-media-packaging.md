@@ -28,10 +28,10 @@ AppImage also retains the build system's C library compatibility requirements.
 
 ## Private compatibility fix for Ubuntu 24.04
 
-Ubuntu's `gst-plugins-base1.0` version `1.24.2-1ubuntu0.5` lacks the upstream
+Ubuntu's `gst-plugins-base1.0` version `1.24.2-1ubuntu0.6` lacks the upstream
 stream-synchronizer fix for an early flush during stream startup. That race can
 leave HLS playback seeking indefinitely even after audio and video data arrive.
-The Linux build preserves all 15 distribution patches and adds the narrow
+The Linux build preserves all 16 distribution patches and adds the narrow
 [upstream correction](https://github.com/GStreamer/gstreamer/commit/03febb5048d0612157fad0ddadeaaeed924aadf0)
 to an app-private `libgstplayback.so`. It does not install over system libraries.
 The source, original patch, adapted patch and LGPL notices travel with the DEB
