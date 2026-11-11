@@ -100,6 +100,8 @@ test("first native media remains undecodable until owned cold-capture admission"
         };
         vm.runInNewContext(html.match(/<script>(.*?)<\/script>/s)[1], scope);
         assert.equal(items.get("ottplayprov"), "m3u");
+        assert.equal(items.get("sInfoSwitch"), "0");
+        assert.equal(items.get("sInfoChange"), "0");
         const playlist = JSON.parse(items.get("m3um3uArr")).M3Us[0].www;
         const body = await (await fetch(playlist)).text();
         const media = body.trim().split("\n").at(-1);

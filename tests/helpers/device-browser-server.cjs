@@ -302,6 +302,7 @@ http.createServer((request, response) => {
                         "<head>",
                         '<head><script>localStorage.setItem("ottplaylang","_eng");' +
                             'localStorage.setItem("ottplayprov","m3u");' +
+                            'localStorage.setItem("sInfoSwitch","0");localStorage.setItem("sInfoChange","0");' +
                             'localStorage.setItem("m3um3uArr",JSON.stringify({active:0,M3Us:[{www:location.origin+"/__native_video_geometry/channels.m3u?case="+new URL(location.href).searchParams.get("nativecase")}]}));' +
                             'window.__nativeGeometryEvents=[];for(const kind of ["loadstart","loadeddata","playing"])document.addEventListener(kind,e=>{if(e.target.tagName==="VIDEO")window.__nativeGeometryEvents.push({kind,source:e.target.currentSrc});},true);' +
                             "</script>"

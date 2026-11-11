@@ -30,7 +30,9 @@ window preferences and aspect-lock implementation.
 Use a fresh absolute `OTTPLAY_DATA_DIR` and a unique `OTTPLAY_INSTANCE`. Set
 `OTTPLAY_WEB_URL` only for the owned test process to a loopback server serving
 the exact generated production frontend and deterministic local media fixtures.
-Record frontend and media hashes. Before the first production script runs, the
+Record frontend and media hashes. The isolated fixture uses the normal saved `sInfoSwitch=0` and
+`sInfoChange=0` preferences so automatic information overlays do not cover the
+video probes. No CSS is injected to hide or resize the media plane. Before the first production script runs, the
 owned test server inserts initial M3U settings pointing to its own local fixture
 playlist, together with passive media-event recording. It does not replace
 production client code or use Demo playback. Keep private profiles, credentials,
