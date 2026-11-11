@@ -195,6 +195,7 @@ async function exercise(binary, origin, item, index, report) {
     const debugPort = await freePort();
     const log = fs.openSync(path.join(OUT, stem + ".log"), "wx");
     let child, browser;
+    const ownedImages = [];
     const record = { ...item, samples: [], status: "fail" };
     report.cases.push(record);
     try {
@@ -293,7 +294,9 @@ async function exercise(binary, origin, item, index, report) {
                                 "A frame was decoded before cold capture admission"
                             );
                         window.closeList(false);
-                        document.querySelector("#video").muted = true;
+                        window.__nativeGeometryRetained =
+                            document.querySelector("#video");
+                        window.__nativeGeometryRetained.muted = true;
                         return events;
                     });
                     const admitted = await fetch(
@@ -306,9 +309,17 @@ async function exercise(binary, origin, item, index, report) {
                 } else
                     await page.evaluate(
                         ({ url, mode }) => {
+                            const target = window.captureAspectTarget();
+                            if (!target)
+                                throw new Error(
+                                    "No production aspect preference target"
+                                );
+                            if (target.mode !== mode && !target.set(mode))
+                                throw new Error(
+                                    "Could not persist the requested aspect preference"
+                                );
                             window.stbStop();
                             window.setPlayerMode(0);
-                            window.setAspect(mode === "fill" ? 1 : 0);
                             window.closeList(false);
                             const media = document.querySelector("#video");
                             media.muted = true;
@@ -345,8 +356,14 @@ async function exercise(binary, origin, item, index, report) {
                     );
                     const before = await page.evaluate(() => {
                         const v = document.querySelector("#video");
+                        if (v !== window.__nativeGeometryRetained)
+                            throw new Error(
+                                "Replay replaced the retained media element"
+                            );
+                        const target = window.captureAspectTarget();
                         const r = v.getBoundingClientRect();
                         return {
+                            aspect: target?.mode,
                             frames: v.getVideoPlaybackQuality()
                                 .totalVideoFrames,
                             height: innerHeight,
@@ -356,10 +373,26 @@ async function exercise(binary, origin, item, index, report) {
                                 x: r.x,
                                 y: r.y,
                             },
+                            source: v.currentSrc,
                             time: v.currentTime,
                             width: innerWidth,
                         };
                     });
+                    if (before.aspect !== mode)
+                        throw new Error(
+                            "Production aspect mode changed before capture"
+                        );
+                    if (
+                        before.source !==
+                        origin +
+                            "/__native_video_geometry/" +
+                            source +
+                            ".mp4?case=" +
+                            id
+                    )
+                        throw new Error(
+                            "Captured media source does not belong to the current fixture case"
+                        );
                     const image = path.join(
                         OUT,
                         stem + "-" + mode + "-" + label + "-" + phase + ".bmp"
@@ -371,6 +404,7 @@ async function exercise(binary, origin, item, index, report) {
                         "--output",
                         image,
                     ]);
+                    ownedImages.push(image);
                     const after = await page.evaluate(
                         () => document.querySelector("#video").currentTime
                     );
@@ -448,6 +482,8 @@ async function exercise(binary, origin, item, index, report) {
             throw error;
         } finally {
             fs.closeSync(log);
+            // Raw desktop pixels are transient oracle input, never public artifacts.
+            for (const image of ownedImages) fs.rmSync(image, { force: true });
             if (!child || child.exitCode !== null) {
                 fs.rmSync(state, { force: true });
                 fs.rmSync(data, { force: true, recursive: true });

@@ -142,7 +142,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-video-geometry-${{ github.sha }}-${{ github.run_attempt }}
-          path: build/windows-video-geometry-report/
+          path: |
+            build/windows-video-geometry-report/result.json
+            build/windows-video-geometry-report/*.log
           if-no-files-found: warn
           retention-days: 14
       - name: Install, verify and uninstall both native packages

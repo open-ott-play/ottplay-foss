@@ -39,7 +39,9 @@ class DesktopPreflightContracts(unittest.TestCase):
         self.assertLess(windows.index("node scripts/check-windows-video-geometry.cjs"), windows.index("python scripts/check-windows-installers.py"))
         evidence = windows.split("      - name: Preserve native video geometry evidence\n", 1)[1].split("      - name:", 1)[0]
         self.assertIn("if: always()", evidence)
-        self.assertIn("path: build/windows-video-geometry-report/", evidence)
+        self.assertIn("path: |\n            build/windows-video-geometry-report/result.json\n            build/windows-video-geometry-report/*.log", evidence)
+        self.assertNotIn("*.bmp", evidence)
+        self.assertNotIn("path: build/windows-video-geometry-report/", evidence)
         self.assertIn("retention-days: 14", evidence)
         for job in ("desktop-preflight", "desktop-capture"):
             section = workflow.split("  " + job + ":\n", 1)[1].split("    runs-on:", 1)[0]

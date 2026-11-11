@@ -17,6 +17,77 @@ SPEC.loader.exec_module(MODULE)
 
 
 class WindowsVideoCaptureContracts(unittest.TestCase):
+    def test_z_order_audit_catches_an_interior_overlay_missed_by_corner_samples(self):
+        class FakeUser32:
+            def __init__(self):
+                self.above = {10: 20, 20: 0}
+                self.rects = {20: [450, 350, 550, 450]}
+
+            def GetWindow(self, hwnd, command):
+                self.assert_command(command)
+                return self.above.get(hwnd, 0)
+
+            @staticmethod
+            def assert_command(command):
+                if command != 3:  # GW_HWNDPREV
+                    raise AssertionError("Expected bounded top-to-bottom Z-order walk")
+
+            def IsWindowVisible(self, hwnd):
+                return True
+
+            def GetWindowRect(self, hwnd, pointer):
+                rect = ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.RECT)).contents
+                rect.left, rect.top, rect.right, rect.bottom = self.rects[hwnd]
+                return True
+
+            def GetWindowThreadProcessId(self, hwnd, pointer):
+                ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.DWORD)).contents.value = 987
+                return 1
+
+        api = MODULE.Win32.__new__(MODULE.Win32)
+        api.user32 = FakeUser32()
+        geometry = {"client_origin": [100, 100], "client_size": [800, 600]}
+        # The overlay is centered, so all four corner samples can still be the app.
+        with self.assertRaisesRegex(RuntimeError, "intersects capture bounds"):
+            api._assert_z_order_unoccluded(10, geometry)
+
+    def test_z_order_audit_runs_again_after_capture_and_detects_new_overlay(self):
+        class FakeUser32:
+            def __init__(self):
+                self.above = {10: 0}
+                self.rects = {}
+
+            def GetWindow(self, hwnd, command):
+                self.assert_command(command)
+                return self.above.get(hwnd, 0)
+
+            @staticmethod
+            def assert_command(command):
+                if command != 3:
+                    raise AssertionError("Expected GW_HWNDPREV")
+
+            def IsWindowVisible(self, hwnd):
+                return True
+
+            def GetWindowRect(self, hwnd, pointer):
+                rect = ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.RECT)).contents
+                rect.left, rect.top, rect.right, rect.bottom = self.rects[hwnd]
+                return True
+
+            def GetWindowThreadProcessId(self, hwnd, pointer):
+                ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.DWORD)).contents.value = 987
+                return 1
+
+        api = MODULE.Win32.__new__(MODULE.Win32)
+        api.user32 = FakeUser32()
+        geometry = {"client_origin": [100, 100], "client_size": [800, 600]}
+        self.assertEqual(api._assert_z_order_unoccluded(10, geometry)["intersecting_windows"], 0)
+        # Simulate a desktop overlay arriving between the pre- and post-capture audits.
+        api.user32.above = {10: 20, 20: 0}
+        api.user32.rects[20] = [300, 300, 400, 400]
+        with self.assertRaisesRegex(RuntimeError, "intersects capture bounds"):
+            api._assert_z_order_unoccluded(10, geometry)
+
     def test_win32_bindings_use_the_declaring_system_dll_and_pointer_widths(self):
         class Export:
             def __init__(self, name):

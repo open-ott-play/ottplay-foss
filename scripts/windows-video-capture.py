@@ -29,6 +29,12 @@ def require(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def rects_intersect(first, second) -> bool:
+    """Use half-open desktop rectangles so adjacent edges are not occlusions."""
+    return first[0] < second[2] and second[0] < first[2] \
+        and first[1] < second[3] and second[1] < first[3]
+
+
 def bmp_bytes(width: int, height: int, bgra: bytes) -> bytes:
     """Encode top-down 32-bit BGRA pixels as a standards-compliant BMP."""
     require(type(width) is int and 0 < width <= MAX_WIDTH, "Invalid capture width")
@@ -245,6 +251,35 @@ class Win32:
         return {"foreground_window": hex(self._handle_value(foreground)),
                 "foreground_root": hex(expected_root), "corner_hits": observations}
 
+    def _assert_z_order_unoccluded(self, hwnd, geometry):
+        x, y = geometry["client_origin"]
+        width, height = geometry["client_size"]
+        client = [x, y, x + width, y + height]
+        target = self._handle_value(hwnd)
+        seen = {target}
+        windows_checked = 0
+        current = self.user32.GetWindow(hwnd, 3)  # GW_HWNDPREV: windows above target
+        while current:
+            value = self._handle_value(current)
+            require(value not in seen, "Cycle while enumerating windows above the capture target")
+            seen.add(value)
+            windows_checked += 1
+            require(windows_checked <= 512,
+                    "Could not prove the capture target unobscured within the 512-window bound")
+            if self.user32.IsWindowVisible(current):
+                rect = wintypes.RECT()
+                require(self.user32.GetWindowRect(current, ctypes.byref(rect)),
+                        "Could not read a visible window's bounds during occlusion audit")
+                candidate = [rect.left, rect.top, rect.right, rect.bottom]
+                if rects_intersect(candidate, client):
+                    owner = wintypes.DWORD()
+                    self.user32.GetWindowThreadProcessId(current, ctypes.byref(owner))
+                    raise RuntimeError(
+                        f"Visible window above the video client intersects capture bounds "
+                        f"(hwnd={hex(value)}, pid={owner.value}, rect={candidate})")
+            current = self.user32.GetWindow(current, 3)
+        return {"windows_above_checked": windows_checked, "intersecting_windows": 0}
+
     @staticmethod
     def _assert_client_on_monitor(geometry):
         x, y = geometry["client_origin"]
@@ -288,6 +323,7 @@ class Win32:
         geometry = self._geometry(hwnd)
         self._assert_client_on_monitor(geometry)
         ownership = self._assert_foreground_and_unoccluded(hwnd, geometry)
+        z_order_before = self._assert_z_order_unoccluded(hwnd, geometry)
         x, y = geometry["client_origin"]
         width, height = geometry["client_size"]
         require(0 < width <= MAX_WIDTH and 0 < height <= MAX_HEIGHT,
@@ -339,6 +375,7 @@ class Win32:
         after_ownership = self._assert_foreground_and_unoccluded(hwnd, after_geometry)
         require(after_ownership["foreground_root"] == ownership["foreground_root"],
                 "Foreground ownership changed while the screenshot was captured")
+        z_order_after = self._assert_z_order_unoccluded(hwnd, after_geometry)
         require(output.parent.is_dir(), "Capture output directory does not exist")
         stream = output.open("xb")
         try:
@@ -353,7 +390,8 @@ class Win32:
         return {"path": str(output), "sha256": hashlib.sha256(data).hexdigest(),
                 "bytes": len(data), "dimensions": [width, height],
                 "method": "desktop-gdi-bitblt", "client_origin": [x, y],
-                "window": geometry, "ownership": ownership}
+                "window": geometry, "ownership": ownership,
+                "z_order_before": z_order_before, "z_order_after": z_order_after}
 
 
 class MONITORINFO(ctypes.Structure):

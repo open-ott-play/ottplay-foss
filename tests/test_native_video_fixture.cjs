@@ -98,7 +98,11 @@ test("first native media remains undecodable until owned cold-capture admission"
             URL,
             window: {},
         };
-        vm.runInNewContext(html.match(/<script>(.*?)<\/script>/s)[1], scope);
+        // Extract our known generated bootstrap; this is not an HTML filter.
+        const start = html.indexOf("<script>");
+        const end = html.indexOf("</script>", start);
+        assert.ok(start >= 0 && end > start, "generated bootstrap is present");
+        vm.runInNewContext(html.slice(start + "<script>".length, end), scope);
         assert.equal(items.get("ottplayprov"), "m3u");
         assert.equal(items.get("sInfoSwitch"), "0");
         assert.equal(items.get("sInfoChange"), "0");

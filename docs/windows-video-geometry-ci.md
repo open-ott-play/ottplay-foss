@@ -83,10 +83,13 @@ bitmaps and drawing objects. A screen capture includes whatever is actually in
 that screen region; it is not an off-screen render of the application's DOM.
 
 A locked desktop, minimization, another foreground window, a failed capture,
-or a black/incomplete video plane cannot be treated as a pass. Preserve the
-bounded image and classify the failure as capture infrastructure or product
-geometry only when the evidence distinguishes them. Never replace missing
-native pixels with a DOM screenshot to make the job green.
+or a black/incomplete video plane cannot be treated as a pass. Use the bounded
+image only as an ephemeral input to the local oracle and
+classify the failure as capture infrastructure or product geometry only when
+the numeric evidence distinguishes them. Raw BMPs are not published, including
+on failure: a desktop overlay can change during capture despite ownership
+checks. Never replace missing native pixels with a DOM screenshot to make the
+job green.
 
 If GDI capture cannot observe the composed video plane, evaluate
 [Windows Graphics Capture for the owned HWND](https://learn.microsoft.com/en-us/windows/win32/api/windows.graphics.capture.interop/nf-windows-graphics-capture-interop-igraphicscaptureiteminterop-createforwindow).
@@ -135,9 +138,12 @@ standard, in both Fit and Fill, with two palette-phase captures per selection:
 window-state file is seeded before launch/reveal to establish the starting size.
 No post-playback resize, page reload or CSS repair establishes the tested size.
 Only initial Fit playback is labeled `cold`. Fill's first selection is labeled
-`mode-change`, not cold startup. Subsequent wide replay and standard channel
-change use the existing production playback controls. The 144-shot inventory
-includes the two palette phases for each of those three selections in each mode.
+`mode-change`, not cold startup. Before subsequent mode changes/replay, the
+driver uses the production
+`captureAspectTarget().set(...)` path to persist the requested Fit/Fill mode;
+opening the next lease therefore retains its `aAspects` preference. Subsequent
+wide replay and standard channel change use existing production playback
+controls. The 144-shot inventory includes the two palette phases for each of those three selections in each mode.
 
 Capture the initial playback interval on a bounded schedule and record the
 settling deadline. Do not resize the window, toggle native fullscreen, open
@@ -158,8 +164,10 @@ Windows installer job after building the production executable and checking
 native window controls. The Python oracle and capture contracts run first with
 explicit PowerShell failure propagation. The native driver has a 15-minute step
 deadline; the complete installer job allows 60 minutes, retaining its existing
-build and installer checks. Native evidence under
-`build/windows-video-geometry-report/` is uploaded even on failure, for 14 days.
+build and installer checks. Only `result.json` and `*.log` under
+`build/windows-video-geometry-report/` are uploaded even on failure, for 14 days.
+The upload uses those explicit paths rather than the report directory. Raw BMP
+captures remain ephemeral oracle inputs and are excluded from artifact upload.
 
 The manual boolean input `windows_video_geometry_only` defaults to false.
 Explicitly enabling it runs that same Windows job and suppresses other platform
@@ -186,9 +194,12 @@ software/virtual-adapter run cannot exclude an affected hardware compositor bug.
 
 Retain a bounded JSON receipt with source/binary/frontend/media hashes, PID/HWND,
 actual client geometry, DPI, capture backend, per-scenario deadlines and numeric
-pixel results. Retain the relevant native images, including failures, under an
-explicit byte/count limit. Avoid screenshots of unrelated desktop regions and
-any profile or credential data.
+pixel results and capture hashes. Diagnose the fixed test palette through
+numeric sampled colors and mismatch coordinates; do not publish captured native
+images. Raw BMPs are removed after local oracle processing, and the explicit
+artifact allowlist excludes them even on an interrupted or failed run. This
+prevents a transient unrelated overlay from leaking desktop pixels into an
+artifact. Keep profile and credential data out of logs and receipts.
 
 Use bounded process and callback deadlines. On every exit path, stop only the
 owned player/descendant processes, loopback fixture server and debugging session;
