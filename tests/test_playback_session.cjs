@@ -658,7 +658,11 @@ for (const replacement of [null, "catalog", "channel", "list"]) {
 // Stop really invalidates the private controller before touching media objects.
 {
     const c = fixture();
-    include(c, "src/core/index.ts", ["stopCorePlayback", "stbStop"]);
+    include(c, "src/core/index.ts", [
+        "cancelCoreVideoGeometryRefresh",
+        "stopCorePlayback",
+        "stbStop",
+    ]);
     c.getCoreMediaBackend = () => ({ stop() {} });
     c.video = { pause() {}, removeAttribute() {} };
     c._playSession = 0;

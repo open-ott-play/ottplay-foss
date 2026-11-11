@@ -19,7 +19,15 @@ const core = ts.createSourceFile(
 
 function coreFunctions(names) {
     return ts.transpileModule(
-        [...new Set([...names, "coreField", "coreCall"])]
+        [
+            ...new Set([
+                ...names,
+                "coreField",
+                "coreCall",
+                "cancelCoreVideoGeometryRefresh",
+                "refreshCoreVideoGeometryAfterFrame",
+            ]),
+        ]
             .map((name) => {
                 const matches = core.statements.filter(
                     (node) =>
@@ -159,6 +167,7 @@ function fixture(mode, withFeedback = true) {
             _standby: false,
             applyChannelPreference: (name) => calls.preferences.push(name),
             coreDeviceEffects: {},
+            coreMediaBackend: null,
             coreNativeAttached: false,
             coreStreamAttempt: null,
             // The already-admitted backend delegates Stop to the real core teardown.

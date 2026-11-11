@@ -67,6 +67,150 @@ test("initial video occupies the full plane and follows intrinsic resize", async
     ]);
 });
 
+for (const viewport of [
+    { height: 450, width: 800 },
+    { height: 450, width: 799 },
+    { height: 450, width: 801 },
+    { height: 449, width: 800 },
+    { height: 451, width: 800 },
+    { height: 720, width: 1280 },
+    { height: 720, width: 1279 },
+    { height: 720, width: 1281 },
+    { height: 719, width: 1280 },
+    { height: 721, width: 1280 },
+]) {
+    test(
+        "decoded 16:9 video fits the initial " +
+            viewport.width +
+            "x" +
+            viewport.height +
+            " plane and survives replay without resize",
+        async ({ page, context, baseURL }) => {
+            const origin = new URL(baseURL).origin;
+            await page.setViewportSize(viewport);
+            await context.route("**/*", (route) => {
+                const url = new URL(route.request().url());
+                if (url.pathname.startsWith("/aspect-fixture/")) {
+                    const segment = url.pathname.endsWith(".ts");
+                    return route.fulfill({
+                        body: fs.readFileSync(
+                            path.join(
+                                mediaRoot,
+                                segment ? "segment00.ts" : "index.m3u8"
+                            )
+                        ),
+                        contentType: segment
+                            ? "video/mp2t"
+                            : "application/vnd.apple.mpegurl",
+                        headers: { "Cache-Control": "no-store" },
+                    });
+                }
+                return url.origin === origin
+                    ? route.continue()
+                    : route.abort("blockedbyclient");
+            });
+            await context.routeWebSocket("**/*", (socket) => socket.close());
+            await context.addInitScript(() => {
+                localStorage.setItem("ottplaylang", "_eng");
+                localStorage.setItem("ottplayprov", "demo");
+                const play = HTMLMediaElement.prototype.play;
+                HTMLMediaElement.prototype.play = function () {
+                    this.muted = true;
+                    return play.call(this);
+                };
+            });
+            await page.goto("/f/pc/");
+            await page.waitForFunction(
+                () => window.__ottDevice && typeof window.stbPlay === "function"
+            );
+
+            const source = origin + "/aspect-fixture/index.m3u8";
+            async function playAndMeasure() {
+                await page.evaluate((url) => {
+                    window.stbStop();
+                    window.setPlayerMode(1);
+                    window.stbPlay(url);
+                }, source);
+                await page.waitForFunction(() => {
+                    const media = document.querySelector("#video");
+                    return (
+                        media &&
+                        !media.paused &&
+                        media.currentTime > 0.2 &&
+                        media.videoWidth === 640 &&
+                        media.videoHeight === 360 &&
+                        media.getVideoPlaybackQuality().totalVideoFrames > 0
+                    );
+                });
+                return page.evaluate(() => {
+                    const media = document.querySelector("#video");
+                    const rect = media.getBoundingClientRect();
+                    const canvas = document.createElement("canvas");
+                    canvas.width = 16;
+                    canvas.height = 9;
+                    const context = canvas.getContext("2d", {
+                        willReadFrequently: true,
+                    });
+                    context.drawImage(media, 0, 0, canvas.width, canvas.height);
+                    const pixels = context.getImageData(
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height
+                    ).data;
+                    return {
+                        decodedPixels: Array.from(
+                            { length: pixels.length / 4 },
+                            (_, index) =>
+                                pixels[index * 4] +
+                                pixels[index * 4 + 1] +
+                                pixels[index * 4 + 2]
+                        ).filter((value) => value > 24).length,
+                        frames: media.getVideoPlaybackQuality()
+                            .totalVideoFrames,
+                        rect: {
+                            height: rect.height,
+                            width: rect.width,
+                            x: rect.x,
+                            y: rect.y,
+                        },
+                        size: { height: innerHeight, width: innerWidth },
+                    };
+                });
+            }
+
+            const expectedScale = Math.min(
+                viewport.width / 640,
+                viewport.height / 360
+            );
+            const expected = {
+                height: Math.round(360 * expectedScale),
+                width: Math.round(640 * expectedScale),
+            };
+            expected.x = (viewport.width - expected.width) / 2;
+            expected.y = (viewport.height - expected.height) / 2;
+
+            const initial = await playAndMeasure();
+            expect(initial.size).toEqual(viewport);
+            expect(initial.frames).toBeGreaterThan(0);
+            expect(initial.decodedPixels).toBeGreaterThan(0);
+            expect(initial.rect.x).toBeCloseTo(expected.x, 0);
+            expect(initial.rect.y).toBeCloseTo(expected.y, 0);
+            expect(initial.rect.width).toBeCloseTo(expected.width, 0);
+            expect(initial.rect.height).toBeCloseTo(expected.height, 0);
+
+            const replay = await playAndMeasure();
+            expect(replay.size).toEqual(initial.size);
+            expect(replay.frames).toBeGreaterThan(0);
+            expect(replay.decodedPixels).toBeGreaterThan(0);
+            expect(replay.rect).toEqual(initial.rect);
+            await page.screenshot({
+                path: test.info().outputPath("decoded-16x9-plane.png"),
+            });
+        }
+    );
+}
+
 test("corrupt settings journal offers explicit recovery before provider hydration", async ({
     page,
     context,

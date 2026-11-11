@@ -2584,6 +2584,7 @@ export function stbStop(): void {
     stopCorePlayback();
 }
 function stopCorePlayback(): void {
+    cancelCoreVideoGeometryRefresh();
     var media = (window as any).__ottMedia;
     if (media && media.cancelAuto) media.cancelAuto();
     if ((window as any).__ottClassicPlayback)
@@ -2869,6 +2870,74 @@ export function captureAspectTarget(): any {
 function refreshSubtitleStyle(): void {
     var apply = (window as any).applySubtitleAppearance;
     if (apply) apply();
+}
+
+function cancelCoreVideoGeometryRefresh(): void {
+    var cancel = (window as any).__ottVideoFit;
+    if (cancel) cancel();
+}
+
+/** Reconcile layout after a decoded frame, not just synchronous media metadata. */
+function refreshCoreVideoGeometryAfterFrame(media: HTMLVideoElement): void {
+    cancelCoreVideoGeometryRefresh();
+    var host = window as any;
+    var backend = coreMediaBackend;
+    var owner = backend && backend.current();
+    if (!owner || !owner.active() || media !== video) return;
+    var frame: number | null = null;
+    var raf: number | null = null;
+    var timer: number | null = null;
+    var steps = 2;
+    function cancel(): void {
+        if (host.__ottVideoFit === cancel) host.__ottVideoFit = null;
+        if (timer !== null) window.clearTimeout(timer);
+        if (raf !== null && window.cancelAnimationFrame)
+            window.cancelAnimationFrame(raf);
+        if (frame !== null && media.cancelVideoFrameCallback)
+            media.cancelVideoFrameCallback(frame);
+        timer = raf = frame = null;
+    }
+    host.__ottVideoFit = cancel;
+    function current(): boolean {
+        return (
+            host.__ottVideoFit === cancel &&
+            media === video &&
+            backend === coreMediaBackend &&
+            backend.current() === owner &&
+            owner.active()
+        );
+    }
+    function refresh(): void {
+        try {
+            if (current()) {
+                // Read current preview/Fit/Fill/zoom, never restore captured UI.
+                applyAspectRatio();
+                applyZoom();
+            }
+        } finally {
+            cancel();
+        }
+    }
+    function afterFrame(): void {
+        if (!current()) cancel();
+        else if (steps-- > 0) {
+            // Match the two post-layout frames already used by window.resize.
+            // Missing/throwing/suspended RAF is covered by the watchdog below.
+            try {
+                raf = window.requestAnimationFrame(afterFrame);
+            } catch (_animationFrame) {}
+        } else refresh();
+    }
+    // Audio-only media and decoders without a presented-frame callback must
+    // also settle. This is a single deadline, never a playback polling loop.
+    timer = window.setTimeout(refresh, 250);
+    try {
+        if (media.requestVideoFrameCallback) {
+            frame = media.requestVideoFrameCallback(afterFrame);
+            return;
+        }
+    } catch (_frameCallback) {}
+    afterFrame();
 }
 
 /**
@@ -3472,6 +3541,7 @@ function showViewportSizeIndicator(): void {
  */
 export function stbInit(): void {
     var host = window as any;
+    cancelCoreVideoGeometryRefresh();
     $("body").css({ "background-color": "#111" });
     if (!host.__ottCoreResizeListener)
         host.__ottCoreResizeListener = function () {
@@ -3567,8 +3637,16 @@ export function stbInit(): void {
                 }
             });
             video!.addEventListener("playing", function () {
-                if (video !== feedbackMedia || feedbackOwnsMedia()) return;
+                if (video !== feedbackMedia) return;
+                refreshCoreVideoGeometryAfterFrame(feedbackMedia);
+                if (feedbackOwnsMedia()) return;
                 $("#buffering").hide();
+            });
+            video!.addEventListener("loadstart", function () {
+                if (video === feedbackMedia) cancelCoreVideoGeometryRefresh();
+            });
+            video!.addEventListener("emptied", function () {
+                if (video === feedbackMedia) cancelCoreVideoGeometryRefresh();
             });
             video!.addEventListener("error", function () {
                 var _p =
