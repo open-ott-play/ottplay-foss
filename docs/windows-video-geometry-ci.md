@@ -43,9 +43,17 @@ discovery and real IPTV servers out of the fixture. Set the owned process's
 `EPG_URLS` to the fixture's minimal loopback XMLTV document: the native warm task
 must not fetch its default external guide during a hermetic compositor test.
 
-The server holds each case's media bytes until CDP is attached. Before explicitly
+The server first holds the initial HTML response until CDP network fencing is
+installed, so routing is not enabled midway through an already-running startup
+AJAX request. It releases the original response once and never reloads the page.
+The server then holds each case's media bytes until cold capture admission. Before explicitly
 admitting that case through the owned loopback endpoint, the driver verifies
-that no `loadeddata` or `playing` event has occurred. The first source is the
+that exactly one `loadstart` and no `loadeddata` or `playing` event has occurred.
+A read-only Win32 inspect verifies the owned visible/uncloaked HWND is already at
+the exact saved client size before bytes are admitted. Every subsequent capture
+must retain that HWND and native geometry. This excludes a late native startup
+resize healing the picture before the oracle sees it; inspection does not flush,
+capture, resize or activate the window. The first source is the
 owned wide clip selected by normal M3U startup. Initial Fit/cold acceptance does
 not call `stbStop`, `stbPlay` or `setAspect` to restart or repair that playback.
 Portable server tests cover media holding and ownership of the first source;
@@ -212,7 +220,9 @@ The two capture windows are absolute media times 0.4–1.1 seconds and
 1.9–2.6 seconds after each source starts, including the end of the capture.
 Missing a window fails; a later repetition of the same palette cannot qualify.
 These samples detect persistent undersizing at measured times. They do not
-exclude a briefer first-presented-frame flash. The current decoded fixture is
+exclude a briefer first-presented-frame flash. The controlled first source is
+admitted after the native client geometry is established; ungated decoding
+before the native window reveal is a separate startup-order scenario. The current decoded fixture is
 MP4/H.264 at 12 fps; an independently cold HLS.js/MSE source and continuous
 first-presentation capture remain additional coverage, not claims of this run.
 
@@ -273,9 +283,10 @@ artifact. Keep profile and credential data out of logs and receipts.
 
 Use bounded process and callback deadlines. On every exit path, stop only the
 owned player/descendant processes, loopback fixture server and debugging session;
-release capture resources and remove the isolated profile. Do not change global
-Windows display settings, disable GPU acceleration, or relax production sizing
-and media guards to obtain a passing test.
+release capture resources and remove the isolated profile. The temporary,
+receipt-controlled hosted display preparation is the only permitted display
+change. Do not alter a developer desktop, disable GPU acceleration, or relax
+production sizing and media guards to obtain a passing test.
 
 ## Run the Windows-only qualification
 
@@ -294,7 +305,9 @@ window-control, preference and IPC checks in addition to the pixel test.
 Read `build/windows-video-geometry-report/result.json` from the run artifact.
 A qualifying result requires the workflow job to succeed, `status: "pass"`, all
 12 cases and 144 samples, matching source/binary/frontend/fixture hashes, native
-bridge admission, owned loopback listeners and confirmed policy restoration.
+bridge admission, owned loopback listeners, pre-media native geometry inspection,
+unchanged HWND/geometry throughout sampling, and confirmed policy/display
+restoration.
 No samples, an unavailable desktop, startup timeout, missed timing window or
 cleanup error is a non-qualifying result. The report cannot close #1132 without
 acceptance on the affected Windows device.

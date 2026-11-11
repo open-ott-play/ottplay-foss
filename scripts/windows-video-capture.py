@@ -53,13 +53,20 @@ def bmp_bytes(width: int, height: int, bgra: bytes) -> bytes:
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pid", required=True, type=int)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--inspect-only", action="store_true",
+                        help="report owned visible client geometry without capture or resize")
     parser.add_argument("--width", type=int, help="one-shot client width resize")
     parser.add_argument("--height", type=int, help="one-shot client height resize")
     parser.add_argument("--resize-only", action="store_true",
                         help="resize/report without taking a screenshot")
     args = parser.parse_args(argv)
     require(args.pid > 0, "PID must be a positive integer")
+    if args.inspect_only:
+        require(args.output is None and args.width is None and args.height is None and not args.resize_only,
+                "--inspect-only cannot be combined with output or resize options")
+        return args
+    require(args.output is not None, "Capture or resize requires --output")
     require((args.width is None) == (args.height is None),
             "--width and --height must be supplied together")
     require(not args.resize_only or args.width is not None,
@@ -449,6 +456,15 @@ def run(args):
             break
         time.sleep(0.1)
     require(hwnd is not None, f"No visible main window found for PID {args.pid} before deadline")
+    if args.inspect_only:
+        api._assert_owned_visible_window(hwnd, args.pid)
+        geometry = api._geometry(hwnd)
+        api._assert_client_on_monitor(geometry)
+        api._assert_foreground_and_unoccluded(hwnd, geometry)
+        api._assert_owned_visible_window(hwnd, args.pid)
+        require(api._geometry(hwnd) == geometry, "Window geometry changed during inspection")
+        return {"schema": 1, "status": "pass", "action": "inspect-only", "pid": args.pid,
+                "hwnd": hex(api._handle_value(hwnd)), "window": geometry}
     resize = None
     if args.width is not None:
         resize = api.resize_client_once(hwnd, args.width, args.height)

@@ -252,6 +252,7 @@ test("first native media remains undecodable until owned cold-capture admission"
             await pause(50);
         }
         assert.ok(ready, "owned fixture server must become ready");
+        assert.equal((await fetch(origin + "/index.html")).status, 400);
         const guide = await fetch(
             origin + "/__native_video_geometry/guide.xml"
         );
@@ -266,9 +267,39 @@ test("first native media remains undecodable until owned cold-capture admission"
         );
         assert.equal(guideBody.includes("http:"), false);
         assert.equal(guideBody.includes("https:"), false);
-        const html = await (
-            await fetch(origin + "/index.html?nativecase=" + caseId)
-        ).text();
+        let bootResolved = false;
+        const pendingPage = fetch(origin + "/index.html?nativecase=" + caseId, {
+            signal: AbortSignal.timeout(5000),
+        }).then(async (response) => {
+            bootResolved = true;
+            return response.text();
+        });
+        await pause(100);
+        assert.equal(
+            bootResolved,
+            false,
+            "startup must wait for cold CDP fencing"
+        );
+        await fetch(
+            origin + "/__native_video_geometry/boot-admit?case=0000000000"
+        );
+        await pause(100);
+        assert.equal(
+            bootResolved,
+            false,
+            "another case cannot start this page"
+        );
+        assert.deepEqual(
+            await (
+                await fetch(
+                    origin +
+                        "/__native_video_geometry/boot-admit?case=" +
+                        caseId
+                )
+            ).json(),
+            { bootAdmitted: caseId }
+        );
+        const html = await pendingPage;
         const items = new Map();
         const scope = {
             document: { addEventListener() {} },

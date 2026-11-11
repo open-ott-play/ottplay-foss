@@ -31,6 +31,8 @@ const nativeGeometry = process.env.OTTP_NATIVE_VIDEO_GEOMETRY === "1";
 let aspectFixture;
 const nativeAdmissions = new Set();
 const pendingNativeMedia = new Map();
+const nativeBootAdmissions = new Set();
+const pendingNativeBoot = new Map();
 function aspectMedia() {
     if (!aspectFixture) {
         aspectFixture =
@@ -148,6 +150,20 @@ http.createServer((request, response) => {
     }
     const nativeCase = url.searchParams.get("case");
     const validNativeCase = /^[a-f0-9]{10}$/.test(nativeCase || "");
+    if (
+        nativeGeometry &&
+        pathname === "/__native_video_geometry/boot-admit" &&
+        validNativeCase
+    ) {
+        nativeBootAdmissions.add(nativeCase);
+        const pending = pendingNativeBoot.get(nativeCase) || new Set();
+        for (const send of pending) send();
+        pendingNativeBoot.delete(nativeCase);
+        response
+            .writeHead(200, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ bootAdmitted: nativeCase }));
+        return;
+    }
     if (
         nativeGeometry &&
         pathname === "/__native_video_geometry/channels.m3u" &&
@@ -331,6 +347,12 @@ http.createServer((request, response) => {
             );
         }
         if (nativeGeometry && relative === "index.html") {
+            if (
+                !/^[a-f0-9]{10}$/.test(url.searchParams.get("nativecase") || "")
+            ) {
+                response.writeHead(400).end();
+                return;
+            }
             // Test-only state seeding before the first production script runs.
             // No DOM sizing, media methods, engine or native host is replaced.
             bytes = Buffer.from(
@@ -347,12 +369,38 @@ http.createServer((request, response) => {
                     )
             );
         }
-        response.writeHead(200, {
-            "Cache-Control": "no-store",
-            "Content-Type":
-                types[path.extname(filename)] || "application/octet-stream",
-        });
-        response.end(request.method === "HEAD" ? undefined : bytes);
+        let bootTimer;
+        const bootCase = url.searchParams.get("nativecase");
+        const sendPage = () => {
+            clearTimeout(bootTimer);
+            pendingNativeBoot.get(bootCase)?.delete(sendPage);
+            if (response.destroyed) return;
+            response.writeHead(200, {
+                "Cache-Control": "no-store",
+                "Content-Type":
+                    types[path.extname(filename)] || "application/octet-stream",
+            });
+            response.end(request.method === "HEAD" ? undefined : bytes);
+        };
+        if (
+            nativeGeometry &&
+            relative === "index.html" &&
+            !nativeBootAdmissions.has(bootCase)
+        ) {
+            // Install CDP fencing before normal startup creates AJAX requests.
+            // Release this first response once; never reload/restart the player.
+            const pending = pendingNativeBoot.get(bootCase) || new Set();
+            pendingNativeBoot.set(bootCase, pending);
+            pending.add(sendPage);
+            bootTimer = setTimeout(() => {
+                pending.delete(sendPage);
+                response.writeHead(504).end();
+            }, 60000);
+            response.on("close", () => {
+                clearTimeout(bootTimer);
+                pending.delete(sendPage);
+            });
+        } else sendPage();
     });
 }).listen(port, "127.0.0.1", () => {
     console.log("Device browser test server: http://127.0.0.1:" + port);

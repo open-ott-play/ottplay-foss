@@ -673,6 +673,28 @@ async function exercise(binary, origin, item, index, report, debugPort) {
         const context = browser.contexts()[0];
         if (context) context.setDefaultTimeout(30000);
         if (!context) throw new Error("Missing owned WebView2 context");
+        record.networkFailures = [];
+        context.on("requestfailed", (request) => {
+            if (record.networkFailures.length >= 16) return;
+            let kind;
+            try {
+                const url = new URL(request.url());
+                // Expected external fence aborts must not crowd out fixture failures.
+                if (url.origin !== origin) return;
+                kind = url.pathname.startsWith("/__native_video_geometry/")
+                    ? "fixture"
+                    : "asset";
+            } catch (_) {
+                return;
+            }
+            const reason = String(request.failure()?.errorText || "");
+            record.networkFailures.push({
+                kind,
+                reason: /^net::[A-Z0-9_]+$/.test(reason)
+                    ? reason
+                    : "unclassified",
+            });
+        });
         await context.route("**/*", (route) =>
             new URL(route.request().url()).origin === origin
                 ? route.continue()
@@ -687,6 +709,15 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                     redactDiagnosticText(error?.stack || error?.message, 360)
                 );
         });
+        const bootAdmitted = await fetch(
+            origin + "/__native_video_geometry/boot-admit?case=" + id
+        );
+        if (!bootAdmitted.ok)
+            throw new Error(
+                "Could not admit the first production HTML response"
+            );
+        record.bootAdmission =
+            "CDP routes installed before first production script";
         await page.waitForURL(origin + "/index.html?nativecase=" + id, {
             timeout: 30000,
             waitUntil: "domcontentloaded",
@@ -718,10 +749,29 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                         origin + "/__native_video_geometry/wide.mp4?case=" + id,
                         { timeout: 30000 }
                     );
+                    record.beforeSourceWindow = python([
+                        "scripts/windows-video-capture.py",
+                        "--pid",
+                        String(child.pid),
+                        "--inspect-only",
+                    ]);
+                    if (
+                        record.beforeSourceWindow.action !== "inspect-only" ||
+                        record.beforeSourceWindow.pid !== child.pid ||
+                        record.beforeSourceWindow.window.client_size[0] !==
+                            item.width ||
+                        record.beforeSourceWindow.window.client_size[1] !==
+                            item.height
+                    )
+                        throw new Error(
+                            "Native client was not at the requested saved geometry before first media admission"
+                        );
                     record.beforeAdmission = await page.evaluate(() => {
                         const events = window.__nativeGeometryEvents;
                         if (
                             !Array.isArray(events) ||
+                            events.filter((event) => event.kind === "loadstart")
+                                .length !== 1 ||
                             events.some(
                                 (e) =>
                                     e.kind === "loadeddata" ||
@@ -842,6 +892,14 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                         image,
                     ]);
                     ownedImages.push(image);
+                    if (
+                        capture.hwnd !== record.beforeSourceWindow.hwnd ||
+                        JSON.stringify(capture.window) !==
+                            JSON.stringify(record.beforeSourceWindow.window)
+                    )
+                        throw new Error(
+                            "Native window geometry changed after first media admission"
+                        );
                     const after = await page.evaluate(
                         () => document.querySelector("#video").currentTime
                     );

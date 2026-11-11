@@ -243,6 +243,86 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "extension"):
             MODULE.parse_args(["--pid", "12", "--output", "capture.png"])
 
+    def test_inspect_cli_requires_no_output_or_resize_arguments(self):
+        args = MODULE.parse_args(["--pid", "12", "--inspect-only"])
+        self.assertTrue(args.inspect_only)
+        self.assertIsNone(args.output)
+        for extra in (["--output", "capture.bmp"], ["--width", "800"],
+                      ["--height", "450"], ["--resize-only"],
+                      ["--width", "800", "--height", "450"]):
+            with self.subTest(extra=extra), self.assertRaisesRegex(RuntimeError, "cannot be combined"):
+                MODULE.parse_args(["--pid", "12", "--inspect-only", *extra])
+        with self.assertRaisesRegex(RuntimeError, "requires --output"):
+            MODULE.parse_args(["--pid", "12"])
+        resized = MODULE.parse_args(["--pid", "12", "--output", "capture.bmp",
+                                     "--width", "800", "--height", "450", "--resize-only"])
+        self.assertTrue(resized.resize_only)
+        self.assertFalse(resized.inspect_only)
+
+    def test_inspection_reads_owned_geometry_without_pixels_or_mutation(self):
+        class ForbiddenAPI:
+            def __getattr__(self, name):
+                raise AssertionError(f"Inspection must not call {name}")
+
+        class FakeWin32(MODULE.Win32):
+            def __init__(self):
+                self.dwmapi = ForbiddenAPI()
+                self.gdi32 = ForbiddenAPI()
+                self.user32 = ForbiddenAPI()
+                self.checked = []
+                self.geometry = {"client_origin": [24, 17], "client_size": [1281, 721],
+                                 "monitor_rect": [0, 0, 1920, 1080], "dpi": 96}
+
+            def set_dpi_context(self):
+                return 1
+
+            def owned_window(self, pid):
+                self.checked.append(("enumerate", pid))
+                return [(10, "private title must not be returned")]
+
+            def _assert_owned_visible_window(self, hwnd, pid):
+                self.checked.append(("owned-visible-uncloaked", hwnd, pid))
+
+            def _geometry(self, hwnd):
+                self.checked.append(("geometry", hwnd))
+                return self.geometry
+
+            def _assert_foreground_and_unoccluded(self, hwnd, geometry):
+                self.checked.append(("foreground", hwnd))
+
+            def capture_bmp(self, *args):
+                raise AssertionError("Inspection must not capture")
+
+            def resize_client_once(self, *args):
+                raise AssertionError("Inspection must not resize")
+
+        api = FakeWin32()
+        args = MODULE.parse_args(["--pid", "12", "--inspect-only"])
+        with patch.object(MODULE, "Win32", return_value=api):
+            result = MODULE.run(args)
+        self.assertEqual(result, {"schema": 1, "status": "pass", "action": "inspect-only",
+                                  "pid": 12, "hwnd": "0xa", "window": api.geometry})
+        self.assertEqual(api.checked.count(("owned-visible-uncloaked", 10, 12)), 2)
+        self.assertEqual(api.checked.count(("geometry", 10)), 2)
+        self.assertIn(("foreground", 10), api.checked)
+        api.geometry["client_origin"] = [1000, 800]
+        with patch.object(MODULE, "Win32", return_value=api), \
+                self.assertRaisesRegex(RuntimeError, "monitor bounds"):
+            MODULE.run(args)
+        api.geometry["client_origin"] = [24, 17]
+        with patch.object(MODULE, "Win32", return_value=api), \
+                patch.object(api, "_assert_owned_visible_window", side_effect=RuntimeError("cloaked")), \
+                self.assertRaisesRegex(RuntimeError, "cloaked"):
+            MODULE.run(args)
+        with patch.object(MODULE, "Win32", return_value=api), \
+                patch.object(api, "_assert_foreground_and_unoccluded", side_effect=RuntimeError("foreground")), \
+                self.assertRaisesRegex(RuntimeError, "foreground"):
+            MODULE.run(args)
+        with patch.object(MODULE, "Win32", return_value=api), \
+                patch.object(api, "_geometry", side_effect=[api.geometry, dict(api.geometry, dpi=120)]), \
+                self.assertRaisesRegex(RuntimeError, "changed during inspection"):
+            MODULE.run(args)
+
     def test_resize_bounds_and_pixel_budget_are_enforced(self):
         with self.assertRaisesRegex(RuntimeError, "bounds"):
             MODULE.parse_args(["--pid", "12", "--output", "capture.bmp",
