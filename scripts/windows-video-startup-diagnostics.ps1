@@ -228,7 +228,7 @@ try {
     if ($env:OS -ne 'Windows_NT') { throw 'diagnostics require Windows' }
     Assert-BeforeDeadline
 
-    $snapshot = @(Get-CimInstance -ClassName Win32_Process -Property ProcessId, ParentProcessId, Name, CommandLine, ExecutablePath, CreationDate -ErrorAction Stop)
+    $snapshot = @(Get-CimInstance -ClassName Win32_Process -Property ProcessId, ParentProcessId, Name, CommandLine, ExecutablePath, CreationDate, SessionId -ErrorAction Stop)
     Assert-BeforeDeadline
     $byPid = @{}
     $childrenByParent = @{}
@@ -284,6 +284,7 @@ try {
             depth = $entry.Depth
             name = $entry.Name
             created_utc = $created
+            session_id = [int] $entry.Process.SessionId
             responding = $responding
             exited = $hasExited
             exit_code = $exitCode

@@ -149,6 +149,9 @@ class Win32:
         g.GetDIBits.restype = ctypes.c_int
         d.DwmFlush.argtypes = []
         d.DwmFlush.restype = ctypes.c_long
+        d.DwmGetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD,
+                                            ctypes.c_void_p, wintypes.DWORD]
+        d.DwmGetWindowAttribute.restype = ctypes.c_long
 
     def set_dpi_context(self):
         # Thread-local only; do not change the spawned application's policy.
@@ -223,6 +226,18 @@ class Win32:
         root = self.user32.GetAncestor(hwnd, 2)  # GA_ROOT
         require(self._handle_value(root) == self._handle_value(hwnd),
                 "Selected HWND is no longer the root application window")
+        require(self._window_is_cloaked(hwnd) is False,
+                "Could not prove the owned application window is uncloaked")
+
+    def _window_is_cloaked(self, hwnd):
+        # DWMWA_CLOAKED is 14. A failed DWM query is unknown, never evidence
+        # that an intersecting window is harmless.
+        cloaked = wintypes.DWORD()
+        result = self.dwmapi.DwmGetWindowAttribute(
+            hwnd, 14, ctypes.byref(cloaked), ctypes.sizeof(cloaked))
+        if result < 0:
+            return None
+        return bool(cloaked.value)
 
     def _assert_foreground_and_unoccluded(self, hwnd, geometry):
         expected_root = self._handle_value(hwnd)
@@ -258,6 +273,7 @@ class Win32:
         target = self._handle_value(hwnd)
         seen = {target}
         windows_checked = 0
+        cloaked_windows_ignored = 0
         current = self.user32.GetWindow(hwnd, 3)  # GW_HWNDPREV: windows above target
         while current:
             value = self._handle_value(current)
@@ -272,13 +288,20 @@ class Win32:
                         "Could not read a visible window's bounds during occlusion audit")
                 candidate = [rect.left, rect.top, rect.right, rect.bottom]
                 if rects_intersect(candidate, client):
+                    cloaked = self._window_is_cloaked(current)
+                    if cloaked is True:
+                        cloaked_windows_ignored += 1
+                        current = self.user32.GetWindow(current, 3)
+                        continue
                     owner = wintypes.DWORD()
                     self.user32.GetWindowThreadProcessId(current, ctypes.byref(owner))
                     raise RuntimeError(
                         f"Visible window above the video client intersects capture bounds "
+                        f"(DWM cloaked state: {'unknown' if cloaked is None else 'uncloaked'}) "
                         f"(hwnd={hex(value)}, pid={owner.value}, rect={candidate})")
             current = self.user32.GetWindow(current, 3)
-        return {"windows_above_checked": windows_checked, "intersecting_windows": 0}
+        return {"windows_above_checked": windows_checked, "intersecting_windows": 0,
+                "cloaked_windows_ignored": cloaked_windows_ignored}
 
     @staticmethod
     def _assert_client_on_monitor(geometry):

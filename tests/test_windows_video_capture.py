@@ -44,8 +44,14 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
                 ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.DWORD)).contents.value = 987
                 return 1
 
+        class FakeDwmapi:
+            @staticmethod
+            def DwmGetWindowAttribute(_hwnd, _attribute, _pointer, _size):
+                return -2147467259  # E_FAIL: absence of cloak proof is conservative.
+
         api = MODULE.Win32.__new__(MODULE.Win32)
         api.user32 = FakeUser32()
+        api.dwmapi = FakeDwmapi()
         geometry = {"client_origin": [100, 100], "client_size": [800, 600]}
         # The overlay is centered, so all four corner samples can still be the app.
         with self.assertRaisesRegex(RuntimeError, "intersects capture bounds"):
@@ -78,8 +84,14 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
                 ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.DWORD)).contents.value = 987
                 return 1
 
+        class FakeDwmapi:
+            @staticmethod
+            def DwmGetWindowAttribute(_hwnd, _attribute, _pointer, _size):
+                return -2147467259
+
         api = MODULE.Win32.__new__(MODULE.Win32)
         api.user32 = FakeUser32()
+        api.dwmapi = FakeDwmapi()
         geometry = {"client_origin": [100, 100], "client_size": [800, 600]}
         self.assertEqual(api._assert_z_order_unoccluded(10, geometry)["intersecting_windows"], 0)
         # Simulate a desktop overlay arriving between the pre- and post-capture audits.
@@ -87,6 +99,61 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
         api.user32.rects[20] = [300, 300, 400, 400]
         with self.assertRaisesRegex(RuntimeError, "intersects capture bounds"):
             api._assert_z_order_unoccluded(10, geometry)
+
+    def test_z_order_ignores_only_dwm_proven_cloaked_foreign_windows(self):
+        class FakeUser32:
+            def GetWindow(self, hwnd, command):
+                if command != 3:  # GW_HWNDPREV
+                    raise AssertionError("Expected GW_HWNDPREV")
+                return {10: 20, 20: 0}.get(hwnd, 0)
+
+            @staticmethod
+            def IsWindowVisible(_hwnd):
+                return True
+
+            @staticmethod
+            def GetWindowRect(_hwnd, pointer):
+                rect = ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.RECT)).contents
+                rect.left, rect.top, rect.right, rect.bottom = 300, 300, 400, 400
+                return True
+
+            @staticmethod
+            def GetWindowThreadProcessId(_hwnd, pointer):
+                ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.DWORD)).contents.value = 987
+                return 1
+
+        class FakeDwmapi:
+            def __init__(self, result, mask):
+                self.result = result
+                self.mask = mask
+                self.calls = []
+
+            def DwmGetWindowAttribute(self, hwnd, attribute, pointer, size):
+                self.calls.append((hwnd, attribute, size))
+                if attribute != 14:  # DWMWA_CLOAKED
+                    raise AssertionError("Expected DWMWA_CLOAKED")
+                if self.result >= 0:
+                    ctypes.cast(pointer, ctypes.POINTER(MODULE.wintypes.DWORD)).contents.value = self.mask
+                return self.result
+
+        geometry = {"client_origin": [100, 100], "client_size": [800, 600]}
+        for mask in (1, 2, 4, 7):
+            with self.subTest(cloaked_mask=mask):
+                api = MODULE.Win32.__new__(MODULE.Win32)
+                api.user32 = FakeUser32()
+                api.dwmapi = FakeDwmapi(0, mask)
+                result = api._assert_z_order_unoccluded(10, geometry)
+                self.assertEqual(result["intersecting_windows"], 0)
+                self.assertEqual(result["cloaked_windows_ignored"], 1)
+                self.assertEqual(api.dwmapi.calls, [(20, 14, ctypes.sizeof(MODULE.wintypes.DWORD))])
+
+        for result, message in ((0, "uncloaked"), (-2147467259, "unknown")):
+            with self.subTest(dwm_result=result):
+                api = MODULE.Win32.__new__(MODULE.Win32)
+                api.user32 = FakeUser32()
+                api.dwmapi = FakeDwmapi(result, 0)
+                with self.assertRaisesRegex(RuntimeError, message):
+                    api._assert_z_order_unoccluded(10, geometry)
 
     def test_win32_bindings_use_the_declaring_system_dll_and_pointer_widths(self):
         class Export:
@@ -119,7 +186,7 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
         }
         gdi32_names = {"CreateCompatibleDC", "DeleteDC", "CreateCompatibleBitmap", "SelectObject",
                        "DeleteObject", "BitBlt", "GetDIBits"}
-        dwmapi_names = {"DwmFlush"}
+        dwmapi_names = {"DwmFlush", "DwmGetWindowAttribute"}
         api = MODULE.Win32.__new__(MODULE.Win32)
         api.user32 = ExportTable("user32", user32_names)
         api.gdi32 = ExportTable("gdi32", gdi32_names)
@@ -138,6 +205,10 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
         self.assertEqual(api.user32.exports["ReleaseDC"].restype, ctypes.c_int)
         self.assertEqual(ctypes.sizeof(MODULE.wintypes.HWND), ctypes.sizeof(ctypes.c_void_p))
         self.assertEqual(api.user32.exports["GetWindowLongPtrW"].restype, ctypes.c_ssize_t)
+        self.assertEqual(api.dwmapi.exports["DwmGetWindowAttribute"].argtypes,
+                         [MODULE.wintypes.HWND, MODULE.wintypes.DWORD,
+                          ctypes.c_void_p, MODULE.wintypes.DWORD])
+        self.assertEqual(api.dwmapi.exports["DwmGetWindowAttribute"].restype, ctypes.c_long)
 
     def test_real_win32_dll_exports_bind_on_windows(self):
         if __import__("os").name != "nt":
@@ -146,6 +217,7 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
         self.assertTrue(api.user32.GetWindowDC)
         self.assertTrue(api.user32.ReleaseDC)
         self.assertTrue(api.gdi32.BitBlt)
+        self.assertTrue(api.dwmapi.DwmGetWindowAttribute)
 
     def test_bmp_is_top_down_32_bit_and_hashable(self):
         pixels = bytes(range(16))
