@@ -10,8 +10,28 @@ const {
     CLASSIC_PROVIDER_BUNDLES,
     CLASSIC_OPTIONAL_BUNDLES,
 } = require("../scripts/classic-bundle.cjs");
-const { cases } = require("../scripts/check-windows-video-geometry.cjs");
+const {
+    cases,
+    validateCaptureInterval,
+} = require("../scripts/check-windows-video-geometry.cjs");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+test("capture guard rejects a later same-color cycle and slow or reversed intervals", () => {
+    validateCaptureInterval(0.5, 0.7, 0);
+    validateCaptureInterval(2.0, 2.2, 1);
+    for (const args of [
+        [0.5, 3.5, 0],
+        [1.95, 5.0, 1],
+        [3.5, 3.6, 0],
+        [2.0, 3.0, 1],
+        [0.7, 0.5, 0],
+        [NaN, 0.5, 0],
+    ])
+        assert.throws(
+            () => validateCaptureInterval(...args),
+            /absolute initial phase/
+        );
+});
 
 test("native matrix includes exact locked/unlocked starts and all one-pixel controls", () => {
     const matrix = cases();

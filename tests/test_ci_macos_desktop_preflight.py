@@ -23,19 +23,54 @@ class DesktopPreflightContracts(unittest.TestCase):
                       workflow)
         self.assertIn("type: boolean\n        default: false", workflow)
 
-    def test_windows_video_mode_reuses_full_installer_job_and_keeps_pixel_check_required(self):
+    def test_windows_video_mode_reuses_production_build_and_keeps_normal_checks_required(self):
         workflow = (ROOT / ".github/workflows/native-parity.yml").read_text()
         self.assertIn("windows_video_geometry_only:\n        description:", workflow)
         windows = workflow.split("  windows-installers:\n", 1)[1].split("\n  android:", 1)[0]
         self.assertIn("inputs.windows_video_geometry_only != true && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)", windows)
         self.assertIn("timeout-minutes: 60", windows)
         self.assertIn('npx --no-install tauri build --ci --bundles "nsis,msi" -- --locked', windows)
-        block = windows.split("      - name: Test native video pixel oracle and capture failure contracts\n", 1)[1].split("      - name: Preserve native video geometry evidence\n", 1)[0]
+        normal = "if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}"
+        manual = "if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_video_geometry_only == true }}"
+        for name in (
+            "Test Windows native-check failure propagation and text encoding",
+            "Check installer harness and native dependency constraints",
+            "Exercise updater ZIP extraction on Windows",
+            "Bundle MSI and NSIS without signing or publishing",
+            "Verify embedded manifests before native tests",
+            "Test main-window control contracts on Windows",
+            "Test native aspect command and geometry contracts",
+            "Test saved window preferences",
+            "Test fullscreen confirmation contracts on Windows",
+            "Test local drop and OS file-open contracts on Windows",
+            "Check owned-window smoke runner",
+            "Test isolated window fixture watchdog contracts on Windows",
+            "Build isolated window controls fixture",
+            "Verify isolated fixture manifest before launch",
+            "Exercise native window IPC and ACL on Windows",
+            "Install, verify and uninstall both native packages",
+        ):
+            self.assertIn("      - name: " + name + "\n        " + normal, windows)
+        for name in (
+            "Build production EXE without installer bundles for manual video acceptance",
+            "Verify production EXE manifest for manual video acceptance",
+        ):
+            self.assertIn("      - name: " + name + "\n        " + manual, windows)
+        self.assertIn("npx --no-install tauri build --ci --no-bundle -- --locked", windows)
+        self.assertIn("python scripts/check-windows-manifest.py --binary target/release/ottplay-tauri.exe --output build/windows-video-geometry-report/production-manifest.json", windows)
+        block = windows.split("      - name: Test native video pixel oracle and capture failure contracts\n", 1)[1].split("      - name: Restore owned WebView2 debug policy after native video acceptance\n", 1)[0]
         self.assertIn("python tests/test_windows_video_oracle.py\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", block)
         self.assertIn("python tests/test_windows_video_capture.py\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", block)
         self.assertIn("timeout-minutes: 15\n        run: node scripts/check-windows-video-geometry.cjs", block)
         self.assertNotIn("if:", block)
         self.assertNotIn("continue-on-error", block)
+        self.assertIn("python tests/test_windows_video_debug_policy.py\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", block)
+        cleanup = windows.split("      - name: Restore owned WebView2 debug policy after native video acceptance\n", 1)[1].split("      - name:", 1)[0]
+        self.assertIn("if: always()", cleanup)
+        self.assertIn("Join-Path $env:GITHUB_WORKSPACE", cleanup)
+        self.assertIn("-Action Restore -Receipt $receipt", cleanup)
+        self.assertIn("if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", cleanup)
+        self.assertNotIn("continue-on-error", cleanup)
         self.assertLess(windows.index("node scripts/check-windows-video-geometry.cjs"), windows.index("python scripts/check-windows-installers.py"))
         evidence = windows.split("      - name: Preserve native video geometry evidence\n", 1)[1].split("      - name:", 1)[0]
         self.assertIn("if: always()", evidence)

@@ -9,7 +9,7 @@ on:
         type: boolean
         default: false
       windows_video_geometry_only:
-        description: Run Windows production video pixel acceptance and installer checks only
+        description: Build the production Windows EXE and run native video pixel acceptance only
         type: boolean
         default: false
       desktop_preflight_only:
@@ -73,9 +73,11 @@ jobs:
           shared-key: windows-installer-lifecycle
       - run: npm ci --ignore-scripts
       - name: Test Windows native-check failure propagation and text encoding
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         timeout-minutes: 4
         run: python tests/test_windows_native_checks.py
       - name: Check installer harness and native dependency constraints
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: |
           python tests/test_windows_installers.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -84,11 +86,21 @@ jobs:
           python scripts/check-updater-features.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Exercise updater ZIP extraction on Windows
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: cargo test --locked --manifest-path tests/updater-zip-regression/Cargo.toml
       - name: Bundle MSI and NSIS without signing or publishing
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         working-directory: src-tauri
         run: npx --no-install tauri build --ci --bundles "nsis,msi" -- --locked
+      - name: Build production EXE without installer bundles for manual video acceptance
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_video_geometry_only == true }}
+        working-directory: src-tauri
+        run: npx --no-install tauri build --ci --no-bundle -- --locked
+      - name: Verify production EXE manifest for manual video acceptance
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_video_geometry_only == true }}
+        run: python scripts/check-windows-manifest.py --binary target/release/ottplay-tauri.exe --output build/windows-video-geometry-report/production-manifest.json
       - name: Verify embedded manifests before native tests
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         shell: pwsh
         run: |
           python tests/test_windows_manifest.py
@@ -98,27 +110,37 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/check-windows-manifest.py --cargo-json build/windows-window-controls-report/test-artifacts.jsonl --binary target/release/ottplay-tauri.exe --output build/windows-window-controls-report/test-manifests.json
       - name: Test main-window control contracts on Windows
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: cargo test --locked -p ottplay-tauri window_controls::tests
       - name: Test native aspect command and geometry contracts
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: "cargo test --locked -p ottplay-tauri window_aspect::"
       - name: Test saved window preferences
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: cargo test --locked -p ottplay-tauri window_preferences::tests
       - name: Test fullscreen confirmation contracts on Windows
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: cargo test --locked -p ottplay-tauri fullscreen_confirmation_tests
       - name: Test local drop and OS file-open contracts on Windows
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: "cargo test --locked -p ottplay-tauri commands::local_drop::tests::"
       - name: Check owned-window smoke runner
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: python tests/test_window_controls_smoke.py
       - name: Test isolated window fixture watchdog contracts on Windows
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: cargo test --locked -p ottplay-tauri --example window_controls_smoke
       - name: Build isolated window controls fixture
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: cargo build --locked -p ottplay-tauri --example window_controls_smoke
       - name: Verify isolated fixture manifest before launch
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: python scripts/check-windows-manifest.py --binary target/debug/examples/window_controls_smoke.exe --output build/windows-window-controls-report/fixture-manifest.json
       - name: Exercise native window IPC and ACL on Windows
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: python scripts/check-window-controls.py
       - name: Preserve owned-window evidence
-        if: always()
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true) }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-window-controls-${{ github.sha }}
@@ -132,11 +154,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/test_windows_video_capture.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/test_windows_video_debug_policy.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check first-frame fixture admission and native boundary matrix
         run: node --test tests/test_native_video_fixture.cjs
       - name: Verify production Windows video geometry from native screen pixels
         timeout-minutes: 15
         run: node scripts/check-windows-video-geometry.cjs
+      - name: Restore owned WebView2 debug policy after native video acceptance
+        if: always()
+        shell: pwsh
+        run: |
+          $receipt = Join-Path $env:GITHUB_WORKSPACE 'build/windows-video-geometry-report/debug-policy.json'
+          if (Test-Path -LiteralPath $receipt) {
+            & ./scripts/windows-video-debug-policy.ps1 -Action Restore -Receipt $receipt
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Preserve native video geometry evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -148,9 +181,10 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Install, verify and uninstall both native packages
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: python scripts/check-windows-installers.py
       - name: Preserve installer lifecycle evidence
-        if: always()
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true) }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-installer-lifecycle-${{ github.sha }}

@@ -59,6 +59,32 @@ or inject CSS that repairs the defect. Verify the debugging listener is confined
 to loopback and belongs to the owned process tree; do not change machine-wide
 registry policy or expose a persistent debugging endpoint.
 
+GitHub-hosted Windows runs use an administrator token. WebView2 150+ deliberately
+ignores environment/HKCU overrides for elevated hosts; see the
+[WebView2 team explanation](https://github.com/MicrosoftEdge/WebView2Feedback/issues/5645)
+and [GitHub runner privileges](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+The first qualification attempt reached the real release EXE but timed out at
+CDP admission; it produced no native pixel verdict. That failure is not a pass.
+
+For hosted CI only, the harness makes one byte-identical EXE copy with an owned
+`ottplay-video-fixture-<nonce>.exe` name and verifies its SHA-256. The existing
+production window/engine startup remains unchanged. A temporary, filename-scoped
+HKLM `AdditionalBrowserArguments` value supplies only the loopback debugging
+address/port. It never changes a wildcard, `RemoteDebuggingAllowed`, GPU flags,
+or production application code. Existing/forbidden policy aborts admission.
+A durable exclusive intent precedes the write, readback confirms installation,
+and exact REG_SZ/value compare-and-swap restores absence. A changed foreign
+value is preserved and fails cleanup. Node `finally` and a workflow `always()`
+step perform idempotent receipt-only recovery, including after test timeout.
+The PowerShell 7 helpers and their actual state-machine tests are checked in.
+Outside hosted CI the harness does not write machine policy; use a non-elevated
+local Windows session for the ordinary environment-variable debugging channel.
+
+Startup failures preserve bounded process/runtime/integrity/loopback metadata.
+Full command lines, environment values, source URLs and raw desktop images are
+not emitted. This diagnosis distinguishes a missing browser or ignored argument
+from an active listener whose CDP HTTP endpoint does not respond.
+
 CDP is a control and diagnostic channel. Its screenshot command is not the
 native pixel verdict. Tauri also supports
 [native WebDriver on Windows](https://v2.tauri.app/develop/tests/webdriver/),
@@ -152,6 +178,14 @@ Those actions can invalidate layout and hide the failure. A subsequent one-pixel
 resize may be recorded as a recovery diagnostic, but cannot turn an initial
 failed case into a pass. OS fullscreen is a separate control scenario.
 
+The two capture windows are absolute media times 0.4–1.1 seconds and
+1.9–2.6 seconds after each source starts, including the end of the capture.
+Missing a window fails; a later repetition of the same palette cannot qualify.
+These samples detect persistent undersizing at measured times. They do not
+exclude a briefer first-presented-frame flash. The current decoded fixture is
+MP4/H.264 at 12 fps; an independently cold HLS.js/MSE source and continuous
+first-presentation capture remain additional coverage, not claims of this run.
+
 The first hosted run qualifies only its actual DPI, OS, WebView2 runtime and
 rendering adapter. Extend hardware acceptance to 125% and 150% DPI and an
 affected Windows installation; do not relabel a 100% virtual-machine result as
@@ -170,9 +204,15 @@ The upload uses those explicit paths rather than the report directory. Raw BMP
 captures remain ephemeral oracle inputs and are excluded from artifact upload.
 
 The manual boolean input `windows_video_geometry_only` defaults to false.
-Explicitly enabling it runs that same Windows job and suppresses other platform
-jobs; it does not create a second build path. Normal PR/reusable-workflow runs
-still execute the native pixel check without an opt-in or silent skip.
+Explicitly enabling it runs only the production EXE build, EXE manifest check,
+oracle/capture/fixture contracts and native pixel check in that Windows job.
+The normal Tauri release build uses `--no-bundle` in this manual diagnostic mode;
+MSI/NSIS packaging, updater ZIP regression, unrelated debug/window fixtures and
+installer install/uninstall checks are omitted only for this explicit manual
+mode. Other platform jobs are also suppressed. No native production code,
+capability or rendering flags change. Normal PR/reusable-workflow runs retain
+all original installer/native checks and execute the pixel check without an
+opt-in or silent skip.
 
 ## Runner admission, evidence and cleanup
 
@@ -206,3 +246,25 @@ owned player/descendant processes, loopback fixture server and debugging session
 release capture resources and remove the isolated profile. Do not change global
 Windows display settings, disable GPU acceleration, or relax production sizing
 and media guards to obtain a passing test.
+
+## Run the Windows-only qualification
+
+After this workflow is present on the selected branch, dispatch:
+
+```sh
+gh workflow run native-parity.yml --ref <tested-branch> -f windows_video_geometry_only=true
+```
+
+This explicit manual mode builds the production release EXE without installer
+bundles, verifies its manifest and runs the native pixel checks. It does not
+qualify MSI/NSIS installation or replace the full required PR matrix. Normal PR
+and reusable-workflow executions retain all existing Windows installer, updater,
+window-control, preference and IPC checks in addition to the pixel test.
+
+Read `build/windows-video-geometry-report/result.json` from the run artifact.
+A qualifying result requires the workflow job to succeed, `status: "pass"`, all
+12 cases and 144 samples, matching source/binary/frontend/fixture hashes, native
+bridge admission, owned loopback listeners and confirmed policy restoration.
+No samples, an unavailable desktop, startup timeout, missed timing window or
+cleanup error is a non-qualifying result. The report cannot close #1132 without
+acceptance on the affected Windows device.

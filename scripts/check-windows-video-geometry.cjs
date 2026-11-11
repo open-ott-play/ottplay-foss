@@ -32,6 +32,19 @@ function cases() {
         }))
     );
 }
+function validateCaptureInterval(before, after, phase) {
+    const start = phase * 1.5 + 0.4;
+    const end = phase * 1.5 + 1.1;
+    if (
+        ![before, after].every(
+            (value) => Number.isFinite(value) && value > start && value < end
+        ) ||
+        after < before
+    )
+        throw new Error(
+            "Capture missed its absolute initial phase window; no automatic retry"
+        );
+}
 function python(args, allowPixelFailure = false) {
     const result = spawnSync(process.env.PYTHON || "python", args, {
         cwd: ROOT,
@@ -155,7 +168,43 @@ ConvertTo-Json -InputObject @($result) -Depth 4 -Compress
         throw new Error("Unqualified CDP listener: " + result.stderr);
     return JSON.parse(result.stdout);
 }
-async function exercise(binary, origin, item, index, report) {
+function powershellFile(file, args) {
+    const result = spawnSync(
+        "pwsh.exe",
+        [
+            "-NoProfile",
+            "-NonInteractive",
+            "-File",
+            path.join(ROOT, file),
+            ...args,
+        ],
+        {
+            cwd: ROOT,
+            encoding: "utf8",
+            timeout: 20000,
+            windowsHide: true,
+        }
+    );
+    if (result.error || result.status !== 0)
+        throw new Error(
+            "Windows fixture helper failed: " +
+                (result.stderr || result.stdout || result.error)
+        );
+    return JSON.parse(result.stdout.replace(/^\uFEFF/, "").trim());
+}
+function startupDiagnostic(pid, port) {
+    try {
+        return powershellFile("scripts/windows-video-startup-diagnostics.ps1", [
+            "-RootPid",
+            String(pid),
+            "-DebugPort",
+            String(port),
+        ]);
+    } catch (error) {
+        return { error: String(error), ok: false };
+    }
+}
+async function exercise(binary, origin, item, index, report, debugPort) {
     const data = fs.mkdtempSync(path.join(os.tmpdir(), "ott-video-geometry-"));
     const id = crypto.createHash("md5").update(data).digest("hex").slice(0, 10);
     const config = path.join(process.env.APPDATA, "com.ottplay.foss");
@@ -192,7 +241,6 @@ async function exercise(binary, origin, item, index, report) {
         path.join(data, "window-aspect-lock"),
         item.lock ? "1\n" : "0\n"
     );
-    const debugPort = await freePort();
     const log = fs.openSync(path.join(OUT, stem + ".log"), "wx");
     let child, browser;
     const ownedImages = [];
@@ -261,6 +309,11 @@ async function exercise(binary, origin, item, index, report) {
         await page.waitForFunction(
             () => window.__ottDevice && typeof window.stbPlay === "function"
         );
+        record.nativeBridge = await page.evaluate(() =>
+            window.__TAURI__.core.invoke("ping")
+        );
+        if (index === 0)
+            record.startup = startupDiagnostic(child.pid, debugPort);
         record.runtime = await page.evaluate(() => ({
             device: window.__ottDevice,
             dpr: devicePixelRatio,
@@ -345,9 +398,8 @@ async function exercise(binary, origin, item, index, report) {
                                 !v.paused &&
                                 v.videoWidth === width &&
                                 v.videoHeight === height &&
-                                Math.floor(v.currentTime / 1.5) % 2 === phase &&
-                                v.currentTime % 1.5 > 0.4 &&
-                                v.currentTime % 1.5 < 1.1 &&
+                                v.currentTime > phase * 1.5 + 0.4 &&
+                                v.currentTime < phase * 1.5 + 1.1 &&
                                 v.getVideoPlaybackQuality().totalVideoFrames > 0
                             );
                         },
@@ -408,13 +460,7 @@ async function exercise(binary, origin, item, index, report) {
                     const after = await page.evaluate(
                         () => document.querySelector("#video").currentTime
                     );
-                    if (
-                        Math.floor(before.time / 1.5) % 2 !== phase ||
-                        Math.floor(after / 1.5) % 2 !== phase
-                    )
-                        throw new Error(
-                            "Capture crossed fixture phase boundary; no automatic retry"
-                        );
+                    validateCaptureInterval(before.time, after, phase);
                     if (
                         capture.window.client_size[0] !== item.width ||
                         capture.window.client_size[1] !== item.height
@@ -469,6 +515,9 @@ async function exercise(binary, origin, item, index, report) {
         record.status = "pass";
     } catch (error) {
         record.error = error.stack || String(error);
+        record.processExitCode = child?.exitCode;
+        if (child?.pid && child.exitCode === null)
+            record.startupFailure = startupDiagnostic(child.pid, debugPort);
         throw error;
     } finally {
         // CDP disconnect, then owned process-tree cleanup; no installed players.
@@ -537,6 +586,13 @@ async function main() {
         source: process.env.GITHUB_SHA || null,
         status: "fail",
     };
+    const debugPort = await freePort();
+    const policyReceipt = path.join(OUT, "debug-policy.json");
+    const hosted =
+        process.env.GITHUB_ACTIONS === "true" &&
+        process.env.RUNNER_ENVIRONMENT === "github-hosted";
+    let fixtureBinary = binary;
+    let copiedBinary;
     const port = await nativeFrontendPort();
     const serverLog = fs.openSync(path.join(OUT, "server.log"), "wx");
     const server = spawn(
@@ -558,8 +614,49 @@ async function main() {
         const origin = "http://127.0.0.1:" + port;
         await waitJson(origin + "/__device_test_health", server);
         report.fixtureListener = verifyDebugListener(server.pid, port);
+        if (hosted) {
+            const name =
+                "ottplay-video-fixture-" +
+                crypto.randomBytes(16).toString("hex") +
+                ".exe";
+            const candidate = path.join(path.dirname(binary), name);
+            fs.copyFileSync(binary, candidate, fs.constants.COPYFILE_EXCL);
+            copiedBinary = candidate;
+            if (hash(copiedBinary) !== report.executable.sha256)
+                throw new Error(
+                    "Native fixture copy differs from production EXE"
+                );
+            fixtureBinary = copiedBinary;
+            report.fixtureExecutable = {
+                byteIdentical: true,
+                name,
+                sha256: hash(copiedBinary),
+            };
+            report.debugPolicyInstall = powershellFile(
+                "scripts/windows-video-debug-policy.ps1",
+                [
+                    "-Action",
+                    "Install",
+                    "-Name",
+                    name,
+                    "-Port",
+                    String(debugPort),
+                    "-Receipt",
+                    policyReceipt,
+                ]
+            );
+        }
+        if (hosted && report.debugPolicyInstall?.status !== "installed")
+            throw new Error("Debug policy was not confirmed installed");
         for (const [index, item] of cases().entries())
-            await exercise(binary, origin, item, index, report);
+            await exercise(
+                fixtureBinary,
+                origin,
+                item,
+                index,
+                report,
+                debugPort
+            );
         report.status = "pass";
     } catch (error) {
         report.error = error.stack || String(error);
@@ -573,13 +670,38 @@ async function main() {
             process.exitCode = 1;
         }
         fs.closeSync(serverLog);
+        if (fs.existsSync(policyReceipt)) {
+            try {
+                report.debugPolicyRestore = powershellFile(
+                    "scripts/windows-video-debug-policy.ps1",
+                    ["-Action", "Restore", "-Receipt", policyReceipt]
+                );
+                if (report.debugPolicyRestore.status !== "restored")
+                    throw new Error(
+                        "Debug policy restoration was not confirmed"
+                    );
+            } catch (error) {
+                report.policyCleanupError = String(error);
+                report.status = "fail";
+                process.exitCode = 1;
+            }
+        }
+        if (copiedBinary && fs.existsSync(copiedBinary)) {
+            try {
+                fs.rmSync(copiedBinary, { maxRetries: 3, retryDelay: 100 });
+            } catch (error) {
+                report.executableCleanupError = String(error);
+                report.status = "fail";
+                process.exitCode = 1;
+            }
+        }
         fs.writeFileSync(
             path.join(OUT, "result.json"),
             JSON.stringify(report, null, 2) + "\n"
         );
     }
 }
-module.exports = { cases };
+module.exports = { cases, validateCaptureInterval };
 if (require.main === module)
     main().catch((error) => {
         console.error(error);
