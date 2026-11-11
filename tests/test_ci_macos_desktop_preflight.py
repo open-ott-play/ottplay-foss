@@ -16,12 +16,34 @@ SPEC.loader.exec_module(MODULE)
 class DesktopPreflightContracts(unittest.TestCase):
     def test_only_explicit_manual_request_can_suppress_existing_native_jobs(self):
         workflow = (ROOT / ".github/workflows/native-parity.yml").read_text()
-        guard = "if: \u0024{{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}"
-        for job in ("shared-guide", "windows-installers", "android", "apple", "favorites-native"):
+        guard = "if: \u0024{{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}"
+        for job in ("shared-guide", "android", "apple", "favorites-native", "linux-window-controls"):
             self.assertIn("  " + job + ":\n    " + guard, workflow)
-        self.assertIn("if: \u0024{{ github.event_name == 'workflow_dispatch' && inputs.desktop_preflight_only == true }}",
+        self.assertIn("if: \u0024{{ github.event_name == 'workflow_dispatch' && inputs.desktop_preflight_only == true && inputs.windows_video_geometry_only != true }}",
                       workflow)
         self.assertIn("type: boolean\n        default: false", workflow)
+
+    def test_windows_video_mode_reuses_full_installer_job_and_keeps_pixel_check_required(self):
+        workflow = (ROOT / ".github/workflows/native-parity.yml").read_text()
+        self.assertIn("windows_video_geometry_only:\n        description:", workflow)
+        windows = workflow.split("  windows-installers:\n", 1)[1].split("\n  android:", 1)[0]
+        self.assertIn("inputs.windows_video_geometry_only != true && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)", windows)
+        self.assertIn("timeout-minutes: 60", windows)
+        self.assertIn('npx --no-install tauri build --ci --bundles "nsis,msi" -- --locked', windows)
+        block = windows.split("      - name: Test native video pixel oracle and capture failure contracts\n", 1)[1].split("      - name: Preserve native video geometry evidence\n", 1)[0]
+        self.assertIn("python tests/test_windows_video_oracle.py\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", block)
+        self.assertIn("python tests/test_windows_video_capture.py\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", block)
+        self.assertIn("timeout-minutes: 15\n        run: node scripts/check-windows-video-geometry.cjs", block)
+        self.assertNotIn("if:", block)
+        self.assertNotIn("continue-on-error", block)
+        self.assertLess(windows.index("node scripts/check-windows-video-geometry.cjs"), windows.index("python scripts/check-windows-installers.py"))
+        evidence = windows.split("      - name: Preserve native video geometry evidence\n", 1)[1].split("      - name:", 1)[0]
+        self.assertIn("if: always()", evidence)
+        self.assertIn("path: build/windows-video-geometry-report/", evidence)
+        self.assertIn("retention-days: 14", evidence)
+        for job in ("desktop-preflight", "desktop-capture"):
+            section = workflow.split("  " + job + ":\n", 1)[1].split("    runs-on:", 1)[0]
+            self.assertIn("inputs.windows_video_geometry_only != true", section)
 
     def test_refused_or_incomplete_capability_is_not_success(self):
         for value in ({}, {"schema": 1, "action": "preflight", "status": "refused"},

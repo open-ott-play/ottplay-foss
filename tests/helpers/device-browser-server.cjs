@@ -27,7 +27,10 @@ function playerPath(filename) {
 }
 const port = Number(process.env.OTTP_DEVICE_TEST_PORT || 4179);
 const diagnostics = process.env.OTTP_DEVICE_TEST_DIAGNOSTICS === "1";
+const nativeGeometry = process.env.OTTP_NATIVE_VIDEO_GEOMETRY === "1";
 let aspectFixture;
+const nativeAdmissions = new Set();
+const pendingNativeMedia = new Map();
 function aspectMedia() {
     if (!aspectFixture) {
         aspectFixture =
@@ -103,6 +106,83 @@ http.createServer((request, response) => {
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
         response.writeHead(405).end();
+        return;
+    }
+    const nativeCase = url.searchParams.get("case");
+    const validNativeCase = /^[a-f0-9]{10}$/.test(nativeCase || "");
+    if (
+        nativeGeometry &&
+        pathname === "/__native_video_geometry/channels.m3u" &&
+        validNativeCase
+    ) {
+        response.writeHead(200, {
+            "Cache-Control": "no-store",
+            "Content-Type": "audio/x-mpegurl",
+        });
+        response.end(
+            "#EXTM3U\n#EXTINF:-1,Native geometry fixture\nhttp://127.0.0.1:" +
+                port +
+                "/__native_video_geometry/wide.mp4?case=" +
+                nativeCase +
+                "\n"
+        );
+        return;
+    }
+    if (
+        nativeGeometry &&
+        pathname === "/__native_video_geometry/admit" &&
+        validNativeCase
+    ) {
+        nativeAdmissions.add(nativeCase);
+        const pending = pendingNativeMedia.get(nativeCase) || new Set();
+        for (const send of pending) send();
+        pendingNativeMedia.delete(nativeCase);
+        response
+            .writeHead(200, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ admitted: nativeCase }));
+        return;
+    }
+    if (/^\/__native_video_geometry\/(wide|standard)\.mp4$/.test(pathname)) {
+        if (nativeGeometry && !validNativeCase) {
+            response.writeHead(400).end();
+            return;
+        }
+        const bytes = fs.readFileSync(
+            path.join(
+                __dirname,
+                "../fixtures/windows-video-geometry",
+                path.basename(pathname)
+            )
+        );
+        const send = () => {
+            clearTimeout(timer);
+            pendingNativeMedia.get(nativeCase)?.delete(send);
+            if (response.destroyed) return;
+            response.writeHead(200, {
+                "Cache-Control": "no-store",
+                "Content-Length": bytes.length,
+                "Content-Type": "video/mp4",
+            });
+            response.end(request.method === "HEAD" ? undefined : bytes);
+        };
+        let timer;
+        if (
+            nativeGeometry &&
+            validNativeCase &&
+            !nativeAdmissions.has(nativeCase)
+        ) {
+            const pending = pendingNativeMedia.get(nativeCase) || new Set();
+            pendingNativeMedia.set(nativeCase, pending);
+            pending.add(send);
+            timer = setTimeout(() => {
+                pending.delete(send);
+                response.writeHead(504).end();
+            }, 60000);
+            response.on("close", () => {
+                clearTimeout(timer);
+                pending.delete(send);
+            });
+        } else send();
         return;
     }
     if (diagnostics && pathname === "/__device_test_runtime") {
@@ -209,6 +289,22 @@ http.createServer((request, response) => {
                     .replace(
                         "</body>",
                         "<script>\n" + diagnosticScript + "\n</script>\n</body>"
+                    )
+            );
+        }
+        if (nativeGeometry && relative === "index.html") {
+            // Test-only state seeding before the first production script runs.
+            // No DOM sizing, media methods, engine or native host is replaced.
+            bytes = Buffer.from(
+                bytes
+                    .toString("utf8")
+                    .replace(
+                        "<head>",
+                        '<head><script>localStorage.setItem("ottplaylang","_eng");' +
+                            'localStorage.setItem("ottplayprov","m3u");' +
+                            'localStorage.setItem("m3um3uArr",JSON.stringify({active:0,M3Us:[{www:location.origin+"/__native_video_geometry/channels.m3u?case="+new URL(location.href).searchParams.get("nativecase")}]}));' +
+                            'window.__nativeGeometryEvents=[];for(const kind of ["loadstart","loadeddata","playing"])document.addEventListener(kind,e=>{if(e.target.tagName==="VIDEO")window.__nativeGeometryEvents.push({kind,source:e.target.currentSrc});},true);' +
+                            "</script>"
                     )
             );
         }

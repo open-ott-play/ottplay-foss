@@ -8,6 +8,10 @@ on:
         description: Capture packaged Finder Open With and drag evidence for manual review
         type: boolean
         default: false
+      windows_video_geometry_only:
+        description: Run Windows production video pixel acceptance and installer checks only
+        type: boolean
+        default: false
       desktop_preflight_only:
         description: Check hosted macOS GUI capability only; skip all builds
         type: boolean
@@ -18,7 +22,7 @@ permissions:
 
 jobs:
   shared-guide:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: Shared guide / ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -41,10 +45,11 @@ jobs:
         run: cargo test --locked --manifest-path tests/librqbit-resource-regression/Cargo.toml --no-default-features --features rust-tls --lib resource_bounds_tests
 
   windows-installers:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.windows_video_geometry_only != true && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}
     name: Windows installer lifecycle
     runs-on: windows-latest
-    timeout-minutes: 45
+    # Retain the full installer build/checks plus bounded native video captures.
+    timeout-minutes: 60
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -120,6 +125,26 @@ jobs:
           path: build/windows-window-controls-report/
           if-no-files-found: warn
           retention-days: 14
+      - name: Test native video pixel oracle and capture failure contracts
+        shell: pwsh
+        run: |
+          python tests/test_windows_video_oracle.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/test_windows_video_capture.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check first-frame fixture admission and native boundary matrix
+        run: node --test tests/test_native_video_fixture.cjs
+      - name: Verify production Windows video geometry from native screen pixels
+        timeout-minutes: 15
+        run: node scripts/check-windows-video-geometry.cjs
+      - name: Preserve native video geometry evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-video-geometry-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/windows-video-geometry-report/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Install, verify and uninstall both native packages
         run: python scripts/check-windows-installers.py
       - name: Preserve installer lifecycle evidence
@@ -132,7 +157,7 @@ jobs:
           retention-days: 14
 
   android:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: Android native plugins
     runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || '["ubuntu-latest"]') }}
     timeout-minutes: 30
@@ -206,7 +231,7 @@ jobs:
           python3 tests/test_runtime_diagnostics_native.py --platform android
 
   apple:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: iOS and Tauri native code
     runs-on: macos-latest
     timeout-minutes: 40
@@ -368,7 +393,7 @@ jobs:
         run: python3 tests/macos-drag-regression/run.py
 
   favorites-native:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: Hidden WK Favorites Stage A and Stage B
     runs-on: macos-latest
     timeout-minutes: 40
@@ -449,7 +474,7 @@ jobs:
 
   desktop-preflight:
     name: Hosted macOS desktop GUI capability
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.desktop_preflight_only == true }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.desktop_preflight_only == true && inputs.windows_video_geometry_only != true }}
     runs-on: macos-15
     timeout-minutes: 5
     permissions:
@@ -485,7 +510,7 @@ jobs:
 
   desktop-capture:
     name: Packaged macOS Finder capture (manual review required)
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.desktop_acceptance == true && inputs.desktop_preflight_only != true }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.desktop_acceptance == true && inputs.desktop_preflight_only != true && inputs.windows_video_geometry_only != true }}
     runs-on: macos-15
     timeout-minutes: 60
     permissions:
@@ -535,7 +560,7 @@ jobs:
           retention-days: 7
 
   linux-window-controls:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: GTK X11 window constraint acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 35
