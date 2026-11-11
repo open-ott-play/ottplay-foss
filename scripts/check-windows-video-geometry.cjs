@@ -975,6 +975,7 @@ async function main() {
     };
     const debugPort = await freePort();
     const policyReceipt = path.join(OUT, "debug-policy.json");
+    const displayReceipt = path.join(OUT, "display-mode.json");
     const hosted =
         process.env.GITHUB_ACTIONS === "true" &&
         process.env.RUNNER_ENVIRONMENT === "github-hosted";
@@ -1002,6 +1003,18 @@ async function main() {
         await waitJson(origin + "/__device_test_health", server);
         report.fixtureListener = verifyDebugListener(server.pid, port);
         if (hosted) {
+            report.displayPreparation = powershellFile(
+                "scripts/windows-video-display.ps1",
+                ["-Action", "Apply", "-Receipt", displayReceipt]
+            );
+            if (
+                !["applied", "unchanged"].includes(
+                    report.displayPreparation.status
+                )
+            )
+                throw new Error(
+                    "Hosted desktop display was not qualified before app launch"
+                );
             const name =
                 "ottplay-video-fixture-" +
                 crypto.randomBytes(16).toString("hex") +
@@ -1081,6 +1094,22 @@ async function main() {
                     error,
                     600
                 );
+                report.status = "fail";
+                process.exitCode = 1;
+            }
+        }
+        if (fs.existsSync(displayReceipt)) {
+            try {
+                report.displayRestore = powershellFile(
+                    "scripts/windows-video-display.ps1",
+                    ["-Action", "Restore", "-Receipt", displayReceipt]
+                );
+                if (report.displayRestore.status !== "restored")
+                    throw new Error(
+                        "Owned desktop display restoration was not confirmed"
+                    );
+            } catch (error) {
+                report.displayCleanupError = redactDiagnosticText(error, 600);
                 report.status = "fail";
                 process.exitCode = 1;
             }

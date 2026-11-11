@@ -71,6 +71,13 @@ class DesktopPreflightContracts(unittest.TestCase):
         self.assertIn("-Action Restore -Receipt $receipt", cleanup)
         self.assertIn("if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", cleanup)
         self.assertNotIn("continue-on-error", cleanup)
+        display_cleanup = windows.split("      - name: Restore owned desktop display after native video acceptance\n", 1)[1].split("      - name:", 1)[0]
+        self.assertIn("if: always()", display_cleanup)
+        self.assertIn("Join-Path $env:GITHUB_WORKSPACE", display_cleanup)
+        self.assertIn("-Action Restore -Receipt $receipt", display_cleanup)
+        self.assertIn("if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", display_cleanup)
+        self.assertNotIn("continue-on-error", display_cleanup)
+        self.assertIn("python tests/test_windows_video_display.py\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", block)
         self.assertLess(windows.index("node scripts/check-windows-video-geometry.cjs"), windows.index("python scripts/check-windows-installers.py"))
         evidence = windows.split("      - name: Preserve native video geometry evidence\n", 1)[1].split("      - name:", 1)[0]
         self.assertIn("if: always()", evidence)

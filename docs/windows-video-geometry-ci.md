@@ -95,6 +95,24 @@ native pixel verdict. Tauri also supports
 [native WebDriver on Windows](https://v2.tauri.app/develop/tests/webdriver/),
 but introducing that additional driver is not required for this contract.
 
+## Hosted desktop preparation
+
+Some hosted Windows images start with a 1024×768 desktop. A 1280×720 client and
+its one-pixel controls cannot fit entirely on that screen. Before launching any
+player case, the hosted-only helper enumerates supported primary-display modes,
+tests an adequate mode and applies it dynamically without persisting a registry
+change. It prefers 1920×1080 and requires space for the full client, frame and
+taskbar. The application itself is not resized to repair playback.
+
+The original display mode is recorded before applying the owned change.
+Readback must confirm the chosen mode. Both driver cleanup and an independent
+workflow `always()` step restore the original mode only if the current mode
+still matches the owned applied mode; foreign changes are preserved and fail
+cleanup. Unsupported modes or unavailable display services fail acceptance.
+The existing full-window on-screen and occlusion guards remain required.
+Outside an ephemeral hosted runner, prepare a sufficiently large interactive
+Windows desktop yourself; the harness does not change your display automatically.
+
 ## Capture the visible native client plane
 
 Resolve a single visible top-level HWND belonging to the launched PID. Obtain

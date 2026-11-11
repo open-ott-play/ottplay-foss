@@ -156,6 +156,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/test_windows_video_debug_policy.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/test_windows_video_display.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check first-frame fixture admission and native boundary matrix
         run: node --test tests/test_native_video_fixture.cjs
       - name: Verify production Windows video geometry from native screen pixels
@@ -168,6 +170,15 @@ jobs:
           $receipt = Join-Path $env:GITHUB_WORKSPACE 'build/windows-video-geometry-report/debug-policy.json'
           if (Test-Path -LiteralPath $receipt) {
             & ./scripts/windows-video-debug-policy.ps1 -Action Restore -Receipt $receipt
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Restore owned desktop display after native video acceptance
+        if: always()
+        shell: pwsh
+        run: |
+          $receipt = Join-Path $env:GITHUB_WORKSPACE 'build/windows-video-geometry-report/display-mode.json'
+          if (Test-Path -LiteralPath $receipt) {
+            & ./scripts/windows-video-display.ps1 -Action Restore -Receipt $receipt
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Preserve native video geometry evidence

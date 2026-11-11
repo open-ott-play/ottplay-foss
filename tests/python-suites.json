@@ -22,6 +22,7 @@
     ["tests/test_windows_video_oracle.py"],
     ["tests/test_windows_video_capture.py"],
     ["tests/test_windows_video_debug_policy.py"],
+    ["tests/test_windows_video_display.py"],
     ["tests/test_media_helper_installer.py"],
     ["tests/test_tizen_install.py"],
     ["tests/test_webos_native_release.py"],
