@@ -83,6 +83,34 @@ http.createServer((request, response) => {
         response.writeHead(400).end();
         return;
     }
+    // This isolated fixture reports route classes, never request queries or bodies.
+    if (nativeGeometry) {
+        let route = "asset";
+        if (pathname === "/index.html") route = "index";
+        else if (pathname === "/dist/player.js") route = "player";
+        else if (pathname === "/__native_video_geometry/guide.xml")
+            route = "guide";
+        else if (/^\/devices\/[^/]+\/device\.js$/.test(pathname))
+            route = "device";
+        else if (pathname === "/__native_video_geometry/channels.m3u")
+            route = "playlist";
+        else if (
+            /^\/__native_video_geometry\/(wide|standard)\.mp4$/.test(pathname)
+        )
+            route = "media";
+        else if (pathname === "/__native_video_geometry/admit")
+            route = "admission";
+        if (route !== "asset") console.log("Native fixture request: " + route);
+        response.on("finish", () => {
+            if (route !== "asset" || response.statusCode >= 400)
+                console.log(
+                    "Native fixture route: " +
+                        route +
+                        " -> " +
+                        response.statusCode
+                );
+        });
+    }
     // Log only route classes, never playlist bodies, channel IDs or query data.
     if (diagnostics) {
         const epgRoute = /^\/m3u\/(?:match-channels|match-logos|cp\.php)$/.test(
@@ -106,6 +134,16 @@ http.createServer((request, response) => {
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
         response.writeHead(405).end();
+        return;
+    }
+    if (nativeGeometry && pathname === "/__native_video_geometry/guide.xml") {
+        response.writeHead(200, {
+            "Cache-Control": "no-store",
+            "Content-Type": "application/xml",
+        });
+        response.end(
+            '<?xml version="1.0" encoding="UTF-8"?><tv><channel id="native-geometry"><display-name>Native geometry fixture</display-name></channel></tv>'
+        );
         return;
     }
     const nativeCase = url.searchParams.get("case");

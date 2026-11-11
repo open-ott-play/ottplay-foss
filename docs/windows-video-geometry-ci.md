@@ -39,7 +39,9 @@ video probes. No CSS is injected to hide or resize the media plane. Before the f
 owned test server inserts initial M3U settings pointing to its own local fixture
 playlist, together with passive media-event recording. It does not replace
 production client code or use Demo playback. Keep private profiles, credentials,
-discovery and real IPTV servers out of the fixture.
+discovery and real IPTV servers out of the fixture. Set the owned process's
+`EPG_URLS` to the fixture's minimal loopback XMLTV document: the native warm task
+must not fetch its default external guide during a hermetic compositor test.
 
 The server holds each case's media bytes until CDP is attached. Before explicitly
 admitting that case through the owned loopback endpoint, the driver verifies
@@ -56,7 +58,7 @@ For automation, launch only that process with a temporary
 Attach Playwright over CDP to the owned WebView2 target and drive existing
 production controls or public player functions. Do not replace sizing functions
 or inject CSS that repairs the defect. Verify the debugging listener is confined
-to loopback and belongs to the owned process tree; do not change machine-wide
+to loopback and belongs to the owned process tree; do not change persistent/wildcard
 registry policy or expose a persistent debugging endpoint.
 
 GitHub-hosted Windows runs use an administrator token. WebView2 150+ deliberately
@@ -80,7 +82,10 @@ The PowerShell 7 helpers and their actual state-machine tests are checked in.
 Outside hosted CI the harness does not write machine policy; use a non-elevated
 local Windows session for the ordinary environment-variable debugging channel.
 
-Startup failures preserve bounded process/runtime/integrity/loopback metadata.
+Startup failures preserve bounded process/runtime/integrity/session/loopback metadata.
+The fixture also reports route classes and HTTP statuses without request queries
+or response bodies, so a source-admission failure can be separated from a pixel
+geometry failure.
 Full command lines, environment values, source URLs and raw desktop images are
 not emitted. This diagnosis distinguishes a missing browser or ignored argument
 from an active listener whose CDP HTTP endpoint does not respond.
@@ -97,6 +102,11 @@ its client rectangle, client-to-screen origin and effective DPI through Win32.
 Capture only those physical screen pixels, with the owned window visible,
 unminimized, fully on screen and unobscured. Check PID/HWND ownership and client
 bounds again around each capture. Reject ambiguous windows or changed ownership.
+Visible windows above the client are checked across the full capture rectangle.
+A foreign intersecting window is ignored only when a successful
+`DwmGetWindowAttribute(DWMWA_CLOAKED)` query proves that DWM has hidden it.
+An unknown cloak state remains a capture blocker; the owned target itself must
+be proven uncloaked before and after capture.
 
 An OS helper can use `System.Drawing.Graphics.CopyFromScreen`, which performs a
 [screen pixel block transfer](https://learn.microsoft.com/en-us/dotnet/api/system.drawing.graphics.copyfromscreen).

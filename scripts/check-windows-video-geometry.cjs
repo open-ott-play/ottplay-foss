@@ -201,7 +201,384 @@ function startupDiagnostic(pid, port) {
             String(port),
         ]);
     } catch (error) {
-        return { error: String(error), ok: false };
+        return { error: redactDiagnosticText(error, 600), ok: false };
+    }
+}
+function redactDiagnosticText(value, maxLength = 600) {
+    return String(value || "")
+        .replace(/\bhttps?:\/\/[^\s"'<>]+/gi, "[URL]")
+        .replace(
+            /\b(token|password|passwd|authorization|api[_-]?key)\s*[:=]\s*[^\s"'<>]+/gi,
+            "$1=[REDACTED]"
+        )
+        .replace(/\b[A-Za-z0-9_+/-]{24,}={0,2}\b/g, "[LONG_TOKEN]")
+        .replace(/(?:[A-Za-z]:\\|\\\\)[^\s"'<>]*/g, "[PATH]")
+        .slice(0, maxLength);
+}
+async function pageStartupDiagnostic(page, origin, expectedCase) {
+    if (!page || page.isClosed()) return { status: "page-unavailable" };
+    let timer;
+    try {
+        return await Promise.race([
+            page.evaluate(
+                async ({ expectedOrigin, expectedCaseId }) => {
+                    const text = (value, limit) =>
+                        String(value || "")
+                            .replace(/\bhttps?:\/\/[^\s"'<>]+/gi, "[URL]")
+                            .replace(
+                                /\b(token|password|passwd|authorization|api[_-]?key)\s*[:=]\s*[^\s"'<>]+/gi,
+                                "$1=[REDACTED]"
+                            )
+                            .replace(
+                                /\b[A-Za-z0-9_+/-]{24,}={0,2}\b/g,
+                                "[LONG_TOKEN]"
+                            )
+                            .replace(
+                                /(?:[A-Za-z]:\\|\\\\)[^\s"'<>]*/g,
+                                "[PATH]"
+                            )
+                            .replace(/\s+/g, " ")
+                            .trim()
+                            .slice(0, limit);
+                    const knownDevices = new Set([
+                        "tauri",
+                        "pc",
+                        "pc2",
+                        "desktop",
+                        "nodejs",
+                        "android",
+                        "androidtv",
+                        "lg/webos",
+                        "webos",
+                        "tizen",
+                        "ios",
+                    ]);
+                    const knownDrivers = new Set([
+                        "demo",
+                        "m3u",
+                        "vportal",
+                        "plex",
+                        "stalker",
+                        "classic-stalker",
+                        "offline",
+                        "torrent",
+                        "xtream",
+                        "edem",
+                        "kb-team",
+                    ]);
+                    const routeClass = (pathname) => {
+                        if (pathname === "/index.html") return "app-index";
+                        const fixture = pathname.match(
+                            /^\/__native_video_geometry\/(wide|standard)\.mp4$/
+                        );
+                        if (fixture) return `fixture-${fixture[1]}`;
+                        if (pathname === "/__native_video_geometry/admit")
+                            return "fixture-admit";
+                        if (pathname.startsWith("/__native_video_geometry/"))
+                            return "fixture-other";
+                        return "same-origin-other";
+                    };
+                    const classifySource = (raw) => {
+                        if (!raw) return { kind: "empty" };
+                        try {
+                            const parsed = new URL(raw, location.href);
+                            if (parsed.origin !== expectedOrigin)
+                                return { kind: "other-origin" };
+                            const kind = routeClass(parsed.pathname);
+                            return { kind };
+                        } catch (_) {
+                            return { kind: "invalid" };
+                        }
+                    };
+                    const visible = (element) => {
+                        if (!element) return false;
+                        const style = getComputedStyle(element);
+                        const rect = element.getBoundingClientRect();
+                        return (
+                            style.display !== "none" &&
+                            style.visibility !== "hidden" &&
+                            Number(style.opacity || 1) > 0 &&
+                            rect.width > 0 &&
+                            rect.height > 0
+                        );
+                    };
+                    const video = document.querySelector("#video");
+                    const standby = window.__ottStandby;
+                    let standbyBlocked = null;
+                    let standbyGeneration = null;
+                    let standbySnapshot = null;
+                    try {
+                        if (typeof standby?.blocked === "function")
+                            standbyBlocked = !!standby.blocked();
+                    } catch (_) {}
+                    try {
+                        if (typeof standby?.generation === "function") {
+                            const value = standby.generation();
+                            if (Number.isSafeInteger(value) && value >= 0)
+                                standbyGeneration = value;
+                        }
+                    } catch (_) {}
+                    try {
+                        const value =
+                            typeof standby?.snapshot === "function"
+                                ? standby.snapshot()
+                                : null;
+                        const states = new Set([
+                            "running",
+                            "suspended",
+                            "suspending",
+                            "error",
+                            "unsupported",
+                        ]);
+                        if (value && states.has(value.state)) {
+                            standbySnapshot = {
+                                pending:
+                                    Number.isSafeInteger(value.pending) &&
+                                    value.pending >= 0
+                                        ? value.pending
+                                        : null,
+                                state: value.state,
+                            };
+                        }
+                    } catch (_) {}
+                    const driverId = String(
+                        window.__ottActiveProviderDriver?.id || ""
+                    );
+                    const device = String(window.ott_device || "");
+                    const language = String(
+                        localStorage.getItem("ottplaylang") || ""
+                    );
+                    let seededM3uValid = false;
+                    try {
+                        const config = JSON.parse(
+                            localStorage.getItem("m3um3uArr") || "null"
+                        );
+                        const expectedPlaylist =
+                            expectedOrigin +
+                            "/__native_video_geometry/channels.m3u?case=" +
+                            expectedCaseId;
+                        seededM3uValid =
+                            config?.active === 0 &&
+                            typeof config?.M3Us?.[0]?.www === "string" &&
+                            config.M3Us[0].www === expectedPlaylist;
+                    } catch (_) {}
+                    const events = Array.isArray(window.__nativeGeometryEvents)
+                        ? window.__nativeGeometryEvents
+                        : null;
+                    const eventCounts = {};
+                    if (events) {
+                        for (const event of events.slice(0, 128)) {
+                            const kind =
+                                typeof event?.kind === "string" &&
+                                /^[A-Za-z0-9_-]{1,32}$/.test(event.kind)
+                                    ? event.kind
+                                    : "other";
+                            eventCounts[kind] = Math.min(
+                                128,
+                                (eventCounts[kind] || 0) + 1
+                            );
+                        }
+                    }
+                    const resources = [];
+                    for (const entry of performance
+                        .getEntriesByType("resource")
+                        .slice(-256)) {
+                        if (typeof entry.name !== "string") continue;
+                        try {
+                            const parsed = new URL(entry.name, location.href);
+                            if (parsed.origin !== expectedOrigin) continue;
+                            const status = Number(entry.responseStatus);
+                            if (
+                                Number.isFinite(status) &&
+                                (status === 0 || status >= 400)
+                            ) {
+                                resources.push({
+                                    route: routeClass(parsed.pathname),
+                                    status,
+                                });
+                            }
+                        } catch (_) {}
+                    }
+                    const visibleLists = [];
+                    for (const selector of [
+                        "#channelList",
+                        "#channels",
+                        "#list",
+                        "#cList",
+                        ".channel-list",
+                        ".channelList",
+                    ]) {
+                        const element = document.querySelector(selector);
+                        if (element)
+                            visibleLists.push({
+                                selector,
+                                visible: visible(element),
+                            });
+                        if (visibleLists.length === 4) break;
+                    }
+                    const launch = document.querySelector("#launch");
+                    const launchText = visible(launch)
+                        ? text(launch.innerText, 300)
+                        : "";
+                    const query = new URLSearchParams(location.search);
+                    const expectedSource =
+                        expectedOrigin +
+                        "/__native_video_geometry/wide.mp4?case=" +
+                        expectedCaseId;
+                    const sourceAttribute = classifySource(
+                        video?.getAttribute("src") || ""
+                    );
+                    const sourceProperty = classifySource(video?.src || "");
+                    const currentSource = classifySource(
+                        video?.currentSrc || ""
+                    );
+                    let nativeStandbyStatus = { status: "unavailable" };
+                    try {
+                        const invoke = window.__TAURI__?.core?.invoke;
+                        if (typeof invoke === "function") {
+                            nativeStandbyStatus = await Promise.race([
+                                invoke("background_standby_status", {})
+                                    .then((value) => {
+                                        if (
+                                            !value ||
+                                            typeof value.standby !==
+                                                "boolean" ||
+                                            typeof value.quiescent !==
+                                                "boolean" ||
+                                            !Number.isSafeInteger(
+                                                value.pending
+                                            ) ||
+                                            value.pending < 0
+                                        ) {
+                                            return {
+                                                status: "invalid-response",
+                                            };
+                                        }
+                                        return {
+                                            pending: Math.min(
+                                                value.pending,
+                                                2147483647
+                                            ),
+                                            quiescent: value.quiescent,
+                                            standby: value.standby,
+                                            status: "ok",
+                                        };
+                                    })
+                                    .catch((error) => ({
+                                        errorName: String(
+                                            error?.name || "Error"
+                                        ).slice(0, 48),
+                                        status: "error",
+                                    })),
+                                new Promise((resolve) =>
+                                    setTimeout(
+                                        () => resolve({ status: "timeout" }),
+                                        1200
+                                    )
+                                ),
+                            ]);
+                        }
+                    } catch (error) {
+                        nativeStandbyStatus = {
+                            errorName: String(error?.name || "Error").slice(
+                                0,
+                                48
+                            ),
+                            status: "error",
+                        };
+                    }
+                    return {
+                        launchText,
+                        launchVisible: !!(launch && visible(launch)),
+                        nativeGeometryEvents: events
+                            ? { count: events.length, kindCounts: eventCounts }
+                            : null,
+                        ownOriginResourceFailures: resources.slice(0, 32),
+                        page: {
+                            nativecaseMatchesExpected:
+                                query.get("nativecase") === expectedCaseId,
+                            originMatchesExpected:
+                                location.origin === expectedOrigin,
+                            pathClass:
+                                location.pathname === "/index.html"
+                                    ? "app-index"
+                                    : "other",
+                            readyState: document.readyState,
+                            title: text(document.title, 120),
+                            visibilityState: document.visibilityState,
+                        },
+                        runtime: {
+                            activeProviderKnown: knownDrivers.has(driverId),
+                            bootstrapPresent:
+                                !!window.__ottDevice &&
+                                typeof window.__ottDevice === "object",
+                            cListLength: Array.isArray(window.cList)
+                                ? Math.min(1000000, window.cList.length)
+                                : null,
+                            commandChannelsReady:
+                                typeof window.commandChannelsReady === "boolean"
+                                    ? window.commandChannelsReady
+                                    : null,
+                            languageEnumMatch: language === "_eng",
+                            ottDeviceKnown: knownDevices.has(device),
+                            playerMode:
+                                Number.isInteger(window.playerMode) &&
+                                window.playerMode >= 0 &&
+                                window.playerMode <= 16
+                                    ? window.playerMode
+                                    : null,
+                            seededM3uValid,
+                        },
+                        standby: {
+                            blocked: standbyBlocked,
+                            generation: standbyGeneration,
+                            nativeStatus: nativeStandbyStatus,
+                            snapshot: standbySnapshot,
+                        },
+                        status: "captured",
+                        video: video
+                            ? {
+                                  currentSource: currentSource.kind,
+                                  currentSourceMatchesFixture:
+                                      video.currentSrc === expectedSource,
+                                  currentTime: Number.isFinite(
+                                      video.currentTime
+                                  )
+                                      ? Number(video.currentTime.toFixed(3))
+                                      : null,
+                                  errorCode: video.error
+                                      ? Number(video.error.code) || null
+                                      : null,
+                                  firstSourceMatchesFixture:
+                                      video.src === expectedSource,
+                                  height: Number(video.videoHeight) || 0,
+                                  networkState: Number(video.networkState),
+                                  paused: !!video.paused,
+                                  readyState: Number(video.readyState),
+                                  sourceAttribute: sourceAttribute.kind,
+                                  sourceProperty: sourceProperty.kind,
+                                  width: Number(video.videoWidth) || 0,
+                              }
+                            : null,
+                        visibleLists,
+                    };
+                },
+                { expectedCaseId: expectedCase, expectedOrigin: origin }
+            ),
+            new Promise((resolve) => {
+                timer = setTimeout(
+                    () => resolve({ status: "diagnostic-timeout" }),
+                    2500
+                );
+            }),
+        ]);
+    } catch (error) {
+        return {
+            errorName: String(error?.name || "Error").slice(0, 48),
+            status: "diagnostic-unavailable",
+        };
+    } finally {
+        if (timer) clearTimeout(timer);
     }
 }
 async function exercise(binary, origin, item, index, report, debugPort) {
@@ -242,7 +619,8 @@ async function exercise(binary, origin, item, index, report, debugPort) {
         item.lock ? "1\n" : "0\n"
     );
     const log = fs.openSync(path.join(OUT, stem + ".log"), "wx");
-    let child, browser;
+    let child, browser, page;
+    const pageErrors = [];
     const ownedImages = [];
     const record = { ...item, samples: [], status: "fail" };
     report.cases.push(record);
@@ -251,6 +629,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
             cwd: ROOT,
             env: {
                 ...process.env,
+                EPG_URLS: origin + "/__native_video_geometry/guide.xml",
                 OTTPLAY_DATA_DIR: data,
                 OTTPLAY_INSTANCE: "video-geometry-" + id,
                 OTTPLAY_WEB_URL: origin + "/index.html?nativecase=" + id,
@@ -261,7 +640,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
             stdio: ["ignore", log, log],
         });
         child.on("error", (error) => {
-            record.spawnError = error.message;
+            record.spawnError = redactDiagnosticText(error.message, 300);
         });
         record.pid = child.pid;
         if (!child.pid)
@@ -300,8 +679,14 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                 : route.abort()
         );
         await context.routeWebSocket("**/*", (socket) => socket.close());
-        const page = context.pages()[0];
+        page = context.pages()[0];
         if (!page) throw new Error("No owned WebView2 page");
+        page.on("pageerror", (error) => {
+            if (pageErrors.length < 8)
+                pageErrors.push(
+                    redactDiagnosticText(error?.stack || error?.message, 360)
+                );
+        });
         await page.waitForURL(origin + "/index.html?nativecase=" + id, {
             timeout: 30000,
             waitUntil: "domcontentloaded",
@@ -514,8 +899,10 @@ async function exercise(binary, origin, item, index, report, debugPort) {
         }
         record.status = "pass";
     } catch (error) {
-        record.error = error.stack || String(error);
+        record.error = redactDiagnosticText(error.stack || String(error), 1600);
         record.processExitCode = child?.exitCode;
+        record.pageErrors = pageErrors;
+        record.startupPage = await pageStartupDiagnostic(page, origin, id);
         if (child?.pid && child.exitCode === null)
             record.startupFailure = startupDiagnostic(child.pid, debugPort);
         throw error;
@@ -526,7 +913,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
         try {
             await stopOwned(child);
         } catch (error) {
-            record.cleanupError = String(error);
+            record.cleanupError = redactDiagnosticText(error, 300);
             record.status = "fail";
             throw error;
         } finally {
@@ -659,13 +1046,13 @@ async function main() {
             );
         report.status = "pass";
     } catch (error) {
-        report.error = error.stack || String(error);
+        report.error = redactDiagnosticText(error.stack || String(error), 1600);
         process.exitCode = 1;
     } finally {
         try {
             await stopOwned(server);
         } catch (error) {
-            report.cleanupError = String(error);
+            report.cleanupError = redactDiagnosticText(error, 600);
             report.status = "fail";
             process.exitCode = 1;
         }
@@ -681,7 +1068,7 @@ async function main() {
                         "Debug policy restoration was not confirmed"
                     );
             } catch (error) {
-                report.policyCleanupError = String(error);
+                report.policyCleanupError = redactDiagnosticText(error, 600);
                 report.status = "fail";
                 process.exitCode = 1;
             }
@@ -690,7 +1077,10 @@ async function main() {
             try {
                 fs.rmSync(copiedBinary, { maxRetries: 3, retryDelay: 100 });
             } catch (error) {
-                report.executableCleanupError = String(error);
+                report.executableCleanupError = redactDiagnosticText(
+                    error,
+                    600
+                );
                 report.status = "fail";
                 process.exitCode = 1;
             }
@@ -701,9 +1091,14 @@ async function main() {
         );
     }
 }
-module.exports = { cases, validateCaptureInterval };
+module.exports = {
+    cases,
+    pageStartupDiagnostic,
+    redactDiagnosticText,
+    validateCaptureInterval,
+};
 if (require.main === module)
     main().catch((error) => {
-        console.error(error);
+        console.error(redactDiagnosticText(error.stack || String(error), 1600));
         process.exitCode = 1;
     });

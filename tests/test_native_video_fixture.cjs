@@ -12,6 +12,8 @@ const {
 } = require("../scripts/classic-bundle.cjs");
 const {
     cases,
+    pageStartupDiagnostic,
+    redactDiagnosticText,
     validateCaptureInterval,
 } = require("../scripts/check-windows-video-geometry.cjs");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -58,6 +60,149 @@ test("native matrix includes exact locked/unlocked starts and all one-pixel cont
                 [{ height: h, lock: false, width: w }]
             );
     }
+});
+
+test("failure summaries remove URL credentials and respect their output bound", () => {
+    const failure = new Error(
+        "Request https://person:private-password@private.invalid/path?token=private-key failed at D:\\a\\private\\client.js"
+    );
+    const output = redactDiagnosticText(failure.stack, 160);
+    assert.ok(output.length <= 160);
+    for (const privateValue of [
+        "private-password",
+        "private.invalid",
+        "private-key",
+        "D:\\a",
+    ])
+        assert.equal(output.includes(privateValue), false);
+});
+
+test("startup diagnostics retain fixture state without body, list or source secrets", async () => {
+    const origin = "http://127.0.0.1:8443";
+    const id = "abcdef1234";
+    const secret = "do-not-publish-this-private-token";
+    const source = origin + "/__native_video_geometry/wide.mp4?case=" + id;
+    const launch = {
+        getBoundingClientRect: () => ({ height: 450, width: 800 }),
+        innerText:
+            "Startup failed at https://private.invalid/path?token=" + secret,
+    };
+    const list = {
+        getBoundingClientRect: () => ({ height: 300, width: 300 }),
+        get innerText() {
+            throw new Error("Do not collect list contents");
+        },
+    };
+    const video = {
+        currentSrc: "",
+        currentTime: 0,
+        error: null,
+        getAttribute: () => source,
+        networkState: 2,
+        paused: true,
+        readyState: 0,
+        src: source,
+        videoHeight: 0,
+        videoWidth: 0,
+    };
+    const stored = new Map([
+        ["ottplaylang", "_eng"],
+        ["ottplayprov", "m3u"],
+        [
+            "m3um3uArr",
+            JSON.stringify({
+                active: 0,
+                M3Us: [
+                    {
+                        www:
+                            origin +
+                            "/__native_video_geometry/channels.m3u?case=" +
+                            id,
+                    },
+                ],
+            }),
+        ],
+    ]);
+    const scope = {
+        clearTimeout,
+        document: {
+            get body() {
+                throw new Error("Do not collect page contents");
+            },
+            querySelector: (selector) =>
+                selector === "#video"
+                    ? video
+                    : selector === "#launch"
+                      ? launch
+                      : selector === "#list"
+                        ? list
+                        : null,
+            readyState: "complete",
+            title: "Fixture",
+            visibilityState: "visible",
+        },
+        getComputedStyle: () => ({
+            display: "block",
+            opacity: "1",
+            visibility: "visible",
+        }),
+        localStorage: { getItem: (key) => stored.get(key) || null },
+        location: {
+            href: origin + "/index.html?nativecase=" + id,
+            origin,
+            pathname: "/index.html",
+            search: "?nativecase=" + id,
+        },
+        performance: {
+            getEntriesByType: () => [
+                {
+                    name: origin + "/asset.js?token=" + secret,
+                    responseStatus: 404,
+                },
+                {
+                    name: "https://private.invalid/" + secret,
+                    responseStatus: 400,
+                },
+            ],
+        },
+        setTimeout,
+        URL,
+        URLSearchParams,
+        window: {
+            __nativeGeometryEvents: [
+                {
+                    kind: "loadstart",
+                    source: "https://private.invalid/" + secret,
+                },
+            ],
+            __ottActiveProviderDriver: { id: "m3u" },
+            __ottStandby: {
+                blocked: () => true,
+                generation: () => 0,
+                snapshot: () => ({ pending: null, state: "error" }),
+            },
+            cList: [],
+            commandChannelsReady: false,
+            ott_device: "pc",
+            playerMode: 0,
+        },
+    };
+    const page = {
+        evaluate: (fn, args) => {
+            scope.args = args;
+            return vm.runInNewContext("(" + fn.toString() + ")(args)", scope);
+        },
+        isClosed: () => false,
+    };
+    const result = await pageStartupDiagnostic(page, origin, id);
+    assert.equal(result.status, "captured");
+    assert.equal(result.standby.blocked, true);
+    assert.equal(result.runtime.seededM3uValid, true);
+    const output = JSON.stringify(result);
+    assert.equal(output.includes(secret), false);
+    assert.equal(output.includes("private.invalid"), false);
+    assert.equal(output.includes("visibleText"), false);
+    assert.equal(output.includes(source), false);
 });
 
 test("first native media remains undecodable until owned cold-capture admission", {
@@ -107,14 +252,31 @@ test("first native media remains undecodable until owned cold-capture admission"
             await pause(50);
         }
         assert.ok(ready, "owned fixture server must become ready");
+        const guide = await fetch(
+            origin + "/__native_video_geometry/guide.xml"
+        );
+        assert.equal(guide.status, 200);
+        assert.equal(guide.headers.get("content-type"), "application/xml");
+        const guideBody = await guide.text();
+        assert.ok(guideBody.includes('<channel id="native-geometry">'));
+        assert.ok(
+            guideBody.includes(
+                "<display-name>Native geometry fixture</display-name>"
+            )
+        );
+        assert.equal(guideBody.includes("http:"), false);
+        assert.equal(guideBody.includes("https:"), false);
         const html = await (
-            await fetch(origin + "/f/pc/?nativecase=" + caseId)
+            await fetch(origin + "/index.html?nativecase=" + caseId)
         ).text();
         const items = new Map();
         const scope = {
             document: { addEventListener() {} },
             localStorage: { setItem: (k, v) => items.set(k, v) },
-            location: { href: origin + "/f/pc/?nativecase=" + caseId, origin },
+            location: {
+                href: origin + "/index.html?nativecase=" + caseId,
+                origin,
+            },
             URL,
             window: {},
         };
