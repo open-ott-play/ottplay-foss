@@ -7,6 +7,7 @@ const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
 const runtime = require("./helpers/private-runtime.cjs");
 const root = path.resolve(__dirname, "..");
+require("./test_video_geometry_refresh.cjs");
 
 function functions(file, names) {
     const source = fs.readFileSync(path.join(root, file), "utf8");

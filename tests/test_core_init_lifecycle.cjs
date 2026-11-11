@@ -15,7 +15,15 @@ const source = ts.createSourceFile(
     true
 );
 function functions(names) {
-    names = [...new Set([...names, "coreField", "coreCall"])];
+    names = [
+        ...new Set([
+            ...names,
+            "coreField",
+            "coreCall",
+            "cancelFit",
+            "deferFit",
+        ]),
+    ];
     return ts.transpileModule(
         names
             .map((name) => {
@@ -81,6 +89,7 @@ function fixture() {
         clearInterval: (id) => timers.delete(id),
         closeList() {},
         coreDeviceEffects: {},
+        coreMediaBackend: null,
         installTauriFsKeyCapture: () => calls.capture++,
         isFullscreen: false,
         requestAnimationFrame: (fn) => fn(),

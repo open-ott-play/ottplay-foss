@@ -440,7 +440,16 @@ async function main() {
                 ts.isFunctionDeclaration(n) &&
                 n.name?.text === "stopCorePlayback"
         );
+        const cancelGeometry = compiled(
+            extract(
+                "src/core/index.ts",
+                (n) =>
+                    ts.isFunctionDeclaration(n) && n.name?.text === "cancelFit"
+            ),
+            { window: w }
+        );
         const privateStop = compiled(privateText, {
+            cancelFit: cancelGeometry,
             getCoreMediaBackend: () => ({ stop: f.stop }),
             window: w,
         });

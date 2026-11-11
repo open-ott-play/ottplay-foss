@@ -1278,6 +1278,7 @@ const coreControls = functions("src/core/index.ts", [
     "stbContinue",
     "stbPause",
     "stbResume",
+    "cancelFit",
     "stopCorePlayback",
     "stbStop",
     "getCoreMediaBackend",
