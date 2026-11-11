@@ -11,12 +11,58 @@ const {
     CLASSIC_OPTIONAL_BUNDLES,
 } = require("../scripts/classic-bundle.cjs");
 const {
+    captureOwnedImage,
     cases,
     pageStartupDiagnostic,
     redactDiagnosticText,
+    removeOwnedImages,
     validateCaptureInterval,
 } = require("../scripts/check-windows-video-geometry.cjs");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+test("capture subprocess failures retain cleanup ownership and preserve preexisting files", () => {
+    const directory = fs.mkdtempSync(
+        path.join(os.tmpdir(), "native-capture-cleanup-")
+    );
+    const image = path.join(directory, "owned.bmp");
+    const owned = [];
+    try {
+        assert.throws(
+            () =>
+                captureOwnedImage(image, owned, 123, () => {
+                    fs.writeFileSync(image, "temporary screen pixels", {
+                        flag: "wx",
+                    });
+                    return JSON.parse(
+                        "invalid subprocess JSON after image write"
+                    );
+                }),
+            SyntaxError
+        );
+        assert.deepEqual(owned, [image]);
+        assert.equal(fs.existsSync(image), true);
+        removeOwnedImages(owned);
+        assert.equal(fs.existsSync(image), false);
+        fs.writeFileSync(image, "preexisting must survive", { flag: "wx" });
+        const unowned = [];
+        assert.throws(
+            () =>
+                captureOwnedImage(image, unowned, 123, () => {
+                    throw new Error(
+                        "Must not invoke capture for an existing output"
+                    );
+                }),
+            /existing file was preserved/
+        );
+        removeOwnedImages(unowned);
+        assert.equal(
+            fs.readFileSync(image, "utf8"),
+            "preexisting must survive"
+        );
+    } finally {
+        fs.rmSync(directory, { force: true, recursive: true });
+    }
+});
 
 test("capture guard rejects a later same-color cycle and slow or reversed intervals", () => {
     validateCaptureInterval(0.5, 0.7, 0);

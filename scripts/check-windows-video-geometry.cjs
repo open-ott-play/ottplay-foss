@@ -59,6 +59,32 @@ function python(args, allowPixelFailure = false) {
         );
     return JSON.parse(result.stdout);
 }
+function captureOwnedImage(image, ownedImages, pid, invoke = python) {
+    if (fs.lstatSync(image, { throwIfNoEntry: false }))
+        throw new Error(
+            "Fresh capture path required; existing file was preserved"
+        );
+    // Register before the subprocess can write pixels or fail JSON parsing.
+    ownedImages.push(image);
+    return invoke([
+        "scripts/windows-video-capture.py",
+        "--pid",
+        String(pid),
+        "--output",
+        image,
+    ]);
+}
+function removeOwnedImages(ownedImages) {
+    let failure;
+    for (const image of ownedImages) {
+        try {
+            fs.rmSync(image, { force: true });
+        } catch (error) {
+            failure ||= error;
+        }
+    }
+    if (failure) throw failure;
+}
 async function freePort() {
     const server = net.createServer();
     await new Promise((resolve, reject) => {
@@ -781,7 +807,10 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                             throw new Error(
                                 "A frame was decoded before cold capture admission"
                             );
-                        window.closeList(false);
+                        if (window.isListVisible !== false)
+                            throw new Error(
+                                "Cold playback did not enter the normal full-video view; no layout repair allowed"
+                            );
                         window.__nativeGeometryRetained =
                             document.querySelector("#video");
                         window.__nativeGeometryRetained.muted = true;
@@ -882,16 +911,22 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                         );
                     const image = path.join(
                         OUT,
-                        stem + "-" + mode + "-" + label + "-" + phase + ".bmp"
+                        stem +
+                            "-" +
+                            mode +
+                            "-" +
+                            label +
+                            "-" +
+                            phase +
+                            "-" +
+                            crypto.randomBytes(12).toString("hex") +
+                            ".bmp"
                     );
-                    const capture = python([
-                        "scripts/windows-video-capture.py",
-                        "--pid",
-                        String(child.pid),
-                        "--output",
+                    const capture = captureOwnedImage(
                         image,
-                    ]);
-                    ownedImages.push(image);
+                        ownedImages,
+                        child.pid
+                    );
                     if (
                         capture.hwnd !== record.beforeSourceWindow.hwnd ||
                         JSON.stringify(capture.window) !==
@@ -977,7 +1012,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
         } finally {
             fs.closeSync(log);
             // Raw desktop pixels are transient oracle input, never public artifacts.
-            for (const image of ownedImages) fs.rmSync(image, { force: true });
+            removeOwnedImages(ownedImages);
             if (!child || child.exitCode !== null) {
                 fs.rmSync(state, { force: true });
                 fs.rmSync(data, { force: true, recursive: true });
@@ -1179,9 +1214,11 @@ async function main() {
     }
 }
 module.exports = {
+    captureOwnedImage,
     cases,
     pageStartupDiagnostic,
     redactDiagnosticText,
+    removeOwnedImages,
     validateCaptureInterval,
 };
 if (require.main === module)

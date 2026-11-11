@@ -55,7 +55,9 @@ must retain that HWND and native geometry. This excludes a late native startup
 resize healing the picture before the oracle sees it; inspection does not flush,
 capture, resize or activate the window. The first source is the
 owned wide clip selected by normal M3U startup. Initial Fit/cold acceptance does
-not call `stbStop`, `stbPlay` or `setAspect` to restart or repair that playback.
+not call `stbStop`, `stbPlay`, `closeList`, `setAspect`, or another layout helper
+to restart or repair that playback. It asserts that normal startup has already
+entered full-video view without changing the UI.
 Portable server tests cover media holding and ownership of the first source;
 those tests do not substitute for the native pixel run.
 
@@ -279,7 +281,10 @@ numeric sampled colors and mismatch coordinates; do not publish captured native
 images. Raw BMPs are removed after local oracle processing, and the explicit
 artifact allowlist excludes them even on an interrupted or failed run. This
 prevents a transient unrelated overlay from leaking desktop pixels into an
-artifact. Keep profile and credential data out of logs and receipts.
+artifact. Each fresh random output path is registered for cleanup before the
+capture subprocess runs, including when it writes an image then fails JSON
+parsing. Existing paths are rejected and preserved. Keep profile and credential
+data out of logs and receipts.
 
 Use bounded process and callback deadlines. On every exit path, stop only the
 owned player/descendant processes, loopback fixture server and debugging session;
