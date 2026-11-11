@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-- Reconcile video layout after playback starts, retaining current Fit/Fill,
-  zoom and preview geometry while cancelling retired layout work. Native
-  Windows first-picture qualification remains pending (#1132).
-
 - Browse Modern media catalogues in separate category rows with keyboard,
   mouse-wheel and touch navigation. Preserve the selected occurrence and
   existing playback actions while rendering only a bounded window of cards.
@@ -170,6 +166,39 @@
 - Include tracks from selected Plex music libraries in the standard playlist.
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
+
+## [1.1.71] - 2026-11-11
+
+### Changes
+
+- Reconcile video geometry after playback starts using two layout frames and a
+  bounded fallback deadline. Keep the current Fit/Fill, zoom and channel-list
+  preview while retiring work from replaced media or sources.
+- Share guarded metadata and intrinsic-size updates. Resizing a viewport updates
+  its video geometry without repeating a device fullscreen transition.
+- Complete production-function fixture coverage and record the canonical
+  compressed cost of the new layout lifecycle once per payload.
+
+### Upgrade
+
+Install the native package or deploy the web assets, then restart or reload the
+player. Existing profiles, Favorites, Local sources and playback settings are
+preserved.
+
+### Known issues
+
+The native Windows first-picture defect at an exact 16:9 window size (#1132)
+requires acceptance on an affected Windows setup. This release includes a
+layout-reconciliation candidate; successful automated tests do not establish
+that the Windows compositor defect is resolved. Browser Local permission
+queries (#1004) and the historical Firefox 153 Video.js teardown crash (#1005)
+remain under investigation.
+
+### Security
+
+Retain the signed Noble playback source and exact host/plugin qualification
+introduced in 1.1.70, together with the existing source-ownership, credential
+storage and remote-control authorization checks.
 
 ## [1.1.70] - 2026-11-10
 
