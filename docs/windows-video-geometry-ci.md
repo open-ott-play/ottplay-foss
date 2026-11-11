@@ -104,6 +104,8 @@ tests an adequate mode and applies it dynamically without persisting a registry
 change. It prefers 1920×1080 and requires space for the full client, frame and
 taskbar. The application itself is not resized to repair playback.
 
+A real apply/restore preflight runs before native compilation, so an unsupported
+display fails promptly instead of after the long application build.
 The original display mode is recorded before applying the owned change.
 Readback must confirm the chosen mode. Both driver cleanup and an independent
 workflow `always()` step restore the original mode only if the current mode

@@ -77,7 +77,12 @@ class DesktopPreflightContracts(unittest.TestCase):
         self.assertIn("-Action Restore -Receipt $receipt", display_cleanup)
         self.assertIn("if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", display_cleanup)
         self.assertNotIn("continue-on-error", display_cleanup)
-        self.assertIn("python tests/test_windows_video_display.py\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", block)
+        display_preflight = windows.split("      - name: Qualify hosted desktop display before compiling the native player\n", 1)[1].split("      - ", 1)[0]
+        self.assertIn("timeout-minutes: 2", display_preflight)
+        self.assertIn("run: python tests/test_windows_video_display.py", display_preflight)
+        self.assertNotIn("if:", display_preflight)
+        self.assertNotIn("continue-on-error", display_preflight)
+        self.assertLess(windows.index("run: python tests/test_windows_video_display.py"), windows.index("Bundle MSI and NSIS"))
         self.assertLess(windows.index("node scripts/check-windows-video-geometry.cjs"), windows.index("python scripts/check-windows-installers.py"))
         evidence = windows.split("      - name: Preserve native video geometry evidence\n", 1)[1].split("      - name:", 1)[0]
         self.assertIn("if: always()", evidence)
