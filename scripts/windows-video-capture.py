@@ -213,6 +213,7 @@ class Win32:
             "client_origin": [origin.x, origin.y],
             "client_size": [client.right - client.left, client.bottom - client.top],
             "dpi": int(self.user32.GetDpiForWindow(hwnd)),
+            "monitor_primary": bool(info.dwFlags & 1),  # MONITORINFOF_PRIMARY
             "monitor_rect": [info.rcMonitor.left, info.rcMonitor.top,
                              info.rcMonitor.right, info.rcMonitor.bottom],
             "monitor_work_area": [info.rcWork.left, info.rcWork.top,
@@ -312,6 +313,9 @@ class Win32:
 
     @staticmethod
     def _assert_client_on_monitor(geometry):
+        # GetWindowDC(NULL) captures the primary monitor, not the virtual desktop.
+        require(geometry.get("monitor_primary") is True,
+                "Native screen capture requires the primary monitor")
         x, y = geometry["client_origin"]
         width, height = geometry["client_size"]
         left, top, right, bottom = geometry["monitor_rect"]

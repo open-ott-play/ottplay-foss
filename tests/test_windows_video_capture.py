@@ -271,7 +271,7 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
                 self.user32 = ForbiddenAPI()
                 self.checked = []
                 self.geometry = {"client_origin": [24, 17], "client_size": [1281, 721],
-                                 "monitor_rect": [0, 0, 1920, 1080], "dpi": 96}
+                                 "monitor_rect": [0, 0, 1920, 1080], "monitor_primary": True, "dpi": 96}
 
             def set_dpi_context(self):
                 return 1
@@ -335,11 +335,20 @@ class WindowsVideoCaptureContracts(unittest.TestCase):
 
     def test_client_capture_bounds_must_fit_entire_monitor(self):
         geometry = {"client_origin": [100, 100], "client_size": [800, 450],
-                    "monitor_rect": [0, 0, 1920, 1080]}
+                    "monitor_rect": [0, 0, 1920, 1080], "monitor_primary": True}
         MODULE.Win32._assert_client_on_monitor(geometry)
         for origin in ([-1, 0], [1200, 700]):
             with self.subTest(origin=origin), self.assertRaisesRegex(RuntimeError, "monitor bounds"):
                 MODULE.Win32._assert_client_on_monitor(dict(geometry, client_origin=origin))
+
+    def test_secondary_or_unknown_monitor_is_rejected_before_capture(self):
+        geometry = {"client_origin": [2020, 100], "client_size": [800, 450],
+                    "monitor_rect": [1920, 0, 3840, 1080]}
+        for primary in (False, None, 1):
+            with self.subTest(primary=primary), self.assertRaisesRegex(RuntimeError, "primary monitor"):
+                MODULE.Win32._assert_client_on_monitor(dict(geometry, monitor_primary=primary))
+        with self.assertRaisesRegex(RuntimeError, "primary monitor"):
+            MODULE.Win32._assert_client_on_monitor(geometry)
 
     def test_non_windows_failure_is_machine_readable_and_not_a_pass(self):
         if __import__("os").name == "nt":

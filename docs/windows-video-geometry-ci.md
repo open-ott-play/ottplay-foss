@@ -7,9 +7,9 @@ video can occupy a small area at the upper left until the window is resized.
 A correct DOM rectangle, a successful `playing` event and an advancing media
 clock do not establish that the Windows compositor painted the expected image.
 
-This document describes the implemented native acceptance harness. Its first
-qualifying Windows run is still pending and must supply actual native evidence;
-this document is not a claim that #1132 has been reproduced or resolved on
+This document describes the implemented native acceptance harness. A qualifying
+run must supply the native evidence specified below for its exact source commit.
+This document is not a claim that #1132 has been reproduced or resolved on
 affected hardware.
 
 The existing browser geometry matrix decodes real video, but runs in a browser
@@ -129,7 +129,10 @@ Windows desktop yourself; the harness does not change your display automatically
 
 Resolve a single visible top-level HWND belonging to the launched PID. Obtain
 its client rectangle, client-to-screen origin and effective DPI through Win32.
-Capture only those physical screen pixels, with the owned window visible,
+The current `GetWindowDC(NULL)` backend supports the primary monitor only.
+Record `MONITORINFOF_PRIMARY` and reject secondary or unknown monitor state
+before inspection or capture; virtual-desktop coordinates cannot qualify this
+backend. Capture only those physical screen pixels, with the owned window visible,
 unminimized, fully on screen and unobscured. Check PID/HWND ownership and client
 bounds again around each capture. Reject ambiguous windows or changed ownership.
 Visible windows above the client are checked across the full capture rectangle.
