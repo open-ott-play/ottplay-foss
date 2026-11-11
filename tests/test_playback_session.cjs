@@ -659,7 +659,7 @@ for (const replacement of [null, "catalog", "channel", "list"]) {
 {
     const c = fixture();
     include(c, "src/core/index.ts", [
-        "cancelCoreVideoGeometryRefresh",
+        "cancelFit",
         "stopCorePlayback",
         "stbStop",
     ]);

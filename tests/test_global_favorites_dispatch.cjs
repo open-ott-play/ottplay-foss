@@ -225,7 +225,11 @@ async function main() {
     };
     manual.c.getCoreMediaBackend = () => ({ stop() {} });
     vm.runInContext(
-        sourceFunctions("src/core/index.ts", ["stopCorePlayback", "stbStop"]),
+        sourceFunctions("src/core/index.ts", [
+            "cancelFit",
+            "stopCorePlayback",
+            "stbStop",
+        ]),
         manual.c
     );
     const manualResult = manual.play();

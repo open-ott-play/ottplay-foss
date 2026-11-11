@@ -2584,7 +2584,7 @@ export function stbStop(): void {
     stopCorePlayback();
 }
 function stopCorePlayback(): void {
-    cancelCoreVideoGeometryRefresh();
+    cancelFit();
     var media = (window as any).__ottMedia;
     if (media && media.cancelAuto) media.cancelAuto();
     if ((window as any).__ottClassicPlayback)
@@ -2740,10 +2740,7 @@ export function stbToFullScreen(): void {
         top: 0,
         width: "auto",
     });
-    try {
-        var box = document.getElementById("vdiv");
-        if (box) void (box as HTMLElement).offsetWidth;
-    } catch (_reflow) {}
+    // applyAspectRatio flushes the updated plane before measuring it.
     applyAspectRatio();
     applyZoom();
 }
@@ -2872,74 +2869,6 @@ function refreshSubtitleStyle(): void {
     if (apply) apply();
 }
 
-function cancelCoreVideoGeometryRefresh(): void {
-    var cancel = (window as any).__ottVideoFit;
-    if (cancel) cancel();
-}
-
-/** Reconcile layout after a decoded frame, not just synchronous media metadata. */
-function refreshCoreVideoGeometryAfterFrame(media: HTMLVideoElement): void {
-    cancelCoreVideoGeometryRefresh();
-    var host = window as any;
-    var backend = coreMediaBackend;
-    var owner = backend && backend.current();
-    if (!owner || !owner.active() || media !== video) return;
-    var frame: number | null = null;
-    var raf: number | null = null;
-    var timer: number | null = null;
-    var steps = 2;
-    function cancel(): void {
-        if (host.__ottVideoFit === cancel) host.__ottVideoFit = null;
-        if (timer !== null) window.clearTimeout(timer);
-        if (raf !== null && window.cancelAnimationFrame)
-            window.cancelAnimationFrame(raf);
-        if (frame !== null && media.cancelVideoFrameCallback)
-            media.cancelVideoFrameCallback(frame);
-        timer = raf = frame = null;
-    }
-    host.__ottVideoFit = cancel;
-    function current(): boolean {
-        return (
-            host.__ottVideoFit === cancel &&
-            media === video &&
-            backend === coreMediaBackend &&
-            backend.current() === owner &&
-            owner.active()
-        );
-    }
-    function refresh(): void {
-        try {
-            if (current()) {
-                // Read current preview/Fit/Fill/zoom, never restore captured UI.
-                applyAspectRatio();
-                applyZoom();
-            }
-        } finally {
-            cancel();
-        }
-    }
-    function afterFrame(): void {
-        if (!current()) cancel();
-        else if (steps-- > 0) {
-            // Match the two post-layout frames already used by window.resize.
-            // Missing/throwing/suspended RAF is covered by the watchdog below.
-            try {
-                raf = window.requestAnimationFrame(afterFrame);
-            } catch (_animationFrame) {}
-        } else refresh();
-    }
-    // Audio-only media and decoders without a presented-frame callback must
-    // also settle. This is a single deadline, never a playback polling loop.
-    timer = window.setTimeout(refresh, 250);
-    try {
-        if (media.requestVideoFrameCallback) {
-            frame = media.requestVideoFrameCallback(afterFrame);
-            return;
-        }
-    } catch (_frameCallback) {}
-    afterFrame();
-}
-
 /**
  * Apply the current aspectRatio to the #video element's CSS `object-fit` property.
  * Index 0 → "contain", index 1 → "cover".
@@ -2947,7 +2876,7 @@ function refreshCoreVideoGeometryAfterFrame(media: HTMLVideoElement): void {
  * Side effects: Direct DOM CSS mutation on #video!.
  */
 export function applyAspectRatio(): void {
-    var fit = ["contain", "cover"][aspectRatio] || "contain";
+    var contain = aspectRatio !== 1;
     var box = document.getElementById("vdiv");
     // Optional engines may put #video on a wrapper; intrinsic dimensions
     // always belong to the retained media element. CSS still sizes #video.
@@ -2955,24 +2884,15 @@ export function applyAspectRatio(): void {
     // Force layout after stbToFullScreen / resize CSS so client* is not stale
     // (1.1.29 explicit px geometry otherwise froze the previous crop size).
     if (box) void (box as HTMLElement).offsetWidth;
-    var cw = 0;
-    var ch = 0;
-    if (isFullscreen) {
-        // Viewport is the plane in full-video; more reliable than client* right
-        // after inset:0 is applied on resize.
-        cw = window.innerWidth || 0;
-        ch = window.innerHeight || 0;
-    } else if (box) {
-        cw = box.clientWidth;
-        ch = box.clientHeight;
-    }
-    var vw = vEl && vEl.videoWidth ? vEl.videoWidth : 0;
-    var vh = vEl && vEl.videoHeight ? vEl.videoHeight : 0;
+    // Full-video uses the viewport; preview uses its actual laid-out plane.
+    var cw = (isFullscreen ? window.innerWidth : box && box.clientWidth) || 0;
+    var ch = (isFullscreen ? window.innerHeight : box && box.clientHeight) || 0;
+    var vw = (vEl && vEl.videoWidth) || 0;
+    var vh = (vEl && vEl.videoHeight) || 0;
     // Explicit geometry: WKWebView often top-aligns letterboxed <video> frames
     // despite object-position:center. Size the element to the fitted frame and
     // let flex (#vdiv) center it (contain) or absolute-center the cover crop.
     var measured = cw > 0 && ch > 0 && vw > 0 && vh > 0;
-    var contain = fit === "contain";
     var w = 0;
     var h = 0;
     if (measured) {
@@ -3000,6 +2920,65 @@ export function applyAspectRatio(): void {
         width: measured ? w + "px" : "100%",
     });
     refreshSubtitleStyle();
+}
+
+function cancelFit(event?: Event): void {
+    if (event && event.target !== video) return;
+    var cancel = (window as any).__ottVideoFit;
+    if (cancel) cancel();
+}
+
+/** Reconcile layout after playing, not just synchronous media metadata. */
+function deferFit(media: HTMLVideoElement): void {
+    cancelFit();
+    var host = window as any;
+    var backend = coreMediaBackend;
+    var owner = backend && backend.current();
+    if (!owner || !owner.active() || media !== video) return;
+    var raf: number | null = null;
+    var timer: number | null = null;
+    var steps = 2;
+    function cancel(): void {
+        if (host.__ottVideoFit === cancel) host.__ottVideoFit = null;
+        if (timer !== null) window.clearTimeout(timer);
+        if (raf !== null && window.cancelAnimationFrame)
+            window.cancelAnimationFrame(raf);
+        timer = raf = null;
+    }
+    host.__ottVideoFit = cancel;
+    function current(): boolean {
+        return (
+            host.__ottVideoFit === cancel &&
+            media === video &&
+            backend === coreMediaBackend &&
+            backend.current() === owner &&
+            owner.active()
+        );
+    }
+    function refresh(): void {
+        var active = current();
+        // Retire handles before applying geometry, including if styling throws.
+        cancel();
+        if (active) {
+            // Read current preview/Fit/Fill/zoom, never restore captured UI.
+            applyAspectRatio();
+            applyZoom();
+        }
+    }
+    function afterFrame(): void {
+        if (!current()) cancel();
+        else if (steps-- > 0) {
+            // Match the two post-layout frames already used by window.resize.
+            // Missing/throwing/suspended RAF is covered by the watchdog below.
+            try {
+                raf = window.requestAnimationFrame(afterFrame);
+            } catch (_animationFrame) {}
+        } else refresh();
+    }
+    // Suspended or unavailable RAF must also settle. This is a single deadline,
+    // never a playback polling loop or a wait for another decoded video frame.
+    timer = window.setTimeout(refresh, 250);
+    afterFrame();
 }
 
 /**
@@ -3541,7 +3520,7 @@ function showViewportSizeIndicator(): void {
  */
 export function stbInit(): void {
     var host = window as any;
-    cancelCoreVideoGeometryRefresh();
+    cancelFit();
     $("body").css({ "background-color": "#111" });
     if (!host.__ottCoreResizeListener)
         host.__ottCoreResizeListener = function () {
@@ -3552,11 +3531,10 @@ export function stbInit(): void {
             // Re-apply video fit/center after layout — sync path alone left explicit
             // px sizes from 1.1.29 stuck at the pre-resize crop.
             var refreshVideo = function () {
-                if (isFullscreen) stbToFullScreen();
-                else {
-                    applyAspectRatio();
-                    applyZoom();
-                }
+                // The full plane already tracks the viewport through inset:0;
+                // resizing must not repeat the device's fullscreen transition.
+                applyAspectRatio();
+                applyZoom();
             };
             refreshVideo();
             try {
@@ -3581,13 +3559,6 @@ export function stbInit(): void {
             "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAkQBADs="
         );
         if (!(video as any).__ottCoreEventsBound) {
-            try {
-                // Intrinsic size arrives async; re-center contain letterbox once known.
-                video!.addEventListener("loadedmetadata", function () {
-                    applyAspectRatio();
-                    applyZoom();
-                });
-            } catch (_meta) {}
             try {
                 // Keep focus off native <video> so L/Escape reach the document
                 // key path in full-video mode (list overlay already did).
@@ -3638,16 +3609,12 @@ export function stbInit(): void {
             });
             video!.addEventListener("playing", function () {
                 if (video !== feedbackMedia) return;
-                refreshCoreVideoGeometryAfterFrame(feedbackMedia);
+                deferFit(feedbackMedia);
                 if (feedbackOwnsMedia()) return;
                 $("#buffering").hide();
             });
-            video!.addEventListener("loadstart", function () {
-                if (video === feedbackMedia) cancelCoreVideoGeometryRefresh();
-            });
-            video!.addEventListener("emptied", function () {
-                if (video === feedbackMedia) cancelCoreVideoGeometryRefresh();
-            });
+            video!.addEventListener("loadstart", cancelFit);
+            video!.addEventListener("emptied", cancelFit);
             video!.addEventListener("error", function () {
                 var _p =
                     coreDeviceEffects.engineName ||
@@ -3692,12 +3659,14 @@ export function stbInit(): void {
                         ")"
                 );
             });
-            video!.addEventListener("resize", function () {
+            var refreshVideoSize = function (): void {
                 if (video !== feedbackMedia) return;
                 applyAspectRatio();
                 applyZoom();
                 updateCoreVideoInfo();
-            });
+            };
+            video!.addEventListener("loadedmetadata", refreshVideoSize);
+            video!.addEventListener("resize", refreshVideoSize);
             // Seeks may finish between footer ticks; discard any sample spanning one.
             video!.addEventListener("seeking", resetCoreNativeBitrate);
             video!.addEventListener("seeked", resetCoreNativeBitrate);

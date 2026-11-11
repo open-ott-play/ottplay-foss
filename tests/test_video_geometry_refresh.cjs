@@ -7,10 +7,7 @@ const ts = require("typescript");
 const file = "src/core/index.ts";
 const source = fs.readFileSync(path.resolve(__dirname, "..", file), "utf8");
 const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
-const names = [
-    "cancelCoreVideoGeometryRefresh",
-    "refreshCoreVideoGeometryAfterFrame",
-];
+const names = ["cancelFit", "deferFit"];
 const declarations = ast.statements.filter(
     (node) => ts.isFunctionDeclaration(node) && names.includes(node.name.text)
 );
@@ -20,13 +17,12 @@ const code = ts.transpileModule(
     { compilerOptions: { target: ts.ScriptTarget.ES5 } }
 ).outputText;
 
-function fixture({ frame = "supported", raf = "supported" } = {}) {
+function fixture({ raf = "supported" } = {}) {
     let sequence = 0;
     let owner = { active: () => true };
     const timers = new Map();
-    const frames = new Map();
     const animations = new Map();
-    const saved = { animations: [], frames: [], timers: [] };
+    const saved = { animations: [], timers: [] };
     const writes = [];
     const delays = [];
     function schedule(queue, history, callback) {
@@ -42,13 +38,6 @@ function fixture({ frame = "supported", raf = "supported" } = {}) {
         callback();
     }
     const media = {};
-    if (frame !== "missing") {
-        media.requestVideoFrameCallback = (callback) => {
-            if (frame === "throws") throw new Error("frame API unavailable");
-            return schedule(frames, saved.frames, callback);
-        };
-        media.cancelVideoFrameCallback = (id) => frames.delete(id);
-    }
     const host = {
         applyAspectRatio() {
             writes.push({
@@ -88,16 +77,14 @@ function fixture({ frame = "supported", raf = "supported" } = {}) {
     vm.runInNewContext(code, host);
     return {
         animations,
-        arm: () => host.refreshCoreVideoGeometryAfterFrame(media),
-        cancel: () => host.cancelCoreVideoGeometryRefresh(),
+        arm: () => host.deferFit(media),
+        cancel: (event) => host.cancelFit(event),
         delays,
-        frames,
         host,
         media,
         noPending() {
             assert.equal(timers.size, 0, "watchdog released");
             assert.equal(animations.size, 0, "RAF released");
-            assert.equal(frames.size, 0, "video frame callback released");
             assert.equal(host.__ottVideoFit, null);
         },
         replaceOwner: () => {
@@ -107,7 +94,6 @@ function fixture({ frame = "supported", raf = "supported" } = {}) {
             owner = { active: () => false };
         },
         runAnimation: () => run(animations),
-        runFrame: () => run(frames),
         runTimer: () => run(timers),
         saved,
         timers,
@@ -133,13 +119,11 @@ function refreshedOnce(rig) {
     rig.noPending();
 }
 
-test("presented frame waits for both layout frames and releases all handles", () => {
+test("playing reconciliation waits for both layout frames and releases all handles", () => {
     const rig = fixture();
     rig.arm();
     assert.deepEqual(rig.delays, [250]);
-    assert.equal(rig.frames.size, 1);
-    assert.equal(rig.animations.size, 0);
-    rig.runFrame();
+    assert.equal(rig.animations.size, 1);
     rig.runAnimation();
     assert.equal(rig.writes.length, 0);
     rig.runAnimation();
@@ -148,25 +132,9 @@ test("presented frame waits for both layout frames and releases all handles", ()
     refreshedOnce(rig);
 });
 
-for (const frame of ["missing", "throws"]) {
-    test(frame + " frame API uses bounded layout fallback", () => {
-        const rig = fixture({ frame });
-        rig.arm();
-        rig.runAnimation();
-        rig.runAnimation();
-        refreshedOnce(rig);
-    });
-}
-
-for (const options of [
-    {},
-    { frame: "missing" },
-    { frame: "missing", raf: "missing" },
-    { frame: "missing", raf: "throws" },
-]) {
+for (const options of [{}, { raf: "missing" }, { raf: "throws" }]) {
     test(
-        "watchdog finishes without decoder or RAF delivery " +
-            JSON.stringify(options),
+        "watchdog finishes without RAF delivery " + JSON.stringify(options),
         () => {
             const rig = fixture(options);
             rig.arm();
@@ -181,7 +149,6 @@ for (const options of [
 test("watchdog races a partially completed frame chain exactly once", () => {
     const rig = fixture();
     rig.arm();
-    rig.runFrame();
     rig.runAnimation();
     rig.runTimer();
     refreshedOnce(rig);
@@ -205,11 +172,10 @@ for (const invalidate of [
     });
 }
 
-for (const phase of ["video-frame", "first-raf", "second-raf"]) {
+for (const phase of ["first-raf", "second-raf"]) {
     test("Stop or reinit cancels retained callbacks at " + phase, () => {
         const rig = fixture();
         rig.arm();
-        if (phase !== "video-frame") rig.runFrame();
         if (phase === "second-raf") rig.runAnimation();
         rig.cancel();
         rig.noPending();
@@ -222,16 +188,14 @@ for (const phase of ["video-frame", "first-raf", "second-raf"]) {
 test("rearming replaces prior work without letting old callbacks cancel new work", () => {
     const rig = fixture();
     rig.arm();
-    rig.runFrame();
     const stale = Object.values(rig.saved).flat();
     rig.arm();
     const pending = rig.host.__ottVideoFit;
     for (const callback of stale) callback();
     assert.equal(rig.host.__ottVideoFit, pending);
     assert.equal(rig.writes.length, 0);
-    assert.equal(rig.frames.size, 1);
     assert.equal(rig.timers.size, 1);
-    assert.equal(rig.animations.size, 0);
+    assert.equal(rig.animations.size, 1);
     rig.runTimer();
     refreshedOnce(rig);
 });
@@ -239,7 +203,6 @@ test("rearming replaces prior work without letting old callbacks cancel new work
 test("second RAF registration failure still finishes at the watchdog", () => {
     const rig = fixture({ raf: "throws-second" });
     rig.arm();
-    rig.runFrame();
     rig.runAnimation();
     assert.equal(rig.writes.length, 0);
     rig.runTimer();
@@ -266,7 +229,6 @@ test("delivery uses the latest preview, Fit/Fill and zoom settings", () => {
     rig.host.preview = "current-channel-list-preview";
     rig.host.aspectRatio = 1;
     rig.host.zoomLevel = 3;
-    rig.runFrame();
     rig.runAnimation();
     rig.runAnimation();
     assert.deepEqual(rig.writes, [
@@ -281,14 +243,37 @@ test("delivery uses the latest preview, Fit/Fill and zoom settings", () => {
     rig.noPending();
 });
 
+for (const ownMedia of [false, true]) {
+    test(
+        "media lifecycle event cancels only its own retained media " + ownMedia,
+        () => {
+            const rig = fixture();
+            rig.arm();
+            const pending = rig.host.__ottVideoFit;
+            rig.cancel({ target: ownMedia ? rig.media : {} });
+            if (ownMedia) {
+                rig.noPending();
+                for (const callback of Object.values(rig.saved).flat())
+                    callback();
+                assert.equal(rig.writes.length, 0);
+            } else {
+                assert.equal(rig.host.__ottVideoFit, pending);
+                rig.runAnimation();
+                rig.runAnimation();
+                refreshedOnce(rig);
+            }
+        }
+    );
+}
+
 test("unowned or different media never schedules work", () => {
     const rig = fixture();
     rig.retireOwner();
     rig.arm();
-    assert.equal(rig.frames.size + rig.timers.size + rig.animations.size, 0);
+    assert.equal(rig.timers.size + rig.animations.size, 0);
     rig.replaceOwner();
-    rig.host.refreshCoreVideoGeometryAfterFrame({});
-    assert.equal(rig.frames.size + rig.timers.size + rig.animations.size, 0);
+    rig.host.deferFit({});
+    assert.equal(rig.timers.size + rig.animations.size, 0);
     assert.equal(rig.writes.length, 0);
 });
 

@@ -24,8 +24,8 @@ function coreFunctions(names) {
                 ...names,
                 "coreField",
                 "coreCall",
-                "cancelCoreVideoGeometryRefresh",
-                "refreshCoreVideoGeometryAfterFrame",
+                "cancelFit",
+                "deferFit",
             ]),
         ]
             .map((name) => {

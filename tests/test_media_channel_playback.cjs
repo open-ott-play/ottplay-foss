@@ -766,6 +766,7 @@ for (const change of [
     vm.runInContext(
         sourceFunctions("src/core/index.ts", [
             "stbStop",
+            "cancelFit",
             "stopCorePlayback",
             "stopCoreForSelection",
         ]),
@@ -927,6 +928,7 @@ for (const change of ["none", "source", "nested-stop"]) {
     vm.runInContext(
         sourceFunctions("src/core/index.ts", [
             "stbStop",
+            "cancelFit",
             "stopCorePlayback",
             "stopCoreForSelection",
         ]),

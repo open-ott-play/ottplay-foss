@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 let {
+    VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE,
     PLAYBACK_NOTIFICATION_APPEARANCE_ALLOWANCE,
     SEEK_PREVIEW_ENTRY_ALLOWANCE,
     TIMEZONE_LOCAL_STARTUP_ALLOWANCE,
@@ -109,7 +110,7 @@ const latestCaps = Object.freeze({
     TOTAL_BUDGET,
 });
 const latestOptionalBundles = CLASSIC_OPTIONAL_BUNDLES;
-function capsWithoutAllowances(names) {
+function projectCapsWithoutAllowances(names) {
     assert.equal(new Set(names).size, names.length);
     const filename = require.resolve("../scripts/classic-size.cjs");
     let source = fs.readFileSync(filename, "utf8");
@@ -177,6 +178,134 @@ function capsWithoutAllowances(names) {
         );
     return baseline.exports;
 }
+function capsWithoutAllowances(names) {
+    return projectCapsWithoutAllowances([
+        "VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE",
+        ...names,
+    ]);
+}
+{
+    const evidence = require("../docs/evidence/video-fit-lifecycle-size-20261111.json");
+    const actual = require("../scripts/classic-size.cjs");
+    const before = capsWithoutAllowances([]);
+    const allowance = VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE;
+    assert(Object.isFrozen(allowance));
+    assert.deepEqual(allowance, { bytes: 0, gzipBytes: 192 });
+    assert.deepEqual(evidence.measured_allowance, allowance);
+    assert.deepEqual(evidence.toolchain, {
+        gzipLevel: 9,
+        node: "22.23.4",
+        version: "1.1.70",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.equal(
+        allowance.gzipBytes,
+        Math.max(
+            0,
+            ...evidence.entries.map(
+                (row) => row.candidate.gzipBytes - row.base.gzipBytes
+            )
+        ),
+        "allocate maximum measured entry delta, not the cap overrun"
+    );
+    assert.deepEqual(
+        evidence.entries.map((row) => row.path).sort(),
+        [...ARTIFACTS].sort()
+    );
+    assert.deepEqual(
+        evidence.payloads.map((row) => row.entry).sort(),
+        [...ARTIFACTS].sort()
+    );
+    for (const [scope, name] of Object.entries({
+        baseTotal: "BASE_TOTAL_BUDGET",
+        completeTotal: "TOTAL_BUDGET",
+        entry: "BUDGET",
+        legacyTotal: "LEGACY_TOTAL_BUDGET",
+    })) {
+        assert.deepEqual(before[name], evidence.budget_before[scope]);
+        assert.deepEqual(actual[name], evidence.budget_after[scope]);
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                actual[name][metric] - before[name][metric],
+                allowance[metric],
+                name + " counts feature once"
+            );
+    }
+    for (const [name, recorded] of Object.entries({
+        OPTIONAL_BUDGET: evidence.optionalBudget,
+        OPTIONAL_BUDGETS: evidence.optionalBudgets,
+        PROVIDER_BUDGET: evidence.providerBudget,
+    })) {
+        assert.deepEqual(actual[name], before[name]);
+        assert.deepEqual(actual[name], recorded);
+    }
+    const expected = new Map();
+    for (const entry of ARTIFACTS) {
+        const dir = path.posix.dirname(entry);
+        for (const name of Object.keys(CLASSIC_PROVIDER_BUNDLES))
+            expected.set(dir + "/provider-" + name + ".js", "providers");
+        for (const name of Object.keys(CLASSIC_OPTIONAL_BUNDLES))
+            expected.set(dir + "/" + name + ".js", "optionalAssets");
+    }
+    assert.equal(expected.size, 78);
+    assert.deepEqual(evidence.assetDifferences, []);
+    assert.deepEqual(
+        evidence.unchangedAssets.map((row) => row.path).sort(),
+        [...expected.keys()].sort()
+    );
+    for (const asset of evidence.unchangedAssets) {
+        assert.equal(asset.group, expected.get(asset.path));
+        assert.match(asset.sha256, /^[a-f0-9]{64}$/);
+        const cap =
+            asset.group === "providers"
+                ? PROVIDER_BUDGET
+                : OPTIONAL_BUDGETS[path.posix.basename(asset.path, ".js")];
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert(Number.isSafeInteger(asset[metric]) && asset[metric] > 0);
+            assert(asset[metric] <= cap[metric]);
+        }
+    }
+    for (const entry of evidence.entries) {
+        const payload = evidence.payloads.find(
+            (row) => row.entry === entry.path
+        );
+        const assets = evidence.unchangedAssets.filter(
+            (row) =>
+                path.posix.dirname(row.path) === path.posix.dirname(entry.path)
+        );
+        for (const stage of ["base", "candidate"])
+            assert.match(entry[stage].sha256, /^[a-f0-9]{64}$/);
+        for (const metric of ["bytes", "gzipBytes"]) {
+            const delta = entry.candidate[metric] - entry.base[metric];
+            assert.equal(entry.delta[metric], delta);
+            assert(entry.candidate[metric] <= actual.BUDGET[metric]);
+            for (const [scope, name] of Object.entries({
+                legacyTotal: "LEGACY_TOTAL_BUDGET",
+                total: "TOTAL_BUDGET",
+            })) {
+                const sum = assets
+                    .filter(
+                        (row) => scope === "total" || row.group === "providers"
+                    )
+                    .reduce((sum, row) => sum + row[metric], 0);
+                for (const stage of ["base", "candidate"])
+                    assert.equal(
+                        payload[scope][stage][metric],
+                        entry[stage][metric] + sum
+                    );
+                assert.equal(payload[scope].delta[metric], delta);
+                assert.equal(
+                    payload[scope].candidate[metric] -
+                        payload[scope].base[metric],
+                    delta
+                );
+                assert(
+                    payload[scope].candidate[metric] <= actual[name][metric]
+                );
+            }
+        }
+    }
+}
 // Keep immutable earlier receipts on their original caps. Live inspectors below
 // still restore latestCaps, including this independently measured feature cost.
 const modernCatalogNames = [
@@ -190,7 +319,7 @@ function capsBeforeModernCatalog(names) {
 }
 {
     const evidence = require("../docs/evidence/modern-vportal-artwork-size-20261108.json");
-    const actual = require("../scripts/classic-size.cjs");
+    const actual = capsWithoutAllowances([]);
     assert.equal(evidence.status, "FINAL_MEASURED_PROPOSAL");
     assert.deepEqual(evidence.toolchain, {
         gzipLevel: 9,
@@ -6120,7 +6249,7 @@ try {
                 LOCAL_COMPATIBILITY_ALLOWANCE[key] +
                 LOCAL_SOURCE_DIAGNOSTICS_ALLOWANCE[key]
         );
-    const localDiagnosticsBaseline = capsWithoutAllowances([
+    const localDiagnosticsBaseline = projectCapsWithoutAllowances([
         "LOCAL_SOURCE_DIAGNOSTICS_ALLOWANCE",
     ]);
     for (const name of [
@@ -6768,6 +6897,7 @@ try {
             NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE,
         plexArtworkAllowance: PLEX_ARTWORK_ALLOWANCE,
         seekPreviewEntryAllowance: SEEK_PREVIEW_ENTRY_ALLOWANCE,
+        videoFitLifecycleEntryAllowance: VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE,
     })) {
         assert.deepEqual(strictReport[key], allowance);
         assert.deepEqual(failed[key], strictReport[key]);

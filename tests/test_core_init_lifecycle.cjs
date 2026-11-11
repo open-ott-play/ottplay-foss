@@ -20,8 +20,8 @@ function functions(names) {
             ...names,
             "coreField",
             "coreCall",
-            "cancelCoreVideoGeometryRefresh",
-            "refreshCoreVideoGeometryAfterFrame",
+            "cancelFit",
+            "deferFit",
         ]),
     ];
     return ts.transpileModule(
