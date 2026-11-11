@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -12,29 +13,35 @@ function load(file, supplied = {}) {
             target: ts.ScriptTarget.ES5,
         },
     }).outputText;
-    vm.runInNewContext(code, {
-        Array,
-        Error,
-        exports,
-        isFinite,
-        JSON,
-        Math,
-        Number,
-        Object,
-        Promise,
-        require(name) {
-            if (name === "./global-favorites-providers")
-                return actualModule(
-                    "src/media/global-favorites-providers.ts",
-                    {}
-                );
-            if (!(name in supplied))
-                throw new Error("Unprovided dependency " + name);
-            return supplied[name];
-        },
-        String,
-        window: {},
-    });
+    vm.runInNewContext(
+        code,
+        prepareSourceRealm(
+            {
+                Array,
+                Error,
+                exports,
+                isFinite,
+                JSON,
+                Math,
+                Number,
+                Object,
+                Promise,
+                require(name) {
+                    if (name === "./global-favorites-providers")
+                        return actualModule(
+                            "src/media/global-favorites-providers.ts",
+                            {}
+                        );
+                    if (!(name in supplied))
+                        throw new Error("Unprovided dependency " + name);
+                    return supplied[name];
+                },
+                String,
+                window: {},
+            },
+            file
+        )
+    );
     return exports;
 }
 const codec = load(

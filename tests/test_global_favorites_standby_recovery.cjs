@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const {
     createMainPorts,
 } = require("./helpers/global-favorites-main-ports.cjs");
@@ -104,6 +105,7 @@ const create = vm.runInNewContext(
         Map,
         Promise,
         path,
+        prepareSourceRealm,
         ts,
         Uint8Array,
         vm,

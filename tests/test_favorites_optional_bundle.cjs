@@ -152,8 +152,15 @@ test("optional favorites asset links without entry storage and loads without tou
         );
         assertUniqueBindings(assembled);
         const published = {};
+        const realm = vm.createContext({ Promise, Uint8Array });
+        const shippedCore = require("./helpers/shared-core-runtime.cjs")(
+            realm,
+            { vendorOnly: true }
+        );
+        let initialized = false;
         const player = new Proxy(published, {
             get(_target, key) {
+                if (initialized && key === "OttPlayCore") return shippedCore;
                 throw new Error("Asset load read player state: " + String(key));
             },
             set(target, key, value) {
@@ -167,8 +174,9 @@ test("optional favorites asset links without entry storage and loads without tou
                 return true;
             },
         });
-        const realm = { Promise, Uint8Array, window: player };
-        vm.runInNewContext(assembled, realm, { timeout: 1000 });
+        realm.window = player;
+        vm.runInContext(assembled, realm, { timeout: 1000 });
+        initialized = true;
         assert.equal(
             typeof published.__ottFavoritesTransferRuntime.create,
             "function"

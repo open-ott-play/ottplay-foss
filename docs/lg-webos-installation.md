@@ -5,7 +5,7 @@ see the [LG Developer Mode runbook](lg-developer-mode.md). This page focuses on
 the hosted OTTPlay package and its installation routes.
 
 This guide describes the full multi-provider **hosted web player**. The
-separate [experimental native OTT application](native-webos.md) has its own
+separate [experimental native OTT application](https://github.com/open-ott-play/ottplay-lg) has its own
 app ID, build, license and installation package, and renders without the TV's
 web engine.
 
@@ -31,7 +31,9 @@ LG documents Developer Mode installation on webOS TV 3.0 and newer. That is an
 installation prerequisite, not a promise that every old browser, video format,
 or provider works on every model. Check playback on the actual TV. See
 [LG's installation guide](https://webostv.developer.lge.com/develop/tools/cli-dev-guide)
-and our [delivery review](plx-native-delivery-review.md).
+for the device procedure. The [native migration notice](native-webos.md)
+explains the separate application's move to ottplay-lg and historical source
+continuity.
 
 ## Download the TV package
 

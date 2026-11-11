@@ -10,12 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  native-cli-acceptance:
-    uses: ./.github/workflows/native-cli-acceptance.yml
-
-  native-webos:
-    uses: ./.github/workflows/webos-native.yml
-
   linux-playback-compat:
     name: Native playback compatibility (${{ matrix.platform }})
     runs-on: ${{ matrix.platform }}

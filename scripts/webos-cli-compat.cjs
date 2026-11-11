@@ -18,7 +18,7 @@ const COMMANDS = new Set([
     "ares-novacom",
 ]);
 const USAGE =
-    "Usage: node native/webos/ares-compat.cjs /path/to/@webos-tools/cli <ares-command> [arguments...]";
+    "Usage: node scripts/webos-cli-compat.cjs /path/to/@webos-tools/cli <ares-command> [arguments...]";
 
 function packageFile(root, relative) {
     const expected = path.resolve(root, relative);

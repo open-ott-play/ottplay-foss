@@ -31,7 +31,7 @@ delivery checks.
 ## Discovery transport is a separate choice
 
 Tauri supports LAN DNS-SD discovery. Linux Native support is part of the
-separate [Native delivery candidate](https://github.com/open-ott-play/ottplay-foss/pull/1014),
+separate [ottplay-lg native application](https://github.com/open-ott-play/ottplay-lg),
 not the shared-player change described here. Browser-based players, including
 Capacitor and the hosted LG wrapper, use the configured HTTPS catalog;
 eligible loopback pages can also ask their local OTT Server to discover servers.
@@ -44,7 +44,7 @@ system discovery domains and DNS queries on macOS, registry search domains and
 support does not establish installation or runtime acceptance on each OS.
 
 Use the [platform lookup rules](remote-command-server.md#lookup-by-platform) for
-fallback behavior and the [Native LG guide](../native/webos/README.md)
+fallback behavior and the [Native LG guide](https://github.com/open-ott-play/ottplay-lg)
 for its separate implementation. A reachable catalog does not prove that the
 advertised controller, pairing endpoint or media source is reachable. Keep the
 controller's allowed origins aligned with the actual player origin. Discovery
@@ -95,7 +95,7 @@ to run for every deployment:
   JavaScript variable only into the launcher's document does not configure the
   separate document opened by its redirect.
 
-In the separate Native delivery candidate, the native builder uses its own
+In the separate ottplay-lg application, the native builder uses its own
 inputs. Add both
 `--control-discovery-url "$REVIEWED_PUBLIC_CATALOG_URL"` and
 `--control-discovery-sha256 "$REVIEWED_CATALOG_SHA256"` to the documented native
@@ -103,8 +103,7 @@ inputs. Add both
 configure that native executable. Retain its `built.json` configuration record.
 
 The common web SHA marker records the reviewed build input; browser discovery
-does **not** verify the downloaded catalog's digest at runtime. The Native
-candidate's configured catalog path performs its own response-digest check. Record the
+does **not** verify the downloaded catalog's digest at runtime. The separate native application's configured catalog path performs its own response-digest check. Record the
 source revision actually built, even when its shared web code matches another
 revision. Do not relabel a new build as an earlier source commit.
 

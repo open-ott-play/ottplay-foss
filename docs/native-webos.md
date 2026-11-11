@@ -1,98 +1,52 @@
-# Native OTT application for LG webOS
+# Native webOS development moved to ottplay-lg
 
-**OTTPlay** is an experimental, separately installed native application
-for LG televisions. It renders through SDL2/OpenGL ES and uses the TV's native
-decoder, without loading the LG browser or a WebView. The ordinary OTT-play
-webOS package continues to provide the full multi-provider web interface.
+The experimental SDL/PlxNative client is maintained exclusively in
+[open-ott-play/ottplay-lg](https://github.com/open-ott-play/ottplay-lg).
+Use that project's build, installation, update, acceptance and release guides.
+This repository no longer builds or publishes that native application.
 
-![Native webOS application architecture](images/native-webos-stack.svg)
+The classic [LG hosted webOS wrapper](lg-webos-installation.md), Tauri player,
+Capacitor apps and generic Rust media companion remain in OTTPlay FOSS.
+Removing the duplicate native producer does not remove these supported targets.
 
-The [Plex source comparison](plex-native-comparison.md) describes what was
-adopted and which capabilities remain separate from the shared player.
+## Source and license continuity
 
-The native target uses the pinned PlxNative runtime, preserving its GPU UI,
-Plex library and media pipeline. It is packaged as
-`com.openottplay.player.native`; the hosted player remains
-`com.openottplay.player`. They can be installed independently. Their settings
-and update streams are separate.
+The native source at FOSS commit
+[`47adabad66b41b33e126925f7f00b17c7bf19b58`](https://github.com/open-ott-play/ottplay-foss/tree/47adabad66b41b33e126925f7f00b17c7bf19b58/native/webos)
+was imported into LG with all 38 overlay patches preserved byte-for-byte.
+LG records the import in its SOURCE-PROVENANCE receipt. The application and
+patches retain GPL-3.0-or-later and upstream notices; the FOSS root MIT license
+does not relicense them. Existing FOSS tags, matching source archives and release
+assets remain historical records; no history rewrite or asset deletion is part
+of this migration.
 
-The initial **0.1.0** package is a Plex client.
-[Native **0.2.0 beta.1**](https://github.com/open-ott-play/ottplay-foss/releases/tag/native-webos-v0.2.0-beta.1)
-is published and adds M3U, Xtream, Stalker, VPortal and local-folder profiles,
-shared Favorites and its own command-server registration. Its package and public
-release checks passed; physical-TV acceptance is still separate and has not
-been established for this release.
-The hosted and native applications retain separate identities: a command
-addressed to the hosted player does not control the native installation.
-See the [current feature scope and limits](../native/webos/README.md#what-this-target-provides).
-Codec support and hardware decoding must be checked on the intended TV model
-and firmware.
+LG still imports its generic companion packaging helper from that immutable
+FOSS commit. The historical pin remains resolvable after removing the duplicate
+producer from new FOSS source. A future LG repin must relocate the helper or
+update and verify those paths; this migration does not claim LG is self-contained.
 
-The first 0.1.0 ARM candidate was checked against pinned symbol inventories from
-14 LG firmware images. Its main executable resolves on the 11 sampled
-versions from webOS 3.4.0 through 11.2.0; the sampled webOS 1.x and 2.x images
-lack required functions and are unsupported. The six bundled helper/library
-ELFs resolve on all 14 inventories. This is a loader-symbol check, not a
-decoder, permissions or playback test on every TV in that version range.
+## Compatibility tools retained here
 
-The native SDL/OpenGL desktop build also rendered sign-in, library and
-settings screens against a synthetic Plex server. Physical LG playback has
-not yet been verified for this candidate.
+- `scripts/webos-cli-compat.cjs` preserves the source-guarded CLI 3.2.6 workaround.
+  It does not edit the installed SDK or relax credentials/host verification.
+- `scripts/check-global-favorites-conformance.cjs` checks the actual browser codec
+  against the shared native interoperability vectors.
+- The read-only metadata gateway retains historical native release routes for
+  existing installers. It does not build native packages or follow a mutable
+  latest tag. No gateway deployment is implied by this source change.
 
-Builds use the webOS ARM SDK directly on macOS or ARM Linux. The build creates
-a native ARM ELF executable, its storage service, a complete IPK and a matching
-source set. It performs no TV installation, global cache cleanup or
-platform privilege changes. A reusable workflow inside the required CI gate checks the native packaging
-contracts on every validated pull request. It builds the actual ARM IPK and
-matching source set when native build inputs change, and for non-PR runs.
-It can also be started manually. A newer run cancels the previous run for the
-same pull request. These candidate artifacts do not replace ordinary
-web-player releases.
+## Retained tool provenance
 
-See the [build, installation, source and Homebrew instructions](../native/webos/README.md)
-for exact commands. Both Developer Mode installation and an existing Homebrew
-Channel use the same package. Developer Mode's session lifetime still applies.
+The compatibility tools are retained from the immutable
+[FOSS 1.1.70 source](https://github.com/open-ott-play/ottplay-foss/tree/a8c386eef0654c3ddbf9ea429b636bd148f4f0e5/native/webos),
+with only the required path adjustments:
 
-The native runtime and adaptation are **GPL-3.0-or-later**. Each published
-binary must retain the license and dependency notices and be accompanied by
-its matching source set. This does not change the MIT license of the
-separate main web player. See [third-party notices](../THIRD-PARTY-NOTICES.md).
+- `native/webos/ares-compat.cjs` → `scripts/webos-cli-compat.cjs`.
+- `native/webos/test_ares_compat.cjs` → `tests/test_webos_cli_compat.cjs`.
+- `native/webos/test_favorites_conformance.cjs` → `scripts/check-global-favorites-conformance.cjs`.
 
-## The matching source set
-
-Native distributions contain two source archives. The primary archive carries
-the application, Cargo/Rust sources and bundled native dependencies. A second
-runtime archive adds the exact GCC and glibc sources, GPL Buildroot recipes
-and patches, license texts, and linker evidence for every shipped ELF. The
-`*-source-set.json` file binds both archives to the IPK. Distribute all three
-together; the primary archive alone does not close the compiler/runtime
-source inventory.
-
-After the primary `all` build, run the separate collector with the same SDK:
-
-```sh
-python3 scripts/webos-runtime-sources.py \
-  --metadata build/native-webos/dist/ottplay-native-webos-0.2.0.json \
-  --source build/native-webos/source \
-  --sdk build/native-webos/toolchain/arm-webos-linux-gnueabi_sdk-buildroot
-```
-
-This example follows the working 0.2.0 source. A package including the companion
-also needs its verified bundle and full source closure; use the
-[complete companion build sequence](../native/webos/README.md) for those inputs.
-
-The collector checks ELF, link-map and trace hashes before classifying runtime
-inputs; an unknown SDK archive or dynamic dependency fails the check. Each
-linked GCC/glibc archive and startup object must also match the original
-pinned SDK download; keep the bootstrap download or pass `--sdk-archive`.
-Source downloads are verified against pinned digests. The supplementary manifest
-records the firmware System Library classification separately from bundled
-code. It does not copy LG firmware or reinterpret missing firmware licensing
-as permission to distribute it.
-
-The pinned macOS SDK port has no identified repository license; its archive
-is referenced rather than redistributed. Independently documented build facts
-and the underlying licensed Buildroot recipes are provided instead. Existing
-upstream collector reports are retained with their original narrow scope;
-the supplement supplies the runtime evidence those reports explicitly lacked.
-No report claims that an independent bit-identical rebuild has been performed.
+Relocation changes no existing license or attribution and strips no per-file
+notice. The historical [native README license scope](https://github.com/open-ott-play/ottplay-foss/blob/a8c386eef0654c3ddbf9ea429b636bd148f4f0e5/native/webos/README.md#source-and-license)
+and [COPYING](https://github.com/open-ott-play/ottplay-foss/blob/a8c386eef0654c3ddbf9ea429b636bd148f4f0e5/native/webos/COPYING)
+remain available. The root MIT license does not relicense GPL-covered native
+runtime code or patches.

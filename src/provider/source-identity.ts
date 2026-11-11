@@ -65,24 +65,10 @@ function sourceIdentity(host: any, media?: boolean): string {
     // Two independent 32-bit accumulators avoid retaining account URLs/tokens in storage keys.
     // This is a namespace fingerprint, not a credential protection or authentication primitive.
     var input = JSON.stringify(parts);
-    var first = 2166136261;
-    var second = 5381;
-    for (var i = 0; i < input.length; i++) {
-        first ^= input.charCodeAt(i);
-        first +=
-            (first << 1) +
-            (first << 4) +
-            (first << 7) +
-            (first << 8) +
-            (first << 24);
-        second = ((second << 5) + second) ^ input.charCodeAt(i);
-    }
     return (
         namespace +
         "@" +
-        (first >>> 0).toString(16) +
-        "." +
-        (second >>> 0).toString(16)
+        (window as any).OttPlayCore.utf16Dual32Fingerprint(input, ".")
     );
 }
 

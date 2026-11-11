@@ -6,6 +6,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 function load(file, globals = {}) {
     const code = ts.transpileModule(fs.readFileSync(file, "utf8"), {
         compilerOptions: {
@@ -21,7 +22,7 @@ function load(file, globals = {}) {
             : {}),
         ...globals,
     };
-    vm.runInNewContext(code, context);
+    vm.runInNewContext(code, prepareSourceRealm(context, file));
     return context.exports;
 }
 const { localizationRuntime } = require("./helpers/localization-runtime.cjs");

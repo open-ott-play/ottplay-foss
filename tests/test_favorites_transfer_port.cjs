@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const storageImports =
     require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict"),
@@ -40,7 +41,7 @@ function load(file, host, document = { cookie: "" }) {
                 target: ts.ScriptTarget.ES2018,
             },
         }).outputText,
-        context
+        prepareSourceRealm(context, file)
     );
     return context;
 }

@@ -1,3 +1,4 @@
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -20,7 +21,7 @@ function run(host, file) {
         }
     ).outputText;
     acorn.parse(code, { ecmaVersion: 5 });
-    vm.runInContext(code, host, { filename: file });
+    vm.runInContext(code, prepareSourceRealm(host, file), { filename: file });
 }
 const host = { window: {} };
 vm.createContext(host);

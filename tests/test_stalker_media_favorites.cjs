@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -15,15 +16,21 @@ function moduleAt(file, deps = {}) {
                 target: ts.ScriptTarget.ES5,
             },
         }).outputText,
-        {
-            exports,
-            require: (id) => {
-                if (id === "../offline/local-item-path")
-                    return actualModule("src/offline/local-item-path.ts", {});
-                assert(deps[id], id);
-                return deps[id];
+        prepareSourceRealm(
+            {
+                exports,
+                require: (id) => {
+                    if (id === "../offline/local-item-path")
+                        return actualModule(
+                            "src/offline/local-item-path.ts",
+                            {}
+                        );
+                    assert(deps[id], id);
+                    return deps[id];
+                },
             },
-        }
+            file
+        )
     );
     return exports;
 }

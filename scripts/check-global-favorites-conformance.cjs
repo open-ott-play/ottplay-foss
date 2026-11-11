@@ -7,7 +7,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { load } = require("../../tests/global-favorites-fixture.cjs");
+const { load } = require("../tests/global-favorites-fixture.cjs");
 const codec = load(
     "src/settings/global-favorites-portable.ts"
 ).createGlobalFavoritesPortableCodec();
@@ -16,7 +16,7 @@ const { parseFavoritesDocumentJson } = load(
 );
 const fixtureRoot = path.resolve(
     __dirname,
-    "../../tests/fixtures/global-favorites-portable"
+    "../tests/fixtures/global-favorites-portable"
 );
 const read = (name) =>
     JSON.parse(fs.readFileSync(path.join(fixtureRoot, name), "utf8"));
@@ -197,7 +197,7 @@ if (mode === "--write" && target) {
     );
 } else {
     throw new Error(
-        "Usage: node native/webos/test_favorites_conformance.cjs --write|--check <native-fixture.json>"
+        "Usage: node scripts/check-global-favorites-conformance.cjs --write|--check <native-fixture.json>"
     );
 }
 console.log("Favorites browser/native fixtures: " + cases.length + " passed");

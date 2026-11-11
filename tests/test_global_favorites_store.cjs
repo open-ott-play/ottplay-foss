@@ -1,3 +1,4 @@
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -14,7 +15,10 @@ function load(file, dependency = {}) {
                 target: ts.ScriptTarget.ES5,
             },
         }).outputText,
-        { exports, require: () => dependency, Uint8Array }
+        prepareSourceRealm(
+            { exports, require: () => dependency, Uint8Array },
+            file
+        )
     );
     return exports;
 }

@@ -20,7 +20,7 @@ function load(file, requires = {}, extra = {}) {
         },
     }).outputText;
     acorn.parse(code, { ecmaVersion: 5 });
-    vm.runInNewContext(code, {
+    const context = vm.createContext({
         clearTimeout,
         Date,
         exports,
@@ -37,6 +37,8 @@ function load(file, requires = {}, extra = {}) {
         URL,
         ...extra,
     });
+    require("./helpers/source-core-runtime.cjs")(context, file);
+    vm.runInContext(code, context);
     return exports;
 }
 const selection = load("src/offline/playback-selection.ts");

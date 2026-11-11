@@ -3,12 +3,17 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const { JSDOM } = require("jsdom");
-function fixture() {
+function fixture(withSharedCore = false) {
     const dom = new JSDOM(
         '<style>#buffering {display:none}</style><div id="buffering"></div><div id="video_res"></div><video></video>',
         { runScripts: "outside-only" }
     );
     const w = dom.window;
+    if (withSharedCore)
+        require("./helpers/shared-core-runtime.cjs")(
+            dom.getInternalVMContext(),
+            { vendorOnly: true }
+        );
     let time = 0,
         sequence = 0,
         refreshes = 0;
@@ -382,7 +387,7 @@ console.log(
     f.w.close();
 }
 {
-    const f = fixture();
+    const f = fixture(true);
     f.w.document.body.insertAdjacentHTML(
         "beforeend",
         '<div id="liveRecoveryStatus" aria-hidden="true"></div>'

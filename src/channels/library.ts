@@ -48,6 +48,9 @@ function createChannelLibrary(
     catalog: LibraryChannel[]
 ) {
     var key = "channelLibrary:" + ports.sourceId;
+    var libraryCore = (window as any).OttPlayCore;
+    if (!libraryCore || libraryCore.classicChannelLibraryApiVersion() !== 1)
+        throw new Error("Classic channel library core API is unavailable");
     var items: Record<string, { id: number }> = Object.create(null);
     var ids: Record<string, string> = Object.create(null);
     var aliases: Record<string, string | null> = Object.create(null);
@@ -174,83 +177,27 @@ function createChannelLibrary(
             return id;
         return alias || current || id;
     }
+    function catalogLocks(): string[] {
+        return catalog
+            .filter(function (row) {
+                return row.locked;
+            })
+            .map(function (row) {
+                return row.itemId;
+            });
+    }
     function empty(): LibraryDocument {
-        return {
-            groups: [],
-            hidden: [],
-            locks: catalog
-                .filter(function (row) {
-                    return row.locked;
-                })
-                .map(function (row) {
-                    return row.itemId;
-                }),
-            nextGroup: 1,
-            preferences: {},
-            selected: null,
-            sourceId: ports.sourceId,
-            unlocks: [],
-            version: 1,
-        };
+        return libraryCore.classicChannelLibraryEmpty(
+            ports.sourceId,
+            catalogLocks()
+        );
     }
     function decode(value: any): LibraryDocument | null {
-        if (
-            !value ||
-            value.version !== 1 ||
-            value.sourceId !== ports.sourceId ||
-            !Array.isArray(value.groups) ||
-            !Array.isArray(value.hidden) ||
-            !Array.isArray(value.locks) ||
-            !value.preferences ||
-            typeof value.preferences !== "object"
-        )
-            return null;
-        var result = empty();
-        if (typeof value.browsedGroup === "string" && value.browsedGroup)
-            result.browsedGroup = value.browsedGroup;
-        var seen: Record<string, boolean> = Object.create(null);
-        value.groups.forEach(function (group: any) {
-            if (
-                !group ||
-                typeof group.id !== "string" ||
-                typeof group.label !== "string" ||
-                seen[group.id]
-            )
-                return;
-            seen[group.id] = true;
-            result.groups.push({
-                id: group.id,
-                inheritsMembers: group.inheritsMembers === true,
-                known: unique(group.known),
-                label: group.label,
-                members: unique(group.members),
-                shuffleBefore: Array.isArray(group.shuffleBefore)
-                    ? unique(group.shuffleBefore)
-                    : undefined,
-            });
-        });
-        result.hidden = unique(value.hidden);
-        result.unlocks = unique(value.unlocks);
-        result.locks = unique(value.locks.concat(result.locks), result.unlocks);
-        ["aspect", "audio", "subtitle", "zoom"].forEach(function (kind) {
-            var source = value.preferences[kind];
-            var target: Record<string, number> = Object.create(null);
-            if (source && typeof source === "object")
-                Object.keys(source).forEach(function (id) {
-                    if (typeof source[id] === "number" && isFinite(source[id]))
-                        target[id] = source[id];
-                });
-            result.preferences[kind] = target;
-        });
-        if (
-            value.selected &&
-            typeof value.selected.groupId === "string" &&
-            typeof value.selected.itemId === "string"
-        )
-            result.selected = clone(value.selected);
-        if (Number.isInteger(value.nextGroup) && value.nextGroup > 0)
-            result.nextGroup = value.nextGroup;
-        return result;
+        return libraryCore.classicChannelLibraryDecode(
+            value,
+            ports.sourceId,
+            catalogLocks()
+        );
     }
     var stored = raw(key);
     var state = stored ? decode(read(key)) : null;
@@ -415,46 +362,11 @@ function createChannelLibrary(
     if (state.selected) state.selected.itemId = resolve(state.selected.itemId);
     // Unedited provider groups follow new catalog names and membership. User copies remain independent.
     function groups(): LibraryGroup[] {
-        var seen: Record<string, boolean> = Object.create(null);
-        var hidden: Record<string, boolean> = Object.create(null);
-        state!.hidden.forEach(function (id) {
-            hidden[id] = true;
-        });
-        var result = state!.groups.map(function (group) {
-            seen[group.id] = true;
-            var live = providerById[group.id];
-            var members = group.members;
-            if (live && group.inheritsMembers) members = live.members;
-            else if (live && group.known) {
-                var known: Record<string, boolean> = Object.create(null);
-                group.known.concat(members).forEach(function (id) {
-                    known[id] = true;
-                });
-                members = members.concat(
-                    live.members.filter(function (id) {
-                        return !known[id];
-                    })
-                );
-            }
-            return {
-                id: group.id,
-                label: live && group.label === "" ? live.label : group.label,
-                members: members.map(resolve),
-            };
-        });
-        provider.forEach(function (group) {
-            if (!hidden[group.id] && !seen[group.id]) {
-                seen[group.id] = true;
-                result.push({
-                    id: group.id,
-                    label: group.label,
-                    members: group.members.slice(),
-                });
-            }
-        });
-        return result.filter(function (group) {
-            return !hidden[group.id];
-        });
+        return libraryCore.classicChannelLibraryGroups(
+            state!,
+            provider,
+            resolve
+        );
     }
     function metadata(text: string | null): string | null {
         if (text === null) return null;
@@ -519,47 +431,55 @@ function createChannelLibrary(
         });
         return result;
     }
-    function editGroup(
-        draft: LibraryDocument,
-        id: string
-    ): LibraryGroup | undefined {
-        var group = groupById(draft.groups, id);
-        if (!group) {
-            var live = groupById(groups(), id);
-            if (live) {
-                group = clone(live);
-                if (providerById[id]) group.label = "";
-                group.inheritsMembers = !!providerById[id];
-                draft.groups.push(group);
-            }
-        }
-        return group;
+    function libraryProvider(request: any): LibraryGroup[] {
+        // Core owns action dependencies. Do not re-serialize the full catalogue
+        // for an action whose admission and reduction are catalogue-independent.
+        return libraryCore.classicChannelLibraryNeedsProviderContext(request)
+            ? provider
+            : [];
+    }
+    function reduceLibraryDraft(draft: LibraryDocument, request: any): void {
+        var next = libraryCore.classicChannelLibraryReduce(
+            draft,
+            libraryProvider(request),
+            request,
+            resolve,
+            Math.random
+        );
+        Object.keys(draft).forEach(function (field) {
+            delete (draft as any)[field];
+        });
+        Object.keys(next).forEach(function (field) {
+            (draft as any)[field] = next[field];
+        });
+    }
+    function libraryAction(request: any, durable = false): any {
+        request.version = 1;
+        var decision = libraryCore.classicChannelLibraryDecision(
+            state!,
+            libraryProvider(request),
+            request,
+            resolve
+        );
+        if (!decision.accepted)
+            return request.action === "create" ? null : false;
+        if (!decision.commit) return decision.result;
+        return commit(function (draft) {
+            reduceLibraryDraft(draft, request);
+        }, durable)
+            ? decision.result
+            : request.action === "create"
+              ? null
+              : false;
     }
     return {
         active: ports.current,
         adoptPlaybackOrder: function (order: Array<string | number>): boolean {
-            var all = providerById["system:all"].members;
-            if (
-                order.length !== all.length ||
-                order.some(function (id, index) {
-                    return ids[String(id)] !== all[index];
-                })
-            )
-                return false;
-            return commit(function (draft) {
-                // The local provider owns its compact seeded order. Drop only
-                // obsolete provider membership overrides; retain names, custom
-                // groups, visibility, preferences and parental locks.
-                draft.groups.forEach(function (group) {
-                    if (!providerById[group.id]) return;
-                    group.inheritsMembers = true;
-                    group.members = [];
-                    delete group.known;
-                    delete group.shuffleBefore;
-                });
-                draft.selected = all.length
-                    ? { groupId: "system:all", itemId: all[0] }
-                    : null;
+            return libraryAction({
+                action: "adoptOrder",
+                order: order.map(function (id) {
+                    return ids[String(id)];
+                }),
             });
         },
         append: function (rows: LibraryChannel[]): void {
@@ -578,21 +498,30 @@ function createChannelLibrary(
                 providerById["system:all"].members.push(row.itemId);
             });
             if (addedLocks.length)
-                state!.locks = unique(
-                    state!.locks.concat(addedLocks),
+                state!.locks = libraryCore.classicChannelLibraryAddedLocks(
+                    state!.locks,
+                    addedLocks,
                     state!.unlocks
                 );
         },
         browse: function (groupId: string, durable = false): boolean {
-            if (
-                !ports.current() ||
-                (groupId !== "system:favorites" &&
-                    !groupById(groups(), groupId))
-            )
-                return false;
-            if (state!.browsedGroup === groupId && !durable) return true;
+            if (!ports.current()) return false;
+            var request = {
+                action: "browse",
+                durable: durable,
+                groupId: groupId,
+                version: 1,
+            };
+            var decision = libraryCore.classicChannelLibraryDecision(
+                state!,
+                libraryProvider(request),
+                request,
+                resolve
+            );
+            if (!decision.accepted) return false;
+            if (!decision.commit) return decision.result;
             function change(draft: LibraryDocument): void {
-                draft.browsedGroup = groupId;
+                reduceLibraryDraft(draft, request);
             }
             if (!durable) return commit(change);
             var before = state;
@@ -643,53 +572,20 @@ function createChannelLibrary(
             action: "add" | "remove" | "move",
             delta?: number
         ): boolean {
-            var id = ids[String(channelId)];
-            if (!id) return false;
-            return commit(function (draft) {
-                var group = editGroup(draft, groupId);
-                if (!group) return;
-                var visible = groupById(groups(), groupId);
-                if (visible) group.members = visible.members.slice();
-                var live = providerById[groupId];
-                group.inheritsMembers = false;
-                group.known = unique(
-                    (group.known || []).concat(live ? live.members : [])
-                );
-                var at = group.members.indexOf(id);
-                if (action === "add" && at < 0) group.members.push(id);
-                if (action === "remove" && at >= 0) group.members.splice(at, 1);
-                if (action === "move" && at >= 0) {
-                    group.members.splice(at, 1);
-                    group.members.splice(
-                        (at + (delta || 0) + group.members.length + 1) %
-                            (group.members.length + 1),
-                        0,
-                        id
-                    );
-                }
+            return libraryAction({
+                action: "member",
+                delta: delta,
+                groupId: groupId,
+                itemId: ids[String(channelId)],
+                memberAction: action,
             });
         },
         createGroup: function (label: string, copy?: string): string | null {
-            label = label.trim();
-            if (
-                !label ||
-                groups().some(function (group) {
-                    return group.label === label;
-                })
-            )
-                return null;
-            var id = "user:" + state!.nextGroup;
-            return commit(function (draft) {
-                var original = groupById(groups(), copy!);
-                draft.nextGroup++;
-                draft.groups.push({
-                    id: id,
-                    label: label,
-                    members: original ? original.members.slice() : [],
-                });
-            })
-                ? id
-                : null;
+            return libraryAction({
+                action: "create",
+                copyId: copy,
+                label: label,
+            });
         },
         document: function (): LibraryDocument {
             if (!writable || readFailed || !ports.current())
@@ -704,48 +600,14 @@ function createChannelLibrary(
             return ids[String(id)] || null;
         },
         lock: function (channelId: number, locked: boolean): boolean {
-            var id = ids[String(channelId)];
-            if (!id) return false;
-            return commit(function (draft) {
-                draft.locks = draft.locks.filter(function (value) {
-                    return value !== id;
-                });
-                draft.unlocks = draft.unlocks.filter(function (value) {
-                    return value !== id;
-                });
-                if (locked) draft.locks.push(id);
-                else draft.unlocks.push(id);
+            return libraryAction({
+                action: "lock",
+                itemId: ids[String(channelId)],
+                locked: locked,
             });
         },
         moveGroup: function (id: string, delta: number): boolean {
-            if (id.indexOf("system:") === 0) return false;
-            var ordered = groups().filter(function (group) {
-                return group.id.indexOf("system:") !== 0;
-            });
-            var at = ordered
-                .map(function (group) {
-                    return group.id;
-                })
-                .indexOf(id);
-            if (at < 0 || !ordered.length) return false;
-            var item = ordered.splice(at, 1)[0];
-            ordered.splice(
-                (at + delta + ordered.length + 1) % (ordered.length + 1),
-                0,
-                item
-            );
-            return commit(function (draft) {
-                draft.groups = ordered.map(function (group) {
-                    var stored = groupById(draft.groups, group.id);
-                    return {
-                        id: group.id,
-                        inheritsMembers: stored ? stored.inheritsMembers : true,
-                        known: stored && stored.known,
-                        label: stored ? stored.label : "",
-                        members: group.members,
-                    };
-                });
-            });
+            return libraryAction({ action: "move", delta: delta, groupId: id });
         },
         persist: function () {
             return commit(function () {});
@@ -760,54 +622,17 @@ function createChannelLibrary(
                 : undefined;
         },
         removeGroup: function (id: string): boolean {
-            if (id.indexOf("system:") === 0) return false;
-            return commit(function (draft) {
-                draft.groups = draft.groups.filter(function (group) {
-                    return group.id !== id;
-                });
-                draft.hidden.push(id);
-            });
+            return libraryAction({ action: "remove", groupId: id });
         },
         renameGroup: function (id: string, label: string): boolean {
-            if (id.indexOf("system:") === 0) return false;
-            label = label.trim();
-            if (
-                !label ||
-                groups().some(function (group) {
-                    return group.id !== id && group.label === label;
-                })
-            )
-                return false;
-            return commit(function (draft) {
-                var group = editGroup(draft, id);
-                if (group) group.label = label;
+            return libraryAction({
+                action: "rename",
+                groupId: id,
+                label: label,
             });
         },
         resetShuffle: function (groupId: string): boolean {
-            var stored = groupById(state!.groups, groupId);
-            var visible = groupById(groups(), groupId);
-            if (!stored || !stored.shuffleBefore || !visible) return false;
-            var current = unique(visible.members);
-            var membership: Record<string, boolean> = Object.create(null);
-            current.forEach(function (id) {
-                membership[id] = true;
-            });
-            var restored = unique(stored.shuffleBefore.map(resolve)).filter(
-                function (id) {
-                    return membership[id];
-                }
-            );
-            var members = restored.concat(unique(current, restored));
-            return commit(function (draft) {
-                var group = editGroup(draft, groupId)!;
-                group.members = members;
-                delete group.shuffleBefore;
-                group.inheritsMembers = false;
-                var live = providerById[groupId];
-                group.known = unique(
-                    (group.known || []).concat(live ? live.members : [])
-                );
-            });
+            return libraryAction({ action: "resetShuffle", groupId: groupId });
         },
         savedPreference: function (
             kind: string,
@@ -828,16 +653,10 @@ function createChannelLibrary(
             }
         },
         select: function (groupId: string, channelId: number): boolean {
-            var id = ids[String(channelId)];
-            if (!id) return false;
-            if (
-                state!.selected &&
-                state!.selected.groupId === groupId &&
-                state!.selected.itemId === id
-            )
-                return true;
-            return commit(function (draft) {
-                draft.selected = { groupId: groupId, itemId: id };
+            return libraryAction({
+                action: "select",
+                groupId: groupId,
+                itemId: ids[String(channelId)],
             });
         },
         setPreference: function (
@@ -846,40 +665,19 @@ function createChannelLibrary(
             value: number | null | undefined,
             durable = false
         ): boolean {
-            var id = channelId === null ? "media" : ids[String(channelId)];
-            if (
-                !id ||
-                ["aspect", "audio", "subtitle", "zoom"].indexOf(kind) < 0 ||
-                (value != null && !isFinite(value))
-            )
-                return false;
-            return commit(function (draft) {
-                var prefs =
-                    draft.preferences[kind] || (draft.preferences[kind] = {});
-                if (value == null) delete prefs[id!];
-                else prefs[id!] = value;
-            }, durable);
+            return libraryAction(
+                {
+                    action: "preference",
+                    itemId:
+                        channelId === null ? "media" : ids[String(channelId)],
+                    kind: kind,
+                    value: value,
+                },
+                durable
+            );
         },
         shuffleGroup: function (groupId: string): boolean {
-            var visible = groupById(groups(), groupId);
-            if (!visible || visible.members.length < 2) return false;
-            var members = visible.members.slice();
-            return commit(function (draft) {
-                var group = editGroup(draft, groupId)!;
-                if (!group.shuffleBefore) group.shuffleBefore = members.slice();
-                group.members = members;
-                for (var i = group.members.length - 1; i > 0; i--) {
-                    var j = Math.floor(Math.random() * (i + 1));
-                    var value = group.members[i];
-                    group.members[i] = group.members[j];
-                    group.members[j] = value;
-                }
-                group.inheritsMembers = false;
-                var live = providerById[groupId];
-                group.known = unique(
-                    (group.known || []).concat(live ? live.members : [])
-                );
-            });
+            return libraryAction({ action: "shuffle", groupId: groupId });
         },
         snapshot: function () {
             var visible = groups();

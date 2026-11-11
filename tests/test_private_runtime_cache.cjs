@@ -1,11 +1,13 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { createRequire } = require("node:module");
 const os = require("node:os");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 
 const helper = path.join(__dirname, "helpers/private-runtime.cjs");
+const helperRequire = createRequire(helper);
 const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-private-cache-")
 );
@@ -19,7 +21,7 @@ function loader() {
         __dirname: path.dirname(helper),
         module,
         require(name) {
-            if (name !== "typescript") return require(name);
+            if (name !== "typescript") return helperRequire(name);
             return {
                 ...ts,
                 transpileModule(source, options) {

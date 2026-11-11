@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -17,7 +18,7 @@ function runSource(host, file) {
             },
         }
     ).outputText;
-    vm.runInContext(code, host, { filename: file });
+    vm.runInContext(code, prepareSourceRealm(host, file), { filename: file });
 }
 
 function sourceNode(file, predicate) {

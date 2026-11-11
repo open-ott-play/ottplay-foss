@@ -8,7 +8,11 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { EventEmitter } = require("node:events");
 const { Stream, Writable } = require("node:stream");
-const { completeOnce, drainRun, validateCli } = require("./ares-compat.cjs");
+const {
+    completeOnce,
+    drainRun,
+    validateCli,
+} = require("../scripts/webos-cli-compat.cjs");
 
 test("TCP probe completes once per call and preserves the first result and context", () => {
     const owner = {};
@@ -120,7 +124,10 @@ test("launcher preserves CLI argument boundaries and only wraps the TCP probe", 
         assert.equal(name, entry);
     };
     vm.runInNewContext(
-        fs.readFileSync(path.join(__dirname, "ares-compat.cjs"), "utf8"),
+        fs.readFileSync(
+            path.join(__dirname, "../scripts/webos-cli-compat.cjs"),
+            "utf8"
+        ),
         { module: moduleStub, process: processStub, require: requireStub }
     );
     const args = [
@@ -452,7 +459,10 @@ function launchContract(command, args) {
     const moduleStub = { exports: {} };
     const processStub = { argv: [], execPath: "/node" };
     vm.runInNewContext(
-        fs.readFileSync(path.join(__dirname, "ares-compat.cjs"), "utf8"),
+        fs.readFileSync(
+            path.join(__dirname, "../scripts/webos-cli-compat.cjs"),
+            "utf8"
+        ),
         {
             module: moduleStub,
             process: processStub,

@@ -1,3 +1,4 @@
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const crypto = require("node:crypto"),
     fs = require("node:fs"),
     path = require("node:path"),
@@ -22,16 +23,22 @@ function load(name) {
             },
         }
     ).outputText;
-    vm.runInNewContext(code, {
-        exports,
-        require: (p) =>
-            load(
-                path.posix.normalize(
-                    path.posix.join(path.posix.dirname(name), p + ".ts")
-                )
-            ),
-        Uint8Array,
-    });
+    vm.runInNewContext(
+        code,
+        prepareSourceRealm(
+            {
+                exports,
+                require: (p) =>
+                    load(
+                        path.posix.normalize(
+                            path.posix.join(path.posix.dirname(name), p + ".ts")
+                        )
+                    ),
+                Uint8Array,
+            },
+            name
+        )
+    );
     return exports;
 }
 const hash = (x) =>

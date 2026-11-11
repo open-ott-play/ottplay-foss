@@ -33,7 +33,10 @@ vm.runInNewContext(
             },
         }
     ).outputText,
-    { exports: selectionModule.exports }
+    require("./helpers/source-core-runtime.cjs")(
+        { exports: selectionModule.exports },
+        "src/offline/playback-selection.ts"
+    )
 );
 vm.runInNewContext(
     ts.transpileModule(
