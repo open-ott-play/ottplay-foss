@@ -16,13 +16,17 @@ COMMAND_FILES = (
 )
 
 
-def native_check_block():
-    lines = (ROOT / ".github/workflows/native-parity.yml").read_text(encoding="utf-8").splitlines()
+def native_check_block(workflow=None):
+    if workflow is None:
+        workflow = (ROOT / ".github/workflows/native-parity.yml").read_text(encoding="utf-8")
+    lines = workflow.splitlines()
     heading = "      - name: Check installer harness and native dependency constraints"
     if lines.count(heading) != 1:
         raise AssertionError("Expected exactly one actual Windows native-check step")
     index = lines.index(heading) + 1
-    if lines[index] != "        run: |":
+    while index < len(lines) and lines[index].startswith(("        if: ", "        shell: ")):
+        index += 1
+    if index >= len(lines) or lines[index] != "        run: |":
         raise AssertionError("Expected the actual multiline native-check command")
     body = []
     for line in lines[index + 1:]:
@@ -30,6 +34,44 @@ def native_check_block():
             break
         body.append(line[10:])
     return "\n".join(body) + "\n"
+
+
+class NativeCheckBlockContracts(unittest.TestCase):
+    heading = "      - name: Check installer harness and native dependency constraints"
+
+    def expected(self):
+        return "".join("python " + filename + "\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n"
+                       for filename in COMMAND_FILES)
+
+    def workflow(self, metadata=""):
+        return (self.heading + "\n" + metadata + "        run: |\n"
+                + "".join("          " + line + "\n" for line in self.expected().splitlines())
+                + "      - name: Unrelated next step\n        run: echo unrelated\n")
+
+    def test_actual_workflow_preserves_each_command_and_its_exit_guard(self):
+        self.assertEqual(native_check_block(), self.expected())
+
+    def test_legitimate_if_and_shell_metadata_do_not_hide_the_real_block(self):
+        for metadata in ("", "        if: ${{ inputs.manual != true }}\n",
+                         "        shell: pwsh\n",
+                         "        if: ${{ inputs.manual != true }}\n        shell: pwsh\n"):
+            with self.subTest(metadata=metadata):
+                self.assertEqual(native_check_block(self.workflow(metadata)), self.expected())
+
+    def test_missing_run_cannot_consume_the_next_step_command(self):
+        workflow = (self.heading + "\n        if: ${{ inputs.manual != true }}\n"
+                    "      - name: Unrelated next step\n        run: |\n          echo success\n")
+        with self.assertRaisesRegex(AssertionError, "actual multiline"):
+            native_check_block(workflow)
+
+    def test_truncated_or_nonliteral_block_is_rejected(self):
+        for ending in ("", "        shell: pwsh\n", "        run: echo success\n"):
+            with self.subTest(ending=ending), self.assertRaisesRegex(AssertionError, "actual multiline"):
+                native_check_block(self.heading + "\n" + ending)
+
+    def test_duplicate_step_cannot_select_an_unrelated_copy(self):
+        with self.assertRaisesRegex(AssertionError, "exactly one"):
+            native_check_block(self.workflow() + self.workflow())
 
 
 @unittest.skipUnless(sys.platform == "win32", "requires the hosted Windows PowerShell runner")
