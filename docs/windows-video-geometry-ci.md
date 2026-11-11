@@ -29,7 +29,10 @@ window preferences and aspect-lock implementation.
 
 Use a fresh absolute `OTTPLAY_DATA_DIR` and a unique `OTTPLAY_INSTANCE`. Set
 `OTTPLAY_WEB_URL` only for the owned test process to a loopback server serving
-the exact generated production frontend and deterministic local media fixtures.
+the exact generated production frontend and deterministic local media fixtures. Use a free port from the existing
+production IPC origin allowlist (8443–8446); an arbitrary origin would exercise
+a denied bridge rather than the normal native application. Verify that the
+fixture listener belongs to the owned server process. Do not broaden capabilities.
 Record frontend and media hashes. The isolated fixture uses the normal saved `sInfoSwitch=0` and
 `sInfoChange=0` preferences so automatic information overlays do not cover the
 video probes. No CSS is injected to hide or resize the media plane. Before the first production script runs, the

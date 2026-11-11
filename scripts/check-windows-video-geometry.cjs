@@ -56,6 +56,28 @@ async function freePort() {
     await new Promise((resolve) => server.close(resolve));
     return port;
 }
+async function nativeFrontendPort() {
+    // Use the production capability allowlist; do not grant test-only IPC origins.
+    for (const port of [8443, 8444, 8445, 8446]) {
+        const server = net.createServer();
+        try {
+            await new Promise((resolve, reject) => {
+                server.once("error", reject);
+                server.listen(
+                    { exclusive: true, host: "127.0.0.1", port },
+                    resolve
+                );
+            });
+            await new Promise((resolve) => server.close(resolve));
+            return port;
+        } catch (_) {
+            server.close();
+        }
+    }
+    throw new Error(
+        "No owned port from the production Tauri IPC allowlist is available"
+    );
+}
 async function waitJson(url, process) {
     const deadline = Date.now() + 60000;
     while (Date.now() < deadline) {
@@ -479,7 +501,7 @@ async function main() {
         source: process.env.GITHUB_SHA || null,
         status: "fail",
     };
-    const port = await freePort();
+    const port = await nativeFrontendPort();
     const serverLog = fs.openSync(path.join(OUT, "server.log"), "wx");
     const server = spawn(
         process.execPath,
@@ -499,6 +521,7 @@ async function main() {
     try {
         const origin = "http://127.0.0.1:" + port;
         await waitJson(origin + "/__device_test_health", server);
+        report.fixtureListener = verifyDebugListener(server.pid, port);
         for (const [index, item] of cases().entries())
             await exercise(binary, origin, item, index, report);
         report.status = "pass";
