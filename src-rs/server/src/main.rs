@@ -804,11 +804,32 @@ mod listener_tests {
         }
         task.abort();
         assert!(task.await.unwrap_err().is_cancelled());
-        tokio::task::yield_now().await;
-        for address in addresses {
-            let rebound = TcpListener::bind(address).await.unwrap();
-            drop(rebound);
-        }
+        // Dropping the parent's JoinSet aborts its children, but awaiting the
+        // parent does not wait for those children to release their listeners.
+        // Keep all rebound sockets alive to prove that every port is released.
+        let rebound = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            let mut rebound = Vec::with_capacity(addresses.len());
+            for address in addresses {
+                loop {
+                    match TcpListener::bind(address).await {
+                        Ok(listener) => {
+                            rebound.push(listener);
+                            break;
+                        }
+                        Err(error) if error.kind() == std::io::ErrorKind::AddrInUse => {
+                            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                        }
+                        Err(error) => {
+                            panic!("could not rebind stopped listener {address}: {error}")
+                        }
+                    }
+                }
+            }
+            rebound
+        })
+        .await
+        .expect("all four listener tasks must release their sockets within five seconds");
+        assert_eq!(rebound.len(), 4);
     }
 
     #[tokio::test]
