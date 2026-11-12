@@ -14,12 +14,14 @@ const {
     advanceNativePlayback,
     captureOwnedImage,
     cases,
+    cleanupOwnedDataDirectory,
     nativeChannelIds,
     nativeStartupUrl,
     nativeSourceAttached,
     nativePlaybackSample,
     pageStartupDiagnostic,
     redactDiagnosticText,
+    removeOwnedDataDirectory,
     removeOwnedImages,
     saveNativeFill,
     validateCaptureInterval,
@@ -129,6 +131,60 @@ test("capture subprocess failures retain cleanup ownership and preserve preexist
     } finally {
         fs.rmSync(directory, { force: true, recursive: true });
     }
+});
+
+test("owned WebView2 profile cleanup retries transient locks and fails closed", async () => {
+    const ownedDirectory = fs.mkdtempSync(
+        path.join(os.tmpdir(), "native-owned-profile-")
+    );
+    await removeOwnedDataDirectory(ownedDirectory);
+    assert.equal(fs.existsSync(ownedDirectory), false);
+
+    const optionsSeen = [];
+    let attempts = 0;
+    await removeOwnedDataDirectory("owned-profile", async (target, options) => {
+        assert.equal(target, "owned-profile");
+        optionsSeen.push(options);
+        attempts++;
+        if (attempts < 4) {
+            const error = new Error("profile still in use");
+            error.code = "EBUSY";
+            throw error;
+        }
+    });
+    assert.equal(attempts, 4);
+    assert.deepEqual(optionsSeen[0], {
+        force: true,
+        maxRetries: 0,
+        recursive: true,
+    });
+
+    const record = { status: "pass" };
+    let permanentAttempts = 0;
+    await assert.rejects(
+        cleanupOwnedDataDirectory(record, "locked-profile", async () => {
+            permanentAttempts++;
+            const error = new Error("profile remains locked");
+            error.code = "EBUSY";
+            throw error;
+        }),
+        { code: "EBUSY" }
+    );
+    assert.equal(permanentAttempts, 10);
+    assert.equal(record.status, "fail");
+    assert.match(record.cleanupError, /profile remains locked/);
+
+    let unexpectedAttempts = 0;
+    await assert.rejects(
+        removeOwnedDataDirectory("unreadable-profile", async () => {
+            unexpectedAttempts++;
+            const error = new Error("unexpected cleanup error");
+            error.code = "EACCES";
+            throw error;
+        }),
+        { code: "EACCES" }
+    );
+    assert.equal(unexpectedAttempts, 1);
 });
 
 test("capture guard rejects a later same-color cycle and slow or reversed intervals", () => {

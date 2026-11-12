@@ -258,6 +258,34 @@ function removeOwnedImages(ownedImages) {
     }
     if (failure) throw failure;
 }
+async function removeOwnedDataDirectory(data, remove = fs.promises.rm) {
+    const retryable = new Set(["EBUSY", "EPERM", "ENOTEMPTY"]);
+    let lastError;
+    for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+            await remove(data, {
+                force: true,
+                maxRetries: 0,
+                recursive: true,
+            });
+            return;
+        } catch (error) {
+            lastError = error;
+            if (!retryable.has(error?.code) || attempt === 9) throw error;
+            await sleep(100 * (attempt + 1));
+        }
+    }
+    throw lastError;
+}
+async function cleanupOwnedDataDirectory(record, data, remove) {
+    try {
+        await removeOwnedDataDirectory(data, remove);
+    } catch (error) {
+        record.cleanupError = redactDiagnosticText(error, 300);
+        record.status = "fail";
+        throw error;
+    }
+}
 async function freePort() {
     const server = net.createServer();
     await new Promise((resolve, reject) => {
@@ -1205,12 +1233,18 @@ async function exercise(binary, origin, item, index, report, debugPort) {
             record.status = "fail";
             throw error;
         } finally {
-            fs.closeSync(log);
-            // Raw desktop pixels are transient oracle input, never public artifacts.
-            removeOwnedImages(ownedImages);
-            if (!child || child.exitCode !== null) {
-                fs.rmSync(state, { force: true });
-                fs.rmSync(data, { force: true, recursive: true });
+            try {
+                fs.closeSync(log);
+                // Raw desktop pixels are transient oracle input, never public artifacts.
+                removeOwnedImages(ownedImages);
+                if (!child || child.exitCode !== null) {
+                    fs.rmSync(state, { force: true });
+                    await cleanupOwnedDataDirectory(record, data);
+                }
+            } catch (error) {
+                record.cleanupError ||= redactDiagnosticText(error, 300);
+                record.status = "fail";
+                throw error;
             }
         }
     }
@@ -1418,12 +1452,14 @@ module.exports = {
     advanceNativePlayback,
     captureOwnedImage,
     cases,
+    cleanupOwnedDataDirectory,
     nativeChannelIds,
     nativePlaybackSample,
     nativeSourceAttached,
     nativeStartupUrl,
     pageStartupDiagnostic,
     redactDiagnosticText,
+    removeOwnedDataDirectory,
     removeOwnedImages,
     saveNativeFill,
     validateCaptureInterval,
