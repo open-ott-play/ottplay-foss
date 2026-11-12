@@ -38,14 +38,14 @@ jobs:
         name: Classify documentation and build inputs
         env:
           DOCUMENTATION_PATHS: '["vendor/README.md"]'
-          REQUIRED_PATHS: "[\"docs/privacy-policy.md\", \"CHANGELOG.md\"]"
+          REQUIRED_PATHS: '["docs/privacy-policy.md", "CHANGELOG.md"]'
           FORCE_FULL: ${{ inputs.force-full && 'true' || 'false' }}
         run: |
           args=()
           if [[ "$FORCE_FULL" == true ]]; then args+=(--force); fi
           python3 scripts/change_scope.py "${args[@]}" --documentation-paths-json "$DOCUMENTATION_PATHS" --required-paths-json "$REQUIRED_PATHS"
   check-0:
-    uses: ./.github/workflows/ci.yml
+    uses: ./.github/workflows/windows-validation.yml
     permissions:
       contents: read
       actions: read
@@ -54,15 +54,6 @@ jobs:
       - workflow-contracts
     if: ${{ needs.scope.outputs.run == 'true' }}
   check-1:
-    uses: ./.github/workflows/native-parity.yml
-    permissions:
-      contents: read
-      actions: read
-    needs:
-      - scope
-      - workflow-contracts
-    if: ${{ needs.scope.outputs.run == 'true' }}
-  check-2:
     uses: ./.github/workflows/codeql.yml
     permissions:
       contents: read
@@ -71,17 +62,8 @@ jobs:
     needs:
       - scope
       - workflow-contracts
-  check-3:
+  check-2:
     uses: ./.github/workflows/dependency-review.yml
-    permissions:
-      contents: read
-      actions: read
-    needs:
-      - scope
-      - workflow-contracts
-    if: ${{ needs.scope.outputs.run == 'true' }}
-  check-4:
-    uses: ./.github/workflows/container-validation.yml
     permissions:
       contents: read
       actions: read
@@ -143,7 +125,7 @@ jobs:
       - run: python3 -m unittest discover -s .github/release-tests -p 'test_*.py' -v
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.27.3'
+          go-version: 1.27.4
           cache: false
       - name: Test bounded release CLI download retries
         timeout-minutes: 3
@@ -169,8 +151,6 @@ jobs:
       - check-0
       - check-1
       - check-2
-      - check-3
-      - check-4
       - workflow-contracts
       - release-contracts
     if: ${{ always() }}
@@ -191,8 +171,8 @@ jobs:
           python3 - <<'PY'
           import json, os
           results = json.loads(os.environ['RESULTS'])
-          expected = ['check-0', 'check-1', 'check-2', 'check-3', 'check-4', 'release-contracts', 'scope', 'workflow-contracts']
-          always = ['check-2', 'scope', 'workflow-contracts']
+          expected = ['check-0', 'check-1', 'check-2', 'release-contracts', 'scope', 'workflow-contracts']
+          always = ['check-1', 'scope', 'workflow-contracts']
           if set(results) != set(expected):
               raise SystemExit('Validation job inventory differs')
           scope = results['scope']

@@ -90,7 +90,7 @@ jobs:
           cache: npm
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -406,7 +406,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache: false
 
       - name: Test Home Assistant events with the built player
@@ -647,7 +647,7 @@ jobs:
 
   browser-compatibility:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@5c757bf5a090d8633cd7c43150133c1ddb9cb7de
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@d6715224d6a34d25475e26079ee5ac8c9b1f9ba1
     permissions:
       contents: read
       actions: read

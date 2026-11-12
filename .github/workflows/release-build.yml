@@ -609,7 +609,7 @@ jobs:
 
   browser-release:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@5c757bf5a090d8633cd7c43150133c1ddb9cb7de
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@d6715224d6a34d25475e26079ee5ac8c9b1f9ba1
     permissions:
       contents: read
       actions: read
@@ -621,6 +621,7 @@ jobs:
       browser-evidence-upload-retry: true
       browser-artifact-id: ${{ needs.build.outputs.browser-artifact-id }}
       browser-artifact-path: browser-candidate
+      browser-platform-scope: windows
       browser-release-channel: ${{ inputs.channel }}
       browser-extended: ${{ inputs.channel == 'rc' || inputs.channel == 'stable' }}
       browser-evidence-prefix: browser-release

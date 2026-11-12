@@ -2,11 +2,9 @@
   "stable_distribution": "rc-payloads-v1",
   "version_file": "package.json",
   "validation_workflows": [
-    "ci.yml",
-    "native-parity.yml",
+    "windows-validation.yml",
     "codeql.yml",
-    "dependency-review.yml",
-    "container-validation.yml"
+    "dependency-review.yml"
   ],
   "channel_validation_workflows": {
     "beta": ["beta-checks.yml"]

@@ -183,6 +183,11 @@
   verifying the complete downloaded artifact against the unchanged local files.
 - Cross-build the Apple Silicon desktop and server packages on an Intel macOS
   runner while preserving ARM64 targets, signatures and release provenance.
+- Qualify the Windows playback fix with Windows native and browser acceptance,
+  while building every platform package and retaining shared, security and fuzz
+  checks. Report omitted platforms explicitly instead of claiming full coverage.
+- Pin current EPG comparisons to Unicode 17 case folding and update the release
+  downloader and controller test compilers to Go 1.27.4.
 - Reconcile video geometry after playback starts using two layout frames and a
   bounded fallback deadline. Keep the current Fit/Fill, zoom and channel-list
   preview while retiring work from replaced media or sources.

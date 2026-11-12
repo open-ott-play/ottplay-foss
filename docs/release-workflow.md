@@ -484,3 +484,9 @@ only TypeScript, using the exact version, registry URL and integrity hash from
 `package-lock.json`. It does not install the frontend or native build toolchains.
 Missing documents and stale translated manuals fail this gate. Full source and
 release validation remain unchanged.
+
+### Windows runtime qualification profile
+
+The release policy explicitly selects `windows-validation.yml`: shared portable lint, type and core/media/provider/UI tests plus the full Windows native workflow. Windows runs the actual core/server Rust suites (including server binary-module tests), installer/window controls and the 24-case, 288-sample native video oracle. Unrelated macOS/Linux playback and Android/Apple runtime jobs are outside this profile; CodeQL, dependency review and RC fuzzing remain required.
+
+Release browser evidence uses `browser-platform-scope: windows`: beta selects the required Windows target, and RC/stable select all 11 Windows browser targets from the validated 35-target inventory. Receipts explicitly say `windows-only`, `fullPlatformQualified: false`, and list the 24 unselected RC/stable targets. This is Windows-only runtime qualification, not all-platform runtime qualification. All platform package builds, signatures, inventory, source/attempt provenance, hashes and promotion guards remain unchanged. The native runner is not a claim of physical Windows hardware validation.

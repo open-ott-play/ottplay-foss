@@ -1,0 +1,200 @@
+name: Windows runtime validation
+
+on:
+  workflow_call: {}
+
+env:
+  NODE_VERSION: "22"
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    uses: ./.github/workflows/beta-checks.yml
+  native-windows:
+    uses: ./.github/workflows/native-parity.yml
+    with:
+      runtime-platform-scope: windows
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || '["ubuntu-latest"]') }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:test-inventory
+      - run: npm test
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r requirements-test.txt
+      - name: Python suite and runtime branch coverage gate
+        run: npm run test:python
+      - name: Preserve Python suite evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: python-suite-evidence
+          path: reports/python/
+          retention-days: 14
+
+    timeout-minutes: 40
+
+  remote-integration:
+    name: Remote control and diagnostics integration
+    runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || '["ubuntu-latest"]') }}
+    timeout-minutes: 15
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: open-ott-play/ottplay-control-server
+          ref: 9b28c08eefca3948c78336e7e16a45e6fc492e31
+          path: .control-integration
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: open-ott-play/ottplay-control-server
+          ref: 477d2d4adfeb4ce3fa007a443ea9388d41c85447
+          path: .control-current
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: open-ott-play/ottplay-control-server
+          ref: 27d1abc81de025fa93e3ac7dc6fbcc67eb6de130
+          path: .control-global
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.4"
+          cache: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: npm ci --ignore-scripts
+      - name: Build lazy diagnostic assets for real transport smokes
+        id: runtime-assets
+        run: npm run build
+      - name: Build the pinned control server
+        id: legacy-server
+        if: ${{ !cancelled() && steps.runtime-assets.outcome == 'success' }}
+        working-directory: .control-integration
+        run: go build -o "$RUNNER_TEMP/ottplay-control-server" ./cmd/ottplay-control-server
+      - name: Exercise real HTTPS diagnostics
+        if: ${{ !cancelled() && steps.legacy-server.outcome == 'success' }}
+        env:
+          OTT_OFFLINE_PROFILES: unsupported-controller
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
+          OTT_DIAGNOSTICS_CLI: ${{ github.workspace }}/.control-integration/cli/diagnostics.py
+          OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
+        run: node scripts/smoke-diagnostics.cjs
+      - name: Exercise legacy repairs with the current CLI
+        if: ${{ !cancelled() && steps.legacy-server.outcome == 'success' }}
+        env:
+          OTT_OFFLINE_PROFILES: unsupported-controller
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
+          OTT_DIAGNOSTICS_CLI: ${{ github.workspace }}/.control-integration/cli/diagnostics.py
+          # M3U metadata uses the current CLI; keep the old server and its negative capability probes.
+          OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
+        run: node scripts/smoke-remote-cli.cjs
+      - name: Exercise the legacy workbench
+        if: ${{ !cancelled() && steps.legacy-server.outcome == 'success' }}
+        env:
+          OTT_OFFLINE_PROFILES: unsupported-controller
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
+          OTT_DIAGNOSTICS_CLI: ${{ github.workspace }}/.control-integration/cli/diagnostics.py
+          OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
+        run: node scripts/smoke-workbench.cjs
+      - name: Build the engine-aware control server
+        id: current-server
+        if: ${{ !cancelled() && steps.runtime-assets.outcome == 'success' }}
+        working-directory: .control-current
+        run: go build -o "$RUNNER_TEMP/ottplay-control-server-current" ./cmd/ottplay-control-server
+      - name: Exercise local profiles with the current controller
+        if: ${{ !cancelled() && steps.current-server.outcome == 'success' }}
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
+          OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
+        run: node scripts/smoke-remote-cli.cjs --offline-profiles-only
+      - name: Keep the legacy CLI compatible with the current server
+        if: ${{ !cancelled() && steps.current-server.outcome == 'success' }}
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
+          OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
+        run: node scripts/smoke-workbench.cjs
+      - name: Reject engine inspection on the legacy server without downgrading
+        if: ${{ !cancelled() && steps.legacy-server.outcome == 'success' }}
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
+          OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
+          OTT_DEBUG_ENGINE_V2: unsupported-controller
+          OTT_PERF_CAPTURE: unsupported-controller
+        run: node scripts/smoke-workbench.cjs
+      - name: Exercise explicit engine inspection and default legacy payloads
+        if: ${{ !cancelled() && steps.current-server.outcome == 'success' }}
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
+          OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
+          OTT_DEBUG_ENGINE_V2: "1"
+          OTT_PERF_CAPTURE: "1"
+        run: node scripts/smoke-workbench.cjs
+      - name: Exercise roadmap with the current controller
+        if: ${{ !cancelled() && steps.runtime-assets.outcome == 'success' }}
+        # This pinned script builds its own controller and compares exact M3U settings.
+        run: node .control-current/scripts/smoke_foss_roadmap.cjs .
+      - name: Build the pinned global Favorites control server
+        id: global-server
+        if: ${{ !cancelled() && steps.runtime-assets.outcome == 'success' }}
+        working-directory: .control-global
+        run: go build -o "$RUNNER_TEMP/ottplay-control-server-global" ./cmd/ottplay-control-server
+      - name: Exercise global Favorites through real CLI and HTTP transport
+        if: ${{ !cancelled() && steps.global-server.outcome == 'success' }}
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-global
+          OTT_CLI: ${{ github.workspace }}/.control-global/cli/ott.py
+          OTT_GLOBAL_CONTROL_REVISION: 27d1abc81de025fa93e3ac7dc6fbcc67eb6de130
+        run: node scripts/smoke-remote-cli.cjs --global-favorites-only
+
+  common-fuzz:
+    name: Shared fixed fuzz regressions
+    runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || '["ubuntu-latest"]') }}
+    timeout-minutes: 20
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Check fuzz formatting
+        run: cargo fmt --manifest-path fuzz/Cargo.toml -- --check
+      - name: Replay fixed fuzz regression corpus (no fuzz campaign)
+        run: |
+          cargo clippy --locked --manifest-path fuzz/Cargo.toml --lib -- -D warnings
+          cargo test --locked --manifest-path fuzz/Cargo.toml --lib

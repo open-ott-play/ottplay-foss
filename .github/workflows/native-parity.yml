@@ -1,7 +1,12 @@
 name: Native Shells
 
 on:
-  workflow_call: {}
+  workflow_call:
+    inputs:
+      runtime-platform-scope:
+        description: Runtime qualification scope; all or windows, package inventory is separate
+        type: string
+        default: all
   workflow_dispatch:
     inputs:
       desktop_acceptance:
@@ -21,13 +26,28 @@ permissions:
   contents: read
 
 jobs:
+  runtime-scope:
+    name: Validate runtime qualification scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Reject unknown runtime scope
+        env:
+          RUNTIME_PLATFORM_SCOPE: ${{ inputs.runtime-platform-scope || 'all' }}
+        run: |
+          case "$RUNTIME_PLATFORM_SCOPE" in
+            all|windows) ;;
+            *) echo "Unsupported runtime qualification scope" >&2; exit 1 ;;
+          esac
+
   shared-guide:
+    needs: runtime-scope
     if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: Shared guide / ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: ${{ fromJSON(inputs.runtime-platform-scope == 'windows' && '["windows-latest"]' || '["ubuntu-latest","windows-latest","macos-latest"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
@@ -45,6 +65,7 @@ jobs:
         run: cargo test --locked --manifest-path tests/librqbit-resource-regression/Cargo.toml --no-default-features --features rust-tls --lib resource_bounds_tests
 
   windows-installers:
+    needs: runtime-scope
     if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.windows_video_geometry_only != true && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true)) }}
     name: Windows installer lifecycle
     runs-on: windows-latest
@@ -91,6 +112,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/check-updater-features.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise shared core and server on Windows
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
+        run: cargo test --locked -p ottplay-core -p ottplay-server -p ottplay-companion
       - name: Exercise updater ZIP extraction on Windows
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         run: cargo test --locked --manifest-path tests/updater-zip-regression/Cargo.toml
@@ -208,7 +232,8 @@ jobs:
           retention-days: 14
 
   android:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
+    needs: runtime-scope
+    if: ${{ inputs.runtime-platform-scope != 'windows' && !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: Android native plugins
     runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || '["ubuntu-latest"]') }}
     timeout-minutes: 30
@@ -282,7 +307,8 @@ jobs:
           python3 tests/test_runtime_diagnostics_native.py --platform android
 
   apple:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
+    needs: runtime-scope
+    if: ${{ inputs.runtime-platform-scope != 'windows' && !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: iOS and Tauri native code
     runs-on: macos-latest
     timeout-minutes: 40
@@ -444,7 +470,8 @@ jobs:
         run: python3 tests/macos-drag-regression/run.py
 
   favorites-native:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
+    needs: runtime-scope
+    if: ${{ inputs.runtime-platform-scope != 'windows' && !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: Hidden WK Favorites Stage A and Stage B
     runs-on: macos-latest
     timeout-minutes: 40
@@ -611,7 +638,8 @@ jobs:
           retention-days: 7
 
   linux-window-controls:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
+    needs: runtime-scope
+    if: ${{ inputs.runtime-platform-scope != 'windows' && !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}
     name: GTK X11 window constraint acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 35

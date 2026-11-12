@@ -15,6 +15,20 @@ class RequiredGateCancellationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         workflow = yaml.safe_load((ROOT / ".github/workflows/quality-gate.yml").read_text())
+        policy = json.loads((ROOT / ".release-policy.json").read_text())
+        always_workflows = {
+            f"./.github/workflows/{name}"
+            for name in policy["change_scope"]["always_validate_workflows"]
+        }
+        validators = {
+            job["uses"]: name for name, job in workflow["jobs"].items() if "uses" in job
+        }
+        if not always_workflows <= validators.keys():
+            raise AssertionError("Required policy validators are missing from the workflow")
+        cls.documentation_required = {"scope", "workflow-contracts"} | {
+            validators[reference] for reference in always_workflows
+        }
+        cls.code_job = validators[f"./.github/workflows/{policy['validation_workflows'][0]}"]
         cls.gate = workflow["jobs"]["gate"]
         step = next(step for step in cls.gate["steps"] if step.get("name") == "Require every validation workflow")
         lines = step["run"].splitlines()
@@ -23,9 +37,8 @@ class RequiredGateCancellationTests(unittest.TestCase):
         cls.validator = "\n".join(lines[1:-1])
 
     def results(self, docs_only=False):
-        required = {"scope", "workflow-contracts", "check-2"}
         results = {
-            name: {"result": "success" if not docs_only or name in required else "skipped"}
+            name: {"result": "success" if not docs_only or name in self.documentation_required else "skipped"}
             for name in self.gate["needs"]
         }
         results["scope"]["outputs"] = {
@@ -57,7 +70,7 @@ class RequiredGateCancellationTests(unittest.TestCase):
         for status in ("cancelled", "failure", "skipped"):
             with self.subTest(status=status):
                 results = self.results()
-                results["check-0"]["result"] = status
+                results[self.code_job]["result"] = status
                 self.assertNotEqual(self.evaluate(results).returncode, 0)
 
     def test_cancelled_scope_fails_even_when_every_other_check_passed(self):
@@ -66,13 +79,15 @@ class RequiredGateCancellationTests(unittest.TestCase):
         self.assertNotEqual(self.evaluate(results).returncode, 0)
 
     def test_cancelled_required_documentation_check_fails(self):
-        results = self.results(True)
-        results["workflow-contracts"]["result"] = "cancelled"
-        self.assertNotEqual(self.evaluate(results).returncode, 0)
+        for name in self.documentation_required:
+            with self.subTest(name=name):
+                results = self.results(True)
+                results[name]["result"] = "cancelled"
+                self.assertNotEqual(self.evaluate(results).returncode, 0)
 
     def test_missing_validation_job_fails(self):
         results = self.results()
-        results.pop("check-0")
+        results.pop(self.code_job)
         self.assertNotEqual(self.evaluate(results).returncode, 0)
 
 
