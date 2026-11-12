@@ -647,7 +647,7 @@ jobs:
 
   browser-compatibility:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@6b2d99519d513d2b871d2a845ddd6134dea4af2c
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@5c757bf5a090d8633cd7c43150133c1ddb9cb7de
     permissions:
       contents: read
       actions: read
@@ -656,6 +656,7 @@ jobs:
       run-node-ci: false
       browser-matrix-file: .github/browser-compatibility.json
       browser-test-command: CI_FIREFOX_CRASH_DIAGNOSTICS=1 node scripts/browser-acceptance.cjs
+      browser-evidence-upload-retry: true
       browser-artifact-id: ${{ needs.build.outputs.browser-artifact-id }}
       browser-artifact-path: browser-candidate
       browser-prepare-command: |

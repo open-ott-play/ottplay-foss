@@ -179,6 +179,10 @@
   including the reported near-ratio sizes and HLS.js/MSE playback.
 - Capture bounded Linux Firefox crash signatures without publishing process
   memory or relaxing the original browser acceptance scenarios.
+- Recover browser evidence uploads within the same job and attempt only after
+  verifying the complete downloaded artifact against the unchanged local files.
+- Cross-build the Apple Silicon desktop and server packages on an Intel macOS
+  runner while preserving ARM64 targets, signatures and release provenance.
 - Reconcile video geometry after playback starts using two layout frames and a
   bounded fallback deadline. Keep the current Fit/Fill, zoom and channel-list
   preview while retiring work from replaced media or sources.

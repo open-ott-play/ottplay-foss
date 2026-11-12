@@ -81,6 +81,16 @@ The standalone macOS ARM64 server has a separate
 [build, acceptance and preparation path](macos-server-release.md). Its executable
 is not replaced by updating the web archive or the Tauri application.
 
+The ARM64 macOS application and server packages are cross-built on the hosted
+Intel `macos-15-intel` runner with the explicit `aarch64-apple-darwin` target.
+The logical package identity remains `macos-latest` so existing receipt and asset
+names stay stable. A hosted-only preflight checks the Intel host, installed Rust
+target and ARM64 macOS SDK compilation; the app and server must contain thin
+ARM64 Mach-O executables. Bundle signature checks and ZIP roundtrip verification
+remain required. These checks establish build inputs and file format, not ARM64
+runtime acceptance. Native ARM macOS checks and the full browser matrix remain
+separate and unchanged.
+
 ## Nightly, beta and RC
 
 During rollout, checks and builds run but public candidate publication is disabled

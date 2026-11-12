@@ -173,6 +173,7 @@ class CandidateTests(unittest.TestCase):
             self.assertEqual(job['with']['browser-artifact-id'], '${{ needs.build.outputs.browser-artifact-id }}')
             self.assertFalse(job['with']['run-node-ci'])
             self.assertEqual(job['with']['browser-test-command'], 'CI_FIREFOX_CRASH_DIAGNOSTICS=1 node scripts/browser-acceptance.cjs')
+            self.assertTrue(job['with']['browser-evidence-upload-retry'])
             self.assertNotIn('npm run build', job['with']['browser-prepare-command'])
             expected_extended = "${{ inputs.channel == 'rc' || inputs.channel == 'stable' }}" if job_id == 'browser-release' else False
             self.assertEqual(job['with'].get('browser-extended', False), expected_extended)
