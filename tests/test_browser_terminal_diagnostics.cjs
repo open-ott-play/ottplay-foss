@@ -316,7 +316,10 @@ async function runCaller(t, failure, crashOptions = {}) {
                 spawned++;
                 assert.equal(executable, process.execPath);
                 assert.deepEqual(Array.from(args), [
-                    "/synthetic-playwright/cli.js",
+                    (crashOptions.windowsCliPaths ? path.win32 : path).join(
+                        fakeProcess.env.CI_PLAYWRIGHT_MODULE,
+                        "cli.js"
+                    ),
                     "test",
                     "--config=playwright.compatibility.config.cjs",
                 ]);
@@ -359,7 +362,20 @@ async function runCaller(t, failure, crashOptions = {}) {
             },
             writeFileSync: fs.writeFileSync,
         },
-        "node:path": path,
+        "node:path": crashOptions.windowsCliPaths
+            ? {
+                  ...path,
+                  join(...parts) {
+                      if (
+                          parts.length === 2 &&
+                          parts[0] === fakeProcess.env.CI_PLAYWRIGHT_MODULE &&
+                          parts[1] === "cli.js"
+                      )
+                          return path.win32.join(...parts);
+                      return path.join(...parts);
+                  },
+              }
+            : path,
     };
     await vm.runInNewContext(source, {
         console: { error() {} },
@@ -461,6 +477,25 @@ for (const failure of [undefined, "child-exit"]) {
             assert.equal(report.status, "initialization-unavailable");
             assert.deepEqual(report.dumps, []);
             assert.doesNotMatch(serialized, /SECRET|private|path|failure/);
+        }
+    );
+}
+
+for (const failure of [undefined, "child-exit"]) {
+    test(
+        "actual acceptance caller preserves full Windows CLI path and outcome: " +
+            (failure || "success"),
+        async (t) => {
+            const f = await runCaller(t, failure, { windowsCliPaths: true });
+            assert.equal(f.spawned, 1);
+            assert.equal(f.fakeProcess.exitCode, failure ? 1 : undefined);
+            assert.equal(f.read().outcome, failure ? "failed" : "passed");
+            assert.equal(f.read().scenarioProcess.status, failure ? 1 : 0);
+            assert.equal(
+                f.read().phase,
+                failure ? "scenario-process" : "write-acceptance"
+            );
+            assert.equal(fs.existsSync(f.evidence), !failure);
         }
     );
 }

@@ -645,7 +645,9 @@ async function pageStartupDiagnostic(
                             ? "/__native_video_geometry/hls/wide/index.m3u8?case="
                             : "/__native_video_geometry/wide.mp4?case=") +
                         expectedCaseId;
-                    const backend = window.__ottCoreBackendPeek?.()?.current?.();
+                    const backend = window
+                        .__ottCoreBackendPeek?.()
+                        ?.current?.();
                     const engine = backend?.diagnosticEngine?.() || null;
                     const engineMedia = backend?.diagnosticMedia?.() || null;
                     const sourceAttribute = classifySource(
