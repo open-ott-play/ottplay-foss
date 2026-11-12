@@ -1,10 +1,12 @@
 """Pure hosted-preflight contracts; no Cocoa, player or compiler is executed."""
 import importlib.util
 import json
-from pathlib import Path
+import os
+import re
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,14 +16,45 @@ SPEC.loader.exec_module(MODULE)
 
 
 class DesktopPreflightContracts(unittest.TestCase):
-    def test_only_explicit_manual_request_can_suppress_existing_native_jobs(self):
+    def test_only_explicit_manual_or_windows_scope_can_suppress_native_jobs(self):
         workflow = (ROOT / ".github/workflows/native-parity.yml").read_text()
-        guard = "if: \u0024{{ !(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true)) }}"
-        for job in ("shared-guide", "android", "apple", "favorites-native", "linux-window-controls"):
-            self.assertIn("  " + job + ":\n    " + guard, workflow)
-        self.assertIn("if: \u0024{{ github.event_name == 'workflow_dispatch' && inputs.desktop_preflight_only == true && inputs.windows_video_geometry_only != true }}",
-                      workflow)
-        self.assertIn("type: boolean\n        default: false", workflow)
+
+        def block(source, name, indent):
+            match = re.search(r"^" + " " * indent + re.escape(name) + r":\n(.*?)(?=^ {0," + str(indent) + r"}\S|\Z)", source, re.MULTILINE | re.DOTALL)
+            self.assertIsNotNone(match, name)
+            return match.group(1)
+
+        def field(source, name, value, indent):
+            self.assertRegex(source, r"(?m)^" + " " * indent + re.escape(name + ": " + value) + r"$")
+
+        jobs = block(workflow, "jobs", 0)
+        guard = "!(github.event_name == 'workflow_dispatch' && (inputs.desktop_preflight_only == true || inputs.desktop_acceptance == true || inputs.windows_video_geometry_only == true))"
+        shared = block(jobs, "shared-guide", 2)
+        field(shared, "if", "${{ " + guard + " }}", 4)
+        field(shared, "needs", "runtime-scope", 4)
+        for job in ("android", "apple", "favorites-native", "linux-window-controls"):
+            selected = block(jobs, job, 2)
+            field(selected, "if", "${{ inputs.runtime-platform-scope != 'windows' && " + guard + " }}", 4)
+            field(selected, "needs", "runtime-scope", 4)
+        field(block(jobs, "desktop-preflight", 2), "if", "${{ github.event_name == 'workflow_dispatch' && inputs.desktop_preflight_only == true && inputs.windows_video_geometry_only != true }}", 4)
+        triggers = block(workflow, "on", 0)
+        manual = block(block(triggers, "workflow_dispatch", 2), "inputs", 4)
+        for name in ("desktop_preflight_only", "desktop_acceptance", "windows_video_geometry_only"):
+            declared = block(manual, name, 6)
+            field(declared, "type", "boolean", 8)
+            field(declared, "default", "false", 8)
+        scope = block(block(block(triggers, "workflow_call", 2), "inputs", 4), "runtime-platform-scope", 6)
+        field(scope, "type", "string", 8)
+        field(scope, "default", "all", 8)
+        validation = block(jobs, "runtime-scope", 2)
+        command = re.search(r"^        run: \|\n((?:          .*\n)+)", validation, re.MULTILINE)
+        self.assertIsNotNone(command)
+        script = "".join(line[10:] for line in command.group(1).splitlines(keepends=True))
+        for value in ("all", "windows", "linux", "Windows", "windows-only", ""):
+            with self.subTest(scope=value):
+                result = subprocess.run(["bash", "-c", script], capture_output=True,
+                                        env={**os.environ, "RUNTIME_PLATFORM_SCOPE": value}, check=False)
+                self.assertEqual(result.returncode == 0, value in ("all", "windows"))
 
     def test_windows_video_mode_reuses_production_build_and_keeps_normal_checks_required(self):
         workflow = (ROOT / ".github/workflows/native-parity.yml").read_text()

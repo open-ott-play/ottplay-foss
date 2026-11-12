@@ -2047,6 +2047,18 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                 await page.evaluate(() => {
                     window.sPreview = 0;
                     window.settings.psChannels = window.sPSchannels = 1;
+                    window.__pinChecksCompleted = 0;
+                    const verify = window.__ottPinSecurity.verify;
+                    window.__ottPinSecurity.verify = (
+                        value,
+                        stored,
+                        current,
+                        done
+                    ) =>
+                        verify(value, stored, current, (matched) => {
+                            done(matched);
+                            window.__pinChecksCompleted++;
+                        });
                     // Exercise the real protected-record verifier, not a legacy plaintext fixture.
                     window.parentPIN = window.__ottPinSecurity.prepare("1234");
                     window.parentalArray = ["one"];
@@ -2069,6 +2081,14 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                 for (let digit = 0; digit < 4; digit++)
                     await page.locator("#k0 .btn").click();
                 await expect(dialog).toBeHidden();
+                // The keypad closes before asynchronous verification settles.
+                // Await the real rejection before starting another challenge:
+                // overlapping derivations intentionally fail closed.
+                await expect
+                    .poll(() =>
+                        page.evaluate(() => window.__pinChecksCompleted)
+                    )
+                    .toBe(1);
                 await expect(list).toBeVisible();
                 expect((await playback()).played).toEqual([]);
 
