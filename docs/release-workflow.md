@@ -336,6 +336,20 @@ policy-authorized new run. Never reset the ledger or overwrite published assets.
 See [publication-phase retry rules](VERSIONING.md#package-identity-across-reruns).
 Duplicate payload names remain errors, even when their bytes match.
 
+This includes a partial container retry: if AMD64 runs again in attempt 2 while
+ARM64 retains its successful attempt-1 artifact, the archive job must not combine
+them. Do not change artifact names or receipt checks to accept that mixture.
+Use a policy-permitted full retry before publication, or a new fully checked
+candidate after correcting the underlying failure.
+
+The native container job prepares Ubuntu's official archive transport before
+installing OCI inspection tools. APT update and install each have a five-minute
+process deadline, a bounded termination grace period, network timeouts and two
+retries. An incomplete package-index update fails the step. Dependency setup is
+separate from the exact-image EPG test, so its timeout cannot be reported as an
+EPG performance verdict. None of these limits changes image, source, architecture
+or performance acceptance.
+
 Name selection does not add receipt verification. This mode leaves vendored
 runtimes unchanged. Before qualifying releases, confirm that the consumer's
 publisher verifies source, repository, run and attempt; older receipt/publisher
