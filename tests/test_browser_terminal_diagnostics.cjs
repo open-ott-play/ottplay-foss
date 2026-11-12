@@ -237,26 +237,57 @@ async function runCaller(t, failure, crashOptions = {}) {
         },
         "./browser-terminal-diagnostics.cjs": observeTerminal,
         "./firefox-crash-diagnostics.cjs": {
-            ...require("../scripts/firefox-crash-diagnostics.cjs"),
+            childEnvironment(owner, env) {
+                assert.ok(
+                    owner === undefined ||
+                        owner === null ||
+                        owner === "synthetic-owner"
+                );
+                return owner
+                    ? { ...env }
+                    : require("../scripts/firefox-crash-diagnostics.cjs").childEnvironment(
+                          null,
+                          env
+                      );
+            },
+            // Caller-outcome tests exercise the actual acceptance runner, not
+            // POSIX collector permissions on the host filesystem. Binary and
+            // ownership/retention behavior have their own dedicated suite.
             create(engine, env) {
                 if (crashOptions.createError)
                     throw new Error("SECRET startup failure /private/path");
-                return require("../scripts/firefox-crash-diagnostics.cjs").create(
-                    engine,
-                    env,
-                    "linux"
-                );
+                assert.equal(engine, "firefox");
+                return env.CI_FIREFOX_CRASH_DIAGNOSTICS === "1"
+                    ? "synthetic-owner"
+                    : null;
             },
             finish(owner, output, options) {
-                const result =
-                    require("../scripts/firefox-crash-diagnostics.cjs").finish(
-                        owner,
-                        output,
-                        { ...options, platform: "linux" }
-                    );
+                if (options.env.CI_FIREFOX_CRASH_DIAGNOSTICS !== "1") return;
+                assert.ok(owner === undefined || owner === "synthetic-owner");
+                const result = {
+                    dumps: [],
+                    enabled: true,
+                    schema: 1,
+                    status: owner
+                        ? "unavailable"
+                        : "initialization-unavailable",
+                };
+                fs.writeFileSync(
+                    path.join(output, "firefox-crash-summary.json"),
+                    JSON.stringify(result),
+                    { flag: "wx", mode: 0o600 }
+                );
                 if (crashOptions.finishError)
                     throw new Error("diagnostic write failed");
                 return result;
+            },
+            launchEnvironment(owner, env) {
+                assert.ok(
+                    owner === undefined ||
+                        owner === null ||
+                        owner === "synthetic-owner"
+                );
+                return owner ? { ...env } : undefined;
             },
         },
         "/synthetic-playwright": {

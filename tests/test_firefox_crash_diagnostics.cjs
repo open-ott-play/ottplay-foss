@@ -5,6 +5,18 @@ const path = require("node:path");
 const test = require("node:test");
 const diagnostics = require("../scripts/firefox-crash-diagnostics.cjs");
 const enabled = { CI_FIREFOX_CRASH_DIAGNOSTICS: "1" };
+function posixTest(name, fn) {
+    test(
+        name,
+        {
+            skip:
+                process.platform === "win32"
+                    ? "Requires POSIX permission ownership; collector is unsupported on Windows"
+                    : false,
+        },
+        fn
+    );
+}
 function dump() {
     const bytes = Buffer.alloc(512);
     bytes.writeUInt32LE(0x504d444d, 0);
@@ -45,34 +57,37 @@ test("strict opt-in and Firefox-only launch; inherited disable is removed", () =
     assert.equal(diagnostics.session({}), null);
     assert.equal(diagnostics.launchEnvironment(null), undefined);
 });
-test("launch environment isolates storage without full dumps or submissions", (t) => {
-    const { owner } = scope(t);
-    const env = diagnostics.childEnvironment(owner, {
-        ...enabled,
-        MINIDUMP_SAVE_PATH: "/private",
-        MOZ_CRASHREPORTER_DISABLE: "0",
-        MOZ_CRASHREPORTER_FULLDUMP: "1",
-        MOZ_CRASHREPORTER_URL: "https://private.invalid/",
-        ordinary: "kept",
-    });
-    assert.equal(env.MOZ_CRASHREPORTER_DISABLE, undefined);
-    assert.equal(env.MOZ_CRASHREPORTER_FULLDUMP, undefined);
-    assert.equal(env.MOZ_CRASHREPORTER_URL, undefined);
-    assert.equal(env.MINIDUMP_SAVE_PATH, undefined);
-    assert.equal(env.MOZ_CRASHREPORTER, "1");
-    assert.equal(env.MOZ_CRASHREPORTER_NO_REPORT, "1");
-    assert.equal(env.TMPDIR, path.join(owner.root, "tmp"));
-    assert.equal(
-        env.MOZ_CRASHREPORTER_DATA_DIRECTORY,
-        path.join(owner.root, "data")
-    );
-    assert.equal(env.ordinary, "kept");
-    assert.deepEqual(diagnostics.session(env, "linux"), owner);
-    assert.equal(
-        Object.keys(env).some((key) => key.includes("SANDBOX")),
-        false
-    );
-});
+posixTest(
+    "launch environment isolates storage without full dumps or submissions",
+    (t) => {
+        const { owner } = scope(t);
+        const env = diagnostics.childEnvironment(owner, {
+            ...enabled,
+            MINIDUMP_SAVE_PATH: "/private",
+            MOZ_CRASHREPORTER_DISABLE: "0",
+            MOZ_CRASHREPORTER_FULLDUMP: "1",
+            MOZ_CRASHREPORTER_URL: "https://private.invalid/",
+            ordinary: "kept",
+        });
+        assert.equal(env.MOZ_CRASHREPORTER_DISABLE, undefined);
+        assert.equal(env.MOZ_CRASHREPORTER_FULLDUMP, undefined);
+        assert.equal(env.MOZ_CRASHREPORTER_URL, undefined);
+        assert.equal(env.MINIDUMP_SAVE_PATH, undefined);
+        assert.equal(env.MOZ_CRASHREPORTER, "1");
+        assert.equal(env.MOZ_CRASHREPORTER_NO_REPORT, "1");
+        assert.equal(env.TMPDIR, path.join(owner.root, "tmp"));
+        assert.equal(
+            env.MOZ_CRASHREPORTER_DATA_DIRECTORY,
+            path.join(owner.root, "data")
+        );
+        assert.equal(env.ordinary, "kept");
+        assert.deepEqual(diagnostics.session(env, "linux"), owner);
+        assert.equal(
+            Object.keys(env).some((key) => key.includes("SANDBOX")),
+            false
+        );
+    }
+);
 test("binary signature never includes memory strings, names or absolute addresses", () => {
     assert.deepEqual(diagnostics.parseDump(dump()), {
         buildId: "0102030405060708",
@@ -113,28 +128,33 @@ test("malformed offsets, stream duplicates, module counts and missing exception"
         /invalid-minidump/
     );
 });
-test("retention survives profile deletion, deduplicates, publishes scalar receipt and removes raw data", (t) => {
-    const { owner, output } = scope(t);
-    const file = path.join(owner.root, "tmp", "profile.dmp");
-    fs.writeFileSync(file, dump());
-    diagnostics.retain(owner);
-    diagnostics.retain(owner);
-    fs.unlinkSync(file);
-    const report = diagnostics.finish(owner, output);
-    assert.equal(report.status, "captured");
-    assert.equal(report.dumps.length, 1);
-    assert.equal(report.dumps[0].buildId, "0102030405060708");
-    assert.equal(fs.existsSync(owner.root), false);
-    assert.deepEqual(fs.readdirSync(output), ["firefox-crash-summary.json"]);
-    assert.doesNotMatch(
-        fs.readFileSync(
-            path.join(output, "firefox-crash-summary.json"),
-            "utf8"
-        ),
-        /SECRET|private|token|password|ott-firefox-crash/
-    );
-});
-test("no dumps is unavailable, not a fabricated crash signature", (t) => {
+posixTest(
+    "retention survives profile deletion, deduplicates, publishes scalar receipt and removes raw data",
+    (t) => {
+        const { owner, output } = scope(t);
+        const file = path.join(owner.root, "tmp", "profile.dmp");
+        fs.writeFileSync(file, dump());
+        diagnostics.retain(owner);
+        diagnostics.retain(owner);
+        fs.unlinkSync(file);
+        const report = diagnostics.finish(owner, output);
+        assert.equal(report.status, "captured");
+        assert.equal(report.dumps.length, 1);
+        assert.equal(report.dumps[0].buildId, "0102030405060708");
+        assert.equal(fs.existsSync(owner.root), false);
+        assert.deepEqual(fs.readdirSync(output), [
+            "firefox-crash-summary.json",
+        ]);
+        assert.doesNotMatch(
+            fs.readFileSync(
+                path.join(output, "firefox-crash-summary.json"),
+                "utf8"
+            ),
+            /SECRET|private|token|password|ott-firefox-crash/
+        );
+    }
+);
+posixTest("no dumps is unavailable, not a fabricated crash signature", (t) => {
     const { owner, output } = scope(t);
     assert.deepEqual(diagnostics.finish(owner, output), {
         dumps: [],
@@ -144,7 +164,7 @@ test("no dumps is unavailable, not a fabricated crash signature", (t) => {
     });
     assert.equal(fs.existsSync(owner.root), false);
 });
-test("symlink dumps are not read or removed outside owned tree", (t) => {
+posixTest("symlink dumps are not read or removed outside owned tree", (t) => {
     const { owner, output } = scope(t);
     const outside = path.join(output, "secret.dmp");
     fs.writeFileSync(outside, dump());
@@ -153,51 +173,57 @@ test("symlink dumps are not read or removed outside owned tree", (t) => {
     assert.equal(diagnostics.finish(owner, output).status, "unavailable");
     assert.equal(fs.existsSync(outside), true);
 });
-test("ownership replacement prevents reads and recursive deletion", (t) => {
-    const { owner, output } = scope(t);
-    fs.writeFileSync(path.join(owner.root, ".owner"), "0".repeat(32));
-    assert.throws(
-        () =>
-            diagnostics.session(
-                {
-                    ...enabled,
-                    CI_FIREFOX_CRASH_ROOT: owner.root,
-                    CI_FIREFOX_CRASH_TOKEN: owner.token,
-                },
-                "linux"
-            ),
-        /invalid-owner/
-    );
-    const report = diagnostics.finish(owner, output);
-    assert.equal(report.status, "unavailable-or-limit");
-    assert.equal(report.cleanup, "ownership-check-failed");
-    assert.equal(fs.existsSync(owner.root), true);
-});
-test("count and file-size bounds fail closed and still clean private files", (t) => {
-    const { owner, output } = scope(t);
-    for (let i = 0; i < 9; i++) {
-        const bytes = dump();
-        bytes[511] = i;
-        fs.writeFileSync(path.join(owner.root, "tmp", `${i}.dmp`), bytes);
+posixTest(
+    "ownership replacement prevents reads and recursive deletion",
+    (t) => {
+        const { owner, output } = scope(t);
+        fs.writeFileSync(path.join(owner.root, ".owner"), "0".repeat(32));
+        assert.throws(
+            () =>
+                diagnostics.session(
+                    {
+                        ...enabled,
+                        CI_FIREFOX_CRASH_ROOT: owner.root,
+                        CI_FIREFOX_CRASH_TOKEN: owner.token,
+                    },
+                    "linux"
+                ),
+            /invalid-owner/
+        );
+        const report = diagnostics.finish(owner, output);
+        assert.equal(report.status, "unavailable-or-limit");
+        assert.equal(report.cleanup, "ownership-check-failed");
+        assert.equal(fs.existsSync(owner.root), true);
     }
-    assert.equal(
-        diagnostics.finish(owner, output).status,
-        "unavailable-or-limit"
-    );
-    assert.equal(fs.existsSync(owner.root), false);
-    const second = scope(t);
-    const fd = fs.openSync(
-        path.join(second.owner.root, "tmp", "huge.dmp"),
-        "w"
-    );
-    fs.ftruncateSync(fd, 32 * 1024 * 1024 + 1);
-    fs.closeSync(fd);
-    assert.equal(
-        diagnostics.finish(second.owner, second.output).status,
-        "unavailable-or-limit"
-    );
-    assert.equal(fs.existsSync(second.owner.root), false);
-});
+);
+posixTest(
+    "count and file-size bounds fail closed and still clean private files",
+    (t) => {
+        const { owner, output } = scope(t);
+        for (let i = 0; i < 9; i++) {
+            const bytes = dump();
+            bytes[511] = i;
+            fs.writeFileSync(path.join(owner.root, "tmp", `${i}.dmp`), bytes);
+        }
+        assert.equal(
+            diagnostics.finish(owner, output).status,
+            "unavailable-or-limit"
+        );
+        assert.equal(fs.existsSync(owner.root), false);
+        const second = scope(t);
+        const fd = fs.openSync(
+            path.join(second.owner.root, "tmp", "huge.dmp"),
+            "w"
+        );
+        fs.ftruncateSync(fd, 32 * 1024 * 1024 + 1);
+        fs.closeSync(fd);
+        assert.equal(
+            diagnostics.finish(second.owner, second.output).status,
+            "unavailable-or-limit"
+        );
+        assert.equal(fs.existsSync(second.owner.root), false);
+    }
+);
 
 test("unsupported platforms do not create or validate Linux-owned sessions and publish explicit unavailability", (t) => {
     for (const platform of ["win32", "darwin"]) {
@@ -327,49 +353,60 @@ function sparseDump(file, mib, discriminator = 0) {
         fs.closeSync(fd);
     }
 }
-test("two distinct 17 MiB crashes and retained duplicates preserve both signatures within unique budget", (t) => {
-    const { owner, output } = scope(t);
-    sparseDump(path.join(owner.root, "tmp", "first.dmp"), 17, 1);
-    sparseDump(path.join(owner.root, "tmp", "second.dmp"), 17, 2);
-    diagnostics.retain(owner);
-    assert.equal(fs.readdirSync(path.join(owner.root, "retained")).length, 2);
-    const report = diagnostics.finish(owner, output);
-    assert.equal(report.status, "captured");
-    assert.equal(report.dumps.length, 2);
-    assert.equal(new Set(report.dumps.map((item) => item.sha256)).size, 2);
-    for (const item of report.dumps) {
-        assert.equal(item.bytes, 17 * 1024 * 1024);
-        assert.equal(item.exceptionCode, "0xb");
-        assert.equal(item.moduleOffset, "0x12");
-        assert.equal(item.buildId, "0102030405060708");
-    }
-    assert.equal(fs.existsSync(owner.root), false);
-    assert.deepEqual(fs.readdirSync(output), ["firefox-crash-summary.json"]);
-});
-test("deduplication preserves separate exact 128 MiB read ceiling and strict 64 MiB unique ceiling", (t) => {
-    for (const [count, expected] of [
-        [8, "captured"],
-        [9, "unavailable-or-limit"],
-    ]) {
+posixTest(
+    "two distinct 17 MiB crashes and retained duplicates preserve both signatures within unique budget",
+    (t) => {
         const { owner, output } = scope(t);
-        for (let i = 0; i < count; i++)
-            sparseDump(path.join(owner.root, "tmp", `${i}.dmp`), 16);
-        const report = diagnostics.finish(owner, output);
+        sparseDump(path.join(owner.root, "tmp", "first.dmp"), 17, 1);
+        sparseDump(path.join(owner.root, "tmp", "second.dmp"), 17, 2);
+        diagnostics.retain(owner);
         assert.equal(
-            report.status,
-            expected,
-            `${count} identical 16 MiB copies`
+            fs.readdirSync(path.join(owner.root, "retained")).length,
+            2
         );
-        assert.equal(report.dumps.length, count === 8 ? 1 : 0);
+        const report = diagnostics.finish(owner, output);
+        assert.equal(report.status, "captured");
+        assert.equal(report.dumps.length, 2);
+        assert.equal(new Set(report.dumps.map((item) => item.sha256)).size, 2);
+        for (const item of report.dumps) {
+            assert.equal(item.bytes, 17 * 1024 * 1024);
+            assert.equal(item.exceptionCode, "0xb");
+            assert.equal(item.moduleOffset, "0x12");
+            assert.equal(item.buildId, "0102030405060708");
+        }
+        assert.equal(fs.existsSync(owner.root), false);
+        assert.deepEqual(fs.readdirSync(output), [
+            "firefox-crash-summary.json",
+        ]);
+    }
+);
+posixTest(
+    "deduplication preserves separate exact 128 MiB read ceiling and strict 64 MiB unique ceiling",
+    (t) => {
+        for (const [count, expected] of [
+            [8, "captured"],
+            [9, "unavailable-or-limit"],
+        ]) {
+            const { owner, output } = scope(t);
+            for (let i = 0; i < count; i++)
+                sparseDump(path.join(owner.root, "tmp", `${i}.dmp`), 16);
+            const report = diagnostics.finish(owner, output);
+            assert.equal(
+                report.status,
+                expected,
+                `${count} identical 16 MiB copies`
+            );
+            assert.equal(report.dumps.length, count === 8 ? 1 : 0);
+            assert.equal(fs.existsSync(owner.root), false);
+        }
+        const { owner, output } = scope(t);
+        for (let i = 0; i < 4; i++)
+            sparseDump(path.join(owner.root, "tmp", `${i}.dmp`), 17, i);
+        assert.equal(
+            diagnostics.finish(owner, output).status,
+            "unavailable-or-limit",
+            "68 MiB distinct data must still exceed unique budget"
+        );
         assert.equal(fs.existsSync(owner.root), false);
     }
-    const { owner, output } = scope(t);
-    for (let i = 0; i < 4; i++)
-        sparseDump(path.join(owner.root, "tmp", `${i}.dmp`), 17, i);
-    assert.equal(
-        diagnostics.finish(owner, output).status,
-        "unavailable-or-limit",
-        "68 MiB distinct data must still exceed unique budget"
-    );
-    assert.equal(fs.existsSync(owner.root), false);
-});
+);

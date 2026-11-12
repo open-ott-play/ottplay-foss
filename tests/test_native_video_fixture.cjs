@@ -609,6 +609,7 @@ test("startup diagnostics retain fixture state without body, list or source secr
                 },
             ],
             __ottActiveProviderDriver: { id: "m3u" },
+            __ottCoreBackendPeek: () => null,
             __ottStandby: {
                 blocked: () => true,
                 generation: () => 0,
