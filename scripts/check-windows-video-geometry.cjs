@@ -17,6 +17,9 @@ const sizes = [
     [801, 450],
     [800, 449],
     [800, 451],
+    [802, 451],
+    [800, 452],
+    [802, 450],
     [1280, 720],
     [1279, 720],
     [1281, 720],
@@ -24,13 +27,173 @@ const sizes = [
     [1280, 721],
 ];
 function cases() {
-    return sizes.flatMap(([width, height]) =>
-        (width * 9 === height * 16 ? [false, true] : [false]).map((lock) => ({
+    const mp4 = sizes.flatMap(([width, height]) =>
+        (width * 9 === height * 16 || (width === 802 && height === 451)
+            ? [false, true]
+            : [false]
+        ).map((lock) => ({
             height,
             lock,
             width,
         }))
     );
+    const hlsSizes = [
+        [800, 450],
+        [802, 451],
+        [1280, 720],
+        [800, 451],
+        [1280, 721],
+    ];
+    const hls = hlsSizes.flatMap(([width, height]) =>
+        (width * 9 === height * 16 || (width === 802 && height === 451)
+            ? [false, true]
+            : [false]
+        ).map((lock) => ({
+            engine: "hls.js",
+            height,
+            lock,
+            width,
+        }))
+    );
+    return [...mp4.map((item) => ({ ...item, engine: "html5" })), ...hls];
+}
+function nativeStartupUrl(origin, id, engine) {
+    if (
+        !/^http:\/\/127\.0\.0\.1:844[3-6]$/.test(origin) ||
+        !/^[a-f0-9]{10}$/.test(id) ||
+        !["html5", "hls.js"].includes(engine)
+    )
+        throw new Error("Invalid owned native startup URL");
+    return (
+        origin +
+        "/index.html?nativecase=" +
+        id +
+        "&nativeengine=" +
+        (engine === "hls.js" ? "hls" : "html5")
+    );
+}
+function nativeChannelIds() {
+    const w = window;
+    if (!Array.isArray(w.curList) || w.curList.length !== 2)
+        throw new Error("Expected exactly two owned fixture channels");
+    return Object.fromEntries(
+        ["wide", "standard"].map((source) => {
+            const ids = w.curList.filter(
+                (id) =>
+                    w.channels[id]?.channel_name === "Native geometry " + source
+            );
+            if (ids.length !== 1 || !Number.isSafeInteger(ids[0]))
+                throw new Error("Missing unique fixture channel identity");
+            return [source, ids[0]];
+        })
+    );
+}
+function saveNativeFill(channelIds) {
+    for (const id of channelIds) {
+        const preference = window.__ottChannels.capturePreference(
+            "aAspects",
+            id
+        );
+        if (
+            !preference?.active() ||
+            !preference.set(1) ||
+            !preference.active() ||
+            preference.get() !== 1 ||
+            preference.saved() !== 1
+        )
+            throw new Error(
+                "Could not persist the fixture channel Fill preference"
+            );
+    }
+}
+async function advanceNativePlayback(page, label, url) {
+    if (label === "replay")
+        await page.evaluate((source) => window.stbPlay(source), url);
+    else await page.keyboard.press("Equal");
+}
+function nativePlaybackSample() {
+    const w = window;
+    const v = document.querySelector("#video");
+    if (v !== w.__nativeGeometryRetained)
+        throw new Error("Replay replaced the retained media element");
+    const state = w.__ottClassicPlayback.snapshot();
+    const playbackContext = w.__ottClassicPlayback.context?.();
+    const channelId = w.curList[w.primaryIndex];
+    const owner = w.__ottCoreBackendPeek()?.current();
+    const target = w.captureAspectTarget();
+    const engine = owner?.diagnosticEngine?.() || null;
+    const media = owner?.diagnosticMedia?.() || null;
+    if (
+        w.isListVisible !== false ||
+        state.target?.kind !== "live" ||
+        String(state.target.channelId) !== String(channelId) ||
+        !state.target.sourceId ||
+        !Number.isSafeInteger(state.generation) ||
+        playbackContext?.isCurrentBackend?.() !== true ||
+        !owner?.active() ||
+        !Number.isSafeInteger(owner.id) ||
+        !target?.current()
+    )
+        throw new Error(
+            "Fixture playback selection or engine owner is not current"
+        );
+    const r = v.getBoundingClientRect();
+    return {
+        aspect: target.mode,
+        channelId,
+        engine,
+        frames: v.getVideoPlaybackQuality().totalVideoFrames,
+        generation: state.generation,
+        generationMatchesBackend:
+            playbackContext?.isCurrentBackend?.() === true,
+        height: innerHeight,
+        mediaHlsUrl: typeof media?.hls?.url === "string" ? media.hls.url : null,
+        mediaMatchesRetained: media?.media === v,
+        ownerId: owner.id,
+        rect: { height: r.height, width: r.width, x: r.x, y: r.y },
+        savedAspect: target.savedMode,
+        source: v.currentSrc,
+        sourceId: state.target.sourceId,
+        time: v.currentTime,
+        width: innerWidth,
+    };
+}
+function validateNativeSelection(sample, expected, prior, label) {
+    if (!["html5", "hls.js"].includes(expected.engine))
+        throw new Error("Expected an explicit fixture engine");
+    const sourceMatches =
+        expected.engine === "hls.js"
+            ? sample.engine === "hls.js" &&
+              sample.mediaMatchesRetained === true &&
+              sample.mediaHlsUrl === expected.url &&
+              typeof sample.source === "string" &&
+              sample.source.startsWith(
+                  "blob:" + new URL(expected.url).origin + "/"
+              )
+            : sample.engine === expected.engine &&
+              sample.source === expected.url;
+    if (
+        sample.channelId !== expected.channelId ||
+        !sourceMatches ||
+        sample.generationMatchesBackend !== true ||
+        sample.aspect !== expected.mode ||
+        (expected.mode === "fill" && sample.savedAspect !== "fill")
+    )
+        throw new Error(
+            "Fixture channel, source or saved aspect does not match"
+        );
+    if (
+        prior &&
+        (sample.sourceId !== prior.sourceId ||
+            sample.ownerId === prior.ownerId ||
+            (label === "replay"
+                ? sample.channelId !== prior.channelId
+                : sample.channelId === prior.channelId ||
+                  sample.generation <= prior.generation))
+    )
+        throw new Error(
+            "Playback transition did not replace the expected owner"
+        );
 }
 function validateCaptureInterval(before, after, phase) {
     const start = phase * 1.5 + 0.4;
@@ -241,13 +404,18 @@ function redactDiagnosticText(value, maxLength = 600) {
         .replace(/(?:[A-Za-z]:\\|\\\\)[^\s"'<>]*/g, "[PATH]")
         .slice(0, maxLength);
 }
-async function pageStartupDiagnostic(page, origin, expectedCase) {
+async function pageStartupDiagnostic(
+    page,
+    origin,
+    expectedCase,
+    engine = "html5"
+) {
     if (!page || page.isClosed()) return { status: "page-unavailable" };
     let timer;
     try {
         return await Promise.race([
             page.evaluate(
-                async ({ expectedOrigin, expectedCaseId }) => {
+                async ({ expectedEngine, expectedOrigin, expectedCaseId }) => {
                     const text = (value, limit) =>
                         String(value || "")
                             .replace(/\bhttps?:\/\/[^\s"'<>]+/gi, "[URL]")
@@ -298,6 +466,16 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
                             /^\/__native_video_geometry\/(wide|standard)\.mp4$/
                         );
                         if (fixture) return `fixture-${fixture[1]}`;
+                        const hlsManifest = pathname.match(
+                            /^\/__native_video_geometry\/hls\/(wide|standard)\/index\.m3u8$/
+                        );
+                        if (hlsManifest) return `fixture-${hlsManifest[1]}-hls`;
+                        if (
+                            /^\/__native_video_geometry\/hls\/(wide|standard)\/(?:init\.mp4|segment\d{3}\.m4s)$/.test(
+                                pathname
+                            )
+                        )
+                            return "fixture-hls-media";
                         if (pathname === "/__native_video_geometry/admit")
                             return "fixture-admit";
                         if (pathname.startsWith("/__native_video_geometry/"))
@@ -310,6 +488,8 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
                             const parsed = new URL(raw, location.href);
                             if (parsed.origin !== expectedOrigin)
                                 return { kind: "other-origin" };
+                            if (parsed.protocol === "blob:")
+                                return { kind: "owned-blob" };
                             const kind = routeClass(parsed.pathname);
                             return { kind };
                         } catch (_) {
@@ -382,7 +562,9 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
                         const expectedPlaylist =
                             expectedOrigin +
                             "/__native_video_geometry/channels.m3u?case=" +
-                            expectedCaseId;
+                            expectedCaseId +
+                            "&engine=" +
+                            (expectedEngine === "hls.js" ? "hls" : "html5");
                         seededM3uValid =
                             config?.active === 0 &&
                             typeof config?.M3Us?.[0]?.www === "string" &&
@@ -449,8 +631,13 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
                     const query = new URLSearchParams(location.search);
                     const expectedSource =
                         expectedOrigin +
-                        "/__native_video_geometry/wide.mp4?case=" +
+                        (expectedEngine === "hls.js"
+                            ? "/__native_video_geometry/hls/wide/index.m3u8?case="
+                            : "/__native_video_geometry/wide.mp4?case=") +
                         expectedCaseId;
+                    const backend = window.__ottCoreBackendPeek?.().current?.();
+                    const engine = backend?.diagnosticEngine?.() || null;
+                    const engineMedia = backend?.diagnosticMedia?.() || null;
                     const sourceAttribute = classifySource(
                         video?.getAttribute("src") || ""
                     );
@@ -554,6 +741,8 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
                                     ? window.playerMode
                                     : null,
                             seededM3uValid,
+                            streamingEngineMatchesExpected:
+                                engine === expectedEngine,
                         },
                         standby: {
                             blocked: standbyBlocked,
@@ -566,7 +755,14 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
                             ? {
                                   currentSource: currentSource.kind,
                                   currentSourceMatchesFixture:
-                                      video.currentSrc === expectedSource,
+                                      expectedEngine === "hls.js"
+                                          ? currentSource.kind ===
+                                                "owned-blob" &&
+                                            engine === "hls.js" &&
+                                            engineMedia?.media === video &&
+                                            engineMedia?.hls?.url ===
+                                                expectedSource
+                                          : video.currentSrc === expectedSource,
                                   currentTime: Number.isFinite(
                                       video.currentTime
                                   )
@@ -576,8 +772,14 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
                                       ? Number(video.error.code) || null
                                       : null,
                                   firstSourceMatchesFixture:
-                                      video.src === expectedSource,
+                                      expectedEngine === "html5"
+                                          ? video.src === expectedSource
+                                          : engineMedia?.hls?.url ===
+                                            expectedSource,
                                   height: Number(video.videoHeight) || 0,
+                                  hlsManifestMatchesFixture:
+                                      expectedEngine === "hls.js" &&
+                                      engineMedia?.hls?.url === expectedSource,
                                   networkState: Number(video.networkState),
                                   paused: !!video.paused,
                                   readyState: Number(video.readyState),
@@ -589,7 +791,11 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
                         visibleLists,
                     };
                 },
-                { expectedCaseId: expectedCase, expectedOrigin: origin }
+                {
+                    expectedCaseId: expectedCase,
+                    expectedEngine: engine,
+                    expectedOrigin: origin,
+                }
             ),
             new Promise((resolve) => {
                 timer = setTimeout(
@@ -610,11 +816,14 @@ async function pageStartupDiagnostic(page, origin, expectedCase) {
 async function exercise(binary, origin, item, index, report, debugPort) {
     const data = fs.mkdtempSync(path.join(os.tmpdir(), "ott-video-geometry-"));
     const id = crypto.createHash("md5").update(data).digest("hex").slice(0, 10);
+    const pageUrl = nativeStartupUrl(origin, id, item.engine);
     const config = path.join(process.env.APPDATA, "com.ottplay.foss");
     fs.mkdirSync(config, { recursive: true });
     const state = path.join(config, ".window-state.dir" + id + ".json");
     const stem =
         String(index).padStart(2, "0") +
+        "-" +
+        item.engine +
         "-" +
         item.width +
         "x" +
@@ -658,7 +867,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                 EPG_URLS: origin + "/__native_video_geometry/guide.xml",
                 OTTPLAY_DATA_DIR: data,
                 OTTPLAY_INSTANCE: "video-geometry-" + id,
-                OTTPLAY_WEB_URL: origin + "/index.html?nativecase=" + id,
+                OTTPLAY_WEB_URL: pageUrl,
                 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:
                     "--remote-debugging-address=127.0.0.1 --remote-debugging-port=" +
                     debugPort,
@@ -744,7 +953,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
             );
         record.bootAdmission =
             "CDP routes installed before first production script";
-        await page.waitForURL(origin + "/index.html?nativecase=" + id, {
+        await page.waitForURL(pageUrl, {
             timeout: 30000,
             waitUntil: "domcontentloaded",
         });
@@ -761,20 +970,49 @@ async function exercise(binary, origin, item, index, report, debugPort) {
             dpr: devicePixelRatio,
             userAgent: navigator.userAgent,
         }));
+        await page.waitForFunction(
+            ({ engine, expected }) => {
+                if (engine === "hls.js") {
+                    const owner = window.__ottCoreBackendPeek?.().current?.();
+                    return (
+                        owner?.diagnosticEngine?.() === "hls.js" &&
+                        owner?.diagnosticMedia?.()?.hls?.url === expected
+                    );
+                }
+                return document.querySelector("#video")?.src === expected;
+            },
+            {
+                engine: item.engine,
+                expected:
+                    origin +
+                    (item.engine === "hls.js"
+                        ? "/__native_video_geometry/hls/wide/index.m3u8?case="
+                        : "/__native_video_geometry/wide.mp4?case=") +
+                    id,
+            },
+            { timeout: 30000 }
+        );
+        const channelIds = await page.evaluate(nativeChannelIds);
+        record.channelIds = channelIds;
+        let priorSelection;
         for (const mode of ["fit", "fill"]) {
+            if (mode === "fill")
+                await page.evaluate(saveNativeFill, Object.values(channelIds));
             for (const [label, source, width, height] of [
                 [mode === "fit" ? "cold" : "mode-change", "wide", 640, 360],
                 ["replay", "wide", 640, 360],
                 ["channel-change", "standard", 480, 360],
             ]) {
                 const first = mode === "fit" && label === "cold";
+                const url =
+                    origin +
+                    (item.engine === "hls.js"
+                        ? "/__native_video_geometry/hls/" +
+                          source +
+                          "/index.m3u8?case="
+                        : "/__native_video_geometry/" + source + ".mp4?case=") +
+                    id;
                 if (first) {
-                    await page.waitForFunction(
-                        (expected) =>
-                            document.querySelector("#video")?.src === expected,
-                        origin + "/__native_video_geometry/wide.mp4?case=" + id,
-                        { timeout: 30000 }
-                    );
                     record.beforeSourceWindow = python([
                         "scripts/windows-video-capture.py",
                         "--pid",
@@ -823,35 +1061,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                         throw new Error(
                             "Could not admit the first owned media source"
                         );
-                } else
-                    await page.evaluate(
-                        ({ url, mode }) => {
-                            const target = window.captureAspectTarget();
-                            if (!target)
-                                throw new Error(
-                                    "No production aspect preference target"
-                                );
-                            if (target.mode !== mode && !target.set(mode))
-                                throw new Error(
-                                    "Could not persist the requested aspect preference"
-                                );
-                            window.stbStop();
-                            window.setPlayerMode(0);
-                            window.closeList(false);
-                            const media = document.querySelector("#video");
-                            media.muted = true;
-                            window.stbPlay(url);
-                        },
-                        {
-                            mode,
-                            url:
-                                origin +
-                                "/__native_video_geometry/" +
-                                source +
-                                ".mp4?case=" +
-                                id,
-                        }
-                    );
+                } else await advanceNativePlayback(page, label, url);
                 let previous;
                 for (const phase of [0, 1]) {
                     await page.waitForFunction(
@@ -870,45 +1080,18 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                         { height, phase, width },
                         { timeout: 12000 }
                     );
-                    const before = await page.evaluate(() => {
-                        const v = document.querySelector("#video");
-                        if (v !== window.__nativeGeometryRetained)
-                            throw new Error(
-                                "Replay replaced the retained media element"
-                            );
-                        const target = window.captureAspectTarget();
-                        const r = v.getBoundingClientRect();
-                        return {
-                            aspect: target?.mode,
-                            frames: v.getVideoPlaybackQuality()
-                                .totalVideoFrames,
-                            height: innerHeight,
-                            rect: {
-                                height: r.height,
-                                width: r.width,
-                                x: r.x,
-                                y: r.y,
-                            },
-                            source: v.currentSrc,
-                            time: v.currentTime,
-                            width: innerWidth,
-                        };
-                    });
-                    if (before.aspect !== mode)
-                        throw new Error(
-                            "Production aspect mode changed before capture"
-                        );
-                    if (
-                        before.source !==
-                        origin +
-                            "/__native_video_geometry/" +
-                            source +
-                            ".mp4?case=" +
-                            id
-                    )
-                        throw new Error(
-                            "Captured media source does not belong to the current fixture case"
-                        );
+                    const before = await page.evaluate(nativePlaybackSample);
+                    validateNativeSelection(
+                        before,
+                        {
+                            channelId: channelIds[source],
+                            engine: item.engine,
+                            mode,
+                            url,
+                        },
+                        phase === 0 ? priorSelection : null,
+                        label
+                    );
                     const image = path.join(
                         OUT,
                         stem +
@@ -948,7 +1131,10 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                         );
                     if (
                         previous &&
-                        (before.time <= previous.time ||
+                        (before.ownerId !== previous.ownerId ||
+                            before.generation !== previous.generation ||
+                            before.sourceId !== previous.sourceId ||
+                            before.time <= previous.time ||
                             before.frames <= previous.frames)
                     )
                         throw new Error(
@@ -988,6 +1174,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                         throw new Error("Native pixel geometry rejected");
                     previous = before;
                 }
+                priorSelection = previous;
             }
         }
         record.status = "pass";
@@ -995,7 +1182,12 @@ async function exercise(binary, origin, item, index, report, debugPort) {
         record.error = redactDiagnosticText(error.stack || String(error), 1600);
         record.processExitCode = child?.exitCode;
         record.pageErrors = pageErrors;
-        record.startupPage = await pageStartupDiagnostic(page, origin, id);
+        record.startupPage = await pageStartupDiagnostic(
+            page,
+            origin,
+            id,
+            item.engine
+        );
         if (child?.pid && child.exitCode === null)
             record.startupFailure = startupDiagnostic(child.pid, debugPort);
         throw error;
@@ -1059,6 +1251,12 @@ async function main() {
             index: hash(path.join(ROOT, "src-tauri/frontend/index.html")),
             player: hash(path.join(ROOT, "src-tauri/frontend/dist/player.js")),
         },
+        hlsFixtureManifestSha256: hash(
+            path.join(
+                ROOT,
+                "tests/fixtures/windows-video-geometry/hls/manifest.json"
+            )
+        ),
         limitation:
             "Hosted WebView2/GPU path only; affected physical Windows hardware acceptance remains open.",
         os: { arch: os.arch(), release: os.release(), version: os.version() },
@@ -1214,12 +1412,18 @@ async function main() {
     }
 }
 module.exports = {
+    advanceNativePlayback,
     captureOwnedImage,
     cases,
+    nativeChannelIds,
+    nativePlaybackSample,
+    nativeStartupUrl,
     pageStartupDiagnostic,
     redactDiagnosticText,
     removeOwnedImages,
+    saveNativeFill,
     validateCaptureInterval,
+    validateNativeSelection,
 };
 if (require.main === module)
     main().catch((error) => {

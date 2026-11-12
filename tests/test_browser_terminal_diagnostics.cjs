@@ -174,7 +174,7 @@ test("missing output preserves failure and a final symlink is never followed", a
     }
 });
 
-async function runCaller(t, failure) {
+async function runCaller(t, failure, crashOptions = {}) {
     const f = fixture(t);
     const evidence = path.join(f.options.output, "acceptance.json");
     const capabilities = { hlsVersion: "fixture" };
@@ -220,6 +220,9 @@ async function runCaller(t, failure) {
             CI_BROWSER_DIAGNOSTICS: f.options.output,
             CI_BROWSER_EVIDENCE: evidence,
             CI_PLAYWRIGHT_MODULE: "/synthetic-playwright",
+            ...(crashOptions.enabled
+                ? { CI_FIREFOX_CRASH_DIAGNOSTICS: "1" }
+                : {}),
         },
         execPath: process.execPath,
     };
@@ -233,6 +236,29 @@ async function runCaller(t, failure) {
             readBrowserMediaCapabilities: () => {},
         },
         "./browser-terminal-diagnostics.cjs": observeTerminal,
+        "./firefox-crash-diagnostics.cjs": {
+            ...require("../scripts/firefox-crash-diagnostics.cjs"),
+            create(engine, env) {
+                if (crashOptions.createError)
+                    throw new Error("SECRET startup failure /private/path");
+                return require("../scripts/firefox-crash-diagnostics.cjs").create(
+                    engine,
+                    env,
+                    "linux"
+                );
+            },
+            finish(owner, output, options) {
+                const result =
+                    require("../scripts/firefox-crash-diagnostics.cjs").finish(
+                        owner,
+                        output,
+                        { ...options, platform: "linux" }
+                    );
+                if (crashOptions.finishError)
+                    throw new Error("diagnostic write failed");
+                return result;
+            },
+        },
         "/synthetic-playwright": {
             firefox: {
                 async launch() {
@@ -266,6 +292,21 @@ async function runCaller(t, failure) {
                 assert.equal(options.timeout, 8 * 60 * 1000);
                 assert.equal(options.stdio, "inherit");
                 assert.equal(options.env.CI, "1");
+                if (crashOptions.createError) {
+                    assert.equal(
+                        options.env.CI_FIREFOX_CRASH_DIAGNOSTICS,
+                        undefined
+                    );
+                    assert.equal(options.env.CI_FIREFOX_CRASH_ROOT, undefined);
+                    assert.equal(options.env.CI_FIREFOX_CRASH_TOKEN, undefined);
+                    assert.equal(
+                        require("../scripts/firefox-crash-diagnostics.cjs").session(
+                            options.env,
+                            "linux"
+                        ),
+                        null
+                    );
+                }
                 return child;
             },
         },
@@ -334,6 +375,61 @@ for (const [failure, phase, spawned] of [
             assert.equal(f.read().phase, phase);
             assert.equal(f.spawned, spawned);
             if (phase === "scenario-process") assert.equal(f.reportReads, 0);
+        }
+    );
+}
+
+for (const finishError of [false, true]) {
+    test(
+        "opt-in crash collection preserves original child failure, diagnostic error=" +
+            finishError,
+        async (t) => {
+            const f = await runCaller(t, "child-exit", {
+                enabled: true,
+                finishError,
+            });
+            assert.equal(f.fakeProcess.exitCode, 1);
+            assert.equal(f.read().outcome, "failed");
+            assert.equal(f.read().phase, "scenario-process");
+            assert.equal(f.read().scenarioProcess.status, 1);
+            assert.equal(fs.existsSync(f.evidence), false);
+            const diagnostic = JSON.parse(
+                fs.readFileSync(
+                    path.join(f.options.output, "firefox-crash-summary.json"),
+                    "utf8"
+                )
+            );
+            assert.equal(diagnostic.status, "unavailable");
+            assert.deepEqual(diagnostic.dumps, []);
+        }
+    );
+}
+
+for (const failure of [undefined, "child-exit"]) {
+    test(
+        "collector startup failure preserves actual scenarios and original outcome: " +
+            (failure || "success"),
+        async (t) => {
+            const f = await runCaller(t, failure, {
+                createError: true,
+                enabled: true,
+            });
+            assert.equal(
+                f.spawned,
+                1,
+                "the original scenario process must still run"
+            );
+            assert.equal(f.fakeProcess.exitCode, failure ? 1 : undefined);
+            assert.equal(f.read().outcome, failure ? "failed" : "passed");
+            assert.equal(fs.existsSync(f.evidence), !failure);
+            const serialized = fs.readFileSync(
+                path.join(f.options.output, "firefox-crash-summary.json"),
+                "utf8"
+            );
+            const report = JSON.parse(serialized);
+            assert.equal(report.status, "initialization-unavailable");
+            assert.deepEqual(report.dumps, []);
+            assert.doesNotMatch(serialized, /SECRET|private|path|failure/);
         }
     );
 }

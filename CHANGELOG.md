@@ -167,10 +167,18 @@
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
-## [1.1.71] - 2026-11-11
+## [1.1.71] - 2026-11-12
 
 ### Changes
 
+- Keep the Windows Tauri media element on a stable full-plane box with native
+  Fit/Fill, instead of changing from percentage containment to pixel-sized fill
+  when decoder metadata arrives. Preserve the explicit WKWebView sizing path,
+  channel-list previews and zoom.
+- Exercise real native channel changes without a preparatory layout reset,
+  including the reported near-ratio sizes and HLS.js/MSE playback.
+- Capture bounded Linux Firefox crash signatures without publishing process
+  memory or relaxing the original browser acceptance scenarios.
 - Reconcile video geometry after playback starts using two layout frames and a
   bounded fallback deadline. Keep the current Fit/Fill, zoom and channel-list
   preview while retiring work from replaced media or sources.
@@ -187,10 +195,10 @@ preserved.
 
 ### Known issues
 
-The native Windows first-picture defect at an exact 16:9 window size (#1132)
-requires acceptance on an affected Windows setup. This release includes a
-layout-reconciliation candidate; successful automated tests do not establish
-that the Windows compositor defect is resolved. Browser Local permission
+The reporter confirmed that the native Windows first-picture defect (#1132)
+persists in 1.1.71-beta.4. The stable-plane change is a new candidate requiring
+acceptance on that affected Windows setup; successful automated tests do not
+establish that the Windows compositor defect is resolved. Browser Local permission
 queries (#1004) and the historical Firefox 153 Video.js teardown crash (#1005)
 remain under investigation.
 

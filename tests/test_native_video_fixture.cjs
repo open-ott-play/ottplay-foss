@@ -11,14 +11,53 @@ const {
     CLASSIC_OPTIONAL_BUNDLES,
 } = require("../scripts/classic-bundle.cjs");
 const {
+    advanceNativePlayback,
     captureOwnedImage,
     cases,
+    nativeChannelIds,
+    nativeStartupUrl,
+    nativePlaybackSample,
     pageStartupDiagnostic,
     redactDiagnosticText,
     removeOwnedImages,
+    saveNativeFill,
     validateCaptureInterval,
+    validateNativeSelection,
 } = require("../scripts/check-windows-video-geometry.cjs");
+require("./test_native_hls_fixture.cjs");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+test("native startup URL binds the exact case and engine without a second navigation", () => {
+    for (const [engine, query] of [
+        ["html5", "html5"],
+        ["hls.js", "hls"],
+    ]) {
+        const url = new URL(
+            nativeStartupUrl("http://127.0.0.1:8443", "abcdef1234", engine)
+        );
+        assert.equal(url.pathname, "/index.html");
+        assert.deepEqual(
+            [...url.searchParams],
+            [
+                ["nativecase", "abcdef1234"],
+                ["nativeengine", query],
+            ]
+        );
+    }
+    for (const [origin, id, engine] of [
+        ["https://foreign.invalid", "abcdef1234", "hls.js"],
+        ["http://127.0.0.1:8443", "abcdef1234&nativeengine=hls", "html5"],
+        ["http://127.0.0.1:8443", "abcdef1234", undefined],
+    ])
+        assert.throws(
+            () => nativeStartupUrl(origin, id, engine),
+            /Invalid owned/
+        );
+    assert.throws(
+        () => validateNativeSelection({}, {}, null, "cold"),
+        /explicit fixture engine/
+    );
+});
 
 test("capture subprocess failures retain cleanup ownership and preserve preexisting files", () => {
     const directory = fs.mkdtempSync(
@@ -83,14 +122,19 @@ test("capture guard rejects a later same-color cycle and slow or reversed interv
 
 test("native matrix includes exact locked/unlocked starts and all one-pixel controls", () => {
     const matrix = cases();
-    assert.equal(matrix.length, 12);
-    assert.equal(matrix.filter((item) => item.lock).length, 2);
+    const mp4 = matrix.filter((item) => item.engine === "html5");
+    const hls = matrix.filter((item) => item.engine === "hls.js");
+    assert.equal(mp4.length, 16);
+    assert.equal(hls.length, 8);
+    assert.equal(matrix.length, 24);
+    assert.equal(mp4.filter((item) => item.lock).length, 3);
+    assert.equal(hls.filter((item) => item.lock).length, 3);
     for (const [width, height] of [
         [800, 450],
         [1280, 720],
     ]) {
         assert.deepEqual(
-            matrix
+            mp4
                 .filter((x) => x.width === width && x.height === height)
                 .map((x) => x.lock),
             [false, true]
@@ -102,10 +146,324 @@ test("native matrix includes exact locked/unlocked starts and all one-pixel cont
             [width, height + 1],
         ])
             assert.deepEqual(
-                matrix.filter((x) => x.width === w && x.height === h),
-                [{ height: h, lock: false, width: w }]
+                mp4.filter((x) => x.width === w && x.height === h),
+                [{ engine: "html5", height: h, lock: false, width: w }]
             );
     }
+    assert.deepEqual(
+        mp4.filter((x) => x.width === 802 && x.height === 451),
+        [false, true].map((lock) => ({
+            engine: "html5",
+            height: 451,
+            lock,
+            width: 802,
+        }))
+    );
+    for (const [width, height] of [
+        [800, 452],
+        [802, 450],
+    ])
+        assert.deepEqual(
+            mp4.filter((x) => x.width === width && x.height === height),
+            [{ engine: "html5", height, lock: false, width }]
+        );
+    assert.deepEqual(
+        hls.map(({ engine, width, height, lock }) => ({
+            engine,
+            height,
+            lock,
+            width,
+        })),
+        [
+            { engine: "hls.js", height: 450, lock: false, width: 800 },
+            { engine: "hls.js", height: 450, lock: true, width: 800 },
+            { engine: "hls.js", height: 451, lock: false, width: 802 },
+            { engine: "hls.js", height: 451, lock: true, width: 802 },
+            { engine: "hls.js", height: 720, lock: false, width: 1280 },
+            { engine: "hls.js", height: 720, lock: true, width: 1280 },
+            { engine: "hls.js", height: 451, lock: false, width: 800 },
+            { engine: "hls.js", height: 721, lock: false, width: 1280 },
+        ]
+    );
+    assert.equal(matrix.length * 2 * 3 * 2, 288);
+});
+
+function playbackFixture() {
+    const urls = {
+        standard: "http://127.0.0.1/standard.mp4",
+        wide: "http://127.0.0.1/wide.mp4",
+    };
+    const calls = [];
+    const saved = new Map();
+    let ownerId = 1;
+    const state = {
+        generation: 1,
+        target: { channelId: "11", kind: "live", sourceId: "owned-fixture" },
+    };
+    const video = {
+        currentSrc: urls.wide,
+        currentTime: 0.5,
+        getBoundingClientRect: () => ({ height: 450, width: 800, x: 0, y: 0 }),
+        getVideoPlaybackQuality: () => ({ totalVideoFrames: 6 }),
+    };
+    const forbidden = () => {
+        throw new Error("Artificial layout repair");
+    };
+    const w = {
+        __nativeGeometryRetained: video,
+        __ottChannels: {
+            capturePreference(name, id) {
+                assert.equal(name, "aAspects");
+                assert.ok([11, 22].includes(id));
+                return {
+                    active: () => true,
+                    get: () => saved.get(id),
+                    saved: () => saved.get(id),
+                    set(value) {
+                        saved.set(id, value);
+                        return true;
+                    },
+                };
+            },
+        },
+        __ottClassicPlayback: {
+            context: () => ({ isCurrentBackend: () => true }),
+            snapshot: () => state,
+        },
+        __ottCoreBackendPeek: () => ({
+            current: () => ({
+                active: () => true,
+                diagnosticEngine: () => "html5",
+                diagnosticMedia: () => ({ hls: null, media: video }),
+                id: ownerId,
+            }),
+        }),
+        captureAspectTarget: () => ({
+            current: () => true,
+            mode: saved.get(w.curList[w.primaryIndex]) === 1 ? "fill" : "fit",
+            savedMode:
+                saved.get(w.curList[w.primaryIndex]) === 1 ? "fill" : null,
+            set: forbidden,
+        }),
+        channels: {
+            11: { channel_name: "Native geometry wide" },
+            22: { channel_name: "Native geometry standard" },
+        },
+        closeList: forbidden,
+        curList: [11, 22],
+        isListVisible: false,
+        primaryIndex: 0,
+        setPlayerMode: forbidden,
+        stbPlay(url) {
+            calls.push(["play", url]);
+            video.currentSrc = url;
+            ownerId++;
+        },
+        stbStop: forbidden,
+    };
+    const scope = {
+        document: { querySelector: () => video },
+        innerHeight: 450,
+        innerWidth: 800,
+        window: w,
+    };
+    const page = {
+        evaluate(fn, args) {
+            scope.args = args;
+            return vm.runInNewContext("(" + fn.toString() + ")(args)", scope);
+        },
+        keyboard: {
+            press(key) {
+                assert.equal(key, "Equal");
+                calls.push(["key", key]);
+                w.primaryIndex = 1 - w.primaryIndex;
+                state.target.channelId = String(w.curList[w.primaryIndex]);
+                state.generation++;
+                ownerId++;
+                video.currentSrc = w.primaryIndex ? urls.standard : urls.wide;
+            },
+        },
+    };
+    return { calls, page, saved, state, urls, video, w };
+}
+
+test("native transitions replay without layout repair and use a real channel key", async () => {
+    const fixture = playbackFixture();
+    const { page, urls } = fixture;
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(await page.evaluate(nativeChannelIds))),
+        { standard: 22, wide: 11 }
+    );
+    let prior = await page.evaluate(nativePlaybackSample);
+    await advanceNativePlayback(page, "replay", urls.wide);
+    let sample = await page.evaluate(nativePlaybackSample);
+    validateNativeSelection(
+        sample,
+        { channelId: 11, engine: "html5", mode: "fit", url: urls.wide },
+        prior,
+        "replay"
+    );
+    prior = sample;
+    await advanceNativePlayback(page, "channel-change", urls.standard);
+    sample = await page.evaluate(nativePlaybackSample);
+    validateNativeSelection(
+        sample,
+        { channelId: 22, engine: "html5", mode: "fit", url: urls.standard },
+        prior,
+        "channel-change"
+    );
+    await page.evaluate(saveNativeFill, [11, 22]);
+    assert.deepEqual(
+        [...fixture.saved],
+        [
+            [11, 1],
+            [22, 1],
+        ]
+    );
+    prior = sample;
+    await advanceNativePlayback(page, "mode-change", urls.wide);
+    sample = await page.evaluate(nativePlaybackSample);
+    validateNativeSelection(
+        sample,
+        { channelId: 11, engine: "html5", mode: "fill", url: urls.wide },
+        prior,
+        "mode-change"
+    );
+    assert.deepEqual(fixture.calls, [
+        ["play", urls.wide],
+        ["key", "Equal"],
+        ["key", "Equal"],
+    ]);
+});
+
+test("media source alone cannot fake a channel selection or a new engine owner", async () => {
+    const { page, state, urls, video, w } = playbackFixture();
+    const prior = await page.evaluate(nativePlaybackSample);
+    const expected = {
+        channelId: 22,
+        engine: "html5",
+        mode: "fit",
+        url: urls.standard,
+    };
+    video.currentSrc = urls.standard;
+    assert.throws(
+        () =>
+            validateNativeSelection(
+                page.evaluate(nativePlaybackSample),
+                expected,
+                prior,
+                "channel-change"
+            ),
+        /channel, source or saved aspect/
+    );
+    w.primaryIndex = 1;
+    assert.throws(
+        () => page.evaluate(nativePlaybackSample),
+        /selection or engine owner/
+    );
+    state.target.channelId = "22";
+    state.generation++;
+    assert.throws(
+        () =>
+            validateNativeSelection(
+                page.evaluate(nativePlaybackSample),
+                expected,
+                prior,
+                "channel-change"
+            ),
+        /did not replace the expected owner/
+    );
+    const sample = {
+        ...page.evaluate(nativePlaybackSample),
+        ownerId: prior.ownerId + 1,
+    };
+    validateNativeSelection(sample, expected, prior, "channel-change");
+    assert.throws(
+        () =>
+            validateNativeSelection(
+                { ...sample, generation: prior.generation },
+                expected,
+                prior,
+                "channel-change"
+            ),
+        /did not replace/
+    );
+    assert.throws(
+        () =>
+            validateNativeSelection(
+                { ...sample, sourceId: "other-provider" },
+                expected,
+                prior,
+                "channel-change"
+            ),
+        /did not replace/
+    );
+    assert.throws(
+        () =>
+            validateNativeSelection(
+                { ...sample, aspect: "fill", savedAspect: null },
+                { ...expected, mode: "fill" },
+                prior,
+                "channel-change"
+            ),
+        /saved aspect/
+    );
+});
+
+test("HLS acceptance requires the current MSE owner, manifest URL and blob media", () => {
+    const manifest =
+        "http://127.0.0.1:8443/__native_video_geometry/hls/wide/index.m3u8?case=abcdef1234";
+    const valid = {
+        aspect: "fit",
+        channelId: 11,
+        engine: "hls.js",
+        generationMatchesBackend: true,
+        mediaHlsUrl: manifest,
+        mediaMatchesRetained: true,
+        savedAspect: null,
+        source: "blob:http://127.0.0.1:8443/owned-media-source",
+    };
+    validateNativeSelection(
+        valid,
+        { channelId: 11, engine: "hls.js", mode: "fit", url: manifest },
+        null,
+        "cold"
+    );
+    for (const invalid of [
+        { ...valid, engine: "html5" },
+        { ...valid, mediaMatchesRetained: false },
+        { ...valid, mediaHlsUrl: manifest.replace("wide", "standard") },
+        { ...valid, source: manifest },
+        { ...valid, source: "blob:https://foreign.invalid/not-owned" },
+    ])
+        assert.throws(
+            () =>
+                validateNativeSelection(
+                    invalid,
+                    {
+                        channelId: 11,
+                        engine: "hls.js",
+                        mode: "fit",
+                        url: manifest,
+                    },
+                    null,
+                    "cold"
+                ),
+            /channel, source or saved aspect/
+        );
+});
+
+test("Fill preparation rejects a preference that did not reach durable storage", () => {
+    const { page, w } = playbackFixture();
+    const capture = w.__ottChannels.capturePreference;
+    w.__ottChannels.capturePreference = (name, id) => ({
+        ...capture(name, id),
+        saved: () => undefined,
+    });
+    assert.throws(
+        () => page.evaluate(saveNativeFill, [11, 22]),
+        /persist.*Fill/
+    );
 });
 
 test("failure summaries remove URL credentials and respect their output bound", () => {
@@ -163,7 +521,8 @@ test("startup diagnostics retain fixture state without body, list or source secr
                         www:
                             origin +
                             "/__native_video_geometry/channels.m3u?case=" +
-                            id,
+                            id +
+                            "&engine=html5",
                     },
                 ],
             }),
@@ -288,6 +647,7 @@ test("first native media remains undecodable until owned cold-capture admission"
         }
     );
     const caseId = "abcdef1234";
+    const hlsCaseId = "fedcba9876";
     try {
         let ready = false;
         for (let n = 0; n < 50; n++) {
@@ -363,37 +723,228 @@ test("first native media remains undecodable until owned cold-capture admission"
         assert.ok(start >= 0 && end > start, "generated bootstrap is present");
         vm.runInNewContext(html.slice(start + "<script>".length, end), scope);
         assert.equal(items.get("ottplayprov"), "m3u");
+        assert.equal(items.get("m3usPlayers"), "0");
         assert.equal(items.get("sInfoSwitch"), "0");
         assert.equal(items.get("sInfoChange"), "0");
         const playlist = JSON.parse(items.get("m3um3uArr")).M3Us[0].www;
         const body = await (await fetch(playlist)).text();
-        const media = body.trim().split("\n").at(-1);
-        assert.equal(
+        const sources = ["wide", "standard"];
+        const media = body
+            .trim()
+            .split("\n")
+            .filter((line) => !line.startsWith("#"));
+        assert.deepEqual(
             media,
-            origin + "/__native_video_geometry/wide.mp4?case=" + caseId
+            sources.map(
+                (source) =>
+                    origin +
+                    "/__native_video_geometry/" +
+                    source +
+                    ".mp4?case=" +
+                    caseId
+            )
         );
+        for (const source of sources)
+            assert.ok(
+                body.includes("#EXTINF:-1,Native geometry " + source + "\n")
+            );
+
+        let hlsBootResolved = false;
+        const hlsPendingPage = fetch(
+            origin +
+                "/index.html?nativecase=" +
+                hlsCaseId +
+                "&nativeengine=hls",
+            { signal: AbortSignal.timeout(5000) }
+        ).then(async (response) => {
+            hlsBootResolved = true;
+            return response.text();
+        });
+        await pause(100);
+        assert.equal(hlsBootResolved, false);
+        await fetch(
+            origin + "/__native_video_geometry/boot-admit?case=" + hlsCaseId
+        );
+        const hlsHtml = await hlsPendingPage;
+        const hlsItems = new Map();
+        const hlsScope = {
+            document: { addEventListener() {} },
+            localStorage: { setItem: (k, v) => hlsItems.set(k, v) },
+            location: {
+                href:
+                    origin +
+                    "/index.html?nativecase=" +
+                    hlsCaseId +
+                    "&nativeengine=hls",
+                origin,
+            },
+            URL,
+            window: {},
+        };
+        const hlsStart = hlsHtml.indexOf("<script>");
+        const hlsEnd = hlsHtml.indexOf("</script>", hlsStart);
+        assert.ok(hlsStart >= 0 && hlsEnd > hlsStart);
+        vm.runInNewContext(
+            hlsHtml.slice(hlsStart + "<script>".length, hlsEnd),
+            hlsScope
+        );
+        assert.equal(hlsItems.get("ottplayprov"), "m3u");
+        assert.equal(hlsItems.get("m3usPlayers"), "1");
+        assert.equal(
+            JSON.parse(hlsItems.get("m3um3uArr")).M3Us[0].www,
+            origin +
+                "/__native_video_geometry/channels.m3u?case=" +
+                hlsCaseId +
+                "&engine=hls"
+        );
+
+        const hlsPlaylistUrl =
+            origin +
+            "/__native_video_geometry/channels.m3u?case=" +
+            hlsCaseId +
+            "&engine=hls";
+        const hlsBody = await (await fetch(hlsPlaylistUrl)).text();
+        const hlsUrls = hlsBody
+            .trim()
+            .split("\n")
+            .filter((line) => !line.startsWith("#"));
+        assert.deepEqual(
+            hlsUrls,
+            sources.map(
+                (source) =>
+                    origin +
+                    "/__native_video_geometry/hls/" +
+                    source +
+                    "/index.m3u8?case=" +
+                    hlsCaseId
+            )
+        );
+        const hlsManifest = await fetch(hlsUrls[0]);
+        assert.equal(hlsManifest.status, 200);
+        assert.match(
+            hlsManifest.headers.get("content-type"),
+            /application\/vnd\.apple\.mpegurl/
+        );
+        const hlsText = await hlsManifest.text();
+        const hlsMediaUrls = [
+            origin +
+                "/__native_video_geometry/hls/wide/init.mp4?case=" +
+                hlsCaseId,
+            origin +
+                "/__native_video_geometry/hls/wide/segment000.m4s?case=" +
+                hlsCaseId,
+            origin +
+                "/__native_video_geometry/hls/wide/segment007.m4s?case=" +
+                hlsCaseId,
+        ];
+        assert.ok(hlsText.includes('#EXT-X-MAP:URI="' + hlsMediaUrls[0] + '"'));
+        for (let segment = 0; segment < 8; segment++)
+            assert.ok(
+                hlsText.includes(
+                    origin +
+                        "/__native_video_geometry/hls/wide/segment" +
+                        String(segment).padStart(3, "0") +
+                        ".m4s?case=" +
+                        hlsCaseId
+                )
+            );
+        assert.equal(/(?:https?:\/\/)(?!127\.0\.0\.1)/.test(hlsText), false);
+        assert.equal(hlsText.includes("../"), false);
+        assert.equal(
+            (
+                await fetch(
+                    origin + "/__native_video_geometry/hls/wide/index.m3u8"
+                )
+            ).status,
+            400
+        );
+        assert.equal(
+            (
+                await fetch(
+                    origin +
+                        "/__native_video_geometry/hls/%2e%2e%2fwide/init.mp4?case=" +
+                        hlsCaseId
+                )
+            ).status,
+            404
+        );
+        const hlsResolved = [];
+        const expectedHls = hlsMediaUrls.map((mediaUrl, index) =>
+            fetch(mediaUrl, { signal: AbortSignal.timeout(5000) }).then(
+                async (r) => {
+                    hlsResolved.push(index);
+                    assert.equal(r.status, 200);
+                    return Buffer.from(await r.arrayBuffer());
+                }
+            )
+        );
+        const wrongCaseController = new AbortController();
+        let wrongCaseResolved = false;
+        const wrongCase = fetch(
+            origin +
+                "/__native_video_geometry/hls/wide/segment001.m4s?case=" +
+                caseId,
+            { signal: wrongCaseController.signal }
+        ).then((r) => {
+            wrongCaseResolved = true;
+            return r.arrayBuffer();
+        });
+        wrongCase.catch(() => {});
+        await pause(150);
+        assert.deepEqual(hlsResolved, []);
+        assert.equal(wrongCaseResolved, false);
+        await fetch(origin + "/__native_video_geometry/admit?case=0000000000");
+        await pause(100);
+        assert.deepEqual(hlsResolved, []);
+        await fetch(
+            origin + "/__native_video_geometry/admit?case=" + hlsCaseId
+        );
+        const receivedHls = await Promise.all(expectedHls);
+        const hlsRoot = path.join(
+            __dirname,
+            "fixtures/windows-video-geometry/hls/wide"
+        );
+        for (const [index, filename] of [
+            "init.mp4",
+            "segment000.m4s",
+            "segment007.m4s",
+        ].entries())
+            assert.deepEqual(
+                receivedHls[index],
+                fs.readFileSync(path.join(hlsRoot, filename))
+            );
+        await pause(100);
+        assert.equal(
+            wrongCaseResolved,
+            false,
+            "only the exact HLS fixture case may release init or media bytes"
+        );
+        wrongCaseController.abort();
+        await assert.rejects(wrongCase, { name: "AbortError" });
         assert.equal(
             (await fetch(origin + "/__native_video_geometry/wide.mp4")).status,
             400
         );
-        let resolved = false;
-        const pending = fetch(media, {
-            signal: AbortSignal.timeout(5000),
-        }).then(async (r) => {
-            resolved = true;
-            return Buffer.from(await r.arrayBuffer());
-        });
+        const resolved = [];
+        const pending = media.map((url, index) =>
+            fetch(url, {
+                signal: AbortSignal.timeout(5000),
+            }).then(async (r) => {
+                resolved.push(index);
+                return Buffer.from(await r.arrayBuffer());
+            })
+        );
         await pause(150);
         assert.equal(
-            resolved,
-            false,
-            "no first decoder bytes may escape before admission"
+            resolved.length,
+            0,
+            "neither fixture channel may decode before admission"
         );
         await fetch(origin + "/__native_video_geometry/admit?case=0000000000");
         await pause(150);
         assert.equal(
-            resolved,
-            false,
+            resolved.length,
+            0,
             "another process case must not admit this first frame"
         );
         assert.deepEqual(
@@ -404,12 +955,17 @@ test("first native media remains undecodable until owned cold-capture admission"
             ).json(),
             { admitted: caseId }
         );
-        assert.deepEqual(
-            await pending,
-            fs.readFileSync(
-                path.join(__dirname, "fixtures/windows-video-geometry/wide.mp4")
-            )
-        );
+        const received = await Promise.all(pending);
+        for (const [index, source] of sources.entries())
+            assert.deepEqual(
+                received[index],
+                fs.readFileSync(
+                    path.join(
+                        __dirname,
+                        "fixtures/windows-video-geometry/" + source + ".mp4"
+                    )
+                )
+            );
     } finally {
         const exited = new Promise((resolve) => child.once("exit", resolve));
         child.kill();

@@ -2889,10 +2889,21 @@ export function applyAspectRatio(): void {
     var ch = (isFullscreen ? window.innerHeight : box && box.clientHeight) || 0;
     var vw = (vEl && vEl.videoWidth) || 0;
     var vh = (vEl && vEl.videoHeight) || 0;
+    var host = window as any;
+    // WebView2 owns the decoded surface's aspect transform. Keep its media box
+    // stable across metadata/source changes instead of switching from percent
+    // contain to pixel-sized fill while that surface is being initialized.
+    // WKWebView still needs the explicit fitted frame below. Optional engines
+    // that move #video to a wrapper retain that existing sizing contract too.
+    var nativePlane = !!(
+        (host.__TAURI__ || host.__TAURI_INTERNALS__) &&
+        /Windows/.test((host.navigator && host.navigator.userAgent) || "") &&
+        document.getElementById("video") === vEl
+    );
     // Explicit geometry: WKWebView often top-aligns letterboxed <video> frames
     // despite object-position:center. Size the element to the fitted frame and
     // let flex (#vdiv) center it (contain) or absolute-center the cover crop.
-    var measured = cw > 0 && ch > 0 && vw > 0 && vh > 0;
+    var measured = !nativePlane && cw > 0 && ch > 0 && vw > 0 && vh > 0;
     var w = 0;
     var h = 0;
     if (measured) {

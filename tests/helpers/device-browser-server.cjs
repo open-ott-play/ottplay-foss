@@ -100,6 +100,18 @@ http.createServer((request, response) => {
             /^\/__native_video_geometry\/(wide|standard)\.mp4$/.test(pathname)
         )
             route = "media";
+        else if (
+            /^\/__native_video_geometry\/hls\/(wide|standard)\/index\.m3u8$/.test(
+                pathname
+            )
+        )
+            route = "hls-manifest";
+        else if (
+            /^\/__native_video_geometry\/hls\/(wide|standard)\/(?:init\.mp4|segment\d{3}\.m4s)$/.test(
+                pathname
+            )
+        )
+            route = "hls-media";
         else if (pathname === "/__native_video_geometry/admit")
             route = "admission";
         if (route !== "asset") console.log("Native fixture request: " + route);
@@ -149,7 +161,9 @@ http.createServer((request, response) => {
         return;
     }
     const nativeCase = url.searchParams.get("case");
-    const validNativeCase = /^[a-f0-9]{10}$/.test(nativeCase || "");
+    const validNativeCase =
+        url.searchParams.getAll("case").length === 1 &&
+        /^[a-f0-9]{10}$/.test(nativeCase || "");
     if (
         nativeGeometry &&
         pathname === "/__native_video_geometry/boot-admit" &&
@@ -169,16 +183,37 @@ http.createServer((request, response) => {
         pathname === "/__native_video_geometry/channels.m3u" &&
         validNativeCase
     ) {
+        const engines = url.searchParams.getAll("engine");
+        if (engines.length !== 1 || !["hls", "html5"].includes(engines[0])) {
+            response.writeHead(400).end();
+            return;
+        }
+        const hls = engines[0] === "hls";
         response.writeHead(200, {
             "Cache-Control": "no-store",
             "Content-Type": "audio/x-mpegurl",
         });
         response.end(
-            "#EXTM3U\n#EXTINF:-1,Native geometry fixture\nhttp://127.0.0.1:" +
-                port +
-                "/__native_video_geometry/wide.mp4?case=" +
-                nativeCase +
-                "\n"
+            "#EXTM3U\n" +
+                ["wide", "standard"]
+                    .map(
+                        (source) =>
+                            "#EXTINF:-1,Native geometry " +
+                            source +
+                            "\nhttp://127.0.0.1:" +
+                            port +
+                            (hls
+                                ? "/__native_video_geometry/hls/" +
+                                  source +
+                                  "/index.m3u8"
+                                : "/__native_video_geometry/" +
+                                  source +
+                                  ".mp4") +
+                            "?case=" +
+                            nativeCase +
+                            "\n"
+                    )
+                    .join("")
         );
         return;
     }
@@ -194,6 +229,102 @@ http.createServer((request, response) => {
         response
             .writeHead(200, { "Content-Type": "application/json" })
             .end(JSON.stringify({ admitted: nativeCase }));
+        return;
+    }
+    const hlsManifest = pathname.match(
+        /^\/__native_video_geometry\/hls\/(wide|standard)\/index\.m3u8$/
+    );
+    if (nativeGeometry && hlsManifest) {
+        if (!validNativeCase || url.searchParams.getAll("case").length !== 1) {
+            response.writeHead(400).end();
+            return;
+        }
+        const source = hlsManifest[1];
+        const playlist = fs.readFileSync(
+            path.join(
+                __dirname,
+                "../fixtures/windows-video-geometry/hls",
+                source,
+                "index.m3u8"
+            ),
+            "utf8"
+        );
+        const caseQuery = "?case=" + nativeCase;
+        const base =
+            "http://127.0.0.1:" +
+            port +
+            "/__native_video_geometry/hls/" +
+            source +
+            "/";
+        const rewritten = playlist
+            .replace(
+                '#EXT-X-MAP:URI="init.mp4"',
+                '#EXT-X-MAP:URI="' + base + "init.mp4" + caseQuery + '"'
+            )
+            .replace(/^(segment\d{3}\.m4s)$/gm, base + "$1" + caseQuery);
+        const localOrigin = "http://127.0.0.1:" + port + "/";
+        if (
+            !rewritten.includes(
+                '#EXT-X-MAP:URI="' + base + "init.mp4" + caseQuery + '"'
+            ) ||
+            !rewritten.includes(base + "segment000.m4s" + caseQuery) ||
+            rewritten.replaceAll(localOrigin, "").match(/(?:https?:|\.\.\/)/i)
+        ) {
+            response.writeHead(500).end();
+            return;
+        }
+        response.writeHead(200, {
+            "Cache-Control": "no-store",
+            "Content-Length": Buffer.byteLength(rewritten),
+            "Content-Type": "application/vnd.apple.mpegurl",
+        });
+        response.end(request.method === "HEAD" ? undefined : rewritten);
+        return;
+    }
+    const hlsMedia = pathname.match(
+        /^\/__native_video_geometry\/hls\/(wide|standard)\/(init\.mp4|segment\d{3}\.m4s)$/
+    );
+    if (nativeGeometry && hlsMedia) {
+        if (!validNativeCase || url.searchParams.getAll("case").length !== 1) {
+            response.writeHead(400).end();
+            return;
+        }
+        const file = path.join(
+            __dirname,
+            "../fixtures/windows-video-geometry/hls",
+            hlsMedia[1],
+            hlsMedia[2]
+        );
+        if (!fs.existsSync(file)) {
+            response.writeHead(404).end();
+            return;
+        }
+        const bytes = fs.readFileSync(file);
+        const send = () => {
+            clearTimeout(timer);
+            pendingNativeMedia.get(nativeCase)?.delete(send);
+            if (response.destroyed) return;
+            response.writeHead(200, {
+                "Cache-Control": "no-store",
+                "Content-Length": bytes.length,
+                "Content-Type": "video/mp4",
+            });
+            response.end(request.method === "HEAD" ? undefined : bytes);
+        };
+        let timer;
+        if (!nativeAdmissions.has(nativeCase)) {
+            const pending = pendingNativeMedia.get(nativeCase) || new Set();
+            pendingNativeMedia.set(nativeCase, pending);
+            pending.add(send);
+            timer = setTimeout(() => {
+                pending.delete(send);
+                response.writeHead(504).end();
+            }, 60000);
+            response.on("close", () => {
+                clearTimeout(timer);
+                pending.delete(send);
+            });
+        } else send();
         return;
     }
     if (/^\/__native_video_geometry\/(wide|standard)\.mp4$/.test(pathname)) {
@@ -362,8 +493,10 @@ http.createServer((request, response) => {
                         "<head>",
                         '<head><script>localStorage.setItem("ottplaylang","_eng");' +
                             'localStorage.setItem("ottplayprov","m3u");' +
+                            'var nativeEngine=new URL(location.href).searchParams.get("nativeengine")==="hls"?"hls":"html5";' +
+                            'localStorage.setItem("m3usPlayers",nativeEngine==="hls"?"1":"0");' +
                             'localStorage.setItem("sInfoSwitch","0");localStorage.setItem("sInfoChange","0");' +
-                            'localStorage.setItem("m3um3uArr",JSON.stringify({active:0,M3Us:[{www:location.origin+"/__native_video_geometry/channels.m3u?case="+new URL(location.href).searchParams.get("nativecase")}]}));' +
+                            'localStorage.setItem("m3um3uArr",JSON.stringify({active:0,M3Us:[{www:location.origin+"/__native_video_geometry/channels.m3u?case="+new URL(location.href).searchParams.get("nativecase")+"&engine="+nativeEngine}]}));' +
                             'window.__nativeGeometryEvents=[];for(const kind of ["loadstart","loadeddata","playing"])document.addEventListener(kind,e=>{if(e.target.tagName==="VIDEO")window.__nativeGeometryEvents.push({kind,source:e.target.currentSrc});},true);' +
                             "</script>"
                     )

@@ -65,8 +65,8 @@
         }
     }
     function index(values: any, key: string, max: number): number {
-        var n = values && values[key];
-        return Number.isInteger(n) && n >= 0 && n <= max ? n : 0;
+        var n = values[key];
+        return Number.isInteger(n) && n > 0 && n <= max ? n : 0;
     }
     function declarations(video: HTMLVideoElement, values?: any): string {
         values = values || host.settings || {};
@@ -80,18 +80,13 @@
         if (size) {
             var rect = video.getBoundingClientRect();
             var height = rect.height;
-            var fit = host.getComputedStyle
-                ? host.getComputedStyle(video).objectFit
-                : "contain";
-            if (
-                fit !== "cover" &&
-                video.videoWidth > 0 &&
-                video.videoHeight > 0
-            )
-                height = Math.min(
-                    height,
-                    (rect.width * video.videoHeight) / video.videoWidth
-                );
+            if (height > 0 && video.videoWidth > 0 && video.videoHeight > 0)
+                height = Math[
+                    host.getComputedStyle &&
+                    host.getComputedStyle(video).objectFit === "cover"
+                        ? "max"
+                        : "min"
+                ](height, (rect.width * video.videoHeight) / video.videoWidth);
             if (height > 0)
                 rules.push(
                     "font-size:" +
@@ -121,11 +116,8 @@
             rules.push(
                 "background-color:rgba(0,0,0," + (background - 1) / 4 + ")"
             );
-        return rules
-            .map(function (rule) {
-                return rule + " !important;";
-            })
-            .join("");
+        rules.push("");
+        return rules.join(" !important;");
     }
     function apply(): void {
         scaleFonts();

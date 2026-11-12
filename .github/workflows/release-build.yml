@@ -610,7 +610,7 @@ jobs:
       node-version: "22"
       run-node-ci: false
       browser-matrix-file: .github/browser-compatibility.json
-      browser-test-command: node scripts/browser-acceptance.cjs
+      browser-test-command: CI_FIREFOX_CRASH_DIAGNOSTICS=1 node scripts/browser-acceptance.cjs
       browser-artifact-id: ${{ needs.build.outputs.browser-artifact-id }}
       browser-artifact-path: browser-candidate
       browser-release-channel: ${{ inputs.channel }}
