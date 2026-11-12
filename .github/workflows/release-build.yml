@@ -493,9 +493,19 @@ jobs:
           cache-from: type=gha,scope=ottplay-container-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=ottplay-container-${{ matrix.arch }}
           labels: "org.opencontainers.image.version=${{ steps.image-version.outputs.version }}\norg.opencontainers.image.revision=${{ steps.image-version.outputs.revision }}\n"
+      - name: Install OCI inspection tools
+        timeout-minutes: 12
+        run: |
+          sudo env CI="$CI" python3 scripts/ci-apt-mirror.py
+          apt_network_options=(
+            -o Acquire::Retries=2
+            -o Acquire::http::Timeout=20
+            -o Acquire::https::Timeout=20
+          )
+          sudo timeout --kill-after=15s 300s apt-get "${apt_network_options[@]}" -o APT::Update::Error-Mode=any update
+          sudo timeout --kill-after=15s 300s apt-get "${apt_network_options[@]}" install -y skopeo
       - name: Verify exact native image EPG performance
         run: |
-          sudo apt-get update && sudo apt-get install -y skopeo
           python3 scripts/check-container-epg.py \
             --archive ottplay-container-${{ matrix.arch }}.oci.tar \
             --platform linux/${{ matrix.arch }} \
