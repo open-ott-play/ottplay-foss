@@ -231,7 +231,8 @@ function dumps(owner) {
     const found = [],
         stack = [[owner.root, 0]],
         seen = new Set();
-    let totalBytes = 0;
+    let readBytes = 0,
+        uniqueBytes = 0;
     let entries = 0;
     while (stack.length) {
         const [directory, depth] = stack.pop();
@@ -247,7 +248,7 @@ function dumps(owner) {
             else if (stat.isFile() && /^[a-zA-Z0-9_-]+\.dmp$/.test(item)) {
                 if (
                     stat.size > LIMIT ||
-                    totalBytes + stat.size > 64 * 1024 * 1024
+                    readBytes + stat.size > 128 * 1024 * 1024
                 )
                     throw new Error("diagnostic-limit");
                 const fd = fs.openSync(
@@ -276,14 +277,18 @@ function dumps(owner) {
                         if (!count) throw new Error("incomplete-minidump");
                         offset += count;
                     }
-                    totalBytes += bytes.length;
+                    readBytes += bytes.length;
                     const hash = crypto
                         .createHash("sha256")
                         .update(bytes)
                         .digest("hex");
                     if (!seen.has(hash)) {
-                        if (found.length >= MAX_FILES)
+                        if (
+                            found.length >= MAX_FILES ||
+                            uniqueBytes + bytes.length > 64 * 1024 * 1024
+                        )
                             throw new Error("diagnostic-limit");
+                        uniqueBytes += bytes.length;
                         seen.add(hash);
                         found.push({ bytes, hash });
                     }

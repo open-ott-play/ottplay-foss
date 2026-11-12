@@ -72,6 +72,16 @@ function nativeStartupUrl(origin, id, engine) {
         (engine === "hls.js" ? "hls" : "html5")
     );
 }
+function nativeSourceAttached({ engine, expected }) {
+    if (engine === "hls.js") {
+        const owner = window.__ottCoreBackendPeek?.()?.current?.();
+        return (
+            owner?.diagnosticEngine?.() === "hls.js" &&
+            owner?.diagnosticMedia?.()?.hls?.url === expected
+        );
+    }
+    return document.querySelector("#video")?.src === expected;
+}
 function nativeChannelIds() {
     const w = window;
     if (!Array.isArray(w.curList) || w.curList.length !== 2)
@@ -971,16 +981,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
             userAgent: navigator.userAgent,
         }));
         await page.waitForFunction(
-            ({ engine, expected }) => {
-                if (engine === "hls.js") {
-                    const owner = window.__ottCoreBackendPeek?.().current?.();
-                    return (
-                        owner?.diagnosticEngine?.() === "hls.js" &&
-                        owner?.diagnosticMedia?.()?.hls?.url === expected
-                    );
-                }
-                return document.querySelector("#video")?.src === expected;
-            },
+            nativeSourceAttached,
             {
                 engine: item.engine,
                 expected:
@@ -1417,6 +1418,7 @@ module.exports = {
     cases,
     nativeChannelIds,
     nativePlaybackSample,
+    nativeSourceAttached,
     nativeStartupUrl,
     pageStartupDiagnostic,
     redactDiagnosticText,

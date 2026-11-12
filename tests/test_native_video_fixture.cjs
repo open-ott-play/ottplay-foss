@@ -16,6 +16,7 @@ const {
     cases,
     nativeChannelIds,
     nativeStartupUrl,
+    nativeSourceAttached,
     nativePlaybackSample,
     pageStartupDiagnostic,
     redactDiagnosticText,
@@ -57,6 +58,33 @@ test("native startup URL binds the exact case and engine without a second naviga
         () => validateNativeSelection({}, {}, null, "cold"),
         /explicit fixture engine/
     );
+});
+
+test("HLS readiness waits safely before the backend and engine attachment exist", () => {
+    const expected = "http://127.0.0.1:8443/owned.m3u8";
+    let backend;
+    const scope = {
+        args: { engine: "hls.js", expected },
+        window: { __ottCoreBackendPeek: () => backend },
+    };
+    const ready = () =>
+        vm.runInNewContext(
+            "(" + nativeSourceAttached.toString() + ")(args)",
+            scope
+        );
+    for (const value of [undefined, null, {}, { current: () => null }]) {
+        backend = value;
+        assert.equal(ready(), false);
+    }
+    backend = { current: () => ({ diagnosticEngine: () => "hls.js" }) };
+    assert.equal(ready(), false);
+    backend.current = () => ({
+        diagnosticEngine: () => "hls.js",
+        diagnosticMedia: () => ({ hls: { url: expected } }),
+    });
+    assert.equal(ready(), true);
+    scope.args.expected += "-replacement";
+    assert.equal(ready(), false);
 });
 
 test("capture subprocess failures retain cleanup ownership and preserve preexisting files", () => {

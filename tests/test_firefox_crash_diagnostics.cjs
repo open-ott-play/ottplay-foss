@@ -315,3 +315,61 @@ test("truncated or malformed context and system-info descriptors fail closed", (
         /invalid-minidump/
     );
 });
+
+function sparseDump(file, mib, discriminator = 0) {
+    const bytes = dump();
+    bytes[511] = discriminator;
+    const fd = fs.openSync(file, "wx", 0o600);
+    try {
+        fs.writeSync(fd, bytes);
+        fs.ftruncateSync(fd, mib * 1024 * 1024);
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+test("two distinct 17 MiB crashes and retained duplicates preserve both signatures within unique budget", (t) => {
+    const { owner, output } = scope(t);
+    sparseDump(path.join(owner.root, "tmp", "first.dmp"), 17, 1);
+    sparseDump(path.join(owner.root, "tmp", "second.dmp"), 17, 2);
+    diagnostics.retain(owner);
+    assert.equal(fs.readdirSync(path.join(owner.root, "retained")).length, 2);
+    const report = diagnostics.finish(owner, output);
+    assert.equal(report.status, "captured");
+    assert.equal(report.dumps.length, 2);
+    assert.equal(new Set(report.dumps.map((item) => item.sha256)).size, 2);
+    for (const item of report.dumps) {
+        assert.equal(item.bytes, 17 * 1024 * 1024);
+        assert.equal(item.exceptionCode, "0xb");
+        assert.equal(item.moduleOffset, "0x12");
+        assert.equal(item.buildId, "0102030405060708");
+    }
+    assert.equal(fs.existsSync(owner.root), false);
+    assert.deepEqual(fs.readdirSync(output), ["firefox-crash-summary.json"]);
+});
+test("deduplication preserves separate exact 128 MiB read ceiling and strict 64 MiB unique ceiling", (t) => {
+    for (const [count, expected] of [
+        [8, "captured"],
+        [9, "unavailable-or-limit"],
+    ]) {
+        const { owner, output } = scope(t);
+        for (let i = 0; i < count; i++)
+            sparseDump(path.join(owner.root, "tmp", `${i}.dmp`), 16);
+        const report = diagnostics.finish(owner, output);
+        assert.equal(
+            report.status,
+            expected,
+            `${count} identical 16 MiB copies`
+        );
+        assert.equal(report.dumps.length, count === 8 ? 1 : 0);
+        assert.equal(fs.existsSync(owner.root), false);
+    }
+    const { owner, output } = scope(t);
+    for (let i = 0; i < 4; i++)
+        sparseDump(path.join(owner.root, "tmp", `${i}.dmp`), 17, i);
+    assert.equal(
+        diagnostics.finish(owner, output).status,
+        "unavailable-or-limit",
+        "68 MiB distinct data must still exceed unique budget"
+    );
+    assert.equal(fs.existsSync(owner.root), false);
+});

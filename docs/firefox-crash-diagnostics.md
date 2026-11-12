@@ -37,7 +37,11 @@ A captured dump without an exception stream is
 identified separately. A malformed dump yields a fixed status, not its contents.
 
 Raw dumps stay outside the artifact directory. Reads are bounded to 32 MiB per
-file, 64 MiB per scan, eight distinct dump hashes, 512 directory entries and six
+file and 128 MiB total bytes per scan (checked before allocation). Retained
+content is limited separately to 64 MiB across eight distinct dump hashes;
+original/retained copies are charged once to that unique-content budget after
+hashing, while every copy still counts against the strict read limit. Scans
+also stop after 512 directory entries and six
 subdirectory levels. Symlinks are skipped; files use no-follow opens and inode
 checks. A private ownership marker is checked before reading and cleanup.
 Collection failure never replaces the original test result. If initialization
