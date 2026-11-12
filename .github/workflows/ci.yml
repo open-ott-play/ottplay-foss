@@ -2,6 +2,7 @@ name: CI
 
 on:
   workflow_call: {}
+  workflow_dispatch: {}
 
 env:
   NODE_VERSION: "22"
@@ -647,7 +648,7 @@ jobs:
 
   browser-compatibility:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@d6715224d6a34d25475e26079ee5ac8c9b1f9ba1
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@165225f9e258ef89efd61e558ab57e536f83a265
     permissions:
       contents: read
       actions: read

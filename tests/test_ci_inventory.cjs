@@ -156,6 +156,61 @@ try {
     assert(
         inspect(root).errors.some((error) => error.includes("concrete reason"))
     );
+    // Manual dispatch is an explicit structural path, never automatic execution.
+    write("tests/ci-inventory.json", JSON.stringify({ excluded: {} }));
+    write("tests/test_new.cjs", 'require("./test_manual_child.cjs");\n');
+    write("tests/test_manual_child.cjs", "// reached through manual test\n");
+    const manual = ".github/workflows/manual.yml";
+    write(
+        manual,
+        "on: workflow_call\njobs:\n  test:\n    steps:\n      - run: node tests/test_new.cjs\n"
+    );
+    assert(inspect(root).errors.some((error) => error.includes("test_new")));
+    write(
+        manual,
+        "on: workflow_dispatch\njobs:\n  test:\n    if: false\n    steps:\n      - run: node tests/test_new.cjs\n"
+    );
+    assert(inspect(root).errors.some((error) => error.includes("test_new")));
+    write(
+        manual,
+        "on: workflow_dispatch\njobs:\n  test:\n    steps:\n      - if: false\n        run: node tests/test_new.cjs\n      - run: |\n          # node tests/test_new.cjs\n"
+    );
+    assert(inspect(root).errors.some((error) => error.includes("test_new")));
+    write(
+        manual,
+        "on: workflow_dispatch\njobs:\n  test:\n    steps:\n      - run: node tests/test_new.cjs\n"
+    );
+    result = inspect(root);
+    assert.deepEqual(result.errors, []);
+    assert.deepEqual(result.manualOnly, [
+        "tests/test_manual_child.cjs",
+        "tests/test_new.cjs",
+    ]);
+    assert.equal(result.reached - result.automaticReached, 2);
+    // A manual variant does not satisfy an explicitly required automatic variant.
+    write(
+        "tests/ci-inventory.json",
+        JSON.stringify({ requiredVariants: { "tests/test_new.cjs": [[]] } })
+    );
+    assert(
+        inspect(root).errors.some((error) =>
+            error.includes("Missing CI variant: tests/test_new.cjs")
+        )
+    );
+    write(
+        ".github/workflows/automatic.yml",
+        "on: pull_request\njobs:\n  test:\n    steps:\n      - run: node tests/test_new.cjs\n"
+    );
+    result = inspect(root);
+    assert.deepEqual(result.errors, []);
+    assert.deepEqual(result.manualOnly, []);
+    assert.equal(result.reached, result.automaticReached);
+    const repository = inspect(path.resolve(__dirname, ".."));
+    assert.deepEqual(repository.errors, []);
+    assert.deepEqual(repository.manualOnly, [
+        "tests/glib-variant-regression/tests/variant_str_iter.rs",
+        "tests/test_normalization_webkit.cjs",
+    ]);
     console.log(
         "PASS CI inventory: npm reachability, AST child tests, comments/source reads, required platforms, discovery and explicit exclusions"
     );

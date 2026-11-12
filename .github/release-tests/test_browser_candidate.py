@@ -221,7 +221,11 @@ class CandidateTests(unittest.TestCase):
             return yaml.load((ROOT / '.github/workflows' / name).read_text(), Loader=yaml.BaseLoader)
         source, selected = load('ci.yml')['jobs'], load('windows-validation.yml')['jobs']
         for job in ('frontend-tests', 'remote-integration'):
-            self.assertEqual(selected[job], source[job], job)
+            actual = copy.deepcopy(selected[job])
+            if job == 'frontend-tests':
+                self.assertIn({'run': 'node tests/test_release_envelope_size.cjs'}, actual['steps'])
+                actual['steps'].remove({'run': 'node tests/test_release_envelope_size.cjs'})
+            self.assertEqual(actual, source[job], job)
             self.assertNotIn('if', selected[job])
         frontend = '\n'.join(step.get('run', '') for step in selected['frontend-tests']['steps'])
         for command in ('npm test', 'npm run test:python', '--require-hashes --only-binary=:all:'):
@@ -239,6 +243,26 @@ class CandidateTests(unittest.TestCase):
             self.assertIn(command, commands)
         self.assertEqual(selected['frontend-tests']['timeout-minutes'], source['frontend-tests']['timeout-minutes'])
         self.assertEqual(selected['remote-integration']['timeout-minutes'], source['remote-integration']['timeout-minutes'])
+
+    def test_shared_browser_contracts_run_on_windows_separate_from_native_budget(self):
+        workflow = yaml.load((ROOT / '.github/workflows/windows-validation.yml').read_text(), Loader=yaml.BaseLoader)
+        job = workflow['jobs']['shared-browser-windows']
+        self.assertEqual(job['runs-on'], 'windows-latest')
+        self.assertNotIn('if', job)
+        self.assertTrue(all('continue-on-error' not in step for step in job['steps']))
+        commands = '\n'.join(step.get('run', '') for step in job['steps'])
+        for command in ('npm run build', 'npx playwright install chromium',
+                        'npm run test:devices:browser', 'npm run test:native:ui -- --project=chromium',
+                        'node tests/test_browser_direct_media.cjs',
+                        'node tests/test_browser_local_media.cjs --built-ui',
+                        'node tests/test_browser_local_media.cjs --built-ui --initial-retry',
+                        'npm run test:hosted:browser'):
+            self.assertIn(command, commands)
+        config = (ROOT / 'playwright.native-ui.config.cjs').read_text()
+        self.assertIn('name: "chromium", use: { browserName: "chromium" }', config)
+        full = yaml.load((ROOT / '.github/workflows/ci.yml').read_text(), Loader=yaml.BaseLoader)
+        self.assertIn('workflow_dispatch', full['on'])
+        self.assertIn('linux-playback-compat', full['jobs'])
 
     def test_runtime_scope_guard_rejects_unknown_values(self):
         workflow = yaml.load((ROOT / '.github/workflows/native-parity.yml').read_text(), Loader=yaml.BaseLoader)

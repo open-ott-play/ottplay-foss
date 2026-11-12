@@ -89,8 +89,8 @@ function inspect(root) {
     const policy = JSON.parse(
         fs.readFileSync(path.join(root, "tests/ci-inventory.json"), "utf8")
     );
-    const reached = new Map();
-    const npmSeen = new Set();
+    let reached = new Map();
+    let npmSeen = new Set();
     const errors = [];
     function visit(file, args = []) {
         if (!known.has(file)) return;
@@ -251,7 +251,7 @@ function inspect(root) {
             YAML.parse(fs.readFileSync(file, "utf8"))
         );
     }
-    const workflowSeen = new Set();
+    let workflowSeen = new Set();
     const disabled = (condition) =>
         condition === false ||
         ["false", "${{ false }}"].includes(String(condition).trim());
@@ -299,6 +299,28 @@ function inspect(root) {
         )
             visitWorkflow(file);
     }
+    // These are structural workflow paths, not evidence that tests executed.
+    // Manual suites remain available without pretending they run on each PR.
+    const automatic = reached;
+    reached = new Map();
+    npmSeen = new Set();
+    workflowSeen = new Set();
+    for (const [file, workflow] of workflows) {
+        const triggers =
+            typeof workflow.on === "string"
+                ? [workflow.on]
+                : Array.isArray(workflow.on)
+                  ? workflow.on
+                  : Object.keys(workflow.on || {});
+        if (triggers.includes("workflow_dispatch")) visitWorkflow(file);
+    }
+    const manualOnly = [...reached.keys()]
+        .filter((file) => !automatic.has(file))
+        .sort();
+    for (const [file, variants] of automatic) {
+        if (!reached.has(file)) reached.set(file, new Set());
+        for (const variant of variants) reached.get(file).add(variant);
+    }
     const excluded = policy.excluded || {};
     for (const [file, reason] of Object.entries(excluded)) {
         if (typeof reason !== "string" || reason.trim().length < 12)
@@ -316,12 +338,14 @@ function inspect(root) {
     )) {
         if (!known.has(file)) errors.push(`Missing required test: ${file}`);
         for (const args of variants) {
-            if (!reached.get(file)?.has(JSON.stringify(args)))
+            if (!automatic.get(file)?.has(JSON.stringify(args)))
                 errors.push(`Missing CI variant: ${file} ${args.join(" ")}`);
         }
     }
     return {
         discovered: testFiles.length,
+        automaticReached: automatic.size,
+        manualOnly,
         errors,
         excluded: Object.keys(excluded).length,
         reached: reached.size,
@@ -335,8 +359,10 @@ if (require.main === module) {
         process.exitCode = 1;
     } else {
         console.log(
-            `PASS CI inventory: ${result.reached}/${result.discovered} tests reachable, ${result.excluded} justified exclusions`
+            `PASS structural CI inventory: ${result.automaticReached} automatically reachable, ${result.manualOnly.length} manual-only, ${result.excluded} justified exclusions (${result.discovered} discovered); reachability is not execution evidence`
         );
+        for (const file of result.manualOnly)
+            console.log(`MANUAL-ONLY: ${file}`);
     }
 }
 module.exports = { commands, inspect };

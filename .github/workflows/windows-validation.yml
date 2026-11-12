@@ -34,6 +34,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check:test-inventory
       - run: npm test
+      - run: node tests/test_release_envelope_size.cjs
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
@@ -198,3 +199,50 @@ jobs:
         run: |
           cargo clippy --locked --manifest-path fuzz/Cargo.toml --lib -- -D warnings
           cargo test --locked --manifest-path fuzz/Cargo.toml --lib
+
+  shared-browser-windows:
+    name: Shared browser contracts on Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npx playwright install chromium
+      - name: Exercise shared provider and remote navigation in Chromium
+        run: npm run test:devices:browser
+      - name: Exercise shared channel-list, keyboard and value-selector UI in Chromium
+        run: npm run test:native:ui -- --project=chromium
+      - name: Exercise direct and local media with the actual built UI
+        timeout-minutes: 10
+        run: |
+          node tests/test_browser_direct_media.cjs
+          node tests/test_browser_local_media.cjs --built-ui
+          node tests/test_browser_local_media.cjs --built-ui --initial-retry
+      - name: Exercise hosted EPG worker and persistent cache
+        run: npm run test:hosted:browser
+      - name: Preserve shared browser failure evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shared-windows-browser-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/device-browser-report/
+            build/device-browser-results/
+            build/native-ui-report/
+            build/native-ui-results/
+          if-no-files-found: warn
+          retention-days: 14
