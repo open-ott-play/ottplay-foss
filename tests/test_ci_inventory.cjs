@@ -205,11 +205,199 @@ try {
     assert.deepEqual(result.errors, []);
     assert.deepEqual(result.manualOnly, []);
     assert.equal(result.reached, result.automaticReached);
+    write("tests/test_scope_all.cjs", "// platform-specific harness\n");
+    write("tests/test_scope_windows.cjs", "// Windows harness\n");
+    write("tests/ci-inventory.json", JSON.stringify({ excluded: {} }));
+    write(
+        ".github/workflows/scoped.yml",
+        `on:
+  workflow_call:
+    inputs:
+      runtime-platform-scope:
+        type: string
+        default: all
+jobs:
+  other:
+    if: \${{ inputs.runtime-platform-scope != 'windows' && github.event_name != 'never' }}
+    steps:
+      - run: node tests/test_scope_all.cjs --platform ios
+  windows:
+    if: \${{ inputs.runtime-platform-scope == 'windows' }}
+    steps:
+      - run: node tests/test_scope_windows.cjs
+`
+    );
+    write(
+        ".github/workflows/scope-forward.yml",
+        `on:
+  workflow_call:
+    inputs:
+      runtime-platform-scope:
+        type: string
+        default: all
+jobs:
+  nested:
+    uses: ./.github/workflows/scoped.yml
+    with:
+      runtime-platform-scope: \${{ inputs.runtime-platform-scope }}
+`
+    );
+    const scopeCaller = (scope) => `on: pull_request
+jobs:
+  scoped:
+    uses: ./.github/workflows/scope-forward.yml
+    with:
+      runtime-platform-scope: ${scope}
+`;
+    write(".github/workflows/scope-auto.yml", scopeCaller("windows"));
+    const scopeManual = `on: workflow_dispatch
+jobs:
+  full:
+    uses: ./.github/workflows/scoped.yml
+`;
+    write(".github/workflows/scope-manual.yml", scopeManual);
+    result = inspect(root);
+    assert.deepEqual(result.errors, []);
+    assert.deepEqual(result.manualOnly, ["tests/test_scope_all.cjs"]);
+    const scopedWorkflow = fs.readFileSync(
+        path.join(root, ".github/workflows/scoped.yml"),
+        "utf8"
+    );
+    // An outer OR can make the whole condition true despite a false selector.
+    write(
+        ".github/workflows/scoped.yml",
+        scopedWorkflow.replace(
+            "&& github.event_name != 'never' }}",
+            "&& github.event_name != 'never' || true }}"
+        )
+    );
+    assert.deepEqual(inspect(root).manualOnly, []);
+    // Nested OR inside a conjunction does not bypass the false selector.
+    write(
+        ".github/workflows/scoped.yml",
+        scopedWorkflow.replace(
+            "&& github.event_name != 'never' }}",
+            "&& !(github.event_name == 'never' || inputs.manual == true) }}"
+        )
+    );
+    assert.deepEqual(inspect(root).manualOnly, ["tests/test_scope_all.cjs"]);
+    write(".github/workflows/scoped.yml", scopedWorkflow);
+
+    // Every (workflow, known scope) pair must be visited, regardless of order.
+    write(
+        ".github/workflows/scope-auto.yml",
+        scopeCaller("windows") +
+            "  full:\n    uses: ./.github/workflows/scoped.yml\n"
+    );
+    assert.deepEqual(inspect(root).manualOnly, []);
+    // Unknown dynamic values cannot be evaluated as false or replaced by defaults.
+    write(
+        ".github/workflows/scope-auto.yml",
+        scopeCaller("${{ vars.UNKNOWN_SCOPE }}")
+    );
+    assert.deepEqual(inspect(root).manualOnly, []);
+    write(".github/workflows/scope-auto.yml", scopeCaller("windows"));
+    write(
+        "tests/ci-inventory.json",
+        JSON.stringify({
+            manualRequiredVariants: {
+                "tests/test_scope_all.cjs": [["--platform", "ios"]],
+            },
+        })
+    );
+    assert.deepEqual(inspect(root).errors, []);
+    write(
+        "tests/ci-inventory.json",
+        JSON.stringify({
+            manualRequiredVariants: {
+                "tests/test_scope_all.cjs": [["--platform", "android"]],
+            },
+        })
+    );
+    assert(
+        inspect(root).errors.some((error) =>
+            error.includes("Missing manual CI variant")
+        )
+    );
+    write(
+        "tests/ci-inventory.json",
+        JSON.stringify({
+            manualRequiredVariants: {
+                "tests/test_scope_all.cjs": "--platform ios",
+            },
+        })
+    );
+    assert(
+        inspect(root).errors.some((error) =>
+            error.includes("Invalid required manual variants")
+        )
+    );
+    write(
+        "tests/ci-inventory.json",
+        JSON.stringify({
+            manualRequiredVariants: {
+                "tests/test_scope_all.cjs": [["--platform", "ios"]],
+            },
+        })
+    );
+    // An automatic all-scope invocation cannot substitute for manual provenance.
+    write(".github/workflows/scope-auto.yml", scopeCaller("all"));
+    write(
+        ".github/workflows/scope-manual.yml",
+        scopeManual + "    with:\n      runtime-platform-scope: windows\n"
+    );
+    assert(
+        inspect(root).errors.some((error) =>
+            error.includes("Missing manual CI variant")
+        )
+    );
+    write(".github/workflows/scope-manual.yml", scopeManual);
+    write(".github/workflows/scope-auto.yml", scopeCaller("windows"));
+    assert.deepEqual(inspect(root).errors, []);
     const repository = inspect(path.resolve(__dirname, ".."));
     assert.deepEqual(repository.errors, []);
+    assert.deepEqual(repository.manualRequiredVariants, {
+        "tests/test_native_xmltv_records.py": [
+            ["--platform", "android"],
+            ["--platform", "ios"],
+        ],
+        "tests/test_native_epg_cache.py": [
+            ["--platform", "android"],
+            ["--platform", "ios"],
+        ],
+        "tests/test_native_media_lifecycle.py": [
+            ["--platform", "android"],
+            ["--platform", "ios"],
+        ],
+    });
     assert.deepEqual(repository.manualOnly, [
         "tests/glib-variant-regression/tests/variant_str_iter.rs",
+        "tests/test_android_activity.cjs",
+        "tests/test_android_app_update_recovery.py",
+        "tests/test_android_epg_editions.py",
+        "tests/test_android_home_setup.cjs",
+        "tests/test_android_local_media_availability.py",
+        "tests/test_android_network_policy.py",
+        "tests/test_android_queue.py",
+        "tests/test_android_screenshot.py",
+        "tests/test_android_tv_webview.cjs",
+        "tests/test_android_update_tls.py",
+        "tests/test_ios_access_auth.py",
+        "tests/test_ios_access_media.py",
+        "tests/test_ios_command_queue.py",
+        "tests/test_ios_demo_media.py",
+        "tests/test_ios_proxy.py",
+        "tests/test_ios_public_http.py",
+        "tests/test_mobile_local_paths.py",
+        "tests/test_mobile_metadata_standby.py",
+        "tests/test_native_dash_state.py",
+        "tests/test_native_favorites_provider_compression.cjs",
+        "tests/test_native_media_lifecycle.py",
+        "tests/test_native_screenshot_transport_swift.py",
+        "tests/test_native_swop_swift.py",
+        "tests/test_native_xmltv_records.py",
         "tests/test_normalization_webkit.cjs",
+        "tests/test_runtime_diagnostics_native.py",
     ]);
     console.log(
         "PASS CI inventory: npm reachability, AST child tests, comments/source reads, required platforms, discovery and explicit exclusions"

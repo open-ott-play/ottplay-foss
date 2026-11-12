@@ -491,4 +491,36 @@ The release policy explicitly selects `windows-validation.yml`: shared portable 
 
 Release browser evidence uses `browser-platform-scope: windows`: beta selects the required Windows target, and RC/stable select all 11 Windows browser targets from the validated 35-target inventory. Receipts explicitly say `windows-only`, `fullPlatformQualified: false`, and list the 24 unselected RC/stable targets. This is Windows-only runtime qualification, not all-platform runtime qualification. All platform package builds, signatures, inventory, source/attempt provenance, hashes and promotion guards remain unchanged. The native runner is not a claim of physical Windows hardware validation.
 
-The shared Chromium provider, remote-navigation, channel-list and local-media suites run automatically on Windows in a separate job. `CI` remains available through Actions → CI → Run workflow for the original all-platform validation. The inventory distinguishes automatic workflow reachability from manual-only reachability; neither is a runtime PASS. Only the Linux GLib iterator regression and WebKit/FFmpeg normalization harness are manual-only in this profile. Required automatic test variants and orphan-test failures remain enforced.
+The shared Chromium provider, remote-navigation, channel-list and local-media suites run automatically on Windows in a separate job. `CI` remains available through Actions → CI → Run workflow for the original all-platform validation. The inventory distinguishes automatic workflow reachability from manual-only reachability; neither is a runtime PASS. The scope-aware inventory records 438 automatically reachable files and 27 manual-only files in this profile. The compiled Android/iOS XMLTV, EPG-cache and lifecycle variants are explicitly required through `manualRequiredVariants` and the existing Native Shells manual dispatch (default all-platform scope); they are not automatic Windows qualification. The EPG-cache source guard remains automatically reachable. Required automatic browser/legacy variants and orphan-test failures remain enforced. Structural reachability is not evidence of execution.
+
+Manual-only test files:
+
+```text
+tests/glib-variant-regression/tests/variant_str_iter.rs
+tests/test_android_activity.cjs
+tests/test_android_app_update_recovery.py
+tests/test_android_epg_editions.py
+tests/test_android_home_setup.cjs
+tests/test_android_local_media_availability.py
+tests/test_android_network_policy.py
+tests/test_android_queue.py
+tests/test_android_screenshot.py
+tests/test_android_tv_webview.cjs
+tests/test_android_update_tls.py
+tests/test_ios_access_auth.py
+tests/test_ios_access_media.py
+tests/test_ios_command_queue.py
+tests/test_ios_demo_media.py
+tests/test_ios_proxy.py
+tests/test_ios_public_http.py
+tests/test_mobile_local_paths.py
+tests/test_mobile_metadata_standby.py
+tests/test_native_dash_state.py
+tests/test_native_favorites_provider_compression.cjs
+tests/test_native_media_lifecycle.py
+tests/test_native_screenshot_transport_swift.py
+tests/test_native_swop_swift.py
+tests/test_native_xmltv_records.py
+tests/test_normalization_webkit.cjs
+tests/test_runtime_diagnostics_native.py
+```
