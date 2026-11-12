@@ -7,7 +7,7 @@ const { webcrypto } = require("node:crypto");
 const code = require("./helpers/offline-profile-source.cjs")();
 require("acorn").parse(code, { ecmaVersion: 5 });
 const clone = (v) => JSON.parse(JSON.stringify(v));
-function fixture(initial, realStorage = false) {
+function fixture(initial, realStorage = false, generatedSource = code) {
     const data = new Map(initial);
     let catalog = {
         items: [
@@ -64,7 +64,7 @@ function fixture(initial, realStorage = false) {
         host.stbSetItem = host.exports.stbSetItem;
         host.stbDelItem = host.exports.stbDelItem;
     }
-    vm.runInContext(code, host);
+    vm.runInContext(generatedSource, host);
     const media = {
         libraryIdentity: () => "browser:",
         snapshot: async () => catalog,
@@ -91,6 +91,45 @@ async function saved(f, number = 1) {
         "ok"
     );
     return (await f.call("profile_export", { number })).data.profile;
+}
+for (const newline of ["\n", "\r\n"]) {
+    test(`browser profile source retains real save/export with ${JSON.stringify(newline)} checkout lines`, async () => {
+        const fs = require("node:fs");
+        const read = fs.readFileSync;
+        let generated;
+        try {
+            fs.readFileSync = function (file, ...args) {
+                const value = read.call(this, file, ...args);
+                return typeof value === "string" &&
+                    /src[\\/](settings[\\/]store|offline[\\/](local-item-path|profiles))\.ts$/.test(
+                        String(file)
+                    )
+                    ? value.replace(/\r?\n/g, newline)
+                    : value;
+            };
+            generated = require("./helpers/offline-profile-source.cjs")();
+        } finally {
+            fs.readFileSync = read;
+        }
+        // A real browser has neither Node require nor CommonJS exports.
+        const f = fixture(undefined, false, generated);
+        assert.equal(f.host.require, undefined);
+        assert.equal(f.host.exports, undefined);
+        const profile = await saved(f);
+        assert.equal(profile.provider, "offline");
+        assert.equal(profile.name, "Family");
+        assert.deepEqual(profile.sources, [
+            { key: "s0", kind: "folder", name: "Cartoons" },
+        ]);
+        assert.deepEqual(profile.selected, {
+            name: "sub/movie.mp4",
+            source_key: "s0",
+        });
+        assert.equal(
+            (await f.call("profile_export", { number: 1 })).status,
+            "ok"
+        );
+    });
 }
 test("explicit profile save promotes one-off playback, export stays durable and profile load discards one-off bookmarks", async () => {
     const f = fixture(

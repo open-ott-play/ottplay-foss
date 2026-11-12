@@ -10,6 +10,21 @@ const root = path.resolve(__dirname, "../..");
 const origin = "http://127.0.0.1:4198";
 const nonce = "ottplay-channel-fixture";
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const pinCryptoDelayMs = (() => {
+    const raw = process.env.OTTP_TEST_PIN_CRYPTO_DELAY_MS;
+    if (raw === undefined || raw === "0") return 0;
+    assert.match(
+        raw,
+        /^[1-9][0-9]{0,3}$/,
+        "OTTP_TEST_PIN_CRYPTO_DELAY_MS must be an integer from 1 to 1000"
+    );
+    const milliseconds = Number(raw);
+    assert(
+        milliseconds <= 1000,
+        "OTTP_TEST_PIN_CRYPTO_DELAY_MS must be an integer from 1 to 1000"
+    );
+    return milliseconds;
+})();
 
 test("pending seek shows a bounded timeline target in Classic and Modern", async ({
     page,
@@ -371,7 +386,8 @@ async function fixturePage(
     profile,
     initialSettings,
     language,
-    channelDescription
+    channelDescription,
+    deriveBitsDelayMs = 0
 ) {
     const capacitor = profile === "capacitor";
     const native = profile === "tauri" || capacitor;
@@ -460,6 +476,42 @@ async function fixturePage(
         serviceWorkers: "block",
         viewport: { height: 720, width: 1280 },
     });
+    if (deriveBitsDelayMs > 0) {
+        await context.addInitScript((delayMs) => {
+            const subtle = globalThis.crypto?.subtle;
+            if (!subtle || typeof subtle.deriveBits !== "function")
+                throw new Error("PIN crypto delay fixture needs SubtleCrypto");
+            const deriveBits = subtle.deriveBits;
+            const metrics = {
+                completed: 0,
+                delayMs,
+                elapsedMs: 0,
+                started: 0,
+            };
+            Object.defineProperty(subtle, "deriveBits", {
+                configurable: true,
+                value: function (...args) {
+                    metrics.started++;
+                    const startedAt = performance.now();
+                    return Promise.resolve(deriveBits.apply(subtle, args)).then(
+                        (bits) =>
+                            new Promise((resolve) => {
+                                setTimeout(() => {
+                                    metrics.completed++;
+                                    metrics.elapsedMs +=
+                                        performance.now() - startedAt;
+                                    resolve(bits);
+                                }, delayMs);
+                            })
+                    );
+                },
+            });
+            Object.defineProperty(globalThis, "__ottPinCryptoDelayMetrics", {
+                configurable: false,
+                value: metrics,
+            });
+        }, deriveBitsDelayMs);
+    }
     const page = await context.newPage();
     const errors = [];
     const unexpectedRequests = [];
@@ -1856,7 +1908,8 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                 profile,
                 undefined,
                 undefined,
-                "<b>Trusted description text</b><span>Metadata text</span>"
+                "<b>Trusted description text</b><span>Metadata text</span>",
+                pinCryptoDelayMs
             );
             const page = fixture.page;
             try {
@@ -2112,6 +2165,20 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                         )
                     )
                 ).toEqual([]);
+                if (pinCryptoDelayMs > 0) {
+                    const delayMetrics = await page.evaluate(
+                        () => window.__ottPinCryptoDelayMetrics
+                    );
+                    expect(delayMetrics).toMatchObject({
+                        delayMs: pinCryptoDelayMs,
+                        started: expect.any(Number),
+                    });
+                    expect(delayMetrics.started).toBeGreaterThan(0);
+                    expect(delayMetrics.completed).toBe(delayMetrics.started);
+                    expect(delayMetrics.elapsedMs).toBeGreaterThanOrEqual(
+                        delayMetrics.completed * pinCryptoDelayMs * 0.8
+                    );
+                }
             } finally {
                 await fixture.close();
             }
