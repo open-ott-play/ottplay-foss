@@ -174,7 +174,7 @@ test("missing output preserves failure and a final symlink is never followed", a
     }
 });
 
-async function runCaller(t, failure) {
+async function runCaller(t, failure, crashOptions = {}) {
     const f = fixture(t);
     const evidence = path.join(f.options.output, "acceptance.json");
     const capabilities = { hlsVersion: "fixture" };
@@ -220,6 +220,9 @@ async function runCaller(t, failure) {
             CI_BROWSER_DIAGNOSTICS: f.options.output,
             CI_BROWSER_EVIDENCE: evidence,
             CI_PLAYWRIGHT_MODULE: "/synthetic-playwright",
+            ...(crashOptions.enabled
+                ? { CI_FIREFOX_CRASH_DIAGNOSTICS: "1" }
+                : {}),
         },
         execPath: process.execPath,
     };
@@ -233,6 +236,60 @@ async function runCaller(t, failure) {
             readBrowserMediaCapabilities: () => {},
         },
         "./browser-terminal-diagnostics.cjs": observeTerminal,
+        "./firefox-crash-diagnostics.cjs": {
+            childEnvironment(owner, env) {
+                assert.ok(
+                    owner === undefined ||
+                        owner === null ||
+                        owner === "synthetic-owner"
+                );
+                return owner
+                    ? { ...env }
+                    : require("../scripts/firefox-crash-diagnostics.cjs").childEnvironment(
+                          null,
+                          env
+                      );
+            },
+            // Caller-outcome tests exercise the actual acceptance runner, not
+            // POSIX collector permissions on the host filesystem. Binary and
+            // ownership/retention behavior have their own dedicated suite.
+            create(engine, env) {
+                if (crashOptions.createError)
+                    throw new Error("SECRET startup failure /private/path");
+                assert.equal(engine, "firefox");
+                return env.CI_FIREFOX_CRASH_DIAGNOSTICS === "1"
+                    ? "synthetic-owner"
+                    : null;
+            },
+            finish(owner, output, options) {
+                if (options.env.CI_FIREFOX_CRASH_DIAGNOSTICS !== "1") return;
+                assert.ok(owner === undefined || owner === "synthetic-owner");
+                const result = {
+                    dumps: [],
+                    enabled: true,
+                    schema: 1,
+                    status: owner
+                        ? "unavailable"
+                        : "initialization-unavailable",
+                };
+                fs.writeFileSync(
+                    path.join(output, "firefox-crash-summary.json"),
+                    JSON.stringify(result),
+                    { flag: "wx", mode: 0o600 }
+                );
+                if (crashOptions.finishError)
+                    throw new Error("diagnostic write failed");
+                return result;
+            },
+            launchEnvironment(owner, env) {
+                assert.ok(
+                    owner === undefined ||
+                        owner === null ||
+                        owner === "synthetic-owner"
+                );
+                return owner ? { ...env } : undefined;
+            },
+        },
         "/synthetic-playwright": {
             firefox: {
                 async launch() {
@@ -259,13 +316,31 @@ async function runCaller(t, failure) {
                 spawned++;
                 assert.equal(executable, process.execPath);
                 assert.deepEqual(Array.from(args), [
-                    "/synthetic-playwright/cli.js",
+                    (crashOptions.windowsCliPaths ? path.win32 : path).join(
+                        fakeProcess.env.CI_PLAYWRIGHT_MODULE,
+                        "cli.js"
+                    ),
                     "test",
                     "--config=playwright.compatibility.config.cjs",
                 ]);
                 assert.equal(options.timeout, 8 * 60 * 1000);
                 assert.equal(options.stdio, "inherit");
                 assert.equal(options.env.CI, "1");
+                if (crashOptions.createError) {
+                    assert.equal(
+                        options.env.CI_FIREFOX_CRASH_DIAGNOSTICS,
+                        undefined
+                    );
+                    assert.equal(options.env.CI_FIREFOX_CRASH_ROOT, undefined);
+                    assert.equal(options.env.CI_FIREFOX_CRASH_TOKEN, undefined);
+                    assert.equal(
+                        require("../scripts/firefox-crash-diagnostics.cjs").session(
+                            options.env,
+                            "linux"
+                        ),
+                        null
+                    );
+                }
                 return child;
             },
         },
@@ -287,7 +362,20 @@ async function runCaller(t, failure) {
             },
             writeFileSync: fs.writeFileSync,
         },
-        "node:path": path,
+        "node:path": crashOptions.windowsCliPaths
+            ? {
+                  ...path,
+                  join(...parts) {
+                      if (
+                          parts.length === 2 &&
+                          parts[0] === fakeProcess.env.CI_PLAYWRIGHT_MODULE &&
+                          parts[1] === "cli.js"
+                      )
+                          return path.win32.join(...parts);
+                      return path.join(...parts);
+                  },
+              }
+            : path,
     };
     await vm.runInNewContext(source, {
         console: { error() {} },
@@ -334,6 +422,80 @@ for (const [failure, phase, spawned] of [
             assert.equal(f.read().phase, phase);
             assert.equal(f.spawned, spawned);
             if (phase === "scenario-process") assert.equal(f.reportReads, 0);
+        }
+    );
+}
+
+for (const finishError of [false, true]) {
+    test(
+        "opt-in crash collection preserves original child failure, diagnostic error=" +
+            finishError,
+        async (t) => {
+            const f = await runCaller(t, "child-exit", {
+                enabled: true,
+                finishError,
+            });
+            assert.equal(f.fakeProcess.exitCode, 1);
+            assert.equal(f.read().outcome, "failed");
+            assert.equal(f.read().phase, "scenario-process");
+            assert.equal(f.read().scenarioProcess.status, 1);
+            assert.equal(fs.existsSync(f.evidence), false);
+            const diagnostic = JSON.parse(
+                fs.readFileSync(
+                    path.join(f.options.output, "firefox-crash-summary.json"),
+                    "utf8"
+                )
+            );
+            assert.equal(diagnostic.status, "unavailable");
+            assert.deepEqual(diagnostic.dumps, []);
+        }
+    );
+}
+
+for (const failure of [undefined, "child-exit"]) {
+    test(
+        "collector startup failure preserves actual scenarios and original outcome: " +
+            (failure || "success"),
+        async (t) => {
+            const f = await runCaller(t, failure, {
+                createError: true,
+                enabled: true,
+            });
+            assert.equal(
+                f.spawned,
+                1,
+                "the original scenario process must still run"
+            );
+            assert.equal(f.fakeProcess.exitCode, failure ? 1 : undefined);
+            assert.equal(f.read().outcome, failure ? "failed" : "passed");
+            assert.equal(fs.existsSync(f.evidence), !failure);
+            const serialized = fs.readFileSync(
+                path.join(f.options.output, "firefox-crash-summary.json"),
+                "utf8"
+            );
+            const report = JSON.parse(serialized);
+            assert.equal(report.status, "initialization-unavailable");
+            assert.deepEqual(report.dumps, []);
+            assert.doesNotMatch(serialized, /SECRET|private|path|failure/);
+        }
+    );
+}
+
+for (const failure of [undefined, "child-exit"]) {
+    test(
+        "actual acceptance caller preserves full Windows CLI path and outcome: " +
+            (failure || "success"),
+        async (t) => {
+            const f = await runCaller(t, failure, { windowsCliPaths: true });
+            assert.equal(f.spawned, 1);
+            assert.equal(f.fakeProcess.exitCode, failure ? 1 : undefined);
+            assert.equal(f.read().outcome, failure ? "failed" : "passed");
+            assert.equal(f.read().scenarioProcess.status, failure ? 1 : 0);
+            assert.equal(
+                f.read().phase,
+                failure ? "scenario-process" : "write-acceptance"
+            );
+            assert.equal(fs.existsSync(f.evidence), !failure);
         }
     );
 }

@@ -5,6 +5,7 @@ const {
     scenarioPattern,
     selectProfile,
 } = require("./scripts/browser-compatibility-profile.cjs");
+const crashDiagnostics = require("./scripts/firefox-crash-diagnostics.cjs");
 const base = require("./playwright.config.cjs");
 const output = process.env.CI_BROWSER_DIAGNOSTICS;
 const runtime = JSON.parse(fs.readFileSync(path.join(output, "runtime.json")));
@@ -19,6 +20,14 @@ module.exports = defineConfig({
             use: {
                 browserName: runtime.engine,
                 channel: runtime.channel || undefined,
+                launchOptions:
+                    runtime.engine === "firefox"
+                        ? {
+                              env: crashDiagnostics.launchEnvironment(
+                                  crashDiagnostics.session()
+                              ),
+                          }
+                        : undefined,
             },
         },
     ],

@@ -5,6 +5,7 @@ const playwright = require(
         ? path.join(process.env.CI_PLAYWRIGHT_MODULE, "test.js")
         : "@playwright/test"
 );
+const crashDiagnostics = require("../../scripts/firefox-crash-diagnostics.cjs");
 const test = playwright.test.extend({
     compatibilityRuntime: [
         async ({ browser, browserName }, use) => {
@@ -30,7 +31,20 @@ const test = playwright.test.extend({
                     runtime.playwrightVersion
                 );
             }
-            await use();
+            try {
+                await use();
+            } finally {
+                if (
+                    browserName === "firefox" &&
+                    process.env.CI_FIREFOX_CRASH_DIAGNOSTICS === "1"
+                ) {
+                    try {
+                        crashDiagnostics.retain(crashDiagnostics.session());
+                    } catch (_) {
+                        console.error("Firefox crash retention unavailable");
+                    }
+                }
+            }
         },
         { auto: true },
     ],

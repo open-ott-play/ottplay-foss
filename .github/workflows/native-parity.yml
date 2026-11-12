@@ -75,6 +75,9 @@ jobs:
         with:
           shared-key: windows-installer-lifecycle
       - run: npm ci --ignore-scripts
+      - name: Verify portable browser diagnostics on Windows
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
+        run: node --test tests/test_firefox_crash_diagnostics.cjs tests/test_browser_terminal_diagnostics.cjs
       - name: Test Windows native-check failure propagation and text encoding
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_video_geometry_only != true }}
         timeout-minutes: 4

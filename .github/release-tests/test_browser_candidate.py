@@ -5,11 +5,11 @@ import importlib.util
 import io
 import json
 import os
-from pathlib import Path
 import sys
 import tarfile
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import yaml
@@ -172,7 +172,7 @@ class CandidateTests(unittest.TestCase):
             self.assertIn('/typescript-ci.yml@', job['uses'])
             self.assertEqual(job['with']['browser-artifact-id'], '${{ needs.build.outputs.browser-artifact-id }}')
             self.assertFalse(job['with']['run-node-ci'])
-            self.assertEqual(job['with']['browser-test-command'], 'node scripts/browser-acceptance.cjs')
+            self.assertEqual(job['with']['browser-test-command'], 'CI_FIREFOX_CRASH_DIAGNOSTICS=1 node scripts/browser-acceptance.cjs')
             self.assertNotIn('npm run build', job['with']['browser-prepare-command'])
             expected_extended = "${{ inputs.channel == 'rc' || inputs.channel == 'stable' }}" if job_id == 'browser-release' else False
             self.assertEqual(job['with'].get('browser-extended', False), expected_extended)

@@ -174,6 +174,22 @@ are no separate corner markers or moving patches. Replay the wide clip through
 the retained media element, then change to the standard clip. A static poster
 or a canvas painted independently of the decoder is insufficient.
 
+The HLS.js variants are generated from those same MP4s with FFmpeg 9.0.2 as
+fragmented-MP4 HLS. The generator remuxes with stream copy, verifies that the
+ordered `mdat` sample bytes are identical to the MP4s, then decodes two color
+phases from both representations and checks the quadrant palette. Their local
+playlists reference a small init segment and eight 1.5-second media segments.
+CI verifies fixture hashes, playlist structure, local URI rewriting and byte
+identity without requiring FFmpeg.
+
+Windows Tauri keeps the retained `#video` element fitted to the full plane with
+`object-fit: contain` or `cover` through metadata arrival. The non-Windows /
+WKWebView path and optional wrapper-backed engines retain explicit fitted-pixel
+geometry for the documented WKWebView letterbox-alignment issue. The Windows
+change avoids switching from a percentage-sized box to rounded pixel geometry
+and `fill` when intrinsic dimensions appear. This is a narrow layout-transition
+change, not proof that the user's Windows compositor issue is resolved.
+
 Compute expected visible regions from the native client size, fixture intrinsic
 size and selected Fit/Fill mode. Check multiple interior patches against the
 known quadrant palette, allowing the oracle's declared codec/color tolerance.
@@ -194,25 +210,38 @@ Create the target client size before starting playback. Record the actual
 physical client size rather than assuming an outer-window or logical size.
 At 100% DPI, cover both groups:
 
-- 800×450, 799×450, 801×450, 800×449 and 800×451.
+- 800×450, 799×450, 801×450, 800×449, 800×451, 802×451, 800×452 and 802×450.
 - 1280×720, 1279×720, 1281×720, 1280×719 and 1280×721.
 
 Run the exact 16:9 sizes with aspect lock enabled and disabled. Run the ±1-pixel
-controls with lock disabled so they remain genuine non-16:9 boundaries. Exercise
+controls with lock disabled so they remain genuine non-16:9 boundaries. Also run
+the reported 802×451 size with lock enabled and disabled, with unlocked 800×452
+and 802×450 controls. Exercise
 cold playback, same-element replay, changing to the second clip and Fit/Fill.
-There are 12 isolated cold process/profile cases: the ten sizes plus the second
-lock setting for the two exact ratios. Each case plays wide, wide again and
-standard, in both Fit and Fill, with two palette-phase captures per selection:
-144 native screenshots in a complete run. The normal instance-specific saved
+There are 24 isolated cold process/profile cases: sixteen MP4 cases across the
+listed sizes and eight HLS.js/MSE cases covering 800×450, 802×451 and 1280×720
+with both lock settings, plus unlocked 800×451 and 1280×721 controls. Each case
+plays wide, wide again and standard, in both Fit and Fill, with two
+palette-phase captures per selection: 288 native pixel samples in a complete
+run. The normal instance-specific saved
 window-state file is seeded before launch/reveal to establish the starting size.
 No post-playback resize, page reload or CSS repair establishes the tested size.
 Only initial Fit playback is labeled `cold`. Fill's first selection is labeled
 `mode-change`, not cold startup. Before subsequent mode changes/replay, the
-driver uses the production
-`captureAspectTarget().set(...)` path to persist the requested Fit/Fill mode;
-opening the next lease therefore retains its `aAspects` preference. Subsequent
-wide replay and standard channel change use existing production playback
-controls. The 144-shot inventory includes the two palette phases for each of those three selections in each mode.
+driver saves Fill for both real fixture channel IDs through the durable channel
+preference API. Saving changes storage only; the next production engine open
+applies the saved mode. No aspect setter is called after playback becomes ready.
+The normal M3U contains both wide and standard channels. The `Equal` key follows
+the production channel-up path to standard, then back to wide for Fill, and again
+to standard. Replay calls only `stbPlay` with the current owned URL. It does not
+prepend `stbStop`, `setPlayerMode`, `closeList` or another layout repair.
+Each transition requires the expected catalog cursor, playback target, source
+identity and a new engine owner; replacing only `video.src` cannot qualify it.
+HLS acceptance also requires the current `hls.js` engine, its diagnostic media
+attachment to be the retained video element, the exact owned manifest URL and a
+blob-backed `currentSrc`; a blob URL alone is not source-ownership evidence.
+The inventory includes the two palette phases for each of those three
+selections in each mode.
 
 Capture the initial playback interval on a bounded schedule and record the
 settling deadline. Do not resize the window, toggle native fullscreen, open
@@ -227,9 +256,11 @@ Missing a window fails; a later repetition of the same palette cannot qualify.
 These samples detect persistent undersizing at measured times. They do not
 exclude a briefer first-presented-frame flash. The controlled first source is
 admitted after the native client geometry is established; ungated decoding
-before the native window reveal is a separate startup-order scenario. The current decoded fixture is
-MP4/H.264 at 12 fps; an independently cold HLS.js/MSE source and continuous
-first-presentation capture remain additional coverage, not claims of this run.
+before the native window reveal is a separate startup-order scenario. Both
+MP4/H.264 and HLS.js/MSE sources are covered. The first native capture still
+occurs after the bounded 0.4-second phase window begins; it is not a literal
+first-presented-frame capture. The matrix detects persistent undersizing at its
+measured times but does not rule out a briefer flash.
 
 The first hosted run qualifies only its actual DPI, OS, WebView2 runtime and
 rendering adapter. Extend hardware acceptance to 125% and 150% DPI and an
@@ -312,7 +343,7 @@ window-control, preference and IPC checks in addition to the pixel test.
 
 Read `build/windows-video-geometry-report/result.json` from the run artifact.
 A qualifying result requires the workflow job to succeed, `status: "pass"`, all
-12 cases and 144 samples, matching source/binary/frontend/fixture hashes, native
+24 cases and 288 samples, matching source/binary/frontend/fixture hashes, native
 bridge admission, owned loopback listeners, pre-media native geometry inspection,
 unchanged HWND/geometry throughout sampling, and confirmed policy/display
 restoration.
