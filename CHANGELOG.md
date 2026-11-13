@@ -98,6 +98,9 @@
 - Animate notification banners from the right with a vertical reveal, then
   gradually fade after a half-second hold and exit to the right. Preserve
   configured background opacity, expiry deadlines and reduced-motion settings.
+- Match native LG notification badges with a twelve-dot activity ring around
+  the stationary severity glyph. Preserve badge colors, fading and seek refresh;
+  keep the ring static in reduced-motion and low-memory/low-core modes.
 
 - Treat unknown or unbounded media duration as unavailable diagnostic metadata,
   preserving valid playback-progress evidence for the main and PiP streams.

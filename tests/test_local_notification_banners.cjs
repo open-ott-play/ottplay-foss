@@ -245,6 +245,8 @@ test("seek repeats and committed archive feedback reuse one card without another
         };
         f.w.showShift("-00:10", true);
         const first = f.notice();
+        const activity = first.querySelector(".remote-notify-activity");
+        assert(activity);
         f.tick(200);
         f.w.showShift("-00:20", true);
         assert.equal(
@@ -255,6 +257,7 @@ test("seek repeats and committed archive feedback reuse one card without another
         f.tick(500);
         f.w.showShift("-00:20", true);
         assert.equal(f.notice(), first);
+        assert.equal(first.querySelector(".remote-notify-activity"), activity);
         assert.equal(insertions, 1);
         assert.equal(first.textContent, "-00:20");
         assert.equal(

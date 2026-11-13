@@ -112,7 +112,17 @@ export function createNotificationBanners(w: any): any {
             message: any = null;
         if (options.hidden) element.style.display = "none";
         else {
-            part("icon", "", element).setAttribute("aria-hidden", "true");
+            var icon = part("icon", "", element);
+            icon.setAttribute("aria-hidden", "true");
+            var activity = part("activity", "", icon);
+            // Match the native LG banner's twelve-step activity ring. Only
+            // this decoration rotates; the severity glyph and layout stay put.
+            for (var segment = 0; segment < 12; segment++) {
+                var dot = part("activity-dot", "", activity);
+                dot.style.transform =
+                    "rotate(" + segment * 30 + "deg) translateY(-1.2em)";
+                dot.style.opacity = String(1 - segment / 16);
+            }
             var content = part("content", "", element);
             if (options.label || options.title) {
                 heading = part("heading", "", content);

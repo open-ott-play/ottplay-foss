@@ -448,14 +448,18 @@ async function animationStyle(banner, time) {
                       ).opacity
                   )
                 : null,
+            // Keep card entrance/fade timelines separate from decorations.
+            // Full/reduced/lite activity-ring cases verify its own movement.
             names: element
                 .getAnimations({ subtree: true })
                 .map((animation) => animation.animationName)
                 .filter(
                     (name) =>
-                        !["remoteNotifyFold", "remoteNotifyHeadingUp"].includes(
-                            name
-                        )
+                        ![
+                            "remoteNotifyActivity",
+                            "remoteNotifyFold",
+                            "remoteNotifyHeadingUp",
+                        ].includes(name)
                 ),
             opacity: Number(style.opacity),
             surfaceOpacity: Number(surface.opacity),
