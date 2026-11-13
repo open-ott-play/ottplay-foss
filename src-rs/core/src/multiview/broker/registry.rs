@@ -520,11 +520,9 @@ impl Registry {
         }
     }
     pub fn create_session(&self, p: &Principal, context: &Binding) -> Result<()> {
-        self.create_session_at(p, context, Instant::now())
-    }
-    fn create_session_at(&self, p: &Principal, context: &Binding, now: Instant) -> Result<()> {
         principal_ok(p, Permission::MultiviewControl)?;
         let mut s = self.lock()?;
+        let now = Instant::now();
         if !context.valid() || context.server_epoch != s.epoch {
             return Err(RegistryError::InvalidRequest);
         }
@@ -621,8 +619,8 @@ impl Registry {
         Ok(())
     }
     pub fn sources(&self, p: &Principal, request: &SourcesRequest) -> Result<SourcesResponse> {
-        let now = Instant::now();
         let mut s = self.lock()?;
+        let now = Instant::now();
         sweep(&mut s, now);
         if request.version != wire::VERSION {
             return Err(RegistryError::InvalidRequest);
@@ -703,7 +701,7 @@ impl Registry {
         })
     }
     pub fn mint(&self, p: &Principal, request: &GrantRequest) -> Result<GrantResponse> {
-        self.mint_at(p, request, Instant::now())
+        self.mint_with_time(p, request, None)
     }
     /// Replaying an idempotent HTTP response must not revive a consumed, stale,
     /// expired or revoked input grant. This does not extend its original expiry.
@@ -781,13 +779,25 @@ impl Registry {
         }
         Ok(())
     }
+    #[cfg(test)]
     fn mint_at(
         &self,
         p: &Principal,
         request: &GrantRequest,
         now: Instant,
     ) -> Result<GrantResponse> {
+        self.mint_with_time(p, request, Some(now))
+    }
+    fn mint_with_time(
+        &self,
+        p: &Principal,
+        request: &GrantRequest,
+        admission_time: Option<Instant>,
+    ) -> Result<GrantResponse> {
         let mut s = self.lock()?;
+        // Queued requests must use current authority time after the lock. Only
+        // deterministic tests supply an explicit admission instant.
+        let now = admission_time.unwrap_or_else(Instant::now);
         sweep(&mut s, now);
         if request.version != wire::VERSION || request.remaining_budget_ms == 0 {
             return Err(RegistryError::InvalidRequest);
@@ -858,8 +868,9 @@ impl Registry {
         Ok(response)
     }
     pub fn redeem(&self, p: &Principal, context: &Binding, grant: &str) -> Result<Reservation> {
-        self.redeem_at(p, context, grant, Instant::now())
+        self.redeem_with_time(p, context, grant, None)
     }
+    #[cfg(test)]
     fn redeem_at(
         &self,
         p: &Principal,
@@ -867,7 +878,17 @@ impl Registry {
         grant: &str,
         now: Instant,
     ) -> Result<Reservation> {
+        self.redeem_with_time(p, context, grant, Some(now))
+    }
+    fn redeem_with_time(
+        &self,
+        p: &Principal,
+        context: &Binding,
+        grant: &str,
+        admission_time: Option<Instant>,
+    ) -> Result<Reservation> {
         let mut s = self.lock()?;
+        let now = admission_time.unwrap_or_else(Instant::now);
         sweep(&mut s, now);
         authorize(&s, p, context, now)?;
         let pending = s.grants.get(grant).ok_or(RegistryError::Expired)?;
@@ -1010,10 +1031,20 @@ impl Registry {
         Ok(())
     }
     pub fn renew(&self, p: &Principal, context: &Binding) -> Result<()> {
-        self.renew_at(p, context, Instant::now())
+        self.renew_with_time(p, context, None)
     }
+    #[cfg(test)]
     fn renew_at(&self, p: &Principal, context: &Binding, now: Instant) -> Result<()> {
+        self.renew_with_time(p, context, Some(now))
+    }
+    fn renew_with_time(
+        &self,
+        p: &Principal,
+        context: &Binding,
+        admission_time: Option<Instant>,
+    ) -> Result<()> {
         let mut s = self.lock()?;
+        let now = admission_time.unwrap_or_else(Instant::now);
         sweep(&mut s, now);
         authorize(&s, p, context, now)?;
         if s.leases.values().any(|lease| {

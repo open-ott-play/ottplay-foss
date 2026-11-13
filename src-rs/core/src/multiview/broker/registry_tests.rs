@@ -1194,3 +1194,180 @@ fn actual_granted_file_attach_uses_issue_context_and_registry_promotion_barrier(
         .is_err());
     assert_eq!(calls, 1);
 }
+
+// Queue real public entry points behind the authority mutex. The worker is
+// released only after the chosen monotonic deadline; no test changes its clock.
+fn queued_past_deadline(
+    registry: &Registry,
+    deadline: Instant,
+    operation: impl FnOnce() -> Result<()> + Send + 'static,
+) -> Result<()> {
+    use std::sync::mpsc::{channel, RecvTimeoutError};
+    let locked = registry.lock().unwrap();
+    let (started_tx, started_rx) = channel();
+    let (finished_tx, finished_rx) = channel();
+    let worker = std::thread::spawn(move || {
+        started_tx.send(()).unwrap();
+        finished_tx.send(operation()).unwrap();
+    });
+    started_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+    assert_eq!(
+        finished_rx.recv_timeout(
+            deadline.saturating_duration_since(Instant::now()) + Duration::from_millis(20)
+        ),
+        Err(RecvTimeoutError::Timeout)
+    );
+    assert!(Instant::now() >= deadline);
+    drop(locked);
+    let result = finished_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+    worker.join().unwrap();
+    result
+}
+
+#[test]
+fn queued_session_operations_recheck_expiry_after_authority_lock() {
+    for operation in ["mint", "redeem", "renew", "sources"] {
+        let (registry, revision) = fixture();
+        if operation == "sources" {
+            // More than one page makes a stale success observable as both a
+            // returned catalog and a newly allocated cursor.
+            let mut source = enrollment();
+            let item = source.items[0].clone();
+            for index in 1..129 {
+                let mut next = item.clone();
+                next.item_ref = format!("item-{index}");
+                source.items.push(next);
+            }
+            registry
+                .enroll(&manager(), source, Some(&revision))
+                .unwrap();
+        }
+        let (active, context) = if operation == "renew" {
+            let (active, context) = attached(&registry);
+            (Some(active), context)
+        } else {
+            (None, binding())
+        };
+        let selection = if operation == "sources" {
+            None
+        } else {
+            Some(request(&registry, &context))
+        };
+        let pending = if operation == "redeem" {
+            Some(
+                registry
+                    .mint(&player(), selection.as_ref().unwrap())
+                    .unwrap()
+                    .input_grant,
+            )
+        } else {
+            None
+        };
+        let deadline = Instant::now() + Duration::from_millis(200);
+        registry
+            .lock()
+            .unwrap()
+            .sessions
+            .get_mut("session")
+            .unwrap()
+            .expires = deadline;
+        let worker_registry = registry.clone();
+        let worker_context = context.clone();
+        let result = queued_past_deadline(&registry, deadline, move || match operation {
+            "mint" => worker_registry
+                .mint(&player(), selection.as_ref().unwrap())
+                .map(|_| ()),
+            "redeem" => worker_registry
+                .redeem(&player(), &worker_context, pending.as_ref().unwrap())
+                .map(|_| ()),
+            "renew" => worker_registry.renew(&player(), &worker_context),
+            "sources" => worker_registry
+                .sources(
+                    &player(),
+                    &SourcesRequest {
+                        version: 1,
+                        context: worker_context,
+                        cursor: None,
+                    },
+                )
+                .map(|_| ()),
+            _ => unreachable!(),
+        });
+        assert_eq!(result, Err(RegistryError::Expired), "{operation}");
+        let state = registry.lock().unwrap();
+        // Especially renew: expiry must not move forward and old authority must
+        // not revive, even if active input existed before queuing.
+        assert_eq!(state.sessions["session"].expires, deadline, "{operation}");
+        assert_eq!(state.sessions["session"].slots[&0], context, "{operation}");
+        assert!(state.cursors.is_empty(), "{operation}");
+        if operation == "mint" {
+            assert!(state.grants.is_empty());
+        }
+        if operation == "redeem" {
+            assert!(state.leases.is_empty());
+        }
+        if let Some(active) = &active {
+            assert!(active.revoked().load(Ordering::Acquire));
+            assert!(state.sessions["session"].output_blocked);
+            assert_eq!(state.leases[active.id()].phase, Phase::Retiring);
+        }
+        drop(state);
+        assert_eq!(
+            registry.authorize(&player(), &context),
+            Err(RegistryError::Expired)
+        );
+        assert_eq!(
+            registry.with_session_authority(&player(), "session", &mut || panic!(
+                "expired authority revived"
+            )),
+            Err(RegistryError::Expired)
+        );
+        if let Some(active) = &active {
+            assert!(publishes(active).is_err());
+        }
+    }
+}
+
+#[test]
+fn queued_redemption_cannot_consume_a_grant_that_expired_while_session_lives() {
+    let (registry, _) = fixture();
+    let grant = registry
+        .mint(&player(), &request(&registry, &binding()))
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_millis(200);
+    registry
+        .lock()
+        .unwrap()
+        .grants
+        .get_mut(&grant.input_grant)
+        .unwrap()
+        .expires = deadline;
+    let worker_registry = registry.clone();
+    let grant_id = grant.input_grant.clone();
+    assert_eq!(
+        queued_past_deadline(&registry, deadline, move || {
+            worker_registry
+                .redeem(&player(), &binding(), &grant_id)
+                .map(|_| ())
+        }),
+        Err(RegistryError::Expired)
+    );
+    registry.authorize(&player(), &binding()).unwrap();
+    let state = registry.lock().unwrap();
+    assert!(!state.grants.contains_key(&grant.input_grant));
+    assert!(state.leases.is_empty());
+}
+
+#[test]
+fn queued_creation_starts_its_initial_lease_at_admission() {
+    let (registry, _) = fixture();
+    let mut context = binding();
+    context.session_id = "queued-session".into();
+    let worker_registry = registry.clone();
+    let deadline = Instant::now() + Duration::from_millis(200);
+    queued_past_deadline(&registry, deadline, move || {
+        worker_registry.create_session(&player(), &context)
+    })
+    .unwrap();
+    assert!(registry.lock().unwrap().sessions["queued-session"].expires >= deadline + SESSION_TTL);
+}
