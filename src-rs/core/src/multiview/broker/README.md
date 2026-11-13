@@ -92,6 +92,14 @@ and withholds output until Off; that is an explicit temporary limit. Stable ordi
 Stop/switch and a fresh codec epoch after security revocation require separate
 qualification. A video-only watermark cannot certify that old PCM/AAC is gone.
 
+Slot source/item references identify the current redeemed registry selection,
+checked against the owner, complete binding and the core's observed source
+revision. They remain absent before redemption and after expiry, revocation,
+retirement or replacement. Preparing may carry selected references while source
+resolution is still running; these metadata do not prove decoding or grant
+permission to reuse a stale source. Empty, failed and closing/closed slots do not
+publish references from an earlier selection.
+
 ## Lifetime and retirement
 
 Grant redemption, renewable active authority, and absolute decoder custody have

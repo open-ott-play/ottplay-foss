@@ -5,7 +5,7 @@ use super::{Authenticated, BoundaryError, Broker};
 use futures_util::FutureExt;
 use ottplay_core::multiview::{
     broker::{
-        registry::{Registry, RegistryError, Reservation, RetirementProof},
+        registry::{Registry, RegistryError, Reservation, RetirementProof, SlotSourceRefs},
         runtime::SourceService,
         stream::{OpenedStream, StreamFactory, StreamPhase},
         wire::{
@@ -118,6 +118,29 @@ fn acknowledge_retired_outputs(
             .is_err()
     });
     outputs.is_empty()
+}
+
+fn project_slot_source_refs(
+    registry: &Registry,
+    principal: &wire::Principal,
+    binding: Option<&Binding>,
+    observed_slot_id: u8,
+    observed_source_revision: u64,
+    state: wire::SlotState,
+) -> Option<SlotSourceRefs> {
+    if !matches!(
+        state,
+        wire::SlotState::Preparing | wire::SlotState::Playing | wire::SlotState::Stalled
+    ) {
+        return None;
+    }
+    let binding = binding.filter(|b| b.native_expected.slot_id == observed_slot_id)?;
+    // Metadata is projected from redeemed authority, never from a requested
+    // grant, selected UI item, SourceOwner cache or a guessed playback source.
+    registry
+        .slot_source_refs(principal, binding, observed_source_revision)
+        .ok()
+        .flatten()
 }
 
 impl Control {
@@ -853,6 +876,26 @@ impl LiveBackend {
                         persistent::SlotState::Failed => wire::SlotState::Failed,
                     }
                 };
+                let source_binding = control.bindings.get(&s.slot_id).and_then(|_| {
+                    self.registry
+                        .current_binding(&session.owner.principal, &session.id, s.slot_id)
+                        .ok()
+                        .filter(|current| {
+                            current.backend_expected.runtime == control.snapshot.runtime
+                                && current.backend_expected.scene == session.scene
+                        })
+                });
+                let source_refs = project_slot_source_refs(
+                    &self.registry,
+                    &session.owner.principal,
+                    source_binding.as_ref(),
+                    s.slot_id,
+                    s.source_revision,
+                    state,
+                );
+                let (source_ref, item_ref) = source_refs
+                    .map(|refs| (Some(refs.source_ref), Some(refs.item_ref)))
+                    .unwrap_or((None, None));
                 wire::SlotSnapshot {
                     slot_id: s.slot_id,
                     source_revision: s.source_revision,
@@ -861,8 +904,8 @@ impl LiveBackend {
                     frames: s.frames,
                     position_ms: None,
                     duration_ms: None,
-                    source_ref: None,
-                    item_ref: None,
+                    source_ref,
+                    item_ref,
                 }
             })
             .collect();
@@ -1937,6 +1980,342 @@ mod tests {
             },
             credential_revision: 1,
         }
+    }
+
+    // These fixtures exercise selection metadata only. Calling the publication
+    // authority with a bounded empty callback models registry promotion; it
+    // does not start a decoder, create a Session or qualify media readiness.
+    fn selection_fixture() -> (Registry, wire::Principal, Binding) {
+        use ottplay_core::multiview::broker::registry::{
+            EnrolledInput, Enrollment, ItemEnrollment, SourcePrincipal,
+        };
+        let principal = owner().principal;
+        let registry = Registry::new("fixture-server".into(), "fixture-epoch".into()).unwrap();
+        let manager = wire::Principal {
+            permissions: [wire::Permission::SourcesManage].into_iter().collect(),
+            ..principal.clone()
+        };
+        registry
+            .enroll(
+                &manager,
+                Enrollment {
+                    source_ref: "same-source".into(),
+                    profile_uuid: Uuid::from_u128(123),
+                    config_revision: "config-1".into(),
+                    policy_revision: "policy-1".into(),
+                    allowed: [SourcePrincipal::from(&principal)].into_iter().collect(),
+                    items: ["item-a", "item-b"]
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, item)| ItemEnrollment {
+                            item_ref: item.into(),
+                            identity_version: 1,
+                            favorite_sha256: if index == 0 {
+                                "a".repeat(64)
+                            } else {
+                                "b".repeat(64)
+                            },
+                            kind: "vod".into(),
+                            input_adapter: "http-finite".into(),
+                            protection: wire::Protection {
+                                known: true,
+                                restricted: false,
+                            },
+                            descriptor: wire::Descriptor {
+                                title: item.into(),
+                                provider: "fixture".into(),
+                            },
+                            input: EnrolledInput {
+                                config_index: index as u64,
+                            },
+                        })
+                        .collect(),
+                },
+                None,
+            )
+            .unwrap();
+        let context = binding();
+        registry.create_session(&principal, &context).unwrap();
+        (registry, principal, context)
+    }
+
+    fn select_item(
+        registry: &Registry,
+        principal: &wire::Principal,
+        context: &Binding,
+        item_ref: &str,
+        next_native: Option<NativeExpected>,
+    ) -> wire::GrantResponse {
+        let catalog = registry
+            .sources(
+                principal,
+                &wire::SourcesRequest {
+                    version: wire::VERSION,
+                    context: context.clone(),
+                    cursor: None,
+                },
+            )
+            .unwrap();
+        let item = catalog
+            .items
+            .iter()
+            .find(|item| item.item_ref == item_ref)
+            .unwrap();
+        registry
+            .mint(
+                principal,
+                &wire::GrantRequest {
+                    version: wire::VERSION,
+                    context: context.clone(),
+                    next_native,
+                    source_ref: item.source_ref.clone(),
+                    item_ref: item.item_ref.clone(),
+                    item_revision: item.item_revision.clone(),
+                    identity_version: item.identity_version,
+                    favorite_sha256: item.favorite_sha256.clone(),
+                    catalog_revision: catalog.catalog_revision.clone(),
+                    remaining_budget_ms: 30_000,
+                },
+            )
+            .unwrap()
+    }
+
+    fn projected_pair(
+        registry: &Registry,
+        principal: &wire::Principal,
+        context: Option<&Binding>,
+        row_slot: u8,
+        row_revision: u64,
+        row_state: wire::SlotState,
+    ) -> Option<(String, String)> {
+        project_slot_source_refs(
+            registry,
+            principal,
+            context,
+            row_slot,
+            row_revision,
+            row_state,
+        )
+        .map(|refs| (refs.source_ref, refs.item_ref))
+    }
+
+    #[test]
+    fn source_refs_follow_redemption_and_exact_promoted_revision_only() {
+        let (registry, principal, context) = selection_fixture();
+        let expected = Some(("same-source".into(), "item-a".into()));
+        let preparing = wire::SlotState::Preparing;
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&context), 0, 0, preparing),
+            None
+        );
+        let grant = select_item(&registry, &principal, &context, "item-a", None);
+        // A selection or minted grant is not evidence of redeemed preparation.
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&grant.context), 0, 0, preparing),
+            None
+        );
+        let reservation = registry
+            .redeem(&principal, &grant.context, &grant.input_grant)
+            .unwrap();
+        // No resolver or producer has been constructed: redeemed Preparing may
+        // nevertheless truthfully identify the exact server-owned selection.
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&grant.context), 0, 0, preparing),
+            expected
+        );
+        for state in [
+            wire::SlotState::Empty,
+            wire::SlotState::Failed,
+            wire::SlotState::Closing,
+            wire::SlotState::Closed,
+        ] {
+            assert_eq!(
+                projected_pair(&registry, &principal, Some(&grant.context), 0, 0, state),
+                None
+            );
+        }
+        assert_eq!(
+            projected_pair(&registry, &principal, None, 0, 0, preparing),
+            None
+        );
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&grant.context), 1, 0, preparing),
+            None
+        );
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&grant.context), 0, 1, preparing),
+            None
+        );
+        let mut foreign = principal.clone();
+        foreign.installation_id = "other-installation".into();
+        assert_eq!(
+            projected_pair(&registry, &foreign, Some(&grant.context), 0, 0, preparing),
+            None
+        );
+
+        let mut focused = grant.context.clone();
+        focused.backend_expected.focus_revision += 1;
+        focused.native_expected.expected.focus_revision = "focus-2".into();
+        registry
+            .update_binding(&principal, &grant.context, &focused)
+            .unwrap();
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&grant.context), 0, 0, preparing),
+            None
+        );
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&focused), 0, 0, preparing),
+            expected
+        );
+
+        let mut candidate = grant.context.clone();
+        candidate.backend_slot_revision += 1;
+        registry
+            .prepare_attachment(&principal, &grant.context, &candidate, &reservation)
+            .unwrap();
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&focused), 0, 0, preparing),
+            expected
+        );
+        reservation
+            .publication_authority()
+            .attach(&reservation.decoder_context(), &mut || Ok(()))
+            .unwrap();
+        let active = registry
+            .current_binding(&principal, &context.session_id, 0)
+            .unwrap();
+        assert_eq!(active.backend_slot_revision, 1);
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&active), 0, 0, preparing),
+            None
+        );
+        assert_eq!(
+            projected_pair(&registry, &principal, Some(&focused), 0, 1, preparing),
+            None
+        );
+        for state in [
+            preparing,
+            wire::SlotState::Playing,
+            wire::SlotState::Stalled,
+        ] {
+            assert_eq!(
+                projected_pair(&registry, &principal, Some(&active), 0, 1, state),
+                expected
+            );
+        }
+        registry
+            .revoke_session(&principal, &context.session_id)
+            .unwrap();
+        assert_eq!(
+            projected_pair(
+                &registry,
+                &principal,
+                Some(&active),
+                0,
+                1,
+                wire::SlotState::Playing
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn replacement_within_one_source_never_reports_the_previous_item() {
+        let (registry, principal, context) = selection_fixture();
+        let first = select_item(&registry, &principal, &context, "item-a", None);
+        let reservation = registry
+            .redeem(&principal, &first.context, &first.input_grant)
+            .unwrap();
+        let mut active = first.context.clone();
+        active.backend_slot_revision += 1;
+        registry
+            .prepare_attachment(&principal, &first.context, &active, &reservation)
+            .unwrap();
+        reservation
+            .publication_authority()
+            .attach(&reservation.decoder_context(), &mut || Ok(()))
+            .unwrap();
+        let active = registry
+            .current_binding(&principal, &context.session_id, 0)
+            .unwrap();
+        assert_eq!(
+            projected_pair(
+                &registry,
+                &principal,
+                Some(&active),
+                0,
+                1,
+                wire::SlotState::Playing
+            ),
+            Some(("same-source".into(), "item-a".into()))
+        );
+        registry
+            .retire_reservation(&principal, &reservation)
+            .unwrap();
+        assert_eq!(
+            projected_pair(
+                &registry,
+                &principal,
+                Some(&active),
+                0,
+                1,
+                wire::SlotState::Playing
+            ),
+            None
+        );
+        // No worker/output was ever created in this metadata-only fixture.
+        registry
+            .acknowledge_retirement(&principal, reservation.id(), RetirementProof::OutputRevoked)
+            .unwrap();
+        registry
+            .acknowledge_retirement(&principal, reservation.id(), RetirementProof::WorkerReaped)
+            .unwrap();
+        let mut stopped = active.clone();
+        stopped.backend_slot_revision += 1;
+        registry
+            .update_binding(&principal, &active, &stopped)
+            .unwrap();
+        registry.rearm_output(&principal, &stopped).unwrap();
+        let mut next_native = stopped.native_expected.clone();
+        next_native.slot_generation = "slot-second-item".into();
+        next_native.source_revision = "source-second-item".into();
+        let second = select_item(&registry, &principal, &stopped, "item-b", Some(next_native));
+        assert_eq!(
+            projected_pair(
+                &registry,
+                &principal,
+                Some(&second.context),
+                0,
+                2,
+                wire::SlotState::Preparing
+            ),
+            None
+        );
+        let _second_reservation = registry
+            .redeem(&principal, &second.context, &second.input_grant)
+            .unwrap();
+        assert_eq!(
+            projected_pair(
+                &registry,
+                &principal,
+                Some(&second.context),
+                0,
+                2,
+                wire::SlotState::Preparing
+            ),
+            Some(("same-source".into(), "item-b".into()))
+        );
+        assert_eq!(
+            projected_pair(
+                &registry,
+                &principal,
+                Some(&active),
+                0,
+                1,
+                wire::SlotState::Playing
+            ),
+            None
+        );
     }
 
     #[tokio::test]

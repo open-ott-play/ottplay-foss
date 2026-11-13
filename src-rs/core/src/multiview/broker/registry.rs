@@ -81,6 +81,13 @@ impl From<&Principal> for SourcePrincipal {
     }
 }
 
+/// A coherent redeemed selection snapshot, not proof of decoded or visible media.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SlotSourceRefs {
+    pub source_ref: String,
+    pub item_ref: String,
+}
+
 /// Construct only from trusted SourcesManage configuration, never native JSON.
 #[derive(Clone)]
 pub struct ItemEnrollment {
@@ -645,6 +652,48 @@ impl Registry {
             .get(&slot_id)
             .cloned()
             .ok_or(RegistryError::NotFound)
+    }
+
+    /// Project one current redeemed selection for an exact host slot snapshot.
+    /// The trusted host supplies the actual core source revision. Full caller
+    /// CAS is required; only the stored lease may tolerate newer shared controls.
+    /// Pending grants and ambiguous, retired or stale leases disclose no refs.
+    pub fn slot_source_refs(
+        &self,
+        p: &Principal,
+        context: &Binding,
+        backend_source_revision: u64,
+    ) -> Result<Option<SlotSourceRefs>> {
+        let mut s = self.lock()?;
+        let now = Instant::now();
+        sweep(&mut s, now);
+        authorize(&s, p, context, now)?;
+        if context.backend_slot_revision != backend_source_revision {
+            return Err(RegistryError::Stale);
+        }
+        let mut candidates = s.leases.values().filter(|lease| {
+            lease.context.session_id == context.session_id
+                && lease.context.native_expected.slot_id == context.native_expected.slot_id
+        });
+        let Some(lease) = candidates.next() else {
+            return Ok(None);
+        };
+        if candidates.next().is_some()
+            || !same_owner(&lease.owner, p)
+            || lease.revoked.load(Ordering::Acquire)
+            || !selected_current(&s, &lease.owner, &lease.selection)
+        {
+            return Ok(None);
+        }
+        let matches = match lease.phase {
+            Phase::Preparing | Phase::Attaching => same_preparing_source(context, &lease.context),
+            Phase::Active => same_active_source(context, &lease.context),
+            Phase::Retiring => false,
+        };
+        Ok(matches.then(|| SlotSourceRefs {
+            source_ref: lease.selection.source_ref.clone(),
+            item_ref: lease.selection.item.catalog.item_ref.clone(),
+        }))
     }
 
     /// Compare-and-swap authoritative state after a native/backend transition.

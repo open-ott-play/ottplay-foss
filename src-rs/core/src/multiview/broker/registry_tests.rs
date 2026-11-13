@@ -1928,3 +1928,391 @@ fn queued_creation_starts_its_initial_lease_at_admission() {
     .unwrap();
     assert!(registry.lock().unwrap().sessions["queued-session"].expires >= deadline + SESSION_TTL);
 }
+
+fn selected_refs(source: &str, item: &str) -> Option<SlotSourceRefs> {
+    Some(SlotSourceRefs {
+        source_ref: source.into(),
+        item_ref: item.into(),
+    })
+}
+
+fn selection_request(
+    registry: &Registry,
+    context: &Binding,
+    source_ref: &str,
+    item_ref: &str,
+) -> GrantRequest {
+    let state = registry.lock().unwrap();
+    let item = &state.sources[source_ref].items[item_ref].catalog;
+    GrantRequest {
+        version: 1,
+        context: context.clone(),
+        next_native: None,
+        source_ref: item.source_ref.clone(),
+        item_ref: item.item_ref.clone(),
+        item_revision: item.item_revision.clone(),
+        identity_version: item.identity_version,
+        favorite_sha256: item.favorite_sha256.clone(),
+        catalog_revision: state.catalog.clone(),
+        remaining_budget_ms: 30_000,
+    }
+}
+
+#[test]
+fn slot_refs_require_redemption_and_follow_exact_attachment_revision() {
+    let (registry, _) = fixture();
+    let old = binding();
+    let read = |context: &Binding| {
+        registry.slot_source_refs(&player(), context, context.backend_slot_revision)
+    };
+    assert_eq!(read(&old).unwrap(), None);
+    let grant = registry.mint(&player(), &request(&registry, &old)).unwrap();
+    assert_eq!(read(&old).unwrap(), None);
+    let reservation = registry
+        .redeem(&player(), &old, &grant.input_grant)
+        .unwrap();
+    assert_eq!(read(&old).unwrap(), selected_refs("saved", "item"));
+    let mut next = old.clone();
+    next.backend_slot_revision += 1;
+    registry
+        .prepare_attachment(&player(), &old, &next, &reservation)
+        .unwrap();
+    assert_eq!(read(&old).unwrap(), selected_refs("saved", "item"));
+    assert_eq!(read(&next), Err(RegistryError::Stale));
+    assert_eq!(
+        registry.slot_source_refs(&player(), &old, next.backend_slot_revision),
+        Err(RegistryError::Stale)
+    );
+    reservation
+        .publication_authority()
+        .attach(&reservation.decoder_context(), &mut || Ok(()))
+        .unwrap();
+    assert_eq!(read(&next).unwrap(), selected_refs("saved", "item"));
+    assert_eq!(read(&old), Err(RegistryError::Stale));
+    assert_eq!(
+        registry.slot_source_refs(&player(), &next, old.backend_slot_revision),
+        Err(RegistryError::Stale)
+    );
+}
+
+#[test]
+fn slot_refs_fail_closed_for_foreign_or_stale_host_snapshots() {
+    let (registry, _) = fixture();
+    let (_reservation, current) = attached(&registry);
+    for foreign in [
+        Principal {
+            subject: "other".into(),
+            ..player()
+        },
+        Principal {
+            installation_id: "other".into(),
+            ..player()
+        },
+        Principal {
+            permissions: BTreeSet::new(),
+            ..player()
+        },
+    ] {
+        assert_eq!(
+            registry.slot_source_refs(&foreign, &current, current.backend_slot_revision),
+            Err(RegistryError::Forbidden)
+        );
+    }
+    for field in 0..7 {
+        let mut stale = current.clone();
+        match field {
+            0 => stale.backend_expected.focus_revision += 1,
+            1 => stale.native_expected.source_revision = "other-source".into(),
+            2 => stale.native_expected.slot_id = 1,
+            3 => stale.native_expected.runtime = "other-runtime".into(),
+            4 => stale.backend_expected.scene = "other-scene".into(),
+            5 => stale.server_epoch = "other-epoch".into(),
+            _ => stale.session_id = "other-session".into(),
+        }
+        assert!(registry
+            .slot_source_refs(&player(), &stale, stale.backend_slot_revision)
+            .is_err());
+    }
+    assert_eq!(
+        registry
+            .slot_source_refs(&player(), &current, current.backend_slot_revision)
+            .unwrap(),
+        selected_refs("saved", "item")
+    );
+}
+
+#[test]
+fn slot_refs_clear_on_retirement_atomic_revocation_and_expiry() {
+    for cause in [
+        "retire",
+        "revocation",
+        "prepare-expiry",
+        "session-expiry",
+        "session-revoke",
+    ] {
+        let (registry, _) = fixture();
+        let reservation = reserve(&registry, &binding());
+        match cause {
+            "retire" => {
+                registry
+                    .retire_reservation(&player(), &reservation)
+                    .unwrap();
+            }
+            "revocation" => reservation.revoked().store(true, Ordering::Release),
+            "prepare-expiry" => {
+                registry
+                    .lock()
+                    .unwrap()
+                    .leases
+                    .get_mut(reservation.id())
+                    .unwrap()
+                    .prepare_deadline = Instant::now()
+            }
+            "session-expiry" => {
+                registry
+                    .lock()
+                    .unwrap()
+                    .sessions
+                    .get_mut("session")
+                    .unwrap()
+                    .expires = Instant::now()
+            }
+            "session-revoke" => {
+                registry.revoke_session(&player(), "session").unwrap();
+            }
+            _ => unreachable!(),
+        }
+        let result =
+            registry.slot_source_refs(&player(), &binding(), binding().backend_slot_revision);
+        if cause == "session-expiry" {
+            assert_eq!(result, Err(RegistryError::Expired));
+        } else if cause == "session-revoke" {
+            assert_eq!(result, Err(RegistryError::Revoked));
+        } else {
+            assert_eq!(result.unwrap(), None, "{cause}");
+        }
+    }
+}
+
+#[test]
+fn slot_refs_obey_phase_specific_focus_audio_and_layout_fences() {
+    for active in [false, true] {
+        let (registry, _) = fixture();
+        let (_reservation, old) = if active {
+            attached(&registry)
+        } else {
+            (reserve(&registry, &binding()), binding())
+        };
+        let mut focused = old.clone();
+        focused.backend_expected.focus_revision += 1;
+        focused.backend_expected.audio_revision += 1;
+        focused.native_expected.expected.focus_revision = "new-focus".into();
+        focused.native_expected.expected.audio_revision = "new-audio".into();
+        registry.update_binding(&player(), &old, &focused).unwrap();
+        assert_eq!(
+            registry.slot_source_refs(&player(), &old, old.backend_slot_revision),
+            Err(RegistryError::Stale)
+        );
+        assert_eq!(
+            registry
+                .slot_source_refs(&player(), &focused, focused.backend_slot_revision)
+                .unwrap(),
+            selected_refs("saved", "item")
+        );
+        let mut laid_out = focused.clone();
+        laid_out.backend_expected.geometry_revision += 1;
+        laid_out.native_expected.expected.layout_revision = "new-layout".into();
+        registry
+            .update_binding(&player(), &focused, &laid_out)
+            .unwrap();
+        assert_eq!(
+            registry
+                .slot_source_refs(&player(), &laid_out, laid_out.backend_slot_revision)
+                .unwrap(),
+            if active {
+                selected_refs("saved", "item")
+            } else {
+                None
+            }
+        );
+    }
+}
+
+#[test]
+fn slot_refs_never_resurrect_after_same_source_same_item_reenrollment() {
+    let (registry, revision) = fixture();
+    let (reservation, context) = attached(&registry);
+    assert_eq!(
+        registry
+            .slot_source_refs(&player(), &context, context.backend_slot_revision)
+            .unwrap(),
+        selected_refs("saved", "item")
+    );
+    // Refs, input index and digest are identical, but enrollment revisions are
+    // fresh authority. An old lease must not appear to represent the new source.
+    let changed = registry
+        .enroll(&manager(), enrollment(), Some(&revision))
+        .unwrap();
+    assert!(reservation.revoked().load(Ordering::Acquire));
+    assert_eq!(
+        registry
+            .slot_source_refs(&player(), &context, context.backend_slot_revision)
+            .unwrap(),
+        None
+    );
+    registry
+        .remove_source(&manager(), "saved", &changed)
+        .unwrap();
+    registry.enroll(&manager(), enrollment(), None).unwrap();
+    assert_eq!(
+        registry
+            .slot_source_refs(&player(), &context, context.backend_slot_revision)
+            .unwrap(),
+        None
+    );
+}
+
+#[test]
+fn slot_refs_replace_same_source_different_item_without_mixing_revisions() {
+    let (registry, revision) = fixture();
+    let mut source = enrollment();
+    let mut second = source.items[0].clone();
+    second.item_ref = "item2".into();
+    second.favorite_sha256 = "b".repeat(64);
+    source.items.push(second);
+    registry
+        .enroll(&manager(), source, Some(&revision))
+        .unwrap();
+    let (old_reservation, old) = attached(&registry);
+    assert_eq!(
+        registry
+            .slot_source_refs(&player(), &old, old.backend_slot_revision)
+            .unwrap(),
+        selected_refs("saved", "item")
+    );
+    registry
+        .retire_reservation(&player(), &old_reservation)
+        .unwrap();
+    for proof in [
+        RetirementProof::OutputRevoked,
+        RetirementProof::WorkerReaped,
+    ] {
+        registry
+            .acknowledge_retirement(&player(), old_reservation.id(), proof)
+            .unwrap();
+    }
+    let mut replacement = old.clone();
+    replacement.backend_slot_revision += 1;
+    replacement.native_expected = changed_source(&old);
+    registry
+        .update_binding(&player(), &old, &replacement)
+        .unwrap();
+    let read = |context: &Binding| {
+        registry.slot_source_refs(&player(), context, context.backend_slot_revision)
+    };
+    assert_eq!(read(&replacement).unwrap(), None);
+    assert_eq!(read(&old), Err(RegistryError::Stale));
+    let grant = registry
+        .mint(
+            &player(),
+            &selection_request(&registry, &replacement, "saved", "item2"),
+        )
+        .unwrap();
+    assert_eq!(read(&replacement).unwrap(), None);
+    let new_reservation = registry
+        .redeem(&player(), &replacement, &grant.input_grant)
+        .unwrap();
+    assert_eq!(read(&replacement).unwrap(), selected_refs("saved", "item2"));
+    let mut attached = replacement.clone();
+    attached.backend_slot_revision += 1;
+    registry
+        .prepare_attachment(&player(), &replacement, &attached, &new_reservation)
+        .unwrap();
+    new_reservation
+        .publication_authority()
+        .attach(&new_reservation.decoder_context(), &mut || Ok(()))
+        .unwrap();
+    assert_eq!(read(&attached).unwrap(), selected_refs("saved", "item2"));
+    assert_eq!(read(&replacement), Err(RegistryError::Stale));
+    assert_eq!(
+        registry.slot_source_refs(&player(), &attached, old.backend_slot_revision),
+        Err(RegistryError::Stale)
+    );
+}
+
+#[test]
+fn slot_refs_remain_isolated_when_another_slot_is_replaced() {
+    let (registry, _) = fixture();
+    let (_active, first) = attached(&registry);
+    let mut second_source = enrollment();
+    second_source.source_ref = "second-source".into();
+    second_source.items[0].item_ref = "second-item".into();
+    registry.enroll(&manager(), second_source, None).unwrap();
+    let mut second = first.clone();
+    second.native_expected.slot_id = 1;
+    second.native_expected.source_revision = "second-source-intent".into();
+    second.backend_slot_revision = 0;
+    registry.add_slot(&player(), &second).unwrap();
+    let grant = registry
+        .mint(
+            &player(),
+            &selection_request(&registry, &second, "second-source", "second-item"),
+        )
+        .unwrap();
+    let reservation = registry
+        .redeem(&player(), &second, &grant.input_grant)
+        .unwrap();
+    assert_eq!(
+        registry.slot_source_refs(&player(), &second, 0).unwrap(),
+        selected_refs("second-source", "second-item")
+    );
+    let mut replacement = second.clone();
+    replacement.native_expected.source_revision = "third-source-intent".into();
+    replacement.backend_slot_revision = 1;
+    registry
+        .update_binding(&player(), &second, &replacement)
+        .unwrap();
+    assert!(reservation.revoked().load(Ordering::Acquire));
+    assert_eq!(
+        registry
+            .slot_source_refs(&player(), &replacement, 1)
+            .unwrap(),
+        None
+    );
+    // Output is blocked by slot1's retirement, but slot0's current selection is
+    // still valid metadata; it must not follow the other slot or global focus.
+    assert_eq!(
+        registry
+            .slot_source_refs(&player(), &first, first.backend_slot_revision)
+            .unwrap(),
+        selected_refs("saved", "item")
+    );
+}
+
+#[test]
+fn slot_refs_refuse_ambiguous_duplicate_target_leases() {
+    let (registry, _) = fixture();
+    let reservation = reserve(&registry, &binding());
+    let mut state = registry.lock().unwrap();
+    let original = &state.leases[reservation.id()];
+    let duplicate = Lease {
+        owner: original.owner.clone(),
+        issue_context: original.issue_context.clone(),
+        context: original.context.clone(),
+        selection: original.selection.clone(),
+        prepare_deadline: original.prepare_deadline,
+        phase: Phase::Retiring,
+        promotion: None,
+        revoked: Arc::new(AtomicBool::new(true)),
+        output_revoked: false,
+        reaped: false,
+    };
+    state.leases.insert("ambiguous-target".into(), duplicate);
+    drop(state);
+    assert_eq!(
+        registry
+            .slot_source_refs(&player(), &binding(), binding().backend_slot_revision)
+            .unwrap(),
+        None
+    );
+}
