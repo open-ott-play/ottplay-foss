@@ -71,6 +71,21 @@ CORE_IGNORED = ('multiview::synthetic_ignored',)
 SERVER_NAMES = ('geometry_and_fixture_success_do_not_grant_production_admission',
                 'worker_rejects_ungranted_files_modified_plans_and_pre_cancelled_work')
 
+# Exact required-filter rows shared by both hosted OS logs in run43510059683.
+CAPTURED_FILTER_ROWS = ''' .. sine              |->A       Generate sine wave audio signal.
+ .. crop              V->V       Crop the input video.
+ T. drawbox           V->V       Draw a colored box on the input video.
+ .. format            V->V       Convert the input video to one of the specified pixel formats.
+ .. fps               V->V       Force constant framerate.
+ TS overlay           VV->V      Overlay a video source on top of the input.
+ .. pad               V->V       Pad the input video.
+ .. scale             V->V       Scale the input video size and/or convert the image format.
+ .. setpts            V->V       Set PTS for the output video frame.
+ .. setsar            V->V       Set the pixel sample aspect ratio.
+ .S xstack            N->V       Stack video inputs into custom layout.
+ .. testsrc2          |->V       Generate another test pattern.
+'''
+
 
 class Attempt:
     """Real bounded evidence/finalization; every command and supplier is mocked."""
@@ -156,6 +171,8 @@ class Attempt:
         if name == 'ffmpeg-encoders':
             return ' V....D libx264 synthetic\n A..... aac synthetic\n'
         if name == 'ffmpeg-filters':
+            if self.case == 'two-flag-filter-output':
+                return CAPTURED_FILTER_ROWS
             return ''.join(' ... ' + value + ' synthetic\n' for value in ci.FILTERS)
         if name == 'ffmpeg-muxers':
             return ' E hls synthetic\n'
@@ -253,6 +270,25 @@ class Attempt:
 
 
 class ParsingTests(unittest.TestCase):
+    def test_captured_filter_rows_and_legacy_three_flags_are_supported(self):
+        self.assertEqual(ci.filter_names(CAPTURED_FILTER_ROWS), ci.FILTERS)
+        legacy = '\n'.join(line.replace(line.split()[0], line.split()[0] + '.', 1)
+                           for line in CAPTURED_FILTER_ROWS.splitlines())
+        self.assertEqual(ci.filter_names(legacy), ci.FILTERS)
+        # Both actual tables retain three-character legends above two-flag rows.
+        legend = 'Filters:\n T.. = Timeline support\n .S. = Slice threading\n'
+        self.assertTrue(ci.FILTERS <= ci.filter_names(legend + CAPTURED_FILTER_ROWS))
+
+    def test_missing_filters_and_description_only_mentions_cannot_qualify(self):
+        for missing in ci.FILTERS:
+            with self.subTest(missing=missing):
+                rows = '\n'.join(line for line in CAPTURED_FILTER_ROWS.splitlines()
+                                 if line.split()[1] != missing)
+                rows += '\n .. unrelated V->V Description mentions ' + missing + '\n'
+                self.assertFalse(ci.FILTERS <= ci.filter_names(rows))
+        self.assertFalse(ci.FILTERS <= ci.filter_names('\n'.join(
+            'Available filter ' + name for name in ci.FILTERS)))
+
     def test_pinned_guard_and_exact_existing_fixture_inventory(self):
         self.assertEqual(hashlib.sha256(REFERENCE.read_bytes()).hexdigest(), ci.GUARD_SHA256)
         self.assertEqual(tuple(name for name, _ in ci.TESTS), EXPECTED_TESTS)
@@ -515,6 +551,12 @@ class ProvisionTests(unittest.TestCase):
 
 
 class MockMainTests(unittest.TestCase):
+    def test_actual_two_flag_filter_rows_pass_mocked_main_preflight(self):
+        with Attempt('two-flag-filter-output') as attempt:
+            attempt.run()
+            self.assertEqual(attempt.terminal()['status'], 'pass')
+            self.assertTrue(any(row['name'] == 'core-fixture-build' for row in attempt.driver.commands))
+
     def test_mock_main_never_touches_host_mkfifo_identity(self):
         forbidden = Path('/usr/bin/mkfifo')
         def deny_host(original):

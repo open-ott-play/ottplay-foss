@@ -94,6 +94,10 @@ def table_names(text, flags):
     return result
 
 
+def filter_names(text):
+    return table_names(text, r'[A-Z.]{2,3}')
+
+
 def system_tool_identity(path, budget, cap=1024**3):
     """Hash a public OS executable, allowing stable package-manager hardlinks.
 
@@ -309,7 +313,7 @@ def main(argv=None):
         filters = command('ffmpeg-filters', [ffmpeg, '-hide_banner', '-filters'])
         muxers = command('ffmpeg-muxers', [ffmpeg, '-hide_banner', '-muxers'])
         require({'libx264', 'aac'} <= table_names(encoders, r'[VAS.][A-Z.]{5}'), 'Required encoders unavailable')
-        require(FILTERS <= table_names(filters, r'[A-Z.]{3}'), 'Required fixture filters unavailable')
+        require(FILTERS <= filter_names(filters), 'Required fixture filters unavailable')
         require('hls' in table_names(muxers, r'[DE.]{1,2}'), 'Required HLS muxer unavailable')
         tools['mkfifo'] = system_tool_identity(MKFIFO, budget)
         budget.json_evidence(driver.evidence / 'tools.json', tools)
