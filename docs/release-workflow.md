@@ -81,6 +81,16 @@ The standalone macOS ARM64 server has a separate
 [build, acceptance and preparation path](macos-server-release.md). Its executable
 is not replaced by updating the web archive or the Tauri application.
 
+The ARM64 macOS application and server packages are cross-built on the hosted
+Intel `macos-15-intel` runner with the explicit `aarch64-apple-darwin` target.
+The logical package identity remains `macos-latest` so existing receipt and asset
+names stay stable. A hosted-only preflight checks the Intel host, installed Rust
+target and ARM64 macOS SDK compilation; the app and server must contain thin
+ARM64 Mach-O executables. Bundle signature checks and ZIP roundtrip verification
+remain required. These checks establish build inputs and file format, not ARM64
+runtime acceptance. Native ARM macOS checks and the full browser matrix remain
+separate and unchanged.
+
 ## Nightly, beta and RC
 
 During rollout, checks and builds run but public candidate publication is disabled
@@ -336,6 +346,20 @@ policy-authorized new run. Never reset the ledger or overwrite published assets.
 See [publication-phase retry rules](VERSIONING.md#package-identity-across-reruns).
 Duplicate payload names remain errors, even when their bytes match.
 
+This includes a partial container retry: if AMD64 runs again in attempt 2 while
+ARM64 retains its successful attempt-1 artifact, the archive job must not combine
+them. Do not change artifact names or receipt checks to accept that mixture.
+Use a policy-permitted full retry before publication, or a new fully checked
+candidate after correcting the underlying failure.
+
+The native container job prepares Ubuntu's official archive transport before
+installing OCI inspection tools. APT update and install each have a five-minute
+process deadline, a bounded termination grace period, network timeouts and two
+retries. An incomplete package-index update fails the step. Dependency setup is
+separate from the exact-image EPG test, so its timeout cannot be reported as an
+EPG performance verdict. None of these limits changes image, source, architecture
+or performance acceptance.
+
 Name selection does not add receipt verification. This mode leaves vendored
 runtimes unchanged. Before qualifying releases, confirm that the consumer's
 publisher verifies source, repository, run and attempt; older receipt/publisher
@@ -460,3 +484,47 @@ only TypeScript, using the exact version, registry URL and integrity hash from
 `package-lock.json`. It does not install the frontend or native build toolchains.
 Missing documents and stale translated manuals fail this gate. Full source and
 release validation remain unchanged.
+
+### Windows runtime qualification profile
+
+The release policy explicitly selects `windows-validation.yml`: shared portable lint, type and core/media/provider/UI tests plus the full Windows native workflow. Windows runs the actual core/server Rust suites (including server binary-module tests), installer/window controls and the 24-case, 288-sample native video oracle. Unrelated macOS/Linux playback and Android/Apple runtime jobs are outside this profile; CodeQL, dependency review and RC fuzzing remain required.
+
+Release browser evidence uses `browser-platform-scope: windows`: beta selects the required Windows target, and RC/stable select all 11 Windows browser targets from the validated 35-target inventory. Receipts explicitly say `windows-only`, `fullPlatformQualified: false`, and list the 24 unselected RC/stable targets. This is Windows-only runtime qualification, not all-platform runtime qualification. All platform package builds, signatures, inventory, source/attempt provenance, hashes and promotion guards remain unchanged. The native runner is not a claim of physical Windows hardware validation.
+
+The shared Chromium provider, remote-navigation, channel-list and local-media suites run automatically on Windows in a separate job. `CI` remains available through Actions → CI → Run workflow for the original all-platform validation. The inventory distinguishes automatic workflow reachability from manual-only reachability; neither is a runtime PASS. The scope-aware inventory records 439 automatically reachable files and 27 manual-only files in this profile. The compiled Android/iOS XMLTV, EPG-cache and lifecycle variants are explicitly required through `manualRequiredVariants` and the existing Native Shells manual dispatch (default all-platform scope); they are not automatic Windows qualification. The EPG-cache source guard remains automatically reachable. Required automatic browser/legacy variants and orphan-test failures remain enforced. Structural reachability is not evidence of execution.
+
+Manual-only test files:
+
+```text
+tests/glib-variant-regression/tests/variant_str_iter.rs
+tests/test_android_activity.cjs
+tests/test_android_app_update_recovery.py
+tests/test_android_epg_editions.py
+tests/test_android_home_setup.cjs
+tests/test_android_local_media_availability.py
+tests/test_android_network_policy.py
+tests/test_android_queue.py
+tests/test_android_screenshot.py
+tests/test_android_tv_webview.cjs
+tests/test_android_update_tls.py
+tests/test_ios_access_auth.py
+tests/test_ios_access_media.py
+tests/test_ios_command_queue.py
+tests/test_ios_demo_media.py
+tests/test_ios_proxy.py
+tests/test_ios_public_http.py
+tests/test_mobile_local_paths.py
+tests/test_mobile_metadata_standby.py
+tests/test_native_dash_state.py
+tests/test_native_favorites_provider_compression.cjs
+tests/test_native_media_lifecycle.py
+tests/test_native_screenshot_transport_swift.py
+tests/test_native_swop_swift.py
+tests/test_native_xmltv_records.py
+tests/test_normalization_webkit.cjs
+tests/test_runtime_diagnostics_native.py
+```
+
+### Local Windows readiness before push
+
+Before pushing Windows qualification or related fixture/workflow changes, use Node 22, Python 3.12 with the existing hash-locked `.github/requirements-workflow-contracts.txt` dependencies, the locked npm dependencies and the installed Playwright Chromium browser. Run `PYTHON=/path/to/python3.12 npm run check:windows-readiness -- --report-dir /absolute/fresh/report-directory` after committing. This targeted gate checks the known portable failure paths, builds only the JavaScript frontend, then runs three delayed-WebCrypto PIN cases and the direct-media headless fixture. It does not compile native code, install or launch an installed player, or replace Windows/native CI. Push only when `result.json` has `status: passed`, the exact commit in `head`, `dirty: false`, `sourceUnchanged: true`, `browserMode: full`, and three passing PIN profiles. The explicit command is required even when the publisher disables Git hooks. For unrelated changes only, `--skip-browser` produces an explicitly portable-only receipt; it cannot qualify this Windows batch.

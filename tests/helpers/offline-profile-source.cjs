@@ -15,6 +15,7 @@ module.exports = function offlineProfileSource(includeStore = true) {
                             path.join(__dirname, "../../src/" + name + ".ts"),
                             "utf8"
                         )
+                        .replace(/\r\n/g, "\n")
                         .replace(
                             /^import \{ commitSettingsWrites \} from .*;\n/m,
                             ""

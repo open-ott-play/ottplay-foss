@@ -682,6 +682,7 @@ function coreBridge(f, kind = "vod") {
                 [
                     "getCoreMediaBackend",
                     "coreCompat",
+                    "cancelFit",
                     "stopCorePlayback",
                     "stbStop",
                     "stbIsStandby",

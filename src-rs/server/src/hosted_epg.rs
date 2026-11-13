@@ -268,16 +268,15 @@ impl Snapshot {
     }
 }
 
-// Match the player's caselessKey without changing accents or whitespace.
+// Use the same pinned Unicode 17 full case-fold table as the archive search
+// index. Rust's std case mappings can change with the toolchain's Unicode
+// version and may introduce equivalences absent from the reference table.
 fn caseless_key(value: &str) -> String {
     let mut key = String::with_capacity(value.len());
     for ch in value.chars() {
-        if ch == '\u{131}' {
-            key.push(ch);
-        } else {
-            for lower in ch.to_lowercase() {
-                key.extend(lower.to_uppercase());
-            }
+        match unicode17::FOLD.binary_search_by_key(&(ch as u32), |(point, _)| *point) {
+            Ok(at) => key.push_str(unicode17::FOLD[at].1),
+            Err(_) => key.push(ch),
         }
     }
     key
@@ -1248,10 +1247,11 @@ mod tests {
         }
         assert_eq!(
             caseless_key("Три Кота Straße ẞ ςσΣ"),
-            "ТРИ КОТА STRASSE SS ΣΣΣ"
+            "три кота strasse ss σσσ"
         );
         assert_ne!(caseless_key("ё"), caseless_key("е"));
         assert_ne!(caseless_key("ı"), caseless_key("i"));
+        assert_ne!(caseless_key("ɷ"), caseless_key("꟝"));
         assert_ne!(caseless_key("a  b"), caseless_key("a b"));
     }
 

@@ -7,6 +7,7 @@ const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
 const runtime = require("./helpers/private-runtime.cjs");
 const root = path.resolve(__dirname, "..");
+require("./test_video_geometry_refresh.cjs");
 
 function functions(file, names) {
     const source = fs.readFileSync(path.join(root, file), "utf8");
@@ -58,8 +59,8 @@ function fixture({
     const dom = new JSDOM('<div id="vdiv"><video id="video"></video></div>');
     const video = dom.window.document.getElementById("video");
     Object.defineProperties(video, {
-        videoHeight: { value: videoHeight },
-        videoWidth: { value: videoWidth },
+        videoHeight: { configurable: true, value: videoHeight },
+        videoWidth: { configurable: true, value: videoWidth },
     });
     const session = new Map(durable);
     let source = "plex@account-one",
@@ -428,6 +429,49 @@ const fallbackCover = {
     width: "100%",
 };
 
+// A stable native media plane must not become a fitted pixel box when the
+// decoder publishes or changes dimensions. This checks the transition that the
+// previous post-playing CSS refresh repeated instead of eliminating.
+for (const bridge of ["__TAURI__", "__TAURI_INTERNALS__"]) {
+    for (const fullscreen of [false, true]) {
+        const rig = geometryFixture({ videoHeight: 0, videoWidth: 0 });
+        rig.host[bridge] = {};
+        rig.host.navigator = { userAgent: "Windows NT 10.0" };
+        rig.host.isFullscreen = fullscreen;
+        for (const [width, height] of [
+            [0, 0],
+            [640, 360],
+            [480, 360],
+            [1920, 1080],
+        ]) {
+            Object.defineProperties(rig.host.video, {
+                videoHeight: { configurable: true, value: height },
+                videoWidth: { configurable: true, value: width },
+            });
+            rig.host.setAspect(0);
+            assert.deepEqual(rig.styles.at(-1), fallbackContain);
+            rig.host.setAspect(1);
+            assert.deepEqual(rig.styles.at(-1), fallbackCover);
+            rig.host.setZoom(1);
+            assert.equal(rig.host.video.style.transform, "scale(1.25)");
+            rig.host.setZoom(0);
+            assert.equal(rig.host.video.style.transform, "");
+        }
+    }
+}
+
+for (const [bridge, userAgent] of [
+    [true, "Macintosh"],
+    [true, "Linux"],
+    [false, "Windows NT 10.0"],
+]) {
+    const rig = geometryFixture();
+    if (bridge) rig.host.__TAURI__ = {};
+    rig.host.navigator = { userAgent };
+    rig.host.applyAspectRatio();
+    assert.deepEqual(rig.styles, [measuredContain]);
+}
+
 for (const [mode, options, expected] of [
     [0, {}, measuredContain],
     [1, {}, measuredCover],
@@ -504,6 +548,8 @@ for (const options of [{}, { videoWidth: 0 }]) {
     media.removeAttribute("id");
     media.replaceWith(wrapper);
     wrapper.append(media);
+    rig.host.__TAURI__ = {};
+    rig.host.navigator = { userAgent: "Windows NT 10.0" };
     Object.defineProperties(wrapper, {
         videoHeight: { value: 100 },
         videoWidth: { value: 100 },

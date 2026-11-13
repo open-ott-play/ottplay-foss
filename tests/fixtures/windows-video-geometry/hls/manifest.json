@@ -1,0 +1,185 @@
+{
+  "ffmpeg_version": "9.0.2",
+  "sources": {
+    "standard": {
+      "height": 360,
+      "hls": {
+        "init_sha256": "6308f68654cd519536bf2c35a0cc2436d66b7cc2c7938fe97309da2532580f9c",
+        "playlist_sha256": "8fff764bc06319a78a34152348c26731b4118d6738cc4f42dad7ddc5aae03921",
+        "segments": [
+          {
+            "name": "segment000.m4s",
+            "sha256": "b9393090300d4647f763a45fbf75c23b934e43cbe4b75c9d6e0ba5d9c00a29af"
+          },
+          {
+            "name": "segment001.m4s",
+            "sha256": "4158766d085396e6528b37c6b455d4748185389cc2cd881fa6cda21e2a8cc537"
+          },
+          {
+            "name": "segment002.m4s",
+            "sha256": "e57c6fc2a97c9623fbf26de944c101baee3e189366e75fffbb2206494d51bad6"
+          },
+          {
+            "name": "segment003.m4s",
+            "sha256": "e43077a4c4997535f6b79e819f1cb31b9a6abd6976f69e7ab22167ddb65c0223"
+          },
+          {
+            "name": "segment004.m4s",
+            "sha256": "b7c4633f43571da1f40dd0a19c5190b7e72cd85bcf7e16d63b7aaa0c62cff1e9"
+          },
+          {
+            "name": "segment005.m4s",
+            "sha256": "91e5ca06e2beb5c0b5c168f840b39934498a7617ac1ea34632d0b6ffbaea808c"
+          },
+          {
+            "name": "segment006.m4s",
+            "sha256": "aaa8b56a827e86148366d3fce22da5960143055a504ac04633e9b93d047859a0"
+          },
+          {
+            "name": "segment007.m4s",
+            "sha256": "68d639e02fe09db1a052f5ddae42836aa451b5ce68158bd34c328e10b48c3a81"
+          }
+        ]
+      },
+      "mdat_sha256": "143ad8110336550d74b281543e119c48224d10a9e592c9786d5deb9ab762eb5a",
+      "phase_samples_rgb": [
+        [
+          [
+            220,
+            40,
+            40
+          ],
+          [
+            40,
+            219,
+            41
+          ],
+          [
+            40,
+            40,
+            220
+          ],
+          [
+            220,
+            219,
+            40
+          ]
+        ],
+        [
+          [
+            40,
+            219,
+            41
+          ],
+          [
+            40,
+            40,
+            220
+          ],
+          [
+            220,
+            219,
+            40
+          ],
+          [
+            220,
+            40,
+            40
+          ]
+        ]
+      ],
+      "source_sha256": "2484960e575123cb5d221980566cb8d660174591cedb83002c591c0964208488",
+      "width": 480
+    },
+    "wide": {
+      "height": 360,
+      "hls": {
+        "init_sha256": "8ab590bb40dd5e27a6f4729a638211417716413ecdac326b4edd7d24bf7d8ba4",
+        "playlist_sha256": "8fff764bc06319a78a34152348c26731b4118d6738cc4f42dad7ddc5aae03921",
+        "segments": [
+          {
+            "name": "segment000.m4s",
+            "sha256": "c8c742e9805324f29542186582ca11f3f95c7ad08501834bf9402bf884b6f28e"
+          },
+          {
+            "name": "segment001.m4s",
+            "sha256": "4d7063ab83b0704491db33d71ba4b98dbe5775cffb3077517b06e57cdafa309d"
+          },
+          {
+            "name": "segment002.m4s",
+            "sha256": "1fddbd1c94d031b6109a0da1646390d2311c9077faf334f809c2f9c655120b46"
+          },
+          {
+            "name": "segment003.m4s",
+            "sha256": "d05da65c1ae3b4e1f84f99bae289da6bce26c3ae4f25e51488d617dc87b2f704"
+          },
+          {
+            "name": "segment004.m4s",
+            "sha256": "5b5d3b307a56faa6c278cadce7f02f18f76eb46ed49b83200dbcdba1193b87ae"
+          },
+          {
+            "name": "segment005.m4s",
+            "sha256": "3a9c1735b38d96b579f0dc34c73b7468e1b9c2df78134f299c9dca531cd76068"
+          },
+          {
+            "name": "segment006.m4s",
+            "sha256": "c515fabfb8e6e1afd7aa62e998af3d02e0effbbd1ca472a923280cb13cd28de7"
+          },
+          {
+            "name": "segment007.m4s",
+            "sha256": "70ac6d8fa5918ad6a931ef75c043efce139e85a37ebfb2dfbaa4aaed1f6b533b"
+          }
+        ]
+      },
+      "mdat_sha256": "38f40d41f1dde12e5d48ee059ae10c93f8b8002533a0b900cd6f2052b7be6d13",
+      "phase_samples_rgb": [
+        [
+          [
+            220,
+            40,
+            40
+          ],
+          [
+            40,
+            219,
+            41
+          ],
+          [
+            40,
+            40,
+            220
+          ],
+          [
+            220,
+            219,
+            40
+          ]
+        ],
+        [
+          [
+            40,
+            219,
+            41
+          ],
+          [
+            40,
+            40,
+            220
+          ],
+          [
+            220,
+            219,
+            40
+          ],
+          [
+            220,
+            40,
+            40
+          ]
+        ]
+      ],
+      "source_sha256": "ca961f2b48fd22bea410d634ee696c57a398d70bb1de044ce04fc526098a2653",
+      "width": 640
+    }
+  }
+}

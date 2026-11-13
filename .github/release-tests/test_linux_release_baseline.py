@@ -1,10 +1,9 @@
 """Keep native package compatibility independent of the browser runner."""
-from pathlib import Path
 import re
 import unittest
+from pathlib import Path
 
 import yaml
-
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -28,7 +27,7 @@ class NativeLinuxBaseline(unittest.TestCase):
         self.assertCountEqual(selected, [entry["platform"] for entry in linux])
         self.assertEqual(dependency_step["run"], "bash scripts/ci-tauri-linux-deps.sh")
         self.assertCountEqual([entry for entry in entries if entry not in linux], [
-            {"platform": "macos-latest", "target": "aarch64-apple-darwin"},
+            {"platform": "macos-latest", "target": "aarch64-apple-darwin", "runner": "macos-15-intel"},
             {"platform": "macos-latest", "target": "x86_64-apple-darwin"},
             {"platform": "windows-latest", "target": ""},
         ])

@@ -913,6 +913,14 @@ const SEEK_PREVIEW_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 2560,
     gzipBytes: 896,
 });
+// Bounded post-playing geometry reconciliation adds at most 192 gzip bytes
+// in paired Node22.23.4 builds. Raw growth uses existing headroom. Count once
+// per entry/complete aggregate; provider and optional limits remain unchanged.
+// Evidence: docs/evidence/video-fit-lifecycle-size-20261111.json.
+const VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 0,
+    gzipBytes: 192,
+});
 const BUDGET = Object.freeze({
     bytes:
         MODERN_CATALOG_ENTRY_ALLOWANCE.bytes +
@@ -964,6 +972,7 @@ const BUDGET = Object.freeze({
         INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE.entry.gzipBytes +
         CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
+        VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE.gzipBytes +
         AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.entry.gzipBytes +
@@ -1244,6 +1253,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         INTERFACE_NOTIFICATION_SETTINGS_ALLOWANCE.entry.gzipBytes +
         CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.entry.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
+        VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE.gzipBytes +
         AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.entry.gzipBytes +
@@ -1591,6 +1601,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         CLASSIC_PRESENTATION_SETTINGS_ALLOWANCE.appearance.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.entry.gzipBytes +
         DESKTOP_DROP_ALLOWANCE.optional.gzipBytes +
+        VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE.gzipBytes +
         AUTO_RELAY_STALL_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE.entry.gzipBytes +
@@ -1935,6 +1946,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         torrentStreamsAllowance: TORRENT_STREAMS_ALLOWANCE,
         torznabDiscoveryAllowance: TORZNAB_DISCOVERY_ALLOWANCE,
         totalBudget: TOTAL_BUDGET,
+        videoFitLifecycleEntryAllowance: VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE,
     };
     const output = path.join(root, "build/reports/classic-bundle.json");
     fs.mkdirSync(path.dirname(output), { recursive: true });
@@ -2302,6 +2314,8 @@ function writeBuildBundleReport(
             torrentStreamsAllowance: TORRENT_STREAMS_ALLOWANCE,
             torznabDiscoveryAllowance: TORZNAB_DISCOVERY_ALLOWANCE,
             totalBudget: TOTAL_BUDGET,
+            videoFitLifecycleEntryAllowance:
+                VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE,
             violations,
         };
         const error = new Error(
@@ -2430,6 +2444,7 @@ module.exports = {
     TORRENT_STREAMS_ALLOWANCE,
     TORZNAB_DISCOVERY_ALLOWANCE,
     TOTAL_BUDGET,
+    VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE,
     writeBuildBundleReport,
     writeBundleReport,
 };

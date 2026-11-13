@@ -428,6 +428,7 @@ try {
         "stbResume",
         "stbIsPlaying",
         "stbStop",
+        "cancelFit",
         "stopCorePlayback",
         "getCoreMediaBackend",
         "coreCompat",

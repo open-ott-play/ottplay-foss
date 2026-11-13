@@ -85,6 +85,37 @@ assert.match(
     /font-size:26.67px/,
     "letterbox content, not viewport, determines font size"
 );
+for (const [width, height, vw, vh] of [
+    [800, 450, 480, 360],
+    [1280, 720, 1920, 1080],
+    [800, 450, 2400, 800],
+    [320, 180, 480, 360],
+]) {
+    for (const zoom of [1, 1.25]) {
+        const scale = Math.max(width / vw, height / vh) * zoom;
+        host.getComputedStyle = () => ({ objectFit: "fill" });
+        const fitted = api.declarations(
+            media(vw * scale, vh * scale, vw, vh),
+            settings
+        );
+        host.getComputedStyle = () => ({ objectFit: "cover" });
+        assert.equal(
+            api.declarations(
+                media(width * zoom, height * zoom, vw, vh),
+                settings
+            ),
+            fitted,
+            "native cover retains the explicit fitted-frame font size through preview and zoom"
+        );
+    }
+}
+host.getComputedStyle = () => ({ objectFit: "cover" });
+assert.equal(api.declarations(media(800, 0), { subtitleFontSize: 2 }), "");
+assert.match(
+    api.declarations(media(800, 450, 0, 0), settings),
+    /font-size:22.5px/
+);
+host.getComputedStyle = () => ({ objectFit: "contain" });
 assert.equal(
     api.declarations(media(0, 0), { subtitleFontSize: 2 }),
     "",

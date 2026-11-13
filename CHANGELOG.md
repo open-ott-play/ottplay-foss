@@ -167,6 +167,56 @@
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
+## [1.1.71] - 2026-11-12
+
+### Changes
+
+- Keep the Windows Tauri media element on a stable full-plane box with native
+  Fit/Fill, instead of changing from percentage containment to pixel-sized fill
+  when decoder metadata arrives. Preserve the explicit WKWebView sizing path,
+  channel-list previews and zoom.
+- Exercise real native channel changes without a preparatory layout reset,
+  including the reported near-ratio sizes and HLS.js/MSE playback.
+- Capture bounded Linux Firefox crash signatures without publishing process
+  memory or relaxing the original browser acceptance scenarios.
+- Recover browser evidence uploads within the same job and attempt only after
+  verifying the complete downloaded artifact against the unchanged local files.
+- Cross-build the Apple Silicon desktop and server packages on an Intel macOS
+  runner while preserving ARM64 targets, signatures and release provenance.
+- Qualify the Windows playback fix with Windows native and browser acceptance,
+  while building every platform package and retaining shared, security and fuzz
+  checks. Report omitted platforms explicitly instead of claiming full coverage.
+- Pin current EPG comparisons to Unicode 17 case folding and update the release
+  downloader and controller test compilers to Go 1.27.4.
+- Reconcile video geometry after playback starts using two layout frames and a
+  bounded fallback deadline. Keep the current Fit/Fill, zoom and channel-list
+  preview while retiring work from replaced media or sources.
+- Share guarded metadata and intrinsic-size updates. Resizing a viewport updates
+  its video geometry without repeating a device fullscreen transition.
+- Complete production-function fixture coverage and record the canonical
+  compressed cost of the new layout lifecycle once per payload.
+
+### Upgrade
+
+Install the native package or deploy the web assets, then restart or reload the
+player. Existing profiles, Favorites, Local sources and playback settings are
+preserved.
+
+### Known issues
+
+The reporter confirmed that the native Windows first-picture defect (#1132)
+persists in 1.1.71-beta.4. The stable-plane change is a new candidate requiring
+acceptance on that affected Windows setup; successful automated tests do not
+establish that the Windows compositor defect is resolved. Browser Local permission
+queries (#1004) and the historical Firefox 153 Video.js teardown crash (#1005)
+remain under investigation.
+
+### Security
+
+Retain the signed Noble playback source and exact host/plugin qualification
+introduced in 1.1.70, together with the existing source-ownership, credential
+storage and remote-control authorization checks.
+
 ## [1.1.70] - 2026-11-10
 
 ### Changes

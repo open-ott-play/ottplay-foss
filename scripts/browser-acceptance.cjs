@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const observeTerminal = require("./browser-terminal-diagnostics.cjs");
+const crashDiagnostics = require("./firefox-crash-diagnostics.cjs");
 const {
     selectProfile,
     verifyCapabilities,
@@ -16,6 +17,7 @@ const runtime = JSON.parse(fs.readFileSync(path.join(output, "runtime.json")));
 const candidate = JSON.parse(
     fs.readFileSync(path.join(output, "candidate.json"))
 );
+let crashSession;
 async function accept(observer) {
     observer.phase("verify-inputs");
     assert.equal(candidate.sourceSha, runtime.sourceSha);
@@ -24,6 +26,7 @@ async function accept(observer) {
     const playwright = require(process.env.CI_PLAYWRIGHT_MODULE);
     const browser = await playwright[runtime.engine].launch({
         channel: runtime.channel || undefined,
+        env: crashDiagnostics.launchEnvironment(crashSession, process.env),
         headless: true,
     });
     let capabilities;
@@ -74,11 +77,11 @@ async function accept(observer) {
             "--config=playwright.compatibility.config.cjs",
         ],
         {
-            env: {
+            env: crashDiagnostics.childEnvironment(crashSession, {
                 ...process.env,
                 CI: "1",
                 CI_BROWSER_WEB_ROOT: path.resolve("browser-candidate-web"),
-            },
+            }),
             stdio: "inherit",
             timeout: 8 * 60 * 1000,
         }
@@ -140,7 +143,28 @@ async function accept(observer) {
         ) + "\n"
     );
 }
-observeTerminal({ candidate, output, runtime }, accept).catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+async function acceptWithDiagnostics(observer) {
+    try {
+        crashSession = crashDiagnostics.create(runtime.engine, process.env);
+    } catch (_) {
+        console.error("Firefox crash diagnostics unavailable");
+    }
+    try {
+        return await accept(observer);
+    } finally {
+        try {
+            crashDiagnostics.finish(crashSession, output, {
+                engine: runtime.engine,
+                env: process.env,
+            });
+        } catch (_) {
+            console.error("Firefox crash diagnostics unavailable");
+        }
+    }
+}
+observeTerminal({ candidate, output, runtime }, acceptWithDiagnostics).catch(
+    (error) => {
+        console.error(error);
+        process.exitCode = 1;
+    }
+);
