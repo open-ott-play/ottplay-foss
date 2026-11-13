@@ -544,10 +544,7 @@
       "method": "GET",
       "path": "/media/{signed_opaque_lease}/{file}",
       "authentication": "Path contains dedicated opaque media-only HMAC lease, not a control/provider credential. HMAC plus server-held lease binds epoch/session/output generation/absolute expiry. Every resource and every body chunk checks current authority/revocation/expiry.",
-      "allowed_files": [
-        "index.m3u8",
-        "segment-[0-9]{6}.ts"
-      ],
+      "allowed_files": ["index.m3u8", "segment-[0-9]{6}.ts"],
       "private_output": {
         "session_id": "session_A",
         "server_epoch": "epoch_A",
