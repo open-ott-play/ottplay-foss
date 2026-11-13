@@ -44,6 +44,12 @@ with the unqualified Core bulk APIs unavailable. It checks functional results
 and host effects, so adding a premature dependency fails before publication.
 The normal channel-library and reference suites continue to cover behavior.
 
+`tests/test_global_favorites_portable_boundary.cjs` exercises the active Favorites
+consumer against the actual vendor runtime. Invalid scalar leaves must be
+rejected before nested-array traversal; inherited array data slots retain legacy
+compatibility, while own accessors and private fields remain rejected. The test
+uses a small graph with a strict traversal trap instead of unbounded allocations.
+
 Vendor JS/JAR/manifest/license files must come from the qualified Core producer
 with its exact source and SHA-256 evidence. Draft working-tree artifacts are not
 release inputs. This activation boundary does not change historical release
