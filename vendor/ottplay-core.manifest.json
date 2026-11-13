@@ -3,7 +3,7 @@
   "name": "ottplay-shared-core",
   "version": "0.1.5",
   "source": {
-    "sha256": "a4dec0c1d1ee2936416b7197e7658828adc1f4fed7eb28aa1e7e4e073f6c105b",
+    "sha256": "1e95c8af8b2b65c63e7a0f73e5213519d0e934146ab795af8b6ac454a65cbe51",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
       "build.gradle.kts": "1dae164fe2ef5b07c825ca0e2c5d09a8052bd081ab5ef216862f38a7c56dd504",
@@ -26,7 +26,7 @@
       "src/commonMain/kotlin/play/ott/core/ChannelIdentity.kt": "5141ebc5a9371c8f9e22933c0685e4dc072521c43831f4b0ad6709bafec3f4d3",
       "src/commonMain/kotlin/play/ott/core/ChannelNavigation.kt": "86ca425b40e1a39adca0f8621619966d68d90bdcf264aa85bea429b8c4ed1f7b",
       "src/commonMain/kotlin/play/ott/core/ChannelRestoration.kt": "17f9fe6630c651eadc196543336e7f8253545b7c358fb7d578407ffd5337cd8c",
-      "src/commonMain/kotlin/play/ott/core/ClassicChannelLibrary.kt": "84d29eb25caf7ccc2cf74aa2303cfff0fe82ffa822cf3229c1a519bfda4e2488",
+      "src/commonMain/kotlin/play/ott/core/ClassicChannelLibrary.kt": "860c300e2c81195e92c9d56329bb5b89b80bc54ae869d86c461ca613acbcdda2",
       "src/commonMain/kotlin/play/ott/core/ClassicChannelReferences.kt": "257b8fc4a99f4fb920e08acd7ac89d022c55606640c1aaab37f2131448938a3d",
       "src/commonMain/kotlin/play/ott/core/ClassicDurableState.kt": "4ce2691e846fb9b02ac9734a56931999f721f8003683e93f3d25501b8f572f8c",
       "src/commonMain/kotlin/play/ott/core/ClassicGlobalFavorites.kt": "ac303f47e9214d726563a8f8192f24df0418dfe30191b994510ddcb262e55496",
@@ -84,12 +84,12 @@
       "src/commonTest/kotlin/play/ott/core/BrowserGuideRefreshTest.kt": "b87b83381b03607412b267333e3986d048fe8bc1d246fa4d1be2897bd24021ff",
       "src/commonTest/kotlin/play/ott/core/ChannelCatalogTest.kt": "c547505ed6ab2f71e35b4b8a18f3b71b74a1a7ba5b0588ab1e7da02cdfce97ce",
       "src/commonTest/kotlin/play/ott/core/ChannelNavigationTest.kt": "ea36c904622c9d98b0c6e73b766fda1d11600e780858f629a8d23e04a957b91d",
-      "src/commonTest/kotlin/play/ott/core/ClassicChannelLibraryTest.kt": "83d63bb6454e1b58d11b0bc7993990ed0d19dd024b27b97c19a0295802e469a9",
+      "src/commonTest/kotlin/play/ott/core/ClassicChannelLibraryTest.kt": "e7876430534a3809a5e9b53cb63636176a43afade2858b039315837673d4393f",
       "src/commonTest/kotlin/play/ott/core/ClassicChannelReferencesTest.kt": "5a6937a2e984ce10766d0af58ef2410a2aefaa86af8784edf4ee20fc16c255f3",
       "src/commonTest/kotlin/play/ott/core/ClassicGlobalFavoritesTest.kt": "489e2c8532f0b6ef2aa5547198dac4b54b6c7e88fd7aaf360f8fc22bddd7d225",
       "src/commonTest/kotlin/play/ott/core/ClassicLiveStallPolicyTest.kt": "a73f18545c78e5ee4c58cae1ee88aadd7a69395ac239e0dc33b21c92bc7cfb57",
       "src/commonTest/kotlin/play/ott/core/ClassicRemindersTest.kt": "aad1eed59c2da61324531c870793b3e01bf9d7b3cb07be86dc85e6172f490298",
-      "src/commonTest/kotlin/play/ott/core/CloudStorageFramingTest.kt": "139911b4f2fc72616e967225406ca14005595a6e06e2ad93790d70e61076af6d",
+      "src/commonTest/kotlin/play/ott/core/CloudStorageFramingTest.kt": "248efdfd9ab96f94b27a1403cbf118ff486f15b9059c2473f251f9549dd693b8",
       "src/commonTest/kotlin/play/ott/core/CoreTextTest.kt": "fb10a4328cb3097d7f44ce78b1c4ec9947b2c4cd32f4ff22afb8e61c19c8e428",
       "src/commonTest/kotlin/play/ott/core/DurableStateTest.kt": "6bcd3bdbefcc55b22fc2ab3a1f596c0724bbc51c193869ee6c7e0feb3fa5eb4e",
       "src/commonTest/kotlin/play/ott/core/GuideChoiceTest.kt": "089d2979c12413c18c7f1334587da70464c1bfd568b0286a8edb7a04f4cdc5a7",
@@ -131,10 +131,10 @@
       "src/jsMain/kotlin/ClassicChannelLibraryExports.kt": "5c497dbfbd1174b9e6b688b815872820f972abca00affb66ca09b3d7c4db8d29",
       "src/jsMain/kotlin/ClassicChannelReferenceExports.kt": "577dbfd36bfe3cc8dd43c76999574e4b1c037e96a12347b648771e7d7c445d04",
       "src/jsMain/kotlin/ClassicDurableStateExports.kt": "35cb772f3e11563a2379b1f2ca9a0d8d62bc70c54077accbacbfddc9993c1922",
-      "src/jsMain/kotlin/ClassicGlobalFavoritesExports.kt": "9c8b3f39dd0b6fd51c8cb0a8781adc44d2dbb772247ccbfc6f5e14967643288e",
+      "src/jsMain/kotlin/ClassicGlobalFavoritesExports.kt": "ddd428eb376908329dc525ab1be8896a9dcc8eab0a49b97a60546763a2805e2d",
       "src/jsMain/kotlin/ClassicLiveStallExports.kt": "e557593594b2bc1aba7da93d142cfe6fc07eb58167709cf8babb5052c44f26b4",
       "src/jsMain/kotlin/ClassicRemindersExports.kt": "180b70edebba5e6bbd5530ea959132d31349018c904571808be6300be6dffa5c",
-      "src/jsMain/kotlin/CloudStorageFramingExports.kt": "6e7070bd54fbca5cd26743802940cc7cf3c8f4e26a7a80ff041777c3d4a42122",
+      "src/jsMain/kotlin/CloudStorageFramingExports.kt": "3485d46c567334aac9f1cf47ab4d3aa298050dd2a52b5ba18db8489551fa7cc2",
       "src/jsMain/kotlin/DurableSelectionExports.kt": "2e3ceb5cbf7a014aef4829d6dc3d901de9b65ebd59f22c7f714b0f83389a6c3c",
       "src/jsMain/kotlin/Exports.kt": "8cba52393b445812eabdc0f831b4b8270ddc2b69065410df15e73a8862b9b528",
       "src/jsMain/kotlin/GuideExports.kt": "8c891e93cbbd0cc9a8140d36b5955ec3b0bd6c29bed7d947a12d78c9264c3ec2",
@@ -166,16 +166,16 @@
   },
   "artifacts": {
     "ottplay-core.js": {
-      "sha256": "d2aa3d7dd6fc61014058f4984f8734e3a0c4797667f18df408392f72273fef93",
-      "bytes": 496504
+      "sha256": "4cb440a19203f652003f55b1ba8a08742396e84e7601cfd1868b469cb4bf7e35",
+      "bytes": 497062
     },
     "ottplay-core.d.ts": {
       "sha256": "3283edb6a0828d2268ba1c46849a32a02c1e016538440e42799e6d868b3e6bf3",
       "bytes": 30939
     },
     "ottplay-core.jar": {
-      "sha256": "abe778f0f93b726033a39df5dd9277490ce5d894cf9c71e1e6c05099b403d5e5",
-      "bytes": 727692
+      "sha256": "3a91a08eef6b65968e0b32163207c2e1bb4dda9a7eb1fa6105cd4b1ff5e6a903",
+      "bytes": 728234
     },
     "ottplay-core.LICENSE.txt": {
       "sha256": "1e72da3623b91daad1013e577c3611ad6ed314da508b757abe9a1b27a88a14cc",
