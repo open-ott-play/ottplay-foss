@@ -74,7 +74,7 @@ used to draw the settings list's graphical indicators.
 npm run build
 node tests/test_remote_notifications.cjs
 node tests/test_command_server.cjs
-npx playwright test tests/browser/remote-notifications.spec.cjs
+npx playwright test tests/browser/remote-notifications.spec.cjs tests/browser/notification-persistence.spec.cjs
 ```
 
 The browser suite checks 640×360 (including installed-app titlebar geometry),
