@@ -20,6 +20,12 @@ does not relicense them. Existing FOSS tags, matching source archives and releas
 assets remain historical records; no history rewrite or asset deletion is part
 of this migration.
 
+A documentation-only [source relocation pointer](../native/webos/README.md)
+remains at the historical `native/webos` path. Existing application legal/source
+links keep resolving to the maintained repository and immutable historical
+source; the duplicate runtime, native build scripts and producer workflows are
+retired.
+
 LG still imports its generic companion packaging helper from that immutable
 FOSS commit. The historical pin remains resolvable after removing the duplicate
 producer from new FOSS source. A future LG repin must relocate the helper or
