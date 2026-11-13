@@ -144,13 +144,14 @@ jobs:
           retention-days: 14
     timeout-minutes: 90
   tauri:
-    name: Build Tauri (${{ matrix.platform }} ${{ matrix.target || 'host' }})
+    name: Build Tauri (${{ matrix.runner || matrix.platform }} ${{ matrix.target || 'host' }})
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
+            runner: macos-15-intel
           - platform: macos-latest
             target: x86_64-apple-darwin
           - platform: ubuntu-24.04
@@ -159,7 +160,7 @@ jobs:
             target: aarch64-unknown-linux-gnu
           - platform: windows-latest
             target: ""
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner || matrix.platform }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -193,11 +194,14 @@ jobs:
       - name: Install Rust target
         if: matrix.target != ''
         run: rustup target add ${{ matrix.target }}
+      - name: Verify Intel macOS cross-build prerequisites
+        if: matrix.runner == 'macos-15-intel'
+        run: python3 scripts/check_macos_cross_build.py preflight
       - name: Rust cache
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: .
-          shared-key: tauri-${{ matrix.platform }}-${{ matrix.target || 'host' }}
+          shared-key: tauri-${{ matrix.runner || matrix.platform }}-${{ matrix.target || 'host' }}
       - name: Install Linux deps
         if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm'
         run: bash scripts/ci-tauri-linux-deps.sh
@@ -282,6 +286,9 @@ jobs:
         run: bash scripts/ci-tauri-collect-artifacts.sh
         env:
           TAURI_TARGET: ${{ matrix.target }}
+      - name: Verify cross-built macOS application architecture
+        if: matrix.runner == 'macos-15-intel'
+        run: python3 scripts/check_macos_cross_build.py verify-app --directory target/aarch64-apple-darwin/release/bundle/macos
       - name: Build macOS ARM64 server from frozen release inputs
         if: matrix.platform == 'macos-latest' && matrix.target == 'aarch64-apple-darwin'
         timeout-minutes: 30
@@ -602,7 +609,7 @@ jobs:
 
   browser-release:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@6b2d99519d513d2b871d2a845ddd6134dea4af2c
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@165225f9e258ef89efd61e558ab57e536f83a265
     permissions:
       contents: read
       actions: read
@@ -611,8 +618,10 @@ jobs:
       run-node-ci: false
       browser-matrix-file: .github/browser-compatibility.json
       browser-test-command: CI_FIREFOX_CRASH_DIAGNOSTICS=1 node scripts/browser-acceptance.cjs
+      browser-evidence-upload-retry: true
       browser-artifact-id: ${{ needs.build.outputs.browser-artifact-id }}
       browser-artifact-path: browser-candidate
+      browser-platform-scope: windows
       browser-release-channel: ${{ inputs.channel }}
       browser-extended: ${{ inputs.channel == 'rc' || inputs.channel == 'stable' }}
       browser-evidence-prefix: browser-release

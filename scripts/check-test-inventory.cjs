@@ -89,8 +89,8 @@ function inspect(root) {
     const policy = JSON.parse(
         fs.readFileSync(path.join(root, "tests/ci-inventory.json"), "utf8")
     );
-    const reached = new Map();
-    const npmSeen = new Set();
+    let reached = new Map();
+    let npmSeen = new Set();
     const errors = [];
     function visit(file, args = []) {
         if (!known.has(file)) return;
@@ -251,24 +251,68 @@ function inspect(root) {
             YAML.parse(fs.readFileSync(file, "utf8"))
         );
     }
-    const workflowSeen = new Set();
-    const disabled = (condition) =>
-        condition === false ||
-        ["false", "${{ false }}"].includes(String(condition).trim());
-    function visitWorkflow(file) {
-        if (workflowSeen.has(file)) return;
-        workflowSeen.add(file);
+    let workflowSeen = new Set();
+    function disabled(condition, scope) {
+        if (
+            condition === false ||
+            ["false", "${{ false }}"].includes(String(condition).trim())
+        )
+            return true;
+        // A false prefix cannot suppress an outer OR alternative. Unsupported
+        // expressions remain structurally reachable, without evaluating GHA.
+        let depth = 0,
+            quote = "";
+        const expression = String(condition).trim();
+        for (let i = 0; i < expression.length; i++) {
+            const character = expression[i];
+            if (quote) {
+                if (character === quote) {
+                    if (expression[i + 1] === quote) i++;
+                    else quote = "";
+                }
+            } else if (character === "'" || character === '"')
+                quote = character;
+            else if (character === "(") depth++;
+            else if (character === ")" && --depth < 0) return false;
+            else if (!depth && character === "|" && expression[i + 1] === "|")
+                return false;
+        }
+        if (quote || depth) return false;
+        // Only resolve the declared platform selector, never arbitrary GHA code.
+        const selected =
+            /^\$\{\{\s*inputs\.runtime-platform-scope\s*(==|!=)\s*(['"])(all|windows)\2\s*(?:&&|\}\})/.exec(
+                String(condition).trim()
+            );
+        return (
+            ["all", "windows"].includes(scope) &&
+            selected !== null &&
+            (selected[1] === "=="
+                ? scope !== selected[3]
+                : scope === selected[3])
+        );
+    }
+    function visitWorkflow(file, inputs = {}, callerScope) {
         const workflow = workflows.get(file);
         if (!workflow) {
             errors.push(`Missing reusable workflow: ${file}`);
             return;
         }
+        const declared =
+            workflow.on?.workflow_call?.inputs?.["runtime-platform-scope"];
+        const supplied = inputs["runtime-platform-scope"];
+        let scope = supplied === undefined ? declared?.default : supplied;
+        if (scope === "${{ inputs.runtime-platform-scope }}")
+            scope = callerScope;
+        if (!declared || !["all", "windows"].includes(scope)) scope = undefined;
+        const key = JSON.stringify([file, scope ?? null]);
+        if (workflowSeen.has(key)) return;
+        workflowSeen.add(key);
         for (const job of Object.values(workflow.jobs || {})) {
-            if (disabled(job.if)) continue;
+            if (disabled(job.if, scope)) continue;
             if (job.uses?.startsWith("./.github/workflows/"))
-                visitWorkflow(job.uses.slice(2));
+                visitWorkflow(job.uses.slice(2), job.with || {}, scope);
             for (const step of job.steps || []) {
-                if (typeof step.run === "string" && !disabled(step.if)) {
+                if (typeof step.run === "string" && !disabled(step.if, scope)) {
                     const directory =
                         step["working-directory"] ||
                         job.defaults?.run?.["working-directory"] ||
@@ -299,6 +343,32 @@ function inspect(root) {
         )
             visitWorkflow(file);
     }
+    // These are structural workflow paths, not evidence that tests executed.
+    // Manual suites remain available without pretending they run on each PR.
+    const automatic = reached;
+    reached = new Map();
+    npmSeen = new Set();
+    workflowSeen = new Set();
+    for (const [file, workflow] of workflows) {
+        const triggers =
+            typeof workflow.on === "string"
+                ? [workflow.on]
+                : Array.isArray(workflow.on)
+                  ? workflow.on
+                  : Object.keys(workflow.on || {});
+        if (triggers.includes("workflow_dispatch")) visitWorkflow(file);
+    }
+    const manual = reached;
+    const manualOnly = [...reached.keys()]
+        .filter((file) => !automatic.has(file))
+        .sort();
+    reached = new Map(
+        [...manual].map(([file, variants]) => [file, new Set(variants)])
+    );
+    for (const [file, variants] of automatic) {
+        if (!reached.has(file)) reached.set(file, new Set());
+        for (const variant of variants) reached.get(file).add(variant);
+    }
     const excluded = policy.excluded || {};
     for (const [file, reason] of Object.entries(excluded)) {
         if (typeof reason !== "string" || reason.trim().length < 12)
@@ -316,12 +386,35 @@ function inspect(root) {
     )) {
         if (!known.has(file)) errors.push(`Missing required test: ${file}`);
         for (const args of variants) {
-            if (!reached.get(file)?.has(JSON.stringify(args)))
+            if (!automatic.get(file)?.has(JSON.stringify(args)))
                 errors.push(`Missing CI variant: ${file} ${args.join(" ")}`);
+        }
+    }
+    const manualRequiredVariants = policy.manualRequiredVariants || {};
+    for (const [file, variants] of Object.entries(manualRequiredVariants)) {
+        if (!known.has(file))
+            errors.push(`Missing required manual test: ${file}`);
+        if (!Array.isArray(variants) || !variants.length) {
+            errors.push(`Invalid required manual variants: ${file}`);
+            continue;
+        }
+        for (const args of variants) {
+            if (
+                !Array.isArray(args) ||
+                args.some((arg) => typeof arg !== "string")
+            )
+                errors.push(`Invalid required manual variant: ${file}`);
+            else if (!manual.get(file)?.has(JSON.stringify(args)))
+                errors.push(
+                    `Missing manual CI variant: ${file} ${args.join(" ")}`
+                );
         }
     }
     return {
         discovered: testFiles.length,
+        automaticReached: automatic.size,
+        manualOnly,
+        manualRequiredVariants,
         errors,
         excluded: Object.keys(excluded).length,
         reached: reached.size,
@@ -335,8 +428,17 @@ if (require.main === module) {
         process.exitCode = 1;
     } else {
         console.log(
-            `PASS CI inventory: ${result.reached}/${result.discovered} tests reachable, ${result.excluded} justified exclusions`
+            `PASS structural CI inventory: ${result.automaticReached} automatically reachable, ${result.manualOnly.length} manual-only, ${result.excluded} justified exclusions (${result.discovered} discovered); reachability is not execution evidence`
         );
+        for (const file of result.manualOnly)
+            console.log(`MANUAL-ONLY: ${file}`);
+        for (const [file, variants] of Object.entries(
+            result.manualRequiredVariants
+        ))
+            for (const args of variants)
+                console.log(
+                    `MANUAL-REQUIRED VARIANT: ${file} ${args.join(" ")}`
+                );
     }
 }
 module.exports = { commands, inspect };

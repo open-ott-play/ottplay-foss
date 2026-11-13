@@ -1,6 +1,7 @@
 """Keep both real native compatibility builds in the required CI workflow."""
 
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 
@@ -53,11 +54,19 @@ class NativePlaybackCI(unittest.TestCase):
         self.assertNotIn("if", builds[0])
         self.assertNotIn("continue-on-error", builds[0])
 
-    def test_parent_quality_gate_waits_for_ci_workflow(self):
+    def test_parent_quality_gate_waits_for_selected_runtime_workflow(self):
+        policy = json.loads((ROOT / ".release-policy.json").read_text())
+        selected = policy["validation_workflows"][0]
+        self.assertEqual(selected, "windows-validation.yml")
         jobs = workflow("quality-gate.yml")["jobs"]
-        self.assertEqual(jobs["check-0"]["uses"], "./.github/workflows/ci.yml")
+        self.assertEqual(jobs["check-0"]["uses"], "./.github/workflows/" + selected)
         self.assertIn("check-0", jobs["gate"]["needs"])
         self.assertNotIn("continue-on-error", jobs["check-0"])
+        self.assertEqual(jobs["check-0"]["if"], "${{ needs.scope.outputs.run == 'true' }}")
+        wrapper = workflow(selected)["jobs"]
+        self.assertEqual(wrapper["native-windows"]["uses"], "./.github/workflows/native-parity.yml")
+        self.assertEqual(wrapper["native-windows"]["with"]["runtime-platform-scope"], "windows")
+        self.assertNotIn("if", wrapper["native-windows"])
 
     def test_native_ci_artifacts_do_not_collide_with_release_artifacts(self):
         job = workflow("ci.yml")["jobs"]["linux-playback-compat"]

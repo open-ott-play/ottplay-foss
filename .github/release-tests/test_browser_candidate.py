@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -168,11 +169,13 @@ class CandidateTests(unittest.TestCase):
         for filename, job_id in [('ci.yml', 'browser-compatibility'), ('release-build.yml', 'browser-release')]:
             workflow = yaml.safe_load((ROOT / '.github/workflows' / filename).read_text())
             job = workflow['jobs'][job_id]
+            self.assertEqual(job['with'].get('browser-platform-scope', 'all'), 'windows' if job_id == 'browser-release' else 'all')
             self.assertEqual(job['needs'], 'build')
             self.assertIn('/typescript-ci.yml@', job['uses'])
             self.assertEqual(job['with']['browser-artifact-id'], '${{ needs.build.outputs.browser-artifact-id }}')
             self.assertFalse(job['with']['run-node-ci'])
             self.assertEqual(job['with']['browser-test-command'], 'CI_FIREFOX_CRASH_DIAGNOSTICS=1 node scripts/browser-acceptance.cjs')
+            self.assertTrue(job['with']['browser-evidence-upload-retry'])
             self.assertNotIn('npm run build', job['with']['browser-prepare-command'])
             expected_extended = "${{ inputs.channel == 'rc' || inputs.channel == 'stable' }}" if job_id == 'browser-release' else False
             self.assertEqual(job['with'].get('browser-extended', False), expected_extended)
@@ -180,6 +183,96 @@ class CandidateTests(unittest.TestCase):
             self.assertEqual('--release' in job['with']['browser-prepare-command'], job_id == 'browser-release')
             if job_id == 'browser-release':
                 self.assertEqual(job['with']['browser-evidence-prefix'], 'browser-release')
+
+    def test_explicit_windows_policy_keeps_portable_security_and_full_native_checks(self):
+        policy = json.loads((ROOT / '.release-policy.json').read_text())
+        self.assertEqual(policy['validation_workflows'],
+                         ['windows-validation.yml', 'codeql.yml', 'dependency-review.yml'])
+        self.assertEqual(policy['channel_validation_workflows'], {'beta': ['beta-checks.yml']})
+        def load(name):
+            return yaml.load((ROOT / '.github/workflows' / name).read_text(), Loader=yaml.BaseLoader)
+        wrapper = load('windows-validation.yml')['jobs']
+        self.assertEqual(wrapper['portable']['uses'], './.github/workflows/beta-checks.yml')
+        self.assertEqual(wrapper['native-windows']['uses'], './.github/workflows/native-parity.yml')
+        self.assertEqual(wrapper['native-windows']['with'], {'runtime-platform-scope': 'windows'})
+        self.assertTrue(all('if' not in job and 'continue-on-error' not in job for job in wrapper.values()))
+        native = load('native-parity.yml')
+        scope = native['on']['workflow_call']['inputs']['runtime-platform-scope']
+        self.assertEqual(scope['type'], 'string')
+        self.assertEqual(scope['default'], 'all')
+        jobs = native['jobs']
+        self.assertIn('all|windows)', jobs['runtime-scope']['steps'][0]['run'])
+        self.assertIn('exit 1', jobs['runtime-scope']['steps'][0]['run'])
+        self.assertIn("'[\"windows-latest\"]'", jobs['shared-guide']['strategy']['matrix']['os'])
+        for name in ('android', 'apple', 'favorites-native', 'linux-window-controls'):
+            self.assertIn("inputs.runtime-platform-scope != 'windows'", jobs[name]['if'])
+            self.assertEqual(jobs[name]['needs'], 'runtime-scope')
+        windows = jobs['windows-installers']
+        self.assertNotIn('runtime-platform-scope', windows['if'])
+        self.assertEqual(windows['needs'], 'runtime-scope')
+        commands = [step.get('run', '') for step in windows['steps']]
+        self.assertIn('cargo test --locked -p ottplay-core -p ottplay-server -p ottplay-companion', commands)
+        self.assertTrue(any('tauri build --ci --bundles "nsis,msi"' in command for command in commands))
+        self.assertIn('node scripts/check-windows-video-geometry.cjs', commands)
+        self.assertTrue(all('continue-on-error' not in step for step in windows['steps']))
+
+    def test_windows_profile_preserves_full_portable_remote_and_fuzz_regressions(self):
+        def load(name):
+            return yaml.load((ROOT / '.github/workflows' / name).read_text(), Loader=yaml.BaseLoader)
+        source, selected = load('ci.yml')['jobs'], load('windows-validation.yml')['jobs']
+        for job in ('frontend-tests', 'remote-integration'):
+            actual = copy.deepcopy(selected[job])
+            if job == 'frontend-tests':
+                self.assertIn({'run': 'node tests/test_release_envelope_size.cjs'}, actual['steps'])
+                actual['steps'].remove({'run': 'node tests/test_release_envelope_size.cjs'})
+            self.assertEqual(actual, source[job], job)
+            self.assertNotIn('if', selected[job])
+        frontend = '\n'.join(step.get('run', '') for step in selected['frontend-tests']['steps'])
+        for command in ('npm test', 'npm run test:python', '--require-hashes --only-binary=:all:'):
+            self.assertIn(command, frontend)
+        remote = '\n'.join(step.get('run', '') for step in selected['remote-integration']['steps'])
+        for command in ('node scripts/smoke-diagnostics.cjs', 'node scripts/smoke-remote-cli.cjs'):
+            self.assertIn(command, remote)
+        fuzz = selected['common-fuzz']
+        self.assertNotIn('if', fuzz)
+        self.assertTrue(all('continue-on-error' not in step for step in fuzz['steps']))
+        commands = '\n'.join(step.get('run', '') for step in fuzz['steps'])
+        for command in ('cargo fmt --manifest-path fuzz/Cargo.toml -- --check',
+                        'cargo clippy --locked --manifest-path fuzz/Cargo.toml --lib -- -D warnings',
+                        'cargo test --locked --manifest-path fuzz/Cargo.toml --lib'):
+            self.assertIn(command, commands)
+        self.assertEqual(selected['frontend-tests']['timeout-minutes'], source['frontend-tests']['timeout-minutes'])
+        self.assertEqual(selected['remote-integration']['timeout-minutes'], source['remote-integration']['timeout-minutes'])
+
+    def test_shared_browser_contracts_run_on_windows_separate_from_native_budget(self):
+        workflow = yaml.load((ROOT / '.github/workflows/windows-validation.yml').read_text(), Loader=yaml.BaseLoader)
+        job = workflow['jobs']['shared-browser-windows']
+        self.assertEqual(job['runs-on'], 'windows-latest')
+        self.assertNotIn('if', job)
+        self.assertTrue(all('continue-on-error' not in step for step in job['steps']))
+        commands = '\n'.join(step.get('run', '') for step in job['steps'])
+        for command in ('npm run build', 'npx playwright install chromium',
+                        'npm run test:devices:browser', 'npm run test:native:ui -- --project=chromium',
+                        'node tests/test_browser_direct_media.cjs',
+                        'node tests/test_browser_local_media.cjs --built-ui',
+                        'node tests/test_browser_local_media.cjs --built-ui --initial-retry',
+                        'npm run test:hosted:browser'):
+            self.assertIn(command, commands)
+        config = (ROOT / 'playwright.native-ui.config.cjs').read_text()
+        self.assertIn('name: "chromium", use: { browserName: "chromium" }', config)
+        full = yaml.load((ROOT / '.github/workflows/ci.yml').read_text(), Loader=yaml.BaseLoader)
+        self.assertIn('workflow_dispatch', full['on'])
+        self.assertIn('linux-playback-compat', full['jobs'])
+
+    def test_runtime_scope_guard_rejects_unknown_values(self):
+        workflow = yaml.load((ROOT / '.github/workflows/native-parity.yml').read_text(), Loader=yaml.BaseLoader)
+        command = workflow['jobs']['runtime-scope']['steps'][0]['run']
+        for scope in ('all', 'windows', 'linux', 'Windows', 'windows-only', ''):
+            with self.subTest(scope=scope):
+                result = subprocess.run(['bash', '-c', command],
+                                        env={**os.environ, 'RUNTIME_PLATFORM_SCOPE': scope},
+                                        capture_output=True, text=True, check=False)
+                self.assertEqual(result.returncode == 0, scope in ('all', 'windows'))
 
     def test_native_ui_has_a_separate_budget_and_consumes_the_build_outputs(self):
         workflow = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())

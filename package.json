@@ -27,6 +27,7 @@
     "check:size": "node scripts/classic-size.cjs",
     "check:tauri-dependencies": "node scripts/check-tauri-dependencies.cjs && node scripts/check-macos-drag-backport.cjs && node scripts/check-glib-backport.cjs && node scripts/check-block-backport.cjs && node scripts/check-librqbit-backport.cjs",
     "check:test-inventory": "node scripts/check-test-inventory.cjs",
+    "check:windows-readiness": "node scripts/check-windows-readiness.cjs",
     "dev": "vite",
     "dev:native": "npm run build && vite --mode native",
     "docs:generate": "node scripts/generate-readmes.cjs",
@@ -42,7 +43,7 @@
     "package:webos": "node scripts/package-webos.cjs",
     "package:webos-homebrew": "node scripts/webos-homebrew.cjs",
     "prepare:media": "node scripts/media-runtime-cache.cjs",
-    "test": "node --test tests/test_stalker_portal_check.cjs && npm run check:tauri-dependencies && node tests/test_tauri_dependencies.cjs && node scripts/shared-core.cjs && node --import=tsx tests/test_channel_filtering.ts && node --import=tsx tests/test-epg-matching.ts && node --import=tsx tests/test_listKeyHandler_alias.ts && node --import=tsx tests/test_popup_menu.ts && node tests/test_package_modea.cjs && node tests/test_ci_inventory.cjs && npm run test:hosted && npm run test:port",
+    "test": "node --test tests/test_windows_readiness.cjs && node --test tests/test_stalker_portal_check.cjs && npm run check:tauri-dependencies && node tests/test_tauri_dependencies.cjs && node scripts/shared-core.cjs && node --import=tsx tests/test_channel_filtering.ts && node --import=tsx tests/test-epg-matching.ts && node --import=tsx tests/test_listKeyHandler_alias.ts && node --import=tsx tests/test_popup_menu.ts && node tests/test_package_modea.cjs && node tests/test_ci_inventory.cjs && npm run test:hosted && npm run test:port",
     "test:android:policy": "node tests/android_provider_policy.cjs && node tests/test_play_system_icons.cjs",
     "test:companion": "node --test tests/test_media_companion.cjs && node --test tests/test_torrent_provider.cjs && node --test tests/test_torrent_catalog_rpc.cjs && node --test tests/test_torrent_discovery_data.cjs && node --test tests/test_torrent_stream_data.cjs && node --test tests/test_torrent_discovery_view.cjs && node --test tests/test_torznab_data.cjs",
     "test:devices": "node tests/test_device_detection.cjs",
@@ -73,8 +74,8 @@
   },
   "overrides": {
     "@tauri-apps/api": "~2.11.1",
-    "glob": "14.0.4",
-    "minimatch": "11.0.5",
+    "glob": "14.0.6",
+    "minimatch": "11.0.8",
     "uuid": "14.0.3"
   },
   "dependencies": {
@@ -92,7 +93,7 @@
     "video.js": "7.21.7"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.6",
+    "@biomejs/biome": "2.6.7",
     "@playwright/test": "1.65.0",
     "@rollup/plugin-commonjs": "29.0.3",
     "@rollup/plugin-node-resolve": "16.0.3",
@@ -108,7 +109,7 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
     "typescript": "5.9.3",
-    "ultracite": "8.1.1",
+    "ultracite": "8.2.0",
     "vite": "^8.3.5",
     "yaml": "2.9.1"
   }
