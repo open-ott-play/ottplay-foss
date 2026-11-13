@@ -69,7 +69,7 @@ jobs:
   analyze-swift:
     name: Analyze (swift)
     runs-on: macos-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     permissions:
       actions: read
       contents: read
