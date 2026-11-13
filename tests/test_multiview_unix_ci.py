@@ -94,11 +94,16 @@ class Attempt:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('synthetic bounded source: ' + name)
         self.supplied = {}
-        for name in ('ffmpeg', 'ffprobe'):
+        for name in ('ffmpeg', 'ffprobe', 'mkfifo'):
             path = self.directory / name
             path.write_text('synthetic executable bytes; never executed')
             path.chmod(0o700)
             self.supplied[name] = str(path)
+        if self.case == 'retargeted-system-tool':
+            alias = Path(self.supplied['mkfifo'])
+            target = self.directory / 'mkfifo-original'
+            alias.rename(target)
+            alias.symlink_to(target)
         attempt = self
 
         class MockDriver(guard.Driver):
@@ -125,6 +130,7 @@ class Attempt:
                'RUSTFLAGS': 'must-remove', 'CARGO_ENCODED_RUSTFLAGS': 'must-remove'}
         self.stack.enter_context(mock.patch.dict(os.environ, env, clear=True))
         self.stack.enter_context(mock.patch.object(ci, '__file__', str(self.root / 'scripts/ci-multiview-unix.py')))
+        self.stack.enter_context(mock.patch.object(ci, 'MKFIFO', Path(self.supplied['mkfifo'])))
         self.stack.enter_context(mock.patch.object(ci, 'load_guard', return_value=fake_guard))
         self.stack.enter_context(mock.patch.object(ci, 'provision_tools', return_value=(self.supplied, 'synthetic mock supplier')))
         self.stack.enter_context(mock.patch.object(ci.platform, 'system', return_value=self.system))
@@ -153,6 +159,15 @@ class Attempt:
             return ''.join(' ... ' + value + ' synthetic\n' for value in ci.FILTERS)
         if name == 'ffmpeg-muxers':
             return ' E hls synthetic\n'
+        if name == 'mkfifo-smoke':
+            for path in argv[1:]:
+                if self.case == 'missing-smoke-fifo' and path == argv[2]:
+                    continue
+                if self.case == 'nonfifo-smoke':
+                    Path(path).write_text('synthetic unexpected non-FIFO output')
+                else:
+                    os.mkfifo(path)
+            return 'synthetic FIFO creation via stdlib only\n'
         if name in ('fixture-build', 'core-fixture-build'):
             core = name == 'core-fixture-build'
             path = self.output / ('target/debug/deps/' + ('ottplay_core' if core else 'multiview_fixtures') + '-synthetic')
@@ -213,6 +228,15 @@ class Attempt:
                 self.executable.write_text('synthetic changed executable')
             if name == 'fixture-3' and self.case == 'changed-core-binary':
                 self.core_executable.write_text('synthetic changed core executable')
+            if name == 'fixture-3' and self.case == 'changed-system-tool':
+                Path(self.supplied['mkfifo']).write_text('synthetic changed tool executable')
+            if name == 'fixture-3' and self.case == 'retargeted-system-tool':
+                replacement = self.directory / 'mkfifo-replacement'
+                replacement.write_text('synthetic executable bytes; never executed')
+                replacement.chmod(0o700)
+                alias = Path(self.supplied['mkfifo'])
+                alias.unlink()
+                alias.symlink_to(replacement)
             return text
         return 'synthetic tool metadata only\n'
 
@@ -313,6 +337,102 @@ class ParsingTests(unittest.TestCase):
                     ci.load_guard()
 
 
+class SystemToolIdentityTests(unittest.TestCase):
+    def executable(self, root, name='tool', data=b'synthetic executable bytes; never run'):
+        path = root / name
+        path.write_bytes(data)
+        path.chmod(0o700)
+        return path
+
+    def test_regular_symlink_and_hardlink_receipts_hash_actual_bytes(self):
+        with tempfile.TemporaryDirectory(prefix='multiview-system-tool-offline-') as raw:
+            root = Path(raw).resolve()
+            tool = self.executable(root)
+            hardlink = root / 'hardlink'
+            os.link(tool, hardlink)
+            alias = root / 'alias'
+            alias.symlink_to(tool)
+            for requested in (tool, hardlink, alias):
+                with self.subTest(requested=requested):
+                    result = ci.system_tool_identity(requested, guard.Budget())
+                    self.assertEqual(result['requested_path'], str(requested))
+                    self.assertEqual(result['path'], str(requested.resolve()))
+                    self.assertEqual(result['sha256'], hashlib.sha256(tool.read_bytes()).hexdigest())
+                    info = requested.resolve().stat()
+                    for key, value in {'bytes': info.st_size, 'device': info.st_dev,
+                            'inode': info.st_ino, 'mode': info.st_mode, 'nlink': info.st_nlink,
+                            'mtime_ns': info.st_mtime_ns, 'ctime_ns': info.st_ctime_ns}.items():
+                        self.assertEqual(result[key], value)
+            # The new role-specific reader must not weaken source/evidence guards.
+            for path in (tool, hardlink, alias):
+                with self.assertRaisesRegex(RuntimeError, 'Hash input not bounded regular file'):
+                    guard.Budget().digest(path)
+
+    def test_nonregular_nonexecutable_empty_and_oversized_are_refused_before_open(self):
+        with tempfile.TemporaryDirectory(prefix='multiview-system-refusal-offline-') as raw:
+            root = Path(raw).resolve()
+            plain = self.executable(root, 'plain')
+            plain.chmod(0o600)
+            empty = self.executable(root, 'empty', b'')
+            oversized = self.executable(root, 'oversized', b'0123456789')
+            fifo = root / 'fifo'
+            os.mkfifo(fifo)
+            for path, cap in ((root, 1024), (fifo, 1024), (plain, 1024), (empty, 1024), (oversized, 4)):
+                with self.subTest(path=path), mock.patch.object(ci.os, 'open',
+                        side_effect=AssertionError('Rejected input must not be opened')):
+                    with self.assertRaisesRegex(RuntimeError, 'bounded regular executable'):
+                        ci.system_tool_identity(path, guard.Budget(), cap=cap)
+
+    def test_deadline_expires_during_bounded_identity_read(self):
+        with tempfile.TemporaryDirectory(prefix='multiview-system-deadline-offline-') as raw:
+            path = self.executable(Path(raw).resolve())
+            now = [0]
+            def clock():
+                now[0] += 1
+                return now[0]
+            budget = guard.Budget(clock=clock)
+            budget.work_deadline = now[0] + 3
+            with self.assertRaises(guard.DeadlineError):
+                ci.system_tool_identity(path, budget)
+
+    def test_midread_mutation_and_alias_retarget_are_refused(self):
+        for case in ('same-size-bytes-change', 'file-growth', 'alias-retarget'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory(prefix='multiview-system-race-offline-') as raw:
+                root = Path(raw).resolve()
+                tool = self.executable(root, data=b'original bytes')
+                replacement = self.executable(root, 'replacement', b'other bytes')
+                alias = root / 'alias'
+                alias.symlink_to(tool)
+                original_fdopen = ci.os.fdopen
+                changed = [False]
+                class MutatingReader:
+                    def __init__(self, stream):
+                        self.stream = stream
+                    def __enter__(self):
+                        self.stream.__enter__()
+                        return self
+                    def __exit__(self, *args):
+                        return self.stream.__exit__(*args)
+                    def fileno(self):
+                        return self.stream.fileno()
+                    def read(self, count):
+                        if not changed[0]:
+                            changed[0] = True
+                            if case == 'alias-retarget':
+                                alias.unlink()
+                                alias.symlink_to(replacement)
+                            else:
+                                tool.write_bytes(b'changed! bytes' if case == 'same-size-bytes-change'
+                                                 else b'original bytes plus unexpected growth')
+                        return self.stream.read(count)
+                def fdopen(*args, **kwargs):
+                    return MutatingReader(original_fdopen(*args, **kwargs))
+                with mock.patch.object(ci.os, 'fdopen', side_effect=fdopen):
+                    with self.assertRaisesRegex(RuntimeError, 'System tool (changed|grew|path identity changed)'):
+                        ci.system_tool_identity(alias, guard.Budget())
+                self.assertTrue(changed[0])
+
+
 class ProvisionTests(unittest.TestCase):
     def test_ubuntu_supplier_is_pinned_and_commands_share_remaining_allowance(self):
         now, calls = [0.0], []
@@ -395,6 +515,42 @@ class ProvisionTests(unittest.TestCase):
 
 
 class MockMainTests(unittest.TestCase):
+    def test_mock_main_never_touches_host_mkfifo_identity(self):
+        forbidden = Path('/usr/bin/mkfifo')
+        def deny_host(original):
+            def wrapped(path, *args, **kwargs):
+                self.assertNotEqual(Path(path), forbidden, 'Offline test touched real host mkfifo')
+                return original(path, *args, **kwargs)
+            return wrapped
+        with mock.patch.object(Path, 'stat', deny_host(Path.stat)), \
+             mock.patch.object(Path, 'lstat', deny_host(Path.lstat)), \
+             mock.patch.object(Path, 'open', deny_host(Path.open)), \
+             mock.patch.object(os, 'open', deny_host(os.open)), \
+             mock.patch.object(os, 'access', deny_host(os.access)), Attempt() as attempt:
+            attempt.run()
+            self.assertEqual(attempt.terminal()['status'], 'pass')
+            tool = json.loads((attempt.output / 'evidence/tools.json').read_text())['mkfifo']
+            self.assertEqual(tool['requested_path'], attempt.supplied['mkfifo'])
+            self.assertEqual(tool['path'], attempt.supplied['mkfifo'])
+            smoke = next(entry for entry in attempt.driver.commands if entry['name'] == 'mkfifo-smoke')
+            self.assertEqual(smoke['argv'][0], tool['path'])
+            self.assertEqual(len(smoke['argv']), 3)
+            self.assertEqual(smoke['limit'], 2)
+            self.assertFalse((attempt.output / 'tmp/mkfifo-smoke').exists())
+
+    def test_incomplete_or_nonfifo_smoke_fails_before_compilation(self):
+        for case in ('missing-smoke-fifo', 'nonfifo-smoke'):
+            with self.subTest(case=case), Attempt(case) as attempt:
+                with self.assertRaisesRegex(RuntimeError, 'Unix fixture qualification failed'):
+                    attempt.run()
+                result = attempt.terminal()
+                self.assertEqual(result['status'], 'fail')
+                if case == 'missing-smoke-fifo':
+                    self.assertEqual(result['error_type'], 'FileNotFoundError')
+                else:
+                    self.assertIn('Unexpected mkfifo smoke output retained', result['error'])
+                self.assertFalse(any(entry['name'] == 'core-fixture-build' for entry in attempt.driver.commands))
+
     def test_required_regressions_must_be_present_and_nonignored(self):
         with Attempt() as attempt:
             attempt.run(required_core=CORE_NAMES, required_server=SERVER_NAMES)
@@ -459,6 +615,8 @@ class MockMainTests(unittest.TestCase):
                  'changed-lock': 'Source or root lock changed',
                  'changed-binary': 'Fixture executable changed',
                  'changed-core-binary': 'Core test executable changed',
+                 'changed-system-tool': 'Tool executable identity changed',
+                 'retargeted-system-tool': 'Tool executable identity changed',
                  'duplicate-core-target': 'exactly one fixture executable',
                  'core-zero-inventory': 'Core multiview test inventory differs',
                  'core-wrong-prefix': 'Core multiview test inventory differs',

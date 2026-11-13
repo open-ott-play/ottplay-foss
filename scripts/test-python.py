@@ -15,12 +15,16 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=("portable", "android", "ios"), default="portable")
+    parser.add_argument("--check-inventory", action="store_true",
+                        help="Validate suite registration without running tests or writing reports")
     args = parser.parse_args()
     suites = json.loads((ROOT / "tests/python-suites.json").read_text())
     listed = {case[0] for cases in suites.values() for case in cases}
     discovered = {str(path.relative_to(ROOT)) for path in (ROOT / "tests").glob("test*.py")}
     if listed != discovered:
         raise SystemExit(f"Python suite inventory mismatch: {sorted(listed ^ discovered)}")
+    if args.check_inventory:
+        return 0
     report = ROOT / "reports/python"
     report.mkdir(parents=True, exist_ok=True)
     coverage = [sys.executable, "-m", "coverage"]

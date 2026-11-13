@@ -184,6 +184,37 @@ class CandidateTests(unittest.TestCase):
             if job_id == 'browser-release':
                 self.assertEqual(job['with']['browser-evidence-prefix'], 'browser-release')
 
+    def assert_windows_wrapper_job_gates(self, wrapper):
+        self.assertIn('multiview-unix-scope', wrapper)
+        fixtures = wrapper['multiview-unix-fixtures']
+        self.assertEqual(fixtures['needs'], 'multiview-unix-scope')
+        self.assertEqual(fixtures['if'], "${{ needs.multiview-unix-scope.outputs.run == 'true' }}")
+        for name, job in wrapper.items():
+            self.assertNotIn('continue-on-error', job, name)
+            if name != 'multiview-unix-fixtures':
+                self.assertNotIn('if', job, name)
+
+    def test_windows_wrapper_rejects_conditional_existing_jobs_and_unix_scope_bypasses(self):
+        wrapper = yaml.load((ROOT / '.github/workflows/windows-validation.yml').read_text(),
+                            Loader=yaml.BaseLoader)['jobs']
+        self.assert_windows_wrapper_job_gates(wrapper)
+        mutations = []
+        for name in wrapper:
+            if name != 'multiview-unix-fixtures':
+                mutations.append((name, 'if', "${{ false }}"))
+            mutations.append((name, 'continue-on-error', 'true'))
+        mutations.extend([
+            ('multiview-unix-fixtures', 'needs', 'portable'),
+            ('multiview-unix-fixtures', 'if', "${{ true }}"),
+            ('multiview-unix-fixtures', 'if', "${{ needs.multiview-unix-scope.outputs.run != 'false' }}"),
+        ])
+        for name, key, value in mutations:
+            with self.subTest(job=name, key=key, value=value):
+                changed = copy.deepcopy(wrapper)
+                changed[name][key] = value
+                with self.assertRaises(AssertionError):
+                    self.assert_windows_wrapper_job_gates(changed)
+
     def test_explicit_windows_policy_keeps_portable_security_and_full_native_checks(self):
         policy = json.loads((ROOT / '.release-policy.json').read_text())
         self.assertEqual(policy['validation_workflows'],
@@ -195,7 +226,7 @@ class CandidateTests(unittest.TestCase):
         self.assertEqual(wrapper['portable']['uses'], './.github/workflows/beta-checks.yml')
         self.assertEqual(wrapper['native-windows']['uses'], './.github/workflows/native-parity.yml')
         self.assertEqual(wrapper['native-windows']['with'], {'runtime-platform-scope': 'windows'})
-        self.assertTrue(all('if' not in job and 'continue-on-error' not in job for job in wrapper.values()))
+        self.assert_windows_wrapper_job_gates(wrapper)
         native = load('native-parity.yml')
         scope = native['on']['workflow_call']['inputs']['runtime-platform-scope']
         self.assertEqual(scope['type'], 'string')

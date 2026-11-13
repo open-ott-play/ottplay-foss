@@ -21,6 +21,11 @@ not cover JSON formatting. After a formatting-only change, verify that parsed ol
 and new JSON are equivalent, rejecting duplicate keys and non-finite values;
 array order and value types must remain unchanged.
 
+When adding or renaming Python tests, run
+`python3 scripts/test-python.py --check-inventory` from the repository root before
+pushing. It checks exact suite registration without executing tests or writing
+reports; a passing inventory check is not test-execution evidence.
+
 For JavaScript, workflow or portable-fixture changes, reuse the existing targeted
 gate rather than creating another check runner:
 

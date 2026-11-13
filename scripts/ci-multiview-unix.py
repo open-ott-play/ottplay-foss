@@ -8,11 +8,13 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import stat
 import sys
 import time
 
 sys.dont_write_bytecode = True
 GUARD_SHA256 = '6f623bb7234b3619ff859dec0afe9c1ad938f29d606f0836b69434312867e020'
+MKFIFO = Path('/usr/bin/mkfifo')
 TESTS = (
     ('real_four_nine_and_perimeter_frames_and_selected_audio', 600),
     ('owned_worker_cancellation_deadlines_busy_and_cleanup', 60),
@@ -90,6 +92,71 @@ def table_names(text, flags):
         if len(parts) >= 2 and re.fullmatch(flags, parts[0]):
             result.add(parts[1])
     return result
+
+
+def system_tool_identity(path, budget, cap=1024**3):
+    """Hash a public OS executable, allowing stable package-manager hardlinks.
+
+    This role-specific reader never replaces the single-link source/evidence
+    guards. Keep the invoked utility path distinct from its canonical target.
+    """
+    budget.tick()
+    requested = Path(path)
+    require(requested.is_absolute(), 'System tool path must be absolute')
+    resolved = requested.resolve(strict=True)
+    budget.tick()
+    before = resolved.lstat()
+    require(stat.S_ISREG(before.st_mode) and before.st_nlink >= 1
+            and 0 < before.st_size <= cap and before.st_mode & 0o111,
+            'System tool is not a bounded regular executable')
+
+    def identity(info):
+        return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
+                info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+    expected = identity(before)
+    require(hasattr(os, 'O_NOFOLLOW') and hasattr(os, 'O_NONBLOCK'), 'Unix no-follow/nonblocking open required')
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+    digest, count = hashlib.sha256(), 0
+    with os.fdopen(os.open(resolved, flags), 'rb') as stream:
+        require(identity(os.fstat(stream.fileno())) == expected, 'System tool identity changed before read')
+        while True:
+            budget.tick()
+            block = stream.read(min(65536, cap + 1 - count))
+            budget.tick()
+            if not block:
+                break
+            count += len(block)
+            require(count <= cap and count <= before.st_size, 'System tool grew while hashing')
+            digest.update(block)
+        require(count == before.st_size and identity(os.fstat(stream.fileno())) == expected,
+                'System tool changed while hashing')
+    budget.tick()
+    require(requested.resolve(strict=True) == resolved and identity(resolved.lstat()) == expected,
+            'System tool path identity changed')
+    budget.tick()
+    return dict(zip(('device', 'inode', 'mode', 'nlink', 'bytes', 'mtime_ns', 'ctime_ns'), expected),
+                requested_path=str(requested), path=str(resolved), sha256=digest.hexdigest())
+
+
+def smoke_mkfifo(driver, budget, command, tool):
+    """Use Encoder.start's canonical executable and two-path argv on CI only."""
+    root = driver.output / 'tmp/mkfifo-smoke'
+    root.mkdir(mode=0o700)
+    paths = [root / 'audio.pcm', root / 'progress.pipe']
+    try:
+        command('mkfifo-smoke', [tool['path'], *(str(path) for path in paths)], 2)
+        for path in paths:
+            budget.tick()
+            require(stat.S_ISFIFO(path.lstat().st_mode), 'Canonical mkfifo did not create both owned FIFOs')
+    finally:
+        for path in paths:
+            budget.tick(cleanup=True)
+            if path.exists() or path.is_symlink():
+                require(stat.S_ISFIFO(path.lstat().st_mode), 'Unexpected mkfifo smoke output retained')
+                path.unlink()
+        root.rmdir()
+        budget.tick(cleanup=True)
 
 
 def test_executable(text, target, manifest, *, name='multiview_fixtures', kind='test'):
@@ -229,10 +296,9 @@ def main(argv=None):
         for name, variable in (('ffmpeg', 'OTTPLAY_MULTIVIEW_FFMPEG'), ('ffprobe', 'OTTPLAY_MULTIVIEW_FFPROBE')):
             raw = supplied[name]
             require(raw and Path(raw).is_absolute(), name + ' absolute executable unavailable')
-            path = Path(raw).resolve(strict=True)
-            require(path.is_file() and os.access(path, os.X_OK), name + ' executable unavailable')
-            tools[name] = {'path': str(path), 'sha256': budget.digest(path),
-                           'source': supplier}
+            tool = system_tool_identity(Path(raw), budget)
+            path = Path(tool['path'])
+            tools[name] = dict(tool, source=supplier)
             budget.json_evidence(driver.evidence / 'tools.json', tools)
             driver.env[variable] = str(path)
             command(name + '-version', [str(path), '-version'])
@@ -245,10 +311,9 @@ def main(argv=None):
         require({'libx264', 'aac'} <= table_names(encoders, r'[VAS.][A-Z.]{5}'), 'Required encoders unavailable')
         require(FILTERS <= table_names(filters, r'[A-Z.]{3}'), 'Required fixture filters unavailable')
         require('hls' in table_names(muxers, r'[DE.]{1,2}'), 'Required HLS muxer unavailable')
-        fifo = Path('/usr/bin/mkfifo')
-        require(fifo.is_file() and os.access(fifo, os.X_OK), 'Expected mkfifo unavailable')
-        tools['mkfifo'] = {'path': str(fifo), 'sha256': budget.digest(fifo)}
+        tools['mkfifo'] = system_tool_identity(MKFIFO, budget)
         budget.json_evidence(driver.evidence / 'tools.json', tools)
+        smoke_mkfifo(driver, budget, command, tools['mkfifo'])
         command('rust-version', ['rustc', '-vV'])
         command('cargo-version', ['cargo', '-V'])
         core_compiled = command('core-fixture-build', ['cargo', 'test', '--manifest-path', str(root / 'Cargo.toml'),
@@ -302,7 +367,8 @@ def main(argv=None):
         require(budget.digest(executable) == binary_before, 'Fixture executable changed')
         require(budget.digest(core_executable) == core_sha256, 'Core test executable changed')
         for item in tools.values():
-            require(budget.digest(Path(item['path'])) == item['sha256'], 'Tool executable changed')
+            observed = system_tool_identity(Path(item['requested_path']), budget)
+            require(all(item[key] == value for key, value in observed.items()), 'Tool executable identity changed')
         after = snapshot('after')
         budget.json_evidence(driver.evidence / 'source-after.json', after)
         require(before == after, 'Source or root lock changed')
