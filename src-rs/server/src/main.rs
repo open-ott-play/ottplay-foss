@@ -4,6 +4,9 @@ mod companion;
 mod control_discovery;
 mod hosted_epg;
 mod msx;
+mod multiview_broker;
+mod multiview_operator;
+mod multiview_service;
 mod normalization;
 mod stalker_api;
 mod swop;
@@ -127,6 +130,9 @@ struct Cli {
     /// Private JSON configuration for --stalker-relay-only.
     #[arg(long, requires = "stalker_relay_only")]
     stalker_relay_config: Option<std::path::PathBuf>,
+    /// Private operator configuration for the zero-capacity multiview shell.
+    #[arg(long)]
+    multiview_config: Option<std::path::PathBuf>,
     /// HTTP listen ports. Repeat --port; defaults to 8080 only when omitted.
     #[arg(long, action = clap::ArgAction::Append, default_value = "8080")]
     port: Vec<u16>,
@@ -141,6 +147,39 @@ struct Cli {
 }
 
 impl Cli {
+    fn private_multiview(&self) -> anyhow::Result<Option<Arc<multiview_service::Service>>> {
+        let Some(path) = &self.multiview_config else {
+            return Ok(None);
+        };
+        anyhow::ensure!(
+            !self.stalker_relay_only
+                && std::env::var_os("OTT_OFFLINE_MEDIA_READONLY_PATHS").is_none()
+                && std::env::var("OTT_NORMALIZATION_ONLY").as_deref() != Ok("1")
+                && !hosted_epg::enabled()?,
+            "Private multiview cannot be combined with a dedicated service mode"
+        );
+        let bind_ip = self
+            .host
+            .parse::<std::net::IpAddr>()
+            .map_err(|_| anyhow::anyhow!("Private multiview requires an explicit listener IP"))?;
+        let (http, https) = self.listen_ports()?;
+        let planned = [(false, http), (true, https)]
+            .into_iter()
+            .flat_map(|(tls, ports)| {
+                ports
+                    .into_iter()
+                    .map(move |port| multiview_service::ListenerEndpoint {
+                        local_addr: std::net::SocketAddr::new(bind_ip, port),
+                        tls,
+                    })
+            })
+            .collect::<Vec<_>>();
+        let config = multiview_operator::load(path)?;
+        Ok(Some(Arc::new(multiview_service::Service::new(
+            config, &planned,
+        )?)))
+    }
+
     fn listen_ports(&self) -> anyhow::Result<(Vec<u16>, Vec<u16>)> {
         let https = if self.cert.is_some() && self.https_port.is_empty() {
             vec![8443]
@@ -247,14 +286,43 @@ async fn serve_listeners(
     app: Router,
     tls_config: Option<Arc<ServerConfig>>,
 ) -> anyhow::Result<()> {
+    serve_listeners_with_private(listeners, app, tls_config, None).await
+}
+
+async fn serve_listeners_with_private(
+    listeners: BoundListeners,
+    app: Router,
+    tls_config: Option<Arc<ServerConfig>>,
+    private: Option<Arc<multiview_service::Service>>,
+) -> anyhow::Result<()> {
     if !listeners.https.is_empty() && tls_config.is_none() {
         bail!("HTTPS listeners require a certificate and key");
+    }
+    if let Some(service) = &private {
+        let mut bound = Vec::new();
+        for (tls, sockets) in [(false, &listeners.http), (true, &listeners.https)] {
+            for socket in sockets {
+                bound.push(multiview_service::ListenerEndpoint {
+                    local_addr: socket.local_addr()?,
+                    tls,
+                });
+            }
+        }
+        service.validate_bound(&bound)?;
     }
     let mut tasks = JoinSet::new();
     for listener in listeners.http {
         let address = listener.local_addr()?;
         println!("ottplay-server: http://{address}");
-        let app = app.clone().layer(axum::Extension(msx::Scheme("http")));
+        let app = multiview_service::route_for_listener(
+            app.clone(),
+            private.as_deref(),
+            multiview_service::ListenerEndpoint {
+                local_addr: address,
+                tls: false,
+            },
+        )
+        .layer(axum::Extension(msx::Scheme("http")));
         tasks.spawn(async move {
             axum::serve(
                 listener,
@@ -267,7 +335,15 @@ async fn serve_listeners(
     for listener in listeners.https {
         let address = listener.local_addr()?;
         println!("ottplay-server: https://{address}");
-        let app = app.clone().layer(axum::Extension(msx::Scheme("https")));
+        let app = multiview_service::route_for_listener(
+            app.clone(),
+            private.as_deref(),
+            multiview_service::ListenerEndpoint {
+                local_addr: address,
+                tls: true,
+            },
+        )
+        .layer(axum::Extension(msx::Scheme("https")));
         let config = tls_config.clone().context("missing TLS configuration")?;
         tasks.spawn(async move {
             serve_tls(listener, app, config)
@@ -290,6 +366,8 @@ async fn serve_listeners(
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    // Validate all private configuration before binding or starting services.
+    let private_multiview = cli.private_multiview()?;
     anyhow::ensure!(
         !companion::configured()
             || (!cli.stalker_relay_only
@@ -411,7 +489,9 @@ async fn main() -> anyhow::Result<()> {
     if let Some(companion) = companion {
         let service = companion.service();
         let result = tokio::select! {
-            result = serve_listeners(listeners, app, tls_config) => result,
+            result = serve_listeners_with_private(
+                listeners, app, tls_config, private_multiview,
+            ) => result,
             result = companion.serve() => result,
             _ = normalization::stop_signal() => Ok(()),
         };
@@ -419,7 +499,7 @@ async fn main() -> anyhow::Result<()> {
         normalization::shutdown().await;
         result
     } else {
-        serve_listeners(listeners, app, tls_config).await
+        serve_listeners_with_private(listeners, app, tls_config, private_multiview).await
     }
 }
 
