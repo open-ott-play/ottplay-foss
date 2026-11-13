@@ -648,7 +648,7 @@ jobs:
 
   browser-compatibility:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@165225f9e258ef89efd61e558ab57e536f83a265
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@dd968524d193a8e719166ce10ec1fee76db3d403
     permissions:
       contents: read
       actions: read
