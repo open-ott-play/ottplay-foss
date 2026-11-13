@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import stat
 from pathlib import Path
 import sys
 import tempfile
@@ -71,6 +72,17 @@ CORE_IGNORED = ('multiview::synthetic_ignored',)
 SERVER_NAMES = ('geometry_and_fixture_success_do_not_grant_production_admission',
                 'worker_rejects_ungranted_files_modified_plans_and_pre_cancelled_work')
 
+ACTIVATION_NAMES = (
+    'no_flag_keeps_private_paths_absent_and_health_available',
+    'valid_loopback_activation_is_authenticated_zero_capacity_and_cannot_play',
+    'selected_tls_listener_isolated_from_http_and_other_tls_ports',
+    'explicit_loopback_http_selects_only_one_port',
+    'unsafe_configuration_rejected_before_reserved_port_bind',
+    'invalid_listener_selection_rejected_before_bind',
+    'incompatible_dedicated_modes_reject_opt_in_before_binding',
+    'restart_issues_fresh_epoch_without_promoting_capacity',
+)
+
 # Exact required-filter rows shared by both hosted OS logs in run43510059683.
 CAPTURED_FILTER_ROWS = ''' .. sine              |->A       Generate sine wave audio signal.
  .. crop              V->V       Crop the input video.
@@ -100,16 +112,22 @@ class Attempt:
         self.root, self.parent = self.directory / 'source', self.directory / 'runner-temp'
         self.root.mkdir()
         self.parent.mkdir()
+        self.home = self.directory / 'home'
+        self.home.mkdir(mode=0o700)
+        self.preexisting_home_fixture = self.home / '.ottplay-multiview-activation-preexisting'
+        if self.case in ('preexisting-home-fixture', 'changed-preexisting-home-fixture'):
+            self.preexisting_home_fixture.mkdir(mode=0o700)
         self.output = self.parent / 'ottplay-multiview-unix-123-2'
         for name in ('Cargo.toml', 'Cargo.lock', 'src-rs/core/Cargo.toml',
                      'src-rs/server/Cargo.toml', 'src-rs/server/tests/multiview_fixtures.rs',
+                     'src-rs/server/tests/multiview_activation.rs', 'src-rs/server/src/main.rs',
                      'scripts/ci-native-favorites.py', 'scripts/ci-multiview-unix.py',
                      'scripts/ci-apt-mirror.py'):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('synthetic bounded source: ' + name)
         self.supplied = {}
-        for name in ('ffmpeg', 'ffprobe', 'mkfifo'):
+        for name in ('ffmpeg', 'ffprobe', 'mkfifo', 'openssl'):
             path = self.directory / name
             path.write_text('synthetic executable bytes; never executed')
             path.chmod(0o700)
@@ -146,8 +164,13 @@ class Attempt:
         self.stack.enter_context(mock.patch.dict(os.environ, env, clear=True))
         self.stack.enter_context(mock.patch.object(ci, '__file__', str(self.root / 'scripts/ci-multiview-unix.py')))
         self.stack.enter_context(mock.patch.object(ci, 'MKFIFO', Path(self.supplied['mkfifo'])))
+        self.stack.enter_context(mock.patch.object(ci.shutil, 'which',
+            side_effect=lambda name, **kwargs: self.supplied.get(name)))
         self.stack.enter_context(mock.patch.object(ci, 'load_guard', return_value=fake_guard))
         self.stack.enter_context(mock.patch.object(ci, 'provision_tools', return_value=(self.supplied, 'synthetic mock supplier')))
+        self.stack.enter_context(mock.patch.object(ci, 'activation_home_preflight',
+            return_value={'parent': str(self.home), 'ancestors': [],
+                          'fixture_directory_mode': '0o700', 'production_loader_unchanged': True}))
         self.stack.enter_context(mock.patch.object(ci.platform, 'system', return_value=self.system))
         self.stack.enter_context(mock.patch.object(Path, 'cwd', return_value=self.root))
         self.stack.enter_context(mock.patch.object(ci.shutil, 'disk_usage',
@@ -168,6 +191,10 @@ class Attempt:
             if self.case == 'output-only-fd':
                 return 'Input:\n  file\nOutput:\n  fd\n'
             return 'Input:\n  fd\n  file\nOutput:\n  fd\n'
+        if name == 'openssl-version':
+            return ('SyntheticSSL 1.0 unsupported\n' if self.case == 'unsupported-openssl'
+                    else 'LibreSSL 3.3.6 synthetic fixture; never executed\n' if self.case == 'libressl-version'
+                    else 'OpenSSL 3.0.99 synthetic fixture; never executed\n')
         if name == 'ffmpeg-encoders':
             return ' V....D libx264 synthetic\n A..... aac synthetic\n'
         if name == 'ffmpeg-filters':
@@ -202,7 +229,44 @@ class Attempt:
                 return text + text
             if self.case == 'escaped-cargo-target':
                 return artifact(Path(self.supplied['ffmpeg']), manifest)
-            return 'synthetic cargo diagnostic\n' + text
+            self.activation = self.output / 'target/debug/deps/multiview_activation-synthetic'
+            self.normal_server = self.output / 'target/debug/ottplay-server'
+            for executable in (self.activation, self.normal_server):
+                executable.write_text('synthetic executable bytes; never executed')
+                executable.chmod(0o700)
+            if self.case == 'hardlinked-normal-server':
+                os.link(self.normal_server, self.output / 'target/debug/deps/ottplay_server-normal')
+            activation = artifact(self.activation, manifest, name='multiview_activation')
+            normal = artifact(self.normal_server, manifest, name='ottplay-server', kind='bin',
+                              test_profile=self.case == 'normal-server-test-profile')
+            if self.case == 'missing-normal-server':
+                normal = ''
+            if self.case == 'duplicate-activation-target':
+                activation += activation
+            if self.case == 'escaped-activation-target':
+                activation = artifact(Path(self.supplied['ffmpeg']), manifest, name='multiview_activation')
+            return 'synthetic cargo diagnostic\n' + text + activation + normal
+        if name == 'activation-inventory':
+            names = list(ACTIVATION_NAMES)
+            if self.case == 'zero-activation-inventory':
+                names = []
+            elif self.case == 'missing-activation-test':
+                names.pop()
+            elif self.case == 'extra-activation-test':
+                names.append('unreviewed_activation_test')
+            return ''.join(value + ': test\n' for value in names)
+        if name == 'activation-ignored-inventory':
+            return ACTIVATION_NAMES[0] + ': test\n' if self.case == 'ignored-activation-test' else ''
+        if name == 'activation-ordinary':
+            if self.case in ('leaked-home-fixture', 'leaked-home-fixture-and-failed-test'):
+                (self.home / '.ottplay-multiview-activation-new-owned').mkdir(mode=0o700)
+            if self.case == 'changed-preexisting-home-fixture':
+                self.preexisting_home_fixture.chmod(0o750)
+            names = () if self.case == 'zero-activation-executed' else ACTIVATION_NAMES
+            text = suite_passed(names)
+            if self.case in ('failed-activation-test', 'leaked-home-fixture-and-failed-test'):
+                text = text.replace(ACTIVATION_NAMES[0] + ' ... ok', ACTIVATION_NAMES[0] + ' ... FAILED')
+            return text
         if name == 'core-multiview-inventory':
             if self.case == 'core-zero-inventory':
                 return ''
@@ -243,6 +307,10 @@ class Attempt:
                 (self.root / 'Cargo.lock').write_text('synthetic changed lock')
             if name == 'fixture-3' and self.case == 'changed-binary':
                 self.executable.write_text('synthetic changed executable')
+            if name == 'fixture-3' and self.case == 'changed-activation-binary':
+                self.activation.write_text('synthetic changed activation executable')
+            if name == 'fixture-3' and self.case == 'changed-normal-server':
+                self.normal_server.write_text('synthetic changed normal server executable')
             if name == 'fixture-3' and self.case == 'changed-core-binary':
                 self.core_executable.write_text('synthetic changed core executable')
             if name == 'fixture-3' and self.case == 'changed-system-tool':
@@ -469,6 +537,39 @@ class SystemToolIdentityTests(unittest.TestCase):
                 self.assertTrue(changed[0])
 
 
+class ActivationHomeTests(unittest.TestCase):
+    def test_actual_home_ancestry_is_attested_and_unsafe_owners_or_modes_are_denied(self):
+        home = Path('/synthetic/ci-home')
+        driver = types.SimpleNamespace(env={'HOME': str(home)})
+        budget = types.SimpleNamespace(tick=lambda: None)
+        for case in ('good', 'writable-parent', 'foreign-owner', 'symlink-parent', 'foreign-home'):
+            seen = []
+            def info(path, case=case, seen=seen):
+                path = Path(path)
+                seen.append(path)
+                mode, owner = stat.S_IFDIR | 0o755, os.geteuid()
+                if path == home.parent:
+                    if case == 'writable-parent':
+                        mode |= 0o020
+                    if case == 'foreign-owner':
+                        owner = max(os.geteuid(), 0) + 10000
+                    if case == 'symlink-parent':
+                        mode = stat.S_IFLNK | 0o755
+                if path == home and case == 'foreign-home':
+                    owner = max(os.geteuid(), 0) + 10000
+                return types.SimpleNamespace(st_mode=mode, st_uid=owner, st_dev=1, st_ino=1)
+            with self.subTest(case=case), mock.patch.object(Path, 'resolve', return_value=home), \
+                 mock.patch.object(Path, 'lstat', info):
+                if case == 'good':
+                    result = ci.activation_home_preflight(driver, budget)
+                    self.assertEqual(result['parent'], str(home))
+                    self.assertEqual(seen, [home, *home.parents])
+                    self.assertTrue(result['production_loader_unchanged'])
+                else:
+                    with self.assertRaisesRegex(RuntimeError, 'activation fixture HOME'):
+                        ci.activation_home_preflight(driver, budget)
+
+
 class ProvisionTests(unittest.TestCase):
     def test_ubuntu_supplier_is_pinned_and_commands_share_remaining_allowance(self):
         now, calls = [0.0], []
@@ -551,6 +652,76 @@ class ProvisionTests(unittest.TestCase):
 
 
 class MockMainTests(unittest.TestCase):
+    def test_home_fixtures_are_never_deleted_and_new_leaks_fail_even_when_tests_fail(self):
+        with Attempt('preexisting-home-fixture') as attempt:
+            attempt.run()
+            self.assertTrue(attempt.preexisting_home_fixture.is_dir())
+            self.assertTrue(attempt.terminal()['activation_fixture_cleanup_confirmed'])
+        for case in ('leaked-home-fixture', 'leaked-home-fixture-and-failed-test',
+                     'changed-preexisting-home-fixture'):
+            with self.subTest(case=case), Attempt(case) as attempt:
+                with self.assertRaisesRegex(RuntimeError, 'Unix fixture qualification failed'):
+                    attempt.run()
+                result = attempt.terminal()
+                self.assertEqual(result['status'], 'fail')
+                self.assertFalse(result['activation_fixture_cleanup_confirmed'])
+                self.assertIn('activation fixture HOME', result['activation_fixture_cleanup_error'].replace('Activation', 'activation'))
+                if case == 'changed-preexisting-home-fixture':
+                    self.assertTrue(attempt.preexisting_home_fixture.exists())
+                else:
+                    self.assertTrue((attempt.home / '.ottplay-multiview-activation-new-owned').is_dir())
+                if case == 'leaked-home-fixture-and-failed-test':
+                    self.assertIn('Ordinary suite execution/status differs', result['error'])
+
+    def test_activation_runs_exact_reviewed_tests_with_normal_binary_and_existing_suites(self):
+        self.assertEqual(set(ACTIVATION_NAMES), ci.ACTIVATION_TESTS)
+        self.assertEqual(len(ACTIVATION_NAMES), 8)
+        for system, case in (('Linux', None), ('Darwin', None), ('Linux', 'hardlinked-normal-server'),
+                             ('Darwin', 'libressl-version')):
+            with self.subTest(system=system, case=case), Attempt(case, system=system) as attempt:
+                attempt.run()
+                result = attempt.terminal()
+                self.assertEqual(result['ordinary_activation_tests'], sorted(ACTIVATION_NAMES))
+                self.assertEqual(result['activation_fixture_parent']['parent'], str(attempt.home))
+                build = next(c for c in attempt.driver.commands if c['name'] == 'fixture-build')
+                self.assertIn('multiview_activation', build['argv'])
+                self.assertIn('multiview_fixtures', build['argv'])
+                self.assertEqual(build['limit'], 900)
+                executed = next(c for c in attempt.driver.commands if c['name'] == 'activation-ordinary')
+                self.assertEqual(executed['limit'], 180)
+                self.assertNotIn('--ignored', executed['argv'])
+                self.assertEqual(executed['argv'][0], str(attempt.activation))
+                self.assertEqual(result['normal_server_binary_sha256'], hashlib.sha256(attempt.normal_server.read_bytes()).hexdigest())
+                if case == 'hardlinked-normal-server':
+                    with self.assertRaisesRegex(RuntimeError, 'Hash input not bounded regular file'):
+                        guard.Budget().digest(attempt.normal_server)
+                self.assertEqual(result['tests'], list(EXPECTED_TESTS))
+                self.assertFalse(result['production_admission'])
+                self.assertFalse(result['sustained_media_e2e'])
+
+    def test_activation_zero_missing_extra_ignored_failed_or_unbound_cannot_pass(self):
+        cases = {'unsupported-openssl': 'Expected installed OpenSSL or LibreSSL version identity',
+                 'zero-activation-inventory': 'Exact ordinary activation inventory',
+                 'missing-activation-test': 'Exact ordinary activation inventory',
+                 'extra-activation-test': 'Exact ordinary activation inventory',
+                 'ignored-activation-test': 'Exact ordinary activation inventory',
+                 'zero-activation-executed': 'Ordinary suite count differs',
+                 'failed-activation-test': 'Ordinary suite execution/status differs',
+                 'missing-normal-server': 'exactly one fixture executable',
+                 'normal-server-test-profile': 'Expected actual test executable profile',
+                 'duplicate-activation-target': 'exactly one fixture executable',
+                 'escaped-activation-target': 'Fixture executable escaped owned target',
+                 'changed-activation-binary': 'Activation test executable changed',
+                 'changed-normal-server': 'Normal server executable changed'}
+        for case, reason in cases.items():
+            with self.subTest(case=case), Attempt(case) as attempt:
+                with self.assertRaisesRegex(RuntimeError, 'Unix fixture qualification failed'):
+                    attempt.run()
+                result = attempt.terminal()
+                self.assertEqual(result['status'], 'fail')
+                self.assertIn(reason, result['error'])
+                self.assertFalse(result['production_admission'])
+
     def test_actual_two_flag_filter_rows_pass_mocked_main_preflight(self):
         with Attempt('two-flag-filter-output') as attempt:
             attempt.run()

@@ -43,6 +43,8 @@ class DiffContracts(unittest.TestCase):
         for path in [
             "src-rs/core/src/multiview/encoder.rs", "src-rs/core/build.rs",
             "src-rs/server/src/main.rs", "src-rs/server/src/helper.rs",
+            "src-rs/server/src/multiview_operator.rs", "src-rs/server/src/multiview_service.rs",
+            "src-rs/server/tests/multiview_activation.rs", "src-rs/server/Cargo.toml",
             "src-rs/server/tests/multiview_fixtures.rs", "Cargo.toml", "Cargo.lock",
             ".cargo/config.toml", "rust-toolchain.toml", "vendor/library/src/lib.rs",
             ".github/workflows/windows-validation.yml", ".release-policy.json",

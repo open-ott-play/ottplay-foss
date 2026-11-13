@@ -20,6 +20,16 @@ TESTS = (
     ('owned_worker_cancellation_deadlines_busy_and_cleanup', 60),
     ('fixture_http_source_cas_dedupe_media_custody_and_retirement', 120),
 )
+ACTIVATION_TESTS = frozenset({
+    'no_flag_keeps_private_paths_absent_and_health_available',
+    'valid_loopback_activation_is_authenticated_zero_capacity_and_cannot_play',
+    'selected_tls_listener_isolated_from_http_and_other_tls_ports',
+    'explicit_loopback_http_selects_only_one_port',
+    'unsafe_configuration_rejected_before_reserved_port_bind',
+    'invalid_listener_selection_rejected_before_bind',
+    'incompatible_dedicated_modes_reject_opt_in_before_binding',
+    'restart_issues_fresh_epoch_without_promoting_capacity',
+})
 FILTERS = {'testsrc2', 'drawbox', 'sine', 'scale', 'format', 'crop', 'pad',
            'setsar', 'setpts', 'fps', 'xstack', 'overlay'}
 
@@ -99,7 +109,7 @@ def filter_names(text):
 
 
 def system_tool_identity(path, budget, cap=1024**3):
-    """Hash a public OS executable, allowing stable package-manager hardlinks.
+    """Hash an OS tool or target-bound Cargo binary with stable hardlinks.
 
     This role-specific reader never replaces the single-link source/evidence
     guards. Keep the invoked utility path distinct from its canonical target.
@@ -163,7 +173,7 @@ def smoke_mkfifo(driver, budget, command, tool):
         budget.tick(cleanup=True)
 
 
-def test_executable(text, target, manifest, *, name='multiview_fixtures', kind='test'):
+def test_executable(text, target, manifest, *, name='multiview_fixtures', kind='test', test_profile=True):
     matches = []
     for line in text.splitlines():
         if not line.startswith('{'):
@@ -173,7 +183,7 @@ def test_executable(text, target, manifest, *, name='multiview_fixtures', kind='
         if (value.get('reason') == 'compiler-artifact' and item.get('name') == name
                 and kind in item.get('kind', []) and value.get('executable')):
             require(value.get('manifest_path') == str(manifest), 'Fixture manifest differs')
-            require(value.get('profile', {}).get('test') is True, 'Expected actual test executable profile')
+            require(value.get('profile', {}).get('test') is test_profile, 'Expected actual test executable profile')
             path = Path(value['executable'])
             require(path.is_absolute() and path.resolve() == path and path.is_relative_to(target),
                     'Fixture executable escaped owned target')
@@ -237,6 +247,46 @@ def provision_tools(driver, budget, command):
     return tools, 'Observed official Homebrew core installation; new installs request a verified bottle'
 
 
+def activation_home_preflight(driver, budget):
+    """Attest the actual private fixture parent; never relax the operator loader."""
+    raw = driver.env.get('HOME', '')
+    require(raw and Path(raw).is_absolute(), 'Activation fixture HOME must be an absolute directory')
+    home = Path(raw).resolve(strict=True)
+    chain = []
+    for directory in (home, *home.parents):
+        budget.tick()
+        info = directory.lstat()
+        require(stat.S_ISDIR(info.st_mode) and not info.st_mode & 0o022
+                and info.st_uid in (0, os.geteuid()),
+                'Unsafe activation fixture HOME ancestor: ' + str(directory))
+        chain.append({'path': str(directory), 'uid': info.st_uid,
+                      'device': info.st_dev, 'inode': info.st_ino,
+                      'mode': oct(stat.S_IMODE(info.st_mode))})
+    return {'parent': str(home), 'ancestors': chain,
+            'fixture_directory_mode': '0o700', 'production_loader_unchanged': True}
+
+
+def activation_home_snapshot(home, budget, *, cleanup=False):
+    """Read only the exact owned fixture prefix; never delete HOME entries."""
+    budget.tick(cleanup=cleanup)
+    parent_info = home.lstat()
+    require(stat.S_ISDIR(parent_info.st_mode) and not parent_info.st_mode & 0o022
+            and parent_info.st_uid in (0, os.geteuid()), 'Uncertain activation fixture HOME parent')
+    entries = []
+    for count, path in enumerate(home.iterdir(), 1):
+        budget.tick(cleanup=cleanup)
+        require(count <= 10000, 'Activation HOME entry bound exceeded')
+        if not path.name.startswith('.ottplay-multiview-activation-'):
+            continue
+        info = path.lstat()
+        require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.geteuid()
+                and stat.S_IMODE(info.st_mode) == 0o700,
+                'Uncertain activation fixture HOME entry: ' + path.name)
+        entries.append({'name': path.name, 'device': info.st_dev, 'inode': info.st_ino,
+                        'mode': oct(stat.S_IMODE(info.st_mode)), 'uid': info.st_uid})
+    return sorted(entries, key=lambda item: item['name'])
+
+
 def main(argv=None):
     started = time.monotonic()
     guard = load_guard()  # Import only; its WK main is never called.
@@ -270,10 +320,12 @@ def main(argv=None):
     # No rustc wrapper, external target directory, or user Cargo config overrides.
     for key in ('RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS'):
         driver.env.pop(key, None)
-    result = {'status': 'fail', 'qualification': 'three existing isolated Unix fixtures',
+    result = {'status': 'fail', 'qualification': 'three existing Unix fixtures plus zero-capacity HTTP/TLS activation',
               'sustained_media_e2e': False, 'production_admission': False,
               'generated_media_hashes_available': False, 'new_dependencies': False}
     success = False
+    activation_home = activation_home_before = None
+    activation_home_checked = False
 
     def command(name, args, seconds=15):
         driver.run(name, args, seconds)
@@ -288,13 +340,18 @@ def main(argv=None):
         require(not command(label + '-status', ['git', 'status', '--porcelain=v1', '--untracked-files=all']).strip(),
                 'Source checkout is dirty')
         paths = ('Cargo.toml', 'Cargo.lock', 'src-rs/core/Cargo.toml', 'src-rs/server/Cargo.toml',
-                 'src-rs/server/tests/multiview_fixtures.rs', 'scripts/ci-native-favorites.py',
+                 'src-rs/server/tests/multiview_fixtures.rs', 'src-rs/server/tests/multiview_activation.rs',
+                 'src-rs/server/src/main.rs', 'scripts/ci-native-favorites.py',
                  'scripts/ci-multiview-unix.py', 'scripts/ci-apt-mirror.py')
         return {'commit': head, 'tree': tree, 'sha256': {p: budget.digest(root / p) for p in paths}}
 
     try:
         before = snapshot('before')
         budget.json_evidence(driver.evidence / 'source-before.json', before)
+        activation_home = activation_home_preflight(driver, budget)
+        budget.json_evidence(driver.evidence / 'activation-home.json', activation_home)
+        activation_home_before = activation_home_snapshot(Path(activation_home['parent']), budget)
+        budget.json_evidence(driver.evidence / 'activation-home-before.json', activation_home_before)
         supplied, supplier = provision_tools(driver, budget, command)
         tools = {}
         for name, variable in (('ffmpeg', 'OTTPLAY_MULTIVIEW_FFMPEG'), ('ffprobe', 'OTTPLAY_MULTIVIEW_FFPROBE')):
@@ -320,6 +377,16 @@ def main(argv=None):
         smoke_mkfifo(driver, budget, command, tools['mkfifo'])
         command('rust-version', ['rustc', '-vV'])
         command('cargo-version', ['cargo', '-V'])
+        openssl = shutil.which('openssl', path=driver.env.get('PATH'))
+        require(openssl and Path(openssl).is_absolute(), 'Activation TLS fixture requires installed openssl')
+        tools['openssl'] = dict(system_tool_identity(Path(openssl), budget),
+                                source='Hosted runner PATH after official FFmpeg provisioning; no separate installation')
+        openssl_version = command('openssl-version', [tools['openssl']['path'], 'version', '-a'])
+        require(re.match(r'^(OpenSSL|LibreSSL) [0-9]+\.[0-9]+\.[0-9]+', openssl_version),
+                'Expected installed OpenSSL or LibreSSL version identity')
+        tools['openssl']['version'] = openssl_version.splitlines()[0]
+        tools['openssl']['scope'] = 'Availability/identity only; actual activation tests verify certificate commands and trust'
+        budget.json_evidence(driver.evidence / 'tools.json', tools)
         core_compiled = command('core-fixture-build', ['cargo', 'test', '--manifest-path', str(root / 'Cargo.toml'),
                                '--locked', '-p', 'ottplay-core', '--lib', '--no-run', '--message-format=json'], 900)
         core_executable = test_executable(core_compiled, output / 'target', root / 'src-rs/core/Cargo.toml',
@@ -327,12 +394,24 @@ def main(argv=None):
         core_sha256 = budget.digest(core_executable)
         compiled = command('fixture-build', ['cargo', 'test', '--manifest-path', str(root / 'Cargo.toml'),
                           '--locked', '-p', 'ottplay-server', '--test', 'multiview_fixtures',
-                          '--no-run', '--message-format=json'], 900)
+                          '--test', 'multiview_activation', '--no-run', '--message-format=json'], 900)
         executable = test_executable(compiled, output / 'target', root / 'src-rs/server/Cargo.toml')
         binary_before = budget.digest(executable)
+        activation = test_executable(compiled, output / 'target', root / 'src-rs/server/Cargo.toml',
+                                     name='multiview_activation')
+        normal_server = test_executable(compiled, output / 'target', root / 'src-rs/server/Cargo.toml',
+                                        name='ottplay-server', kind='bin', test_profile=False)
+        activation_sha256 = budget.digest(activation)
+        # Cargo may hardlink its normal bin to debug/deps. Bind this already
+        # target-validated executable with stable identity, not an evidence-file guard.
+        normal_server_identity = system_tool_identity(normal_server, budget)
+        server_sha256 = normal_server_identity['sha256']
         budget.json_evidence(driver.evidence / 'fixture-binary.json', {
             'path': str(executable.relative_to(output)), 'sha256': binary_before,
             'core_path': str(core_executable.relative_to(output)), 'core_sha256': core_sha256,
+            'activation_path': str(activation.relative_to(output)), 'activation_sha256': activation_sha256,
+            'normal_server_path': str(normal_server.relative_to(output)), 'normal_server_sha256': server_sha256,
+            'normal_server_identity': normal_server_identity,
             'source_commit': before['commit'], 'root_lock_sha256': before['sha256']['Cargo.lock']})
         core_all = listed_names(command('core-multiview-inventory',
             [str(core_executable), 'multiview::', '--list', '--format', 'terse']))
@@ -358,6 +437,15 @@ def main(argv=None):
         server_text = command('server-fixtures-ordinary', [str(executable), '--test-threads=1',
                               '--color=never'], 180)
         require_suite_pass(server_text, ordinary_server, ignored_names)
+        activation_all = listed_names(command('activation-inventory',
+            [str(activation), '--list', '--format', 'terse']))
+        activation_ignored = listed_names(command('activation-ignored-inventory',
+            [str(activation), '--list', '--ignored', '--format', 'terse']))
+        require(activation_all == ACTIVATION_TESTS and not activation_ignored,
+                'Exact ordinary activation inventory differs or contains ignored tests')
+        activation_text = command('activation-ordinary',
+            [str(activation), '--test-threads=1', '--color=never'], 180)
+        require_suite_pass(activation_text, ACTIVATION_TESTS, set())
         for index, (name, limit) in enumerate(TESTS):
             text = command('fixture-' + str(index + 1), [str(executable), name, '--ignored', '--exact',
                            '--test-threads=1', '--color=never'], limit)
@@ -368,6 +456,15 @@ def main(argv=None):
                 require(count <= 10000, 'Temporary-entry bound exceeded')
                 require(not entry.name.startswith('ottplay-multiview-fixture-'),
                         'Fixture scratch cleanup incomplete')
+        require(activation_home_preflight(driver, budget) == activation_home,
+                'Activation fixture HOME ancestor identity changed')
+        activation_home_after = activation_home_snapshot(Path(activation_home['parent']), budget)
+        budget.json_evidence(driver.evidence / 'activation-home-after.json', activation_home_after)
+        require(activation_home_before == activation_home_after, 'Activation fixture HOME cleanup incomplete or identity changed')
+        activation_home_checked = True
+        require(budget.digest(activation) == activation_sha256, 'Activation test executable changed')
+        require(system_tool_identity(normal_server, budget) == normal_server_identity,
+                'Normal server executable changed')
         require(budget.digest(executable) == binary_before, 'Fixture executable changed')
         require(budget.digest(core_executable) == core_sha256, 'Core test executable changed')
         for item in tools.values():
@@ -381,7 +478,11 @@ def main(argv=None):
                     for p in budget.evidence_files}
         budget.json_evidence(driver.evidence / 'file-sha256.json', receipts)
         result.update(source=before, fixture_binary_sha256=binary_before,
-                      core_binary_sha256=core_sha256, ordinary_core_tests=sorted(ordinary_core),
+                      core_binary_sha256=core_sha256, activation_binary_sha256=activation_sha256,
+                      normal_server_binary_sha256=server_sha256, ordinary_activation_tests=sorted(ACTIVATION_TESTS),
+                      activation_scope='Actual owned HTTP/TLS normal server; zero-capacity control shell only',
+                      activation_fixture_parent=activation_home, activation_fixture_cleanup_confirmed=True,
+                      ordinary_core_tests=sorted(ordinary_core),
                       ordinary_server_tests=sorted(ordinary_server),
                       tests=[name for name, _ in TESTS], owned_process_cleanup_confirmed=True)
         success = True
@@ -389,6 +490,17 @@ def main(argv=None):
         result['error'] = str(error)
         result['error_type'] = type(error).__name__
     finally:
+        if activation_home_before is not None and not activation_home_checked:
+            try:
+                activation_home_after = activation_home_snapshot(Path(activation_home['parent']), budget, cleanup=True)
+                budget.json_evidence(driver.evidence / 'activation-home-after.json', activation_home_after, cleanup=True)
+                require(activation_home_before == activation_home_after,
+                        'Activation fixture HOME cleanup incomplete or identity changed')
+                result['activation_fixture_cleanup_confirmed'] = True
+            except BaseException as error:  # noqa: BLE001 - cleanup uncertainty must remain a failed receipt
+                result['activation_fixture_cleanup_confirmed'] = False
+                result['activation_fixture_cleanup_error'] = str(error)
+                success = False
         result['elapsed_seconds'] = budget.clock() - budget.started
         result['commands'] = driver.commands
         result['hls_scope'] = 'Actual HLS playlist/custody/revocation; no TS GET/decode or sustained pixel/audio claim'
