@@ -139,6 +139,10 @@ pub struct SourcesResponse {
 pub struct GrantRequest {
     pub version: u8,
     pub context: Binding,
+    /// Explicit post-intent native identity. The context remains the exact prior
+    /// CAS; a successful grant is bound to the returned committed context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_native: Option<NativeExpected>,
     pub source_ref: String,
     pub item_ref: String,
     pub item_revision: String,
@@ -167,6 +171,10 @@ pub struct GrantResponse {
 pub struct ControlRequest {
     pub version: u8,
     pub context: Binding,
+    /// Only operation-specific fields may change; absent preserves exact legacy
+    /// semantics. Play consumes its grant context without a second transition.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_native: Option<NativeExpected>,
     pub op: ControlOp,
 }
 
@@ -368,6 +376,57 @@ pub fn favorite_digest(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn canonical_transition_keeps_prior_and_committed_contexts_distinct() {
+        let contract: serde_json::Value =
+            serde_json::from_str(include_str!("private-api-v1.json")).unwrap();
+        let endpoint = contract["endpoints"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|value| value["path"] == "/input-grants")
+            .unwrap();
+        let request: GrantRequest = serde_json::from_value(endpoint["request"].clone()).unwrap();
+        let response: GrantResponse = serde_json::from_value(endpoint["response"].clone()).unwrap();
+        let mut expected = request.context.clone();
+        expected.native_expected = request
+            .next_native
+            .clone()
+            .expect("canonical source transition");
+        assert_ne!(request.context, expected);
+        assert_eq!(response.context, expected);
+        let control = contract["endpoints"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|value| value["path"] == "/control")
+            .unwrap();
+        let play: ControlRequest = serde_json::from_value(control["request"].clone()).unwrap();
+        assert_eq!(play.context, response.context);
+        assert!(play.next_native.is_none());
+        assert!(
+            matches!(play.op, ControlOp::Play { input_grant } if input_grant == response.input_grant)
+        );
+    }
+    #[test]
+    fn optional_native_transition_is_closed_and_absence_round_trips() {
+        let contract: serde_json::Value =
+            serde_json::from_str(include_str!("private-api-v1.json")).unwrap();
+        let endpoint = contract["endpoints"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|value| value["path"] == "/input-grants")
+            .unwrap();
+        let mut value = endpoint["request"].clone();
+        value.as_object_mut().unwrap().remove("next_native");
+        let request: GrantRequest = serde_json::from_value(value.clone()).unwrap();
+        assert!(request.next_native.is_none());
+        assert_eq!(serde_json::to_value(request).unwrap(), value);
+        value["next_native"] = endpoint["request"]["next_native"].clone();
+        value["next_native"]["owner"] = serde_json::json!("forged");
+        assert!(serde_json::from_value::<GrantRequest>(value).is_err());
+    }
     #[test]
     fn operation_variants_reject_unrecognized_authority_fields() {
         for raw in [

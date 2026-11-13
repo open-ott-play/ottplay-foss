@@ -32,7 +32,18 @@ use std::{
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use uuid::Uuid;
 
-use ottplay_core::multiview::broker::registry::{Registry, SourcePrincipal};
+use ottplay_core::multiview::broker::registry::{Registry, RegistryError, SourcePrincipal};
+
+#[cfg(test)]
+#[path = "multiview_broker_live.rs"]
+mod live;
+#[cfg(test)]
+#[path = "multiview_broker_live_output.rs"]
+mod live_output;
+#[cfg(test)]
+pub use live::FixtureConfig;
+#[cfg(test)]
+pub(super) type LiveWatermark = Arc<dyn Fn() -> Result<u64, BoundaryError> + Send + Sync>;
 
 const PREFIX: &str = "/multiview/v1";
 const CACHE_ENTRIES: usize = 64;
@@ -135,7 +146,7 @@ impl BoundaryError {
             Self::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
             Self::Invalid => (StatusCode::BAD_REQUEST, "invalid_request"),
             Self::Conflict => (StatusCode::CONFLICT, "revision_conflict"),
-            Self::Limit => (StatusCode::SERVICE_UNAVAILABLE, "resource_limit"),
+            Self::Limit => (StatusCode::TOO_MANY_REQUESTS, "resource_limit"),
             Self::Revoked => (StatusCode::GONE, "authority_revoked"),
         };
         private_response((status, axum::Json(json!({"version": 1, "error": code}))).into_response())
@@ -182,6 +193,10 @@ struct OutputRecord {
     expires: u64,
     files: BTreeMap<String, Bytes>,
     token: String,
+    #[cfg(test)]
+    live: Option<Arc<live_output::LiveOutput>>,
+    #[cfg(test)]
+    live_watermark: Option<LiveWatermark>,
 }
 struct Mutable {
     credentials: HashMap<String, Credential>,
@@ -201,6 +216,10 @@ struct Inner {
     mutable: Mutex<Mutable>,
     mutations: tokio::sync::Mutex<()>,
     streams: Arc<Semaphore>,
+    #[cfg(test)]
+    live: Option<Arc<live::LiveBackend>>,
+    #[cfg(test)]
+    live_bytes: Arc<Semaphore>,
 }
 #[derive(Clone)]
 pub struct Broker(Arc<Inner>);
@@ -244,6 +263,17 @@ fn same_digest(a: &[u8; 32], b: &[u8; 32]) -> bool {
         .zip(b)
         .fold(0u8, |difference, (a, b)| difference | (a ^ b))
         == 0
+}
+
+fn registry_error(error: RegistryError) -> BoundaryError {
+    match error {
+        RegistryError::Forbidden => BoundaryError::Forbidden,
+        RegistryError::InvalidRequest => BoundaryError::Invalid,
+        RegistryError::Limit => BoundaryError::Limit,
+        RegistryError::Expired | RegistryError::Revoked => BoundaryError::Revoked,
+        RegistryError::Unavailable => BoundaryError::Unavailable,
+        _ => BoundaryError::Conflict,
+    }
 }
 
 impl Broker {
@@ -334,7 +364,40 @@ impl Broker {
             }),
             mutations: tokio::sync::Mutex::new(()),
             streams: Arc::new(Semaphore::new(8)),
+            #[cfg(test)]
+            live: None,
+            #[cfg(test)]
+            live_bytes: Arc::new(Semaphore::new(OUTPUT_BYTES)),
         })))
+    }
+
+    /// Test-only, explicitly owned live fixture. This neither starts a listener
+    /// nor makes the production constructor advertise a decoder capability.
+    #[cfg(test)]
+    pub fn new_fixture(
+        config: OperatorConfig,
+        registry: Arc<Registry>,
+        clock: Arc<dyn Clock>,
+        fixture: FixtureConfig,
+    ) -> Result<
+        (
+            Self,
+            Arc<ottplay_core::multiview::broker::runtime::SourceService>,
+        ),
+        BoundaryError,
+    > {
+        if !config.listener.bind_ip.is_loopback() {
+            return Err(BoundaryError::Configuration);
+        }
+        let service = Arc::new(
+            ottplay_core::multiview::broker::runtime::SourceService::new(registry.clone()),
+        );
+        let backend = live::LiveBackend::new(fixture, service.clone(), registry.clone())?;
+        let mut broker = Self::new(config, Some(registry), clock)?;
+        Arc::get_mut(&mut broker.0)
+            .ok_or(BoundaryError::Configuration)?
+            .live = Some(backend);
+        Ok((broker, service))
     }
 
     /// Merely constructing a Router does not start a listener or qualify inputs.
@@ -602,49 +665,65 @@ impl Broker {
     fn cached(
         &self,
         owner: &Authenticated,
-        binding: &Binding,
         key: &CacheKey,
         body: &[u8],
     ) -> Result<Option<Bytes>, BoundaryError> {
-        self.authorized(owner, binding, |state| {
-            let now = self.0.clock.now_ms();
-            state.cache.retain(|_, record| now < record.expires);
-            match state.cache.get(key) {
-                Some(record) if same_digest(&record.body_digest, &digest(body)) => {
-                    Ok(Some(record.bytes.clone()))
-                }
-                Some(_) => Err(BoundaryError::Conflict),
-                None => Ok(None),
+        // Lookup precedes fresh-operation CAS: a completed native transition
+        // deliberately changed the caller's prior binding. This private value
+        // must still pass grant_reply's current grant/source publication barrier
+        // before any secret response is sent; a cache hit is never authority.
+        let mut state = self
+            .0
+            .mutable
+            .lock()
+            .map_err(|_| BoundaryError::Unavailable)?;
+        if !self.current_credential(&state, owner) {
+            return Err(BoundaryError::Unauthorized);
+        }
+        let now = self.0.clock.now_ms();
+        state.cache.retain(|_, record| now < record.expires);
+        match state.cache.get(key) {
+            Some(record) if same_digest(&record.body_digest, &digest(body)) => {
+                Ok(Some(record.bytes.clone()))
             }
-        })
+            Some(_) => Err(BoundaryError::Conflict),
+            None => Ok(None),
+        }
     }
-    fn remember(
+    /// Only called from the registry's staged mint commit callback. This method
+    /// must not reenter Registry: lock order is Registry -> credential/cache.
+    fn remember_grant(
         &self,
         owner: &Authenticated,
-        binding: &Binding,
         key: CacheKey,
         body: &[u8],
         response: Bytes,
     ) -> Result<Bytes, BoundaryError> {
-        self.authorized(owner, binding, |state| {
-            let now = self.0.clock.now_ms();
-            state.cache.retain(|_, record| now < record.expires);
-            if state.cache.len() >= CACHE_ENTRIES
-                || state.cache.values().map(|r| r.bytes.len()).sum::<usize>() + response.len()
-                    > CACHE_BYTES
-            {
-                return Err(BoundaryError::Limit);
-            }
-            state.cache.insert(
-                key,
-                Cached {
-                    body_digest: digest(body),
-                    bytes: response.clone(),
-                    expires: now.saturating_add(CACHE_TTL_MS),
-                },
-            );
-            Ok(response)
-        })
+        let mut state = self
+            .0
+            .mutable
+            .lock()
+            .map_err(|_| BoundaryError::Unavailable)?;
+        if !self.current_credential(&state, owner) {
+            return Err(BoundaryError::Unauthorized);
+        }
+        let now = self.0.clock.now_ms();
+        state.cache.retain(|_, record| now < record.expires);
+        if state.cache.len() >= CACHE_ENTRIES
+            || state.cache.values().map(|r| r.bytes.len()).sum::<usize>() + response.len()
+                > CACHE_BYTES
+        {
+            return Err(BoundaryError::Limit);
+        }
+        state.cache.insert(
+            key,
+            Cached {
+                body_digest: digest(body),
+                bytes: response.clone(),
+                expires: now.saturating_add(CACHE_TTL_MS),
+            },
+        );
+        Ok(response)
     }
 
     /// Trusted generated bytes only, never a filesystem path or provider URL.
@@ -677,6 +756,10 @@ impl Broker {
                 expires,
                 files: BTreeMap::new(),
                 token: String::new(),
+                #[cfg(test)]
+                live: None,
+                #[cfg(test)]
+                live_watermark: None,
             };
             record.token = self.sign(&record)?;
             let prefix = format!("{PREFIX}/media/{}", record.token);
@@ -728,6 +811,85 @@ impl Broker {
                 playlist_path,
                 lease_expires_in_ms: expires.saturating_sub(now) as u32,
             })
+        })
+    }
+
+    /// One stable signed path for an owned fixture encoder. Playlist/segments
+    /// are reread through bounded file custody; status must not republish it.
+    #[cfg(test)]
+    pub(super) fn publish_live_output(
+        &self,
+        owner: &Authenticated,
+        binding: &Binding,
+        directory: std::path::PathBuf,
+        lifetime_ms: u32,
+        minimum_sequence: u64,
+        watermark: Option<LiveWatermark>,
+    ) -> Result<Output, BoundaryError> {
+        if lifetime_ms == 0 || lifetime_ms as u64 > OUTPUT_TTL_MS || self.0.live.is_none() {
+            return Err(BoundaryError::Invalid);
+        }
+        let remaining = self.credential_remaining_ms(owner)?;
+        let expires = self
+            .0
+            .clock
+            .now_ms()
+            .saturating_add(u64::from(lifetime_ms).min(remaining));
+        let mut record = OutputRecord {
+            authenticated: owner.clone(),
+            binding: binding.clone(),
+            generation: Uuid::new_v4().simple().to_string(),
+            nonce: Uuid::new_v4().simple().to_string(),
+            expires,
+            files: BTreeMap::new(),
+            token: String::new(),
+            live: None,
+            live_watermark: watermark,
+        };
+        record.token = self.sign(&record)?;
+        let prefix = format!("{PREFIX}/media/{}", record.token);
+        // Directory acquisition is outside registry/output publication locks.
+        record.live = Some(Arc::new(live_output::LiveOutput::new(
+            directory,
+            self.0.live_bytes.clone(),
+            prefix.clone(),
+            minimum_sequence,
+        )?));
+        self.authorized(owner, binding, |state| {
+            if state.outputs.len() >= OUTPUTS {
+                return Err(BoundaryError::Limit);
+            }
+            if state.outputs.iter().any(|(key, old)| {
+                old.binding.session_id == binding.session_id && !state.revoked_outputs.contains(key)
+            }) {
+                return Err(BoundaryError::Conflict);
+            }
+            let output = Output {
+                session_id: binding.session_id.clone(),
+                server_epoch: binding.server_epoch.clone(),
+                output_generation: record.generation.clone(),
+                playlist_path: format!("{prefix}/index.m3u8"),
+                lease_expires_in_ms: expires.saturating_sub(self.0.clock.now_ms()) as u32,
+            };
+            state.outputs.insert(record.nonce.clone(), Arc::new(record));
+            Ok(output)
+        })
+    }
+
+    #[cfg(test)]
+    fn check_live_output(&self, record: &OutputRecord, token: &str) -> Result<(), BoundaryError> {
+        self.session_media(&record.authenticated, &record.binding.session_id, |state| {
+            if self.0.clock.now_ms() >= record.expires
+                || state.revoked_outputs.contains(&record.nonce)
+                || !state
+                    .outputs
+                    .get(&record.nonce)
+                    .is_some_and(|r| r.generation == record.generation)
+                || !self.verify(record, token)
+            {
+                return Err(BoundaryError::Revoked);
+            }
+            Ok(())
         })
     }
 
@@ -1065,13 +1227,23 @@ async fn capabilities(
             }
             None => "unavailable".into(),
         };
+        let (max_inputs, qualified_input_adapters, output_profiles) = (0, vec![], vec![]);
+        #[cfg(test)]
+        let (max_inputs, qualified_input_adapters, output_profiles) = match &broker.0.live {
+            Some(live) => (
+                live.profile().max_inputs,
+                live.input_adapters().to_vec(),
+                vec![live.profile().clone()],
+            ),
+            None => (max_inputs, qualified_input_adapters, output_profiles),
+        };
         Ok(json_response(json_bytes(&Capabilities {
             version: wire::VERSION,
             server_id: broker.0.server_id.clone(),
             server_epoch: broker.0.epoch.clone(),
-            max_inputs: 0,
-            qualified_input_adapters: vec![],
-            output_profiles: vec![],
+            max_inputs,
+            qualified_input_adapters,
+            output_profiles,
             output_auth: "hmac_path_v1".into(),
             catalog_revision,
         })?))
@@ -1089,6 +1261,10 @@ async fn sources(
         let request: SourcesRequest = parse(&headers, &uri, &bytes)?;
         if request.version != wire::VERSION {
             return Err(BoundaryError::Invalid);
+        }
+        #[cfg(test)]
+        if let Some(live) = &broker.0.live {
+            live.ensure_context(&owner, &request.context)?;
         }
         let registry = broker
             .0
@@ -1122,12 +1298,16 @@ async fn input_grants(
             .mutations
             .try_lock()
             .map_err(|_| BoundaryError::Limit)?;
-        if let Some(response) = broker.cached(&owner, &request.context, &key, &bytes)? {
+        if let Some(response) = broker.cached(&owner, &key, &bytes)? {
             let response: GrantResponse =
                 serde_json::from_slice(&response).map_err(|_| BoundaryError::Unavailable)?;
             return Ok(json_response(
                 broker.grant_reply(&owner, &request, &response)?,
             ));
+        }
+        #[cfg(test)]
+        if let Some(live) = &broker.0.live {
+            live.ensure_context(&owner, &request.context)?;
         }
         broker.reserve_cache_capacity(&owner, &request.context)?;
         let registry = broker
@@ -1135,16 +1315,22 @@ async fn input_grants(
             .registry
             .as_ref()
             .ok_or(BoundaryError::Unavailable)?;
+        let mut cache_failure = None;
         let response = registry
-            .mint(&owner.principal, &request)
-            .map_err(|_| BoundaryError::Conflict)?;
-        broker.remember(
-            &owner,
-            &request.context,
-            key,
-            &bytes,
-            json_bytes(&response)?,
-        )?;
+            .mint_with_commit(
+                &owner.principal,
+                &request,
+                &mut |candidate| match json_bytes(candidate)
+                    .and_then(|reply| broker.remember_grant(&owner, key.clone(), &bytes, reply))
+                {
+                    Ok(_) => Ok(()),
+                    Err(error) => {
+                        cache_failure = Some(error);
+                        Err(RegistryError::Unavailable)
+                    }
+                },
+            )
+            .map_err(|error| cache_failure.unwrap_or_else(|| registry_error(error)))?;
         Ok(json_response(
             broker.grant_reply(&owner, &request, &response)?,
         ))
@@ -1157,16 +1343,30 @@ async fn control(
     headers: HeaderMap,
     bytes: Bytes,
 ) -> Response {
-    let result = (|| {
+    let result = async {
         let owner = broker.authenticate(&headers)?;
         let request: ControlRequest = parse(&headers, &uri, &bytes)?;
         if request.version != wire::VERSION || !request.context.valid() {
             return Err(BoundaryError::Invalid);
         }
-        broker.cache_key(&owner, &request.context, "control", &headers)?;
-        // No create/play/renew success until the real decoder lifecycle is wired.
+        let key = broker.cache_key(&owner, &request.context, "control", &headers)?;
+        #[cfg(test)]
+        if let Some(live) = &broker.0.live {
+            let response = live
+                .control(
+                    broker.clone(),
+                    owner,
+                    request,
+                    key.request_id,
+                    digest(&bytes),
+                )
+                .await?;
+            return Ok(json_response(json_bytes(&response)?));
+        }
+        let _ = key;
         Err(BoundaryError::Unavailable)
-    })();
+    }
+    .await;
     finish(&broker, &headers, result)
 }
 async fn sessions(
@@ -1175,8 +1375,8 @@ async fn sessions(
     headers: HeaderMap,
     bytes: Bytes,
 ) -> Response {
-    let result = (|| {
-        broker.authenticate(&headers)?;
+    let result = async {
+        let owner = broker.authenticate(&headers)?;
         let request: SessionCreateRequest = parse(&headers, &uri, &bytes)?;
         if request.version != wire::VERSION || request.server_epoch != broker.0.epoch {
             return Err(BoundaryError::Invalid);
@@ -1185,9 +1385,26 @@ async fn sessions(
         if ids.len() != 1 || !ids[0].to_str().is_ok_and(wire::opaque) {
             return Err(BoundaryError::Invalid);
         }
-        // Only the eventual server backend may allocate a real session.
+        #[cfg(test)]
+        if let Some(live) = &broker.0.live {
+            let response = live
+                .create(
+                    broker.clone(),
+                    owner,
+                    request,
+                    ids[0]
+                        .to_str()
+                        .map_err(|_| BoundaryError::Invalid)?
+                        .to_owned(),
+                    digest(&bytes),
+                )
+                .await?;
+            return Ok(json_response(json_bytes(&response)?));
+        }
+        let _ = owner;
         Err(BoundaryError::Unavailable)
-    })();
+    }
+    .await;
     finish(&broker, &headers, result)
 }
 async fn status(
@@ -1196,8 +1413,8 @@ async fn status(
     headers: HeaderMap,
     bytes: Bytes,
 ) -> Response {
-    let result = (|| {
-        broker.authenticate(&headers)?;
+    let result = async {
+        let owner = broker.authenticate(&headers)?;
         let request: StatusRequest = parse(&headers, &uri, &bytes)?;
         if request.version != wire::VERSION
             || request.server_epoch != broker.0.epoch
@@ -1205,9 +1422,15 @@ async fn status(
         {
             return Err(BoundaryError::Invalid);
         }
-        // The registry alone cannot truthfully report decoder readiness.
+        #[cfg(test)]
+        if let Some(live) = &broker.0.live {
+            let response = live.status(broker.clone(), owner, request).await?;
+            return Ok(json_response(json_bytes(&response)?));
+        }
+        let _ = owner;
         Err(BoundaryError::Unavailable)
-    })();
+    }
+    .await;
     finish(&broker, &headers, result)
 }
 
@@ -1219,12 +1442,36 @@ struct GuardedBody {
     offset: usize,
     failed: bool,
     _permit: OwnedSemaphorePermit,
+    #[cfg(test)]
+    live_bytes: Option<Bytes>,
 }
 impl Stream for GuardedBody {
     type Item = Result<Bytes, std::io::Error>;
     fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if self.failed {
             return Poll::Ready(None);
+        }
+        #[cfg(test)]
+        if let Some(bytes) = self.live_bytes.as_ref() {
+            if self
+                .broker
+                .check_live_output(&self.record, &self.token)
+                .is_err()
+            {
+                self.failed = true;
+                return Poll::Ready(Some(Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Output authority revoked",
+                ))));
+            }
+            if self.offset >= bytes.len() {
+                return Poll::Ready(None);
+            }
+            // A slice retains the file's byte permit even after this HTTP body
+            // is abandoned; another read cannot reclaim that memory admission.
+            let chunk = bytes.slice(self.offset..bytes.len().min(self.offset + CHUNK_BYTES));
+            self.offset += chunk.len();
+            return Poll::Ready(Some(Ok(chunk)));
         }
         match self
             .broker
@@ -1252,7 +1499,7 @@ async fn media(
     method: Method,
     headers: HeaderMap,
 ) -> Response {
-    let result = (|| {
+    let result = async {
         broker.origin(&headers)?;
         if method != Method::GET
             || uri.query().is_some()
@@ -1279,6 +1526,13 @@ async fn media(
             .cloned()
             .ok_or(BoundaryError::Unauthorized)?;
         // Admission only; bytes are copied after the body acquires its permit.
+        #[cfg(test)]
+        if record.live.is_some() {
+            broker.check_live_output(&record, &token)?;
+        } else {
+            broker.output_chunk(&record, &token, &file, usize::MAX)?;
+        }
+        #[cfg(not(test))]
         broker.output_chunk(&record, &token, &file, usize::MAX)?;
         let permit = broker
             .0
@@ -1286,6 +1540,20 @@ async fn media(
             .clone()
             .try_acquire_owned()
             .map_err(|_| BoundaryError::Limit)?;
+        #[cfg(test)]
+        let live_bytes = if let Some(live) = record.live.as_ref() {
+            // A short core provenance query precedes filesystem I/O. Neither
+            // the control mutex nor publication barrier covers the awaited read.
+            let minimum = match &record.live_watermark {
+                Some(proof) => proof()?,
+                None => 0,
+            };
+            let bytes = live.read_with_minimum(&file, minimum).await?;
+            broker.check_live_output(&record, &token)?;
+            Some(bytes)
+        } else {
+            None
+        };
         let mime = if file == "index.m3u8" {
             "application/vnd.apple.mpegurl"
         } else {
@@ -1299,10 +1567,13 @@ async fn media(
             offset: 0,
             failed: false,
             _permit: permit,
+            #[cfg(test)]
+            live_bytes,
         };
         Ok(private_response(
             ([("content-type", mime)], Body::from_stream(body)).into_response(),
         ))
-    })();
+    }
+    .await;
     finish(&broker, &headers, result)
 }

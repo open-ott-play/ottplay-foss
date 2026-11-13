@@ -33,10 +33,11 @@ are restricted to their enrolled origin; diagnostics contain closed error codes.
 synthetic request/response examples:
 
 1. Authenticated `GET /capabilities` reports the server epoch and qualified output
-   profiles. Currently `max_inputs` is zero and `output_profiles` is empty.
-2. `POST /sessions` will bootstrap a backend identity without requiring an existing
+   profiles. The ordinary constructor reports zero `max_inputs` and empty
+   `output_profiles`; the injected test host reports its explicit fixture profile.
+2. `POST /sessions` bootstraps a backend identity without requiring an existing
    backend revision. Its exact native geometry must fit a qualified output profile.
-3. `POST /status` will recover a fresh owner-bound snapshot after a lost response;
+3. `POST /status` recovers a fresh owner-bound snapshot after a lost response;
    a snapshot is not an input grant.
 4. `POST /sources` returns permission-filtered metadata and opaque references.
 5. `POST /input-grants` checks the complete native/backend context, source/item and
@@ -51,9 +52,45 @@ synthetic request/response examples:
    uses `publish`, which cannot activate a pending grant. Never hold the registry
    mutex around probing, child spawning, stopping, or joining.
 
-The session/control routes currently return `backend_unavailable`; they do not
-fabricate successful playback. The source service, registry, and protected output
-transport can be exercised independently with owned fixtures.
+Without the explicit test host, session/control routes return `backend_unavailable`;
+they do not fabricate successful playback. The source service, registry, and
+protected output transport can also be exercised independently with owned fixtures.
+
+### Explicit native intent transitions
+
+The native driver keeps its last confirmed server `Binding` separately from a new
+UI selection. `SourcesRequest.context` uses that confirmed binding. Optional
+`next_native` on a grant describes the next source intent; only the target source
+revision/generation may change. The server checks the complete prior context,
+catalog, source permission, target occupancy and capacity before committing the
+transition and its one-use grant. The returned context is the exact redemption
+context; Play does not perform another native transition.
+
+Controls may change only their operation-specific native fields. Focus/audio/layout
+commit bounded backend and registry changes together. Cache publication is part of
+the grant transaction, so a failed receipt cannot silently commit a source intent.
+Retry uses the recorded prior request and committed context, never a reinterpretation
+of the old CAS. Status recovery accepts stale mutable native revisions while checking
+the owner, installation, session and immutable native runtime/scene/slot; it returns
+stored authoritative state without rebinding it. The canonical JSON describes the
+field allowlist and concrete before/after examples.
+
+### Fixture-only live HTTP host
+
+`Broker::new_fixture` is available only in test builds and injects an actual Session,
+SourceService and stream factory behind the same private-v1 handlers. It starts no
+listener. The ordinary constructor and production server retain zero capacity and
+unregistered routes. The fixture admits one compositor with at most a 60-second
+hard lifetime. Its signed output path stays stable while bounded, checked reads
+refresh the actual encoder playlist and segments.
+
+Composite Ready requires actual closed HLS and may include slates for empty or
+preparing slots. Slot Playing reports decoded frames; end-to-end image/audio
+acceptance remains separate. Occupied-target replacement is currently refused
+before source intent changes. In this initial fixture, Stop cleans up its input
+and withholds output until Off; that is an explicit temporary limit. Stable ordinary
+Stop/switch and a fresh codec epoch after security revocation require separate
+qualification. A video-only watermark cannot certify that old PCM/AAC is gone.
 
 ## Lifetime and retirement
 

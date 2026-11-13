@@ -134,6 +134,9 @@ struct Session {
 }
 struct Grant {
     owner: SourcePrincipal,
+    // A replay must match the actual pre-transition request, not merely another
+    // plausible prior binding that happens to produce the same committed state.
+    request: GrantRequest,
     context: Binding,
     selection: Selection,
     expires: Instant,
@@ -284,6 +287,65 @@ fn same_scene(a: &Binding, b: &Binding) -> bool {
         && a.backend_expected == b.backend_expected
         && a.native_expected.runtime == b.native_expected.runtime
         && a.native_expected.expected == b.native_expected.expected
+}
+
+/// Grant selection may advance only the target's source intent. Scene-wide
+/// revisions and identity remain authoritative server state, not UI proposals.
+fn grant_context(request: &GrantRequest) -> Result<Binding> {
+    let mut committed = request.context.clone();
+    if let Some(next) = &request.next_native {
+        let prior = &request.context.native_expected;
+        if next.runtime != prior.runtime
+            || next.expected != prior.expected
+            || next.slot_id != prior.slot_id
+        {
+            return Err(RegistryError::InvalidRequest);
+        }
+        committed.native_expected = next.clone();
+        if !committed.valid() {
+            return Err(RegistryError::InvalidRequest);
+        }
+    }
+    Ok(committed)
+}
+
+/// All fallible admission and the bounded backend callback happen before this
+/// mutation. The caller holds the registry barrier throughout.
+fn apply_binding(s: &mut State, expected: &Binding, next: &Binding) {
+    let session = s.sessions.get_mut(&expected.session_id).unwrap();
+    for current in session.slots.values_mut() {
+        current.backend_expected = next.backend_expected.clone();
+        current.native_expected.runtime = next.native_expected.runtime.clone();
+        current.native_expected.expected = next.native_expected.expected.clone();
+    }
+    session
+        .slots
+        .insert(next.native_expected.slot_id, next.clone());
+    s.grants
+        .retain(|_, grant| grant.context.session_id != expected.session_id);
+    s.cursors
+        .retain(|_, cursor| cursor.context.session_id != expected.session_id);
+    let ids: Vec<_> = s
+        .leases
+        .iter()
+        .filter(|(_, lease)| {
+            lease.context.session_id == expected.session_id
+                && s.sessions[&expected.session_id]
+                    .slots
+                    .get(&lease.context.native_expected.slot_id)
+                    .is_none_or(|current| {
+                        if matches!(lease.phase, Phase::Preparing | Phase::Attaching) {
+                            !same_preparing_source(current, &lease.context)
+                        } else {
+                            !same_active_source(current, &lease.context)
+                        }
+                    })
+        })
+        .map(|(id, _)| id.clone())
+        .collect();
+    for id in ids {
+        retire(s, &id);
+    }
 }
 fn live_session<'a>(s: &'a State, p: &Principal, id: &str, now: Instant) -> Result<&'a Session> {
     principal_ok(p, Permission::MultiviewControl)?;
@@ -569,10 +631,41 @@ impl Registry {
         authorize(&s, p, context, Instant::now())
     }
 
+    /// Owner-bound recovery read. No supplied native revisions are adopted, and
+    /// no unknown slot is created. Mutating callers still require full CAS.
+    pub fn current_binding(&self, p: &Principal, session_id: &str, slot_id: u8) -> Result<Binding> {
+        if slot_id >= 9 || !wire::opaque(session_id) {
+            return Err(RegistryError::InvalidRequest);
+        }
+        let mut s = self.lock()?;
+        let now = Instant::now();
+        sweep(&mut s, now);
+        live_session(&s, p, session_id, now)?
+            .slots
+            .get(&slot_id)
+            .cloned()
+            .ok_or(RegistryError::NotFound)
+    }
+
     /// Compare-and-swap authoritative state after a native/backend transition.
     /// Shared scene revisions advance on all slots; only the target's source
     /// revision changes. Active unchanged sources survive focus/layout changes.
     pub fn update_binding(&self, p: &Principal, expected: &Binding, next: &Binding) -> Result<()> {
+        self.commit_binding(p, expected, next, &mut || Ok(()))
+    }
+
+    /// Atomically commit a trusted host's bounded backend CAS and registry state.
+    /// The host validates its operation-specific native transition first. The
+    /// callback must not re-enter Registry, probe, spawn, join or perform I/O; on
+    /// error it must leave backend state unchanged. Lock order is host control ->
+    /// Registry -> core state. No fallible registry checks follow the callback.
+    pub fn commit_binding(
+        &self,
+        p: &Principal,
+        expected: &Binding,
+        next: &Binding,
+        operation: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<()> {
         let mut s = self.lock()?;
         authorize(&s, p, expected, Instant::now())?;
         if !next.valid()
@@ -582,40 +675,8 @@ impl Registry {
         {
             return Err(RegistryError::InvalidRequest);
         }
-        let session = s.sessions.get_mut(&expected.session_id).unwrap();
-        for current in session.slots.values_mut() {
-            current.backend_expected = next.backend_expected.clone();
-            current.native_expected.runtime = next.native_expected.runtime.clone();
-            current.native_expected.expected = next.native_expected.expected.clone();
-        }
-        session
-            .slots
-            .insert(next.native_expected.slot_id, next.clone());
-        s.grants
-            .retain(|_, grant| grant.context.session_id != expected.session_id);
-        s.cursors
-            .retain(|_, cursor| cursor.context.session_id != expected.session_id);
-        let ids: Vec<_> = s
-            .leases
-            .iter()
-            .filter(|(_, lease)| {
-                lease.context.session_id == expected.session_id
-                    && s.sessions[&expected.session_id]
-                        .slots
-                        .get(&lease.context.native_expected.slot_id)
-                        .is_none_or(|current| {
-                            if matches!(lease.phase, Phase::Preparing | Phase::Attaching) {
-                                !same_preparing_source(current, &lease.context)
-                            } else {
-                                !same_active_source(current, &lease.context)
-                            }
-                        })
-            })
-            .map(|(id, _)| id.clone())
-            .collect();
-        for id in ids {
-            retire(&mut s, &id);
-        }
+        operation()?;
+        apply_binding(&mut s, expected, next);
         Ok(())
     }
     pub fn sources(&self, p: &Principal, request: &SourcesRequest) -> Result<SourcesResponse> {
@@ -701,7 +762,21 @@ impl Registry {
         })
     }
     pub fn mint(&self, p: &Principal, request: &GrantRequest) -> Result<GrantResponse> {
-        self.mint_with_time(p, request, None)
+        self.mint_with_commit(p, request, &mut |_| Ok(()))
+    }
+    /// Validate and stage the complete grant before publishing its HTTP receipt.
+    /// The bounded callback shares the source/revocation barrier and must obey
+    /// Registry -> credential/cache lock order. It must not re-enter Registry or
+    /// perform I/O; on error it must not publish a receipt. The native transition
+    /// and immutable grant commit only after callback success, without a later
+    /// fallible registry check.
+    pub fn mint_with_commit(
+        &self,
+        p: &Principal,
+        request: &GrantRequest,
+        operation: &mut dyn FnMut(&GrantResponse) -> Result<()>,
+    ) -> Result<GrantResponse> {
+        self.mint_at_with_commit(p, request, None, operation)
     }
     /// Replaying an idempotent HTTP response must not revive a consumed, stale,
     /// expired or revoked input grant. This does not extend its original expiry.
@@ -743,12 +818,15 @@ impl Registry {
         response: &GrantResponse,
         now: Instant,
     ) -> Result<()> {
-        authorize(&s, p, &request.context, now)?;
+        // A successful source-intent transition makes its original prior CAS
+        // stale. Replays authenticate the committed state AND stored original
+        // request, never reapply the prior transition or infer a new binding.
+        authorize(&s, p, &response.context, now)?;
         if request.version != wire::VERSION
             || request.remaining_budget_ms == 0
             || response.version != wire::VERSION
             || response.server_id != s.server_id
-            || response.context != request.context
+            || response.context != grant_context(request)?
             || response.catalog_revision != s.catalog
             || request.catalog_revision != s.catalog
         {
@@ -762,7 +840,8 @@ impl Registry {
             return Err(RegistryError::Forbidden);
         }
         let item = &grant.selection.item.catalog;
-        if grant.context != request.context
+        if grant.request != *request
+            || grant.context != response.context
             || !selected_current(&s, &grant.owner, &grant.selection)
             || response.item != *item
             || response.policy_revision != grant.selection.policy_revision
@@ -786,23 +865,27 @@ impl Registry {
         request: &GrantRequest,
         now: Instant,
     ) -> Result<GrantResponse> {
-        self.mint_with_time(p, request, Some(now))
+        self.mint_at_with_commit(p, request, Some(now), &mut |_| Ok(()))
     }
-    fn mint_with_time(
+    fn mint_at_with_commit(
         &self,
         p: &Principal,
         request: &GrantRequest,
         admission_time: Option<Instant>,
+        operation: &mut dyn FnMut(&GrantResponse) -> Result<()>,
     ) -> Result<GrantResponse> {
         let mut s = self.lock()?;
-        // Queued requests must use current authority time after the lock. Only
-        // deterministic tests supply an explicit admission instant.
+        // Production admission starts after acquiring the authority barrier:
+        // time spent queued behind another operation cannot extend a session
+        // or revive an expired grant. Explicit time is only for bounded tests.
         let now = admission_time.unwrap_or_else(Instant::now);
         sweep(&mut s, now);
         if request.version != wire::VERSION || request.remaining_budget_ms == 0 {
             return Err(RegistryError::InvalidRequest);
         }
         authorize(&s, p, &request.context, now)?;
+        let committed = grant_context(request)?;
+        let changed = committed != request.context;
         if request.catalog_revision != s.catalog {
             return Err(RegistryError::Stale);
         }
@@ -843,28 +926,53 @@ impl Registry {
         {
             return Err(RegistryError::Limit);
         }
+        // Initial host qualification permits no implicit candidate replacement.
+        // A pending grant must be redeemed/cancelled/expired, and every target
+        // lease must finish retirement, before a different native source intent.
+        if changed
+            && (s.grants.values().any(|grant| {
+                grant.context.session_id == committed.session_id
+                    && grant.context.native_expected.slot_id == committed.native_expected.slot_id
+            }) || s.leases.values().any(|lease| {
+                lease.context.session_id == committed.session_id
+                    && lease.context.native_expected.slot_id == committed.native_expected.slot_id
+            }))
+        {
+            return Err(RegistryError::Busy);
+        }
         let ttl = Duration::from_millis(u64::from(request.remaining_budget_ms)).min(GRANT_TTL);
         let expires = (now + ttl).min(s.sessions[&request.context.session_id].expires);
         let id = fresh();
         let response = GrantResponse {
             version: wire::VERSION,
             server_id: s.server_id.clone(),
-            context: request.context.clone(),
+            context: committed.clone(),
             item: selection.item.catalog.clone(),
             catalog_revision: s.catalog.clone(),
             policy_revision: selection.policy_revision.clone(),
             input_grant: id.clone(),
             expires_in_ms: expires.duration_since(now).as_millis() as u32,
         };
-        s.grants.insert(
-            id,
-            Grant {
-                owner,
-                context: request.context.clone(),
-                selection,
-                expires,
-            },
-        );
+        let grant = Grant {
+            owner,
+            request: request.clone(),
+            context: committed.clone(),
+            selection,
+            expires,
+        };
+        operation(&response)?;
+        if changed {
+            s.sessions
+                .get_mut(&committed.session_id)
+                .unwrap()
+                .slots
+                .insert(committed.native_expected.slot_id, committed.clone());
+            s.cursors.retain(|_, cursor| {
+                cursor.context.session_id != committed.session_id
+                    || cursor.context.native_expected.slot_id != committed.native_expected.slot_id
+            });
+        }
+        s.grants.insert(id, grant);
         Ok(response)
     }
     pub fn redeem(&self, p: &Principal, context: &Binding, grant: &str) -> Result<Reservation> {

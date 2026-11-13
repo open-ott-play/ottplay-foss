@@ -86,6 +86,7 @@ fn request(registry: &Registry, context: &Binding) -> GrantRequest {
     GrantRequest {
         version: 1,
         context: context.clone(),
+        next_native: None,
         source_ref: item.source_ref.clone(),
         item_ref: item.item_ref.clone(),
         item_revision: item.item_revision.clone(),
@@ -121,6 +122,556 @@ fn publishes(reservation: &Reservation) -> std::result::Result<(), DecoderError>
     reservation
         .publication_authority()
         .publish(&reservation.decoder_context(), &mut || Ok(()))
+}
+
+fn changed_source(context: &Binding) -> NativeExpected {
+    let mut next = context.native_expected.clone();
+    next.slot_generation = "next-generation".into();
+    next.source_revision = "next-source".into();
+    next
+}
+
+#[test]
+fn grant_source_transition_commits_only_target_and_redeems_returned_context() {
+    let (registry, _) = fixture();
+    let old = binding();
+    let mut other = old.clone();
+    other.native_expected.slot_id = 1;
+    other.native_expected.slot_generation = "other-generation".into();
+    other.native_expected.source_revision = "other-source".into();
+    registry.add_slot(&player(), &other).unwrap();
+    let mut request = request(&registry, &old);
+    request.next_native = Some(changed_source(&old));
+    let mut calls = 0;
+    let response = registry
+        .mint_with_commit(&player(), &request, &mut |staged| {
+            calls += 1;
+            assert!(registry.state.try_lock().is_err());
+            assert_eq!(staged.context.native_expected, changed_source(&old));
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(calls, 1);
+    let mut expected = old.clone();
+    expected.native_expected = changed_source(&old);
+    assert_eq!(response.context, expected);
+    assert_eq!(
+        registry.current_binding(&player(), "session", 0).unwrap(),
+        expected
+    );
+    assert_eq!(
+        registry.current_binding(&player(), "session", 1).unwrap(),
+        other
+    );
+    assert_eq!(
+        registry.authorize(&player(), &old),
+        Err(RegistryError::Stale)
+    );
+    assert!(matches!(
+        registry.redeem(&player(), &old, &response.input_grant),
+        Err(RegistryError::Stale)
+    ));
+    let reservation = registry
+        .redeem(&player(), &response.context, &response.input_grant)
+        .unwrap();
+    assert_eq!(
+        reservation.decoder_context(),
+        decoder_context(&response.context)
+    );
+    assert!(matches!(
+        registry.redeem(&player(), &response.context, &response.input_grant),
+        Err(RegistryError::Expired)
+    ));
+}
+
+#[test]
+fn grant_source_transition_rejects_scene_runtime_slot_and_invalid_identity_changes() {
+    for mutation in 0..8 {
+        let (registry, _) = fixture();
+        let mut request = request(&registry, &binding());
+        let mut next = changed_source(&binding());
+        match mutation {
+            0 => next.runtime = "other-runtime".into(),
+            1 => next.expected.scene = "other-scene".into(),
+            2 => next.expected.layout_revision = "other-layout".into(),
+            3 => next.expected.focus_revision = "other-focus".into(),
+            4 => next.expected.audio_revision = "other-audio".into(),
+            5 => next.slot_id = 1,
+            6 => next.slot_generation.clear(),
+            _ => next.source_revision = "invalid/source".into(),
+        }
+        request.next_native = Some(next);
+        assert_eq!(
+            registry.mint_with_commit(&player(), &request, &mut |_| panic!(
+                "invalid transition reached commit"
+            )),
+            Err(RegistryError::InvalidRequest)
+        );
+        assert_eq!(
+            registry.current_binding(&player(), "session", 0).unwrap(),
+            binding()
+        );
+        assert!(registry.lock().unwrap().grants.is_empty());
+    }
+}
+
+#[test]
+fn invalid_selection_or_stale_prior_never_publishes_or_advances_native_intent() {
+    for mutation in 0..7 {
+        let (registry, _) = fixture();
+        let mut request = request(&registry, &binding());
+        request.next_native = Some(changed_source(&binding()));
+        match mutation {
+            0 => request.source_ref = "missing".into(),
+            1 => request.item_ref = "missing".into(),
+            2 => request.item_revision = "stale".into(),
+            3 => request.favorite_sha256 = "b".repeat(64),
+            4 => request.catalog_revision = "stale".into(),
+            5 => request.context.backend_slot_revision += 1,
+            _ => request.identity_version += 1,
+        }
+        assert!(registry
+            .mint_with_commit(&player(), &request, &mut |_| panic!(
+                "invalid selection reached commit"
+            ))
+            .is_err());
+        assert_eq!(
+            registry.current_binding(&player(), "session", 0).unwrap(),
+            binding()
+        );
+        assert!(registry.lock().unwrap().grants.is_empty());
+    }
+}
+
+#[test]
+fn source_transition_checks_session_capacity_before_commit() {
+    let (registry, _) = fixture();
+    let original = request(&registry, &binding());
+    for _ in 0..MAX_PENDING {
+        registry.mint(&player(), &original).unwrap();
+    }
+    let mut other = binding();
+    other.native_expected.slot_id = 1;
+    registry.add_slot(&player(), &other).unwrap();
+    let mut transition = request(&registry, &other);
+    transition.next_native = Some(changed_source(&other));
+    assert_eq!(
+        registry.mint_with_commit(&player(), &transition, &mut |_| panic!(
+            "full session reached commit"
+        )),
+        Err(RegistryError::Limit)
+    );
+    assert_eq!(
+        registry.current_binding(&player(), "session", 1).unwrap(),
+        other
+    );
+    assert_eq!(registry.lock().unwrap().grants.len(), MAX_PENDING);
+}
+
+#[test]
+fn changed_source_intent_never_replaces_pending_grant() {
+    let (registry, _) = fixture();
+    let original = request(&registry, &binding());
+    let pending = registry.mint(&player(), &original).unwrap();
+    let mut transition = original.clone();
+    transition.next_native = Some(changed_source(&binding()));
+    assert_eq!(
+        registry.mint_with_commit(&player(), &transition, &mut |_| panic!(
+            "pending target reached commit"
+        )),
+        Err(RegistryError::Busy)
+    );
+    assert_eq!(
+        registry.current_binding(&player(), "session", 0).unwrap(),
+        binding()
+    );
+    assert_eq!(registry.lock().unwrap().grants.len(), 1);
+    registry
+        .redeem(&player(), &binding(), &pending.input_grant)
+        .unwrap();
+}
+
+#[test]
+fn changed_source_intent_requires_every_lease_phase_to_finish_retirement() {
+    for phase in [
+        Phase::Preparing,
+        Phase::Attaching,
+        Phase::Active,
+        Phase::Retiring,
+    ] {
+        let (registry, _) = fixture();
+        let mut current = binding();
+        let reservation = reserve(&registry, &current);
+        if matches!(phase, Phase::Attaching | Phase::Active) {
+            let mut next = current.clone();
+            next.backend_slot_revision += 1;
+            registry
+                .prepare_attachment(&player(), &current, &next, &reservation)
+                .unwrap();
+            if phase == Phase::Active {
+                reservation
+                    .publication_authority()
+                    .attach(&reservation.decoder_context(), &mut || Ok(()))
+                    .unwrap();
+                current = next;
+            }
+        } else if phase == Phase::Retiring {
+            registry
+                .retire_reservation(&player(), &reservation)
+                .unwrap();
+        }
+        let was_revoked = reservation.revoked().load(Ordering::Acquire);
+        let mut transition = request(&registry, &current);
+        transition.next_native = Some(changed_source(&current));
+        assert_eq!(
+            registry.mint_with_commit(&player(), &transition, &mut |_| panic!(
+                "occupied target reached commit"
+            )),
+            Err(RegistryError::Busy)
+        );
+        assert_eq!(
+            registry.current_binding(&player(), "session", 0).unwrap(),
+            current
+        );
+        assert_eq!(reservation.revoked().load(Ordering::Acquire), was_revoked);
+        assert_eq!(
+            registry.lock().unwrap().leases[reservation.id()].phase,
+            phase
+        );
+        if phase == Phase::Active {
+            assert!(publishes(&reservation).is_ok());
+        }
+    }
+}
+
+#[test]
+fn expired_pending_grant_does_not_block_a_fresh_source_intent() {
+    let (registry, _) = fixture();
+    let mut request = request(&registry, &binding());
+    let pending = registry.mint(&player(), &request).unwrap();
+    registry
+        .lock()
+        .unwrap()
+        .grants
+        .get_mut(&pending.input_grant)
+        .unwrap()
+        .expires = Instant::now();
+    request.next_native = Some(changed_source(&binding()));
+    let fresh = registry.mint(&player(), &request).unwrap();
+    let s = registry.lock().unwrap();
+    assert!(!s.grants.contains_key(&pending.input_grant));
+    assert!(s.grants.contains_key(&fresh.input_grant));
+    assert_eq!(s.sessions["session"].slots[&0], fresh.context);
+}
+
+#[test]
+fn grant_cache_commit_failure_leaves_native_and_grants_unchanged() {
+    let (registry, _) = fixture();
+    let mut request = request(&registry, &binding());
+    request.next_native = Some(changed_source(&binding()));
+    let mut unpublished = None;
+    assert_eq!(
+        registry.mint_with_commit(&player(), &request, &mut |staged| {
+            assert!(registry.state.try_lock().is_err());
+            unpublished = Some(staged.clone());
+            Err(RegistryError::Unavailable)
+        }),
+        Err(RegistryError::Unavailable)
+    );
+    assert_eq!(
+        registry.current_binding(&player(), "session", 0).unwrap(),
+        binding()
+    );
+    assert!(registry.lock().unwrap().grants.is_empty());
+    let response = registry.mint(&player(), &request).unwrap();
+    assert_ne!(unpublished.unwrap().input_grant, response.input_grant);
+    assert_eq!(registry.lock().unwrap().grants.len(), 1);
+}
+
+#[test]
+fn queued_mutations_recheck_session_expiry_after_acquiring_authority() {
+    for mint in [true, false] {
+        let (registry, _) = fixture();
+        let mut request = request(&registry, &binding());
+        request.next_native = Some(changed_source(&binding()));
+        let callback_called = Arc::new(AtomicBool::new(false));
+        let called = Arc::clone(&callback_called);
+        let worker_registry = registry.clone();
+        let expiry = Instant::now() + Duration::from_millis(200);
+        registry
+            .lock()
+            .unwrap()
+            .sessions
+            .get_mut("session")
+            .unwrap()
+            .expires = expiry;
+        let result = queued_past_deadline(&registry, expiry, move || {
+            if mint {
+                worker_registry
+                    .mint_with_commit(&player(), &request, &mut |_| {
+                        called.store(true, Ordering::Release);
+                        Ok(())
+                    })
+                    .map(|_| ())
+            } else {
+                let mut next = binding();
+                next.backend_expected.focus_revision += 1;
+                next.native_expected.expected.focus_revision = "queued-focus".into();
+                worker_registry.commit_binding(&player(), &binding(), &next, &mut || {
+                    called.store(true, Ordering::Release);
+                    Ok(())
+                })
+            }
+        });
+        assert_eq!(result, Err(RegistryError::Expired));
+        assert!(!callback_called.load(Ordering::Acquire));
+        let state = registry.lock().unwrap();
+        assert_eq!(state.sessions["session"].slots[&0], binding());
+        assert!(state.grants.is_empty());
+    }
+}
+
+#[test]
+fn transitioned_grant_replay_binds_exact_original_request_and_committed_state() {
+    let (registry, _) = fixture();
+    let mut original = request(&registry, &binding());
+    original.next_native = Some(changed_source(&binding()));
+    let response = registry.mint(&player(), &original).unwrap();
+    assert_eq!(
+        registry.mint_with_commit(&player(), &original, &mut |_| panic!(
+            "stale prior reached commit"
+        )),
+        Err(RegistryError::Stale)
+    );
+    registry
+        .validate_cached_grant(&player(), &original, &response)
+        .unwrap();
+    registry
+        .lock()
+        .unwrap()
+        .grants
+        .get_mut(&response.input_grant)
+        .unwrap()
+        .expires = Instant::now() + Duration::from_secs(1);
+    registry
+        .with_cached_grant_authority(&player(), &original, &response, &mut |cached| {
+            assert!(registry.state.try_lock().is_err());
+            assert!(cached.expires_in_ms <= 1000);
+            assert_eq!(cached.context, response.context);
+            Ok(())
+        })
+        .unwrap();
+    for mutation in 0..4 {
+        let mut forged = original.clone();
+        match mutation {
+            // Same committed context is insufficient: the real prior request
+            // and the explicit/absent transition must also match the receipt.
+            0 => forged.context.native_expected.source_revision = "different-prior".into(),
+            1 => {
+                forged.context = response.context.clone();
+                forged.next_native = None;
+            }
+            2 => forged.remaining_budget_ms -= 1,
+            _ => forged.favorite_sha256 = "b".repeat(64),
+        }
+        assert_eq!(
+            registry.validate_cached_grant(&player(), &forged, &response),
+            Err(RegistryError::Stale)
+        );
+    }
+    registry
+        .redeem(&player(), &response.context, &response.input_grant)
+        .unwrap();
+    assert_eq!(
+        registry.validate_cached_grant(&player(), &original, &response),
+        Err(RegistryError::Expired)
+    );
+}
+
+#[test]
+fn absent_or_unchanged_next_native_preserves_existing_grant_admission() {
+    let (registry, _) = fixture();
+    let mut request = request(&registry, &binding());
+    let first = registry.mint(&player(), &request).unwrap();
+    request.next_native = Some(binding().native_expected);
+    let second = registry.mint(&player(), &request).unwrap();
+    assert_eq!(first.context, binding());
+    assert_eq!(second.context, binding());
+    registry
+        .redeem(&player(), &binding(), &first.input_grant)
+        .unwrap();
+    // The legacy path may still mint while a target is occupied; redemption
+    // enforces its existing busy rule. Only changed intent has stricter admission.
+    assert_eq!(
+        registry.mint(&player(), &request).unwrap().context,
+        binding()
+    );
+    assert!(matches!(
+        registry.redeem(&player(), &binding(), &second.input_grant),
+        Err(RegistryError::Busy)
+    ));
+}
+
+#[test]
+fn committed_source_intent_attachment_preserves_later_focus_and_audio() {
+    let (registry, _) = fixture();
+    let mut request = request(&registry, &binding());
+    request.next_native = Some(changed_source(&binding()));
+    let grant = registry.mint(&player(), &request).unwrap();
+    let issued = grant.context;
+    let reservation = registry
+        .redeem(&player(), &issued, &grant.input_grant)
+        .unwrap();
+    let mut latest = issued.clone();
+    latest.backend_expected.focus_revision += 1;
+    latest.backend_expected.audio_revision += 1;
+    latest.native_expected.expected.focus_revision = "later-focus".into();
+    latest.native_expected.expected.audio_revision = "later-audio".into();
+    registry
+        .commit_binding(&player(), &issued, &latest, &mut || Ok(()))
+        .unwrap();
+    let mut promoted = issued.clone();
+    promoted.backend_slot_revision += 1;
+    registry
+        .prepare_attachment(&player(), &issued, &promoted, &reservation)
+        .unwrap();
+    reservation
+        .publication_authority()
+        .attach(&reservation.decoder_context(), &mut || Ok(()))
+        .unwrap();
+    latest.backend_slot_revision = promoted.backend_slot_revision;
+    assert_eq!(
+        registry.current_binding(&player(), "session", 0).unwrap(),
+        latest
+    );
+    assert_eq!(reservation.decoder_context(), decoder_context(&issued));
+    assert!(publishes(&reservation).is_ok());
+}
+
+#[test]
+fn current_binding_is_owner_scoped_and_never_creates_unknown_slots() {
+    let (registry, _) = fixture();
+    for foreign in [
+        Principal {
+            subject: "other".into(),
+            ..player()
+        },
+        Principal {
+            installation_id: "other".into(),
+            ..player()
+        },
+    ] {
+        assert_eq!(
+            registry.current_binding(&foreign, "session", 0),
+            Err(RegistryError::Forbidden)
+        );
+    }
+    assert_eq!(
+        registry.current_binding(&player(), "missing", 0),
+        Err(RegistryError::NotFound)
+    );
+    assert_eq!(
+        registry.current_binding(&player(), "session", 1),
+        Err(RegistryError::NotFound)
+    );
+    assert_eq!(
+        registry.current_binding(&player(), "session", 9),
+        Err(RegistryError::InvalidRequest)
+    );
+    registry
+        .lock()
+        .unwrap()
+        .sessions
+        .get_mut("session")
+        .unwrap()
+        .output_blocked = true;
+    assert_eq!(
+        registry.current_binding(&player(), "session", 0).unwrap(),
+        binding()
+    );
+    registry
+        .lock()
+        .unwrap()
+        .sessions
+        .get_mut("session")
+        .unwrap()
+        .expires = Instant::now();
+    assert_eq!(
+        registry.current_binding(&player(), "session", 0),
+        Err(RegistryError::Expired)
+    );
+    assert_eq!(registry.lock().unwrap().sessions["session"].slots.len(), 1);
+}
+
+#[test]
+fn commit_binding_checks_cas_before_callback_and_preserves_state_on_callback_error() {
+    let (registry, _) = fixture();
+    let (reservation, old) = attached(&registry);
+    let original = request(&registry, &old);
+    let pending = registry.mint(&player(), &original).unwrap();
+    let mut next = old.clone();
+    next.backend_expected.focus_revision += 1;
+    next.native_expected.expected.focus_revision = "next-focus".into();
+    let mut invalid = next.clone();
+    invalid.session_id = "different-session".into();
+    assert_eq!(
+        registry.commit_binding(&player(), &old, &invalid, &mut || panic!(
+            "invalid next reached callback"
+        )),
+        Err(RegistryError::InvalidRequest)
+    );
+    assert_eq!(
+        registry.commit_binding(&player(), &binding(), &next, &mut || panic!(
+            "stale prior reached callback"
+        )),
+        Err(RegistryError::Stale)
+    );
+    let foreign = Principal {
+        installation_id: "other".into(),
+        ..player()
+    };
+    assert_eq!(
+        registry.commit_binding(&foreign, &old, &next, &mut || panic!(
+            "foreign owner reached callback"
+        )),
+        Err(RegistryError::Forbidden)
+    );
+    assert_eq!(
+        registry.commit_binding(&player(), &old, &next, &mut || {
+            assert!(registry.state.try_lock().is_err());
+            Err(RegistryError::Unavailable)
+        }),
+        Err(RegistryError::Unavailable)
+    );
+    assert_eq!(
+        registry.current_binding(&player(), "session", 0).unwrap(),
+        old
+    );
+    registry
+        .validate_cached_grant(&player(), &original, &pending)
+        .unwrap();
+    assert!(publishes(&reservation).is_ok());
+    let mut calls = 0;
+    registry
+        .commit_binding(&player(), &old, &next, &mut || {
+            assert!(registry.state.try_lock().is_err());
+            calls += 1;
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(calls, 1);
+    assert_eq!(
+        registry.current_binding(&player(), "session", 0).unwrap(),
+        next
+    );
+    assert!(registry.lock().unwrap().grants.is_empty());
+    assert!(publishes(&reservation).is_ok());
+    assert_eq!(
+        registry.commit_binding(&player(), &old, &next, &mut || panic!(
+            "replayed CAS reached callback"
+        )),
+        Err(RegistryError::Stale)
+    );
 }
 
 #[test]
@@ -256,6 +807,7 @@ fn restricted_or_unknown_items_never_enter_source_grants() {
         let request = GrantRequest {
             version: 1,
             context: binding(),
+            next_native: Some(changed_source(&binding())),
             source_ref: item.source_ref,
             item_ref: item.item_ref,
             item_revision: item.item_revision,
@@ -268,6 +820,11 @@ fn restricted_or_unknown_items_never_enter_source_grants() {
             registry.mint(&player(), &request).unwrap_err(),
             RegistryError::Forbidden
         );
+        assert_eq!(
+            registry.current_binding(&player(), "session", 0).unwrap(),
+            binding()
+        );
+        assert!(registry.lock().unwrap().grants.is_empty());
     }
 }
 

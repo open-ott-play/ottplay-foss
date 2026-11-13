@@ -183,6 +183,7 @@ impl Fixture {
         GrantRequest {
             version: VERSION,
             context: self.binding.clone(),
+            next_native: None,
             source_ref: item.source_ref.clone(),
             item_ref: item.item_ref.clone(),
             item_revision: item.item_revision.clone(),
@@ -212,6 +213,72 @@ impl Fixture {
 async fn call(broker: &Broker, request: Request<Body>) -> Response {
     broker.router().call(request).await.unwrap()
 }
+
+#[tokio::test]
+async fn fixture_injection_is_explicit_loopback_only_and_keeps_ordinary_caps_zero() {
+    let fixture = || {
+        let mut media = ottplay_core::multiview::persistent::Config::new(
+            "/not-executed/ffmpeg".into(),
+            "/not-executed/ffprobe".into(),
+            "/not-created/multiview-boundary-test".into(),
+        );
+        media.max_duration = std::time::Duration::from_secs(10);
+        broker::FixtureConfig {
+            media,
+            profile: OutputProfile {
+                profile_id: "fixture-profile".into(),
+                canvas: Canvas {
+                    width: 320,
+                    height: 180,
+                    fps: 5,
+                },
+                max_inputs: 2,
+                geometry_modes: vec![GeometryMode::Disjoint, GeometryMode::Pip],
+            },
+            input_adapters: vec!["http_mpegts".into()],
+        }
+    };
+    let registry = Arc::new(Registry::new("server_A".into(), "epoch_A".into()).unwrap());
+    let clock = Arc::new(TestClock(AtomicU64::new(0)));
+    let approved_lan = || {
+        let mut configured = config();
+        configured.listener = ListenerPolicy {
+            bind_ip: "192.168.4.2".parse().unwrap(),
+            https: true,
+            lan_approved: true,
+        };
+        configured.origin = "https://compositor.example.test".into();
+        for credential in &mut configured.credentials {
+            credential.enrollment.origin = configured.origin.clone();
+        }
+        configured
+    };
+    assert!(Broker::new(approved_lan(), Some(registry.clone()), clock.clone()).is_ok());
+    assert!(matches!(
+        Broker::new_fixture(approved_lan(), registry.clone(), clock.clone(), fixture()),
+        Err(BoundaryError::Configuration)
+    ));
+    let ordinary = Broker::new(config(), Some(registry.clone()), clock.clone()).unwrap();
+    let (injected, _sources) = Broker::new_fixture(config(), registry, clock, fixture()).unwrap();
+    for (server, expected) in [(&ordinary, 0), (&injected, 2)] {
+        let response = call(
+            server,
+            Request::get("/multiview/v1/capabilities")
+                .header("authorization", format!("Bearer {TOKEN}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let value: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), 65_536).await.unwrap()).unwrap();
+        assert_eq!(value["max_inputs"], expected);
+        assert_eq!(
+            value["output_profiles"].as_array().unwrap().len(),
+            usize::from(expected != 0)
+        );
+    }
+}
 async fn json_body(response: Response) -> Value {
     serde_json::from_slice(
         &to_bytes(response.into_body(), MAX_RESULT_BYTES)
@@ -222,6 +289,89 @@ async fn json_body(response: Response) -> Value {
 }
 async fn get(broker: &Broker, path: &str) -> Response {
     call(broker, Request::get(path).body(Body::empty()).unwrap()).await
+}
+
+#[tokio::test]
+async fn native_transition_replays_committed_grant_without_reapplying_prior_cas() {
+    let fixture = Fixture::new();
+    let mut request = fixture.request();
+    let mut next = request.context.native_expected.clone();
+    next.slot_generation = "slot_B".into();
+    next.source_revision = "source_B".into();
+    request.next_native = Some(next.clone());
+    let body = serde_json::to_value(&request).unwrap();
+    let response = fixture.post("input-grants", &body, "transition_A").await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let grant: GrantResponse = serde_json::from_value(json_body(response).await).unwrap();
+    assert_eq!(grant.context.native_expected, next);
+    assert_eq!(
+        fixture
+            .registry
+            .current_binding(&principal(), "session_A", 0)
+            .unwrap(),
+        grant.context
+    );
+    let replay = fixture.post("input-grants", &body, "transition_A").await;
+    assert_eq!(replay.status(), StatusCode::OK);
+    let replay: GrantResponse = serde_json::from_value(json_body(replay).await).unwrap();
+    assert_eq!(replay.input_grant, grant.input_grant);
+    assert_eq!(replay.context, grant.context);
+    let mut changed = body.clone();
+    changed["next_native"]["source_revision"] = json!("different_intent");
+    assert_eq!(
+        fixture
+            .post("input-grants", &changed, "transition_A")
+            .await
+            .status(),
+        StatusCode::CONFLICT
+    );
+    assert!(fixture
+        .registry
+        .redeem(&principal(), &request.context, &grant.input_grant)
+        .is_err());
+    fixture
+        .registry
+        .redeem(&principal(), &grant.context, &grant.input_grant)
+        .unwrap();
+    assert!(!fixture
+        .post("input-grants", &body, "transition_A")
+        .await
+        .status()
+        .is_success());
+}
+
+#[tokio::test]
+async fn native_transition_rejects_occupied_target_before_revoking_existing_work() {
+    let fixture = Fixture::new();
+    let mut request = fixture.request();
+    let grant = fixture.registry.mint(&principal(), &request).unwrap();
+    let reservation = fixture
+        .registry
+        .redeem(&principal(), &request.context, &grant.input_grant)
+        .unwrap();
+    let mut next = request.context.native_expected.clone();
+    next.source_revision = "new_source_intent".into();
+    request.next_native = Some(next);
+    let response = fixture
+        .post(
+            "input-grants",
+            &serde_json::to_value(request).unwrap(),
+            "occupied_A",
+        )
+        .await;
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+    assert_eq!(
+        fixture
+            .registry
+            .current_binding(&principal(), "session_A", 0)
+            .unwrap(),
+        fixture.binding
+    );
+    assert!(!reservation.revoked().load(Ordering::Acquire));
+    assert!(fixture
+        .registry
+        .validate_reservation(&principal(), &fixture.binding, &reservation)
+        .is_ok());
 }
 
 #[test]
@@ -674,7 +824,7 @@ async fn streaming_permits_remain_owned_until_body_drop() {
     }
     assert_eq!(
         get(&fixture.broker, &output.playlist_path).await.status(),
-        StatusCode::SERVICE_UNAVAILABLE
+        StatusCode::TOO_MANY_REQUESTS
     );
     held.pop();
     assert_eq!(

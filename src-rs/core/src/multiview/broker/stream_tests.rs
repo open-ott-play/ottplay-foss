@@ -176,6 +176,7 @@ async fn make_source(base: &str, source: ServerSource) -> (AuthorizedSource, Arc
             &GrantRequest {
                 version: 1,
                 context: binding(),
+                next_native: None,
                 source_ref: item.source_ref.clone(),
                 item_ref: item.item_ref.clone(),
                 item_revision: item.item_revision.clone(),
