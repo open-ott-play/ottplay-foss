@@ -4,10 +4,13 @@
 use super::geometry::CanvasSpec;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic::AtomicBool, Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub type VideoFeed = Arc<Mutex<Arc<[u8]>>>;
 pub type AudioFeed = Arc<dyn Fn() -> Vec<i16> + Send + Sync>;
+/// Opt-in source-clock mixer. The argument is the fixed 50 Hz presentation tick,
+/// not the wall-clock instant at which a delayed callback happens to execute.
+pub type TimedAudioFeed = Arc<dyn Fn(Instant) -> Vec<i16> + Send + Sync>;
 
 pub struct EncoderConfig {
     pub ffmpeg: PathBuf,
@@ -191,6 +194,23 @@ mod runtime {
             thread::sleep((deadline - now).min(Duration::from_millis(5)));
         }
     }
+    enum AudioInput {
+        Legacy(AudioFeed),
+        Timed(TimedAudioFeed),
+    }
+    impl AudioInput {
+        fn at(&self, tick: Instant) -> Vec<i16> {
+            match self {
+                Self::Legacy(feed) => feed(),
+                Self::Timed(feed) => feed(tick),
+            }
+        }
+    }
+    fn next_audio_mixer_tick(previous: Instant) -> Result<Instant, EncoderError> {
+        previous
+            .checked_add(Duration::from_millis(20))
+            .ok_or(EncoderError::InvalidConfig)
+    }
     fn video_loop(
         mut writer: std::process::ChildStdin,
         feed: VideoFeed,
@@ -241,11 +261,12 @@ mod runtime {
             sleep_until(deadline, &shared);
         }
     }
-    fn audio_loop(mut writer: File, feed: AudioFeed, stall: Duration, shared: Arc<Shared>) {
+    fn audio_loop(mut writer: File, feed: AudioInput, stall: Duration, shared: Arc<Shared>) {
         let period = Duration::from_millis(20);
         let mut deadline = Instant::now();
+        let mut logical_mixer_tick = deadline;
         while !shared.stop.load(Ordering::Acquire) {
-            let samples = feed();
+            let samples = feed.at(logical_mixer_tick);
             let mut bytes = [0u8; 3840];
             if samples.len() == 1920 {
                 for (target, sample) in bytes.chunks_exact_mut(2).zip(samples) {
@@ -261,6 +282,17 @@ mod runtime {
             shared
                 .audio_samples_written
                 .fetch_add(1920, Ordering::Relaxed);
+            // The encoded sample timeline advances by exactly one complete
+            // 960-frame PCM block. Scheduling jitter must not retimestamp it.
+            logical_mixer_tick = match next_audio_mixer_tick(logical_mixer_tick) {
+                Ok(next) => next,
+                Err(error) => {
+                    fail(&shared, error);
+                    return;
+                }
+            };
+            // Preserve the original physical writer cadence for both APIs.
+            // This does not add catch-up bursts or hide pressure by rebasing PTS.
             deadline += period;
             if deadline < Instant::now() {
                 deadline = Instant::now();
@@ -621,6 +653,22 @@ mod runtime {
             audio: AudioFeed,
             stop: Arc<AtomicBool>,
         ) -> Result<Self, EncoderError> {
+            Self::start_audio(config, video, AudioInput::Legacy(audio), stop)
+        }
+        pub fn start_timed_audio(
+            config: EncoderConfig,
+            video: VideoFeed,
+            audio: TimedAudioFeed,
+            stop: Arc<AtomicBool>,
+        ) -> Result<Self, EncoderError> {
+            Self::start_audio(config, video, AudioInput::Timed(audio), stop)
+        }
+        fn start_audio(
+            config: EncoderConfig,
+            video: VideoFeed,
+            audio: AudioInput,
+            stop: Arc<AtomicBool>,
+        ) -> Result<Self, EncoderError> {
             if stop.load(Ordering::Acquire) {
                 return Err(EncoderError::Cancelled);
             }
@@ -967,6 +1015,42 @@ mod runtime {
     #[cfg(test)]
     mod transport_tests {
         use super::*;
+        #[test]
+        fn timed_audio_receives_fixed_ticks_while_legacy_callback_remains_compatible() {
+            let first = Instant::now();
+            let observed = Arc::new(Mutex::new(Vec::new()));
+            let recorded = observed.clone();
+            let timed = AudioInput::Timed(Arc::new(move |tick| {
+                lock(&recorded).push(tick);
+                vec![7; 1920]
+            }));
+            assert_eq!(timed.at(first), vec![7; 1920]);
+            let late = first + Duration::from_millis(137);
+            let next = next_audio_mixer_tick(first).unwrap();
+            assert_eq!(next, first + Duration::from_millis(20));
+            timed.at(next);
+            assert_eq!(
+                *lock(&observed),
+                vec![first, first + Duration::from_millis(20)]
+            );
+            let legacy = AudioInput::Legacy(Arc::new(|| vec![3; 1920]));
+            assert_eq!(legacy.at(first), vec![3; 1920]);
+            let physical_deadline = (first + Duration::from_millis(20)).max(late);
+            assert_eq!(physical_deadline, late);
+            assert_eq!(next, first + Duration::from_millis(20));
+            let _legacy_start: fn(
+                EncoderConfig,
+                VideoFeed,
+                AudioFeed,
+                Arc<AtomicBool>,
+            ) -> Result<Encoder, EncoderError> = Encoder::start;
+            let _timed_start: fn(
+                EncoderConfig,
+                VideoFeed,
+                TimedAudioFeed,
+                Arc<AtomicBool>,
+            ) -> Result<Encoder, EncoderError> = Encoder::start_timed_audio;
+        }
         fn leaf(start: u64, count: u64, duration: &str, target: u32) -> Vec<u8> {
             let mut text=format!("#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-TARGETDURATION:{target}\n#EXT-X-MEDIA-SEQUENCE:{start}\n#EXT-X-INDEPENDENT-SEGMENTS\n");
             for index in start..start + count {
@@ -1108,6 +1192,14 @@ impl Encoder {
         _: EncoderConfig,
         _: VideoFeed,
         _: AudioFeed,
+        _: Arc<AtomicBool>,
+    ) -> Result<Self, EncoderError> {
+        Err(EncoderError::Unsupported)
+    }
+    pub fn start_timed_audio(
+        _: EncoderConfig,
+        _: VideoFeed,
+        _: TimedAudioFeed,
         _: Arc<AtomicBool>,
     ) -> Result<Self, EncoderError> {
         Err(EncoderError::Unsupported)

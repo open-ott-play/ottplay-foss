@@ -4,7 +4,7 @@
 use super::{
     decoder::{
         self, AudioQueue, AudioQueueStats, BoundContext, Decoder, DecoderConfig, DecoderError,
-        GrantedFile, GrantedStream, PreparedStreamInfo, StreamInput,
+        GrantedFile, GrantedStream, PreparedStreamInfo, PresentationClock, StreamInput,
     },
     encoder::{Encoder, EncoderConfig, EncoderState},
     frames::{compose_into, FrameSpec, FrameStatus, FrameView, LatestFrame},
@@ -267,6 +267,26 @@ fn validate_stream_binding(
     Ok(())
 }
 
+// The output tick advances regardless of mute/route. Publishing releases its
+// short clock lock before reading a route or entering any source FIFO.
+fn mix_audio_tick(
+    clock: &PresentationClock,
+    route: &AtomicU64,
+    queues: &[Arc<AudioQueue>],
+    tick: Instant,
+) -> Vec<i16> {
+    if clock.publish(tick).is_err() {
+        return vec![0; 1920];
+    }
+    let word = route.load(Ordering::Acquire);
+    if word == 0 {
+        return vec![0; 1920];
+    }
+    let slot = ((word & 15) - 1) as usize;
+    let generation = (word >> 4) - 1;
+    queues[slot].take_at(generation, tick)
+}
+
 pub struct Session {
     config: Config,
     state: Arc<Mutex<State>>,
@@ -276,6 +296,7 @@ pub struct Session {
     encoder: Encoder,
     owned_pids: Vec<u32>,
     audio_callback_misses: Arc<AtomicU64>,
+    presentation_clock: Arc<PresentationClock>,
 }
 
 impl Session {
@@ -341,18 +362,12 @@ impl Session {
         ])));
         lock(&state).update_audio_metrics();
         let audio_callback_misses = Arc::new(AtomicU64::new(0));
-        let audio = Arc::new(move || {
-            // No control lock, snapshot lock or opportunistic silence branch.
-            // Only this source's short, bounded PCM FIFO operation is involved.
-            let word = audio_route.load(Ordering::Acquire);
-            if word == 0 {
-                return vec![0; 1920];
-            }
-            let slot = ((word & 15) - 1) as usize;
-            let generation = (word >> 4) - 1;
-            audio_queues[slot].take(generation, 1920)
+        let presentation_clock = Arc::new(PresentationClock::new());
+        let audio_clock = presentation_clock.clone();
+        let audio = Arc::new(move |tick: Instant| {
+            mix_audio_tick(&audio_clock, &audio_route, &audio_queues, tick)
         });
-        let encoder = Encoder::start(
+        let encoder = Encoder::start_timed_audio(
             EncoderConfig {
                 ffmpeg: config.ffmpeg.clone(),
                 mkfifo: config.mkfifo.clone(),
@@ -369,6 +384,13 @@ impl Session {
             stop.clone(),
         )
         .map_err(|_| Error::OutputFailed)?;
+        if presentation_clock
+            .current()
+            .map_err(|_| Error::OutputFailed)?
+            .is_none()
+        {
+            return Err(Error::OutputFailed);
+        }
         let decoders = Arc::new(Mutex::new(
             (0..9).map(|_| None).collect::<Vec<Option<Decoder>>>(),
         ));
@@ -433,6 +455,7 @@ impl Session {
             encoder,
             owned_pids: vec![encoder_pid],
             audio_callback_misses,
+            presentation_clock,
         })
     }
 
@@ -493,6 +516,14 @@ impl Session {
         input: StreamInput,
     ) -> Result<u64, Error> {
         self.check()?;
+        if self
+            .presentation_clock
+            .current()
+            .map_err(|_| Error::OutputFailed)?
+            .is_none()
+        {
+            return Err(Error::OutputFailed);
+        }
         if !preparation.belongs_to(&self.stop) {
             return Err(Error::StaleRevision);
         }
@@ -558,7 +589,7 @@ impl Session {
             state.control_epoch += 1;
             result
         };
-        let worker = match Decoder::start_stream(
+        let worker = match Decoder::start_stream_with_clock(
             &preparation.config,
             source,
             prepared,
@@ -566,6 +597,7 @@ impl Session {
             generation,
             video.clone(),
             audio,
+            self.presentation_clock.clone(),
         ) {
             Ok(worker) => worker,
             Err(_) => {
@@ -957,6 +989,31 @@ mod tests {
     use super::super::geometry::{ImportedRect, OverlapPolicy};
     use super::*;
 
+    #[test]
+    fn presentation_tick_advances_before_muted_or_absent_owner_return() {
+        let clock = PresentationClock::new();
+        let route = AtomicU64::new(0);
+        let queues = (0..9)
+            .map(|_| Arc::new(AudioQueue::new(0)))
+            .collect::<Vec<_>>();
+        let first = Instant::now();
+        assert_eq!(
+            mix_audio_tick(&clock, &route, &queues, first),
+            vec![0; 1920]
+        );
+        assert_eq!(clock.current().unwrap(), Some(first));
+        route.store((1 << 4) | 1, Ordering::Release);
+        let second = first + Duration::from_millis(20);
+        mix_audio_tick(&clock, &route, &queues, second);
+        assert_eq!(clock.current().unwrap(), Some(second));
+        route.store(0, Ordering::Release);
+        let third = second + Duration::from_millis(20);
+        mix_audio_tick(&clock, &route, &queues, third);
+        mix_audio_tick(&clock, &route, &queues, third);
+        assert_eq!(clock.current().unwrap(), Some(third));
+        assert_eq!(clock.publish(first), Err(DecoderError::InvalidInput));
+        assert_eq!(clock.current(), Err(DecoderError::InvalidInput));
+    }
     fn stream_state() -> State {
         let canvas = CanvasSpec {
             width: 16,

@@ -167,11 +167,9 @@ impl LatestFrame {
             return FrameView::Slate(status);
         }
         match &state.latest {
-            Some(frame)
-                if now
-                    .checked_duration_since(frame.received_at)
-                    .is_some_and(|age| age < stall_timeout) =>
-            {
+            // The observer may sample now just before the decoder publishes a
+            // frame under this lock. Such a frame is fresh, with age zero.
+            Some(frame) if now.saturating_duration_since(frame.received_at) < stall_timeout => {
                 FrameView::Ready(frame.clone())
             }
             Some(_) => FrameView::Slate(FrameStatus::Stalled),
@@ -336,6 +334,51 @@ mod tests {
             Err(FrameError::InvalidLength)
         );
         assert_eq!(mailbox.advance(2, 2), Err(FrameError::InvalidGeneration));
+    }
+    #[test]
+    fn snapshot_sampled_before_concurrent_frame_publication_does_not_false_stall() {
+        let mailbox = mailbox();
+        let sampled_now = Instant::now();
+        // The observer sampled its clock before acquiring the mailbox lock.
+        // The decoder then published a genuinely fresh frame in between.
+        let received_at = sampled_now + Duration::from_nanos(1);
+        mailbox.publish(1, 1, vec![1; 12], received_at).unwrap();
+        assert!(matches!(
+            mailbox.snapshot(sampled_now, Duration::from_millis(600)),
+            FrameView::Ready(_)
+        ));
+    }
+    #[test]
+    fn exact_stale_threshold_zero_timeout_and_terminal_states_remain_unchanged() {
+        let mailbox = mailbox();
+        let sampled_now = Instant::now();
+        let received_at = sampled_now + Duration::from_nanos(1);
+        let timeout = Duration::from_millis(600);
+        mailbox.publish(1, 1, vec![1; 12], received_at).unwrap();
+        for now in [sampled_now, received_at] {
+            assert!(matches!(
+                mailbox.snapshot(now, Duration::ZERO),
+                FrameView::Slate(FrameStatus::Stalled)
+            ));
+        }
+        assert!(matches!(
+            mailbox.snapshot(received_at + timeout - Duration::from_nanos(1), timeout),
+            FrameView::Ready(_)
+        ));
+        assert!(matches!(
+            mailbox.snapshot(received_at + timeout, timeout),
+            FrameView::Slate(FrameStatus::Stalled)
+        ));
+        mailbox.mark_ended(1).unwrap();
+        assert!(matches!(
+            mailbox.snapshot(sampled_now, timeout),
+            FrameView::Slate(FrameStatus::Ended)
+        ));
+        mailbox.mark_failed(1).unwrap();
+        assert!(matches!(
+            mailbox.snapshot(sampled_now, timeout),
+            FrameView::Slate(FrameStatus::Failed)
+        ));
     }
     #[test]
     fn pip_slates_cover_main_and_replacing_inset_does_not_touch_main_frames() {
