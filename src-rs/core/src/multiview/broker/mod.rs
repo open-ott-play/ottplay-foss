@@ -6,4 +6,6 @@ pub mod network;
 pub mod registry;
 pub mod resolvers;
 pub mod runtime;
+pub mod stream;
+pub mod stream_transport;
 pub mod wire;

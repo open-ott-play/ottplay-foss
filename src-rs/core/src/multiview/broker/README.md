@@ -65,7 +65,8 @@ Media reads never renew control authority.
 
 Removing/re-enrolling a source rotates item revisions and revokes pending and active
 work. Changes to the active source or permissions revoke composite output; unrelated
-focus/audio/layout changes preserve unchanged source authority. Native-side favorite,
+focus/audio/layout changes preserve unchanged active source authority. Pending
+preparation still rejects geometry changes. Native-side favorite,
 attachment, parental, and kiosk changes must also trigger immediate invalidation.
 
 Cancellation is not retirement. The host must observe provider cleanup, decoder
@@ -73,6 +74,71 @@ reaping, and output revocation before acknowledging the corresponding barriers.
 `AuthorizedSource::finish` confirms source cleanup only. Drop requests cancellation;
 it does not establish reaping. An uncertain VPortal allocation or failed stop remains
 `source_cleanup_unconfirmed`; never retry the allocation blindly.
+
+## Streaming host adapter
+
+`StreamFactory` adds a Unix-only MPEG-TS input bridge for an already resolved
+`AuthorizedSource`. The checked upstream configuration and credentials remain in
+the broker. Core receives a blocking socket file descriptor, never an upstream URL.
+HLS, MP4, seeking, Windows pipes, and ordinary Local Library path reopening are not
+qualified by this adapter.
+
+The trusted host uses this sequence:
+
+1. Redeem the input grant once and create `StreamFactory::new(source, hard_end)`.
+   The absolute hard end is at most 24 hours; it is separate from the 30-second
+   redemption deadline and renewable owner lease.
+   Constructor rejection returns `StreamCreationFailure`; recover its source with
+   `into_source()` and finish provider cleanup instead of discarding its owner.
+2. Capture the core session preparation outside the asynchronous work. Construct
+   `GrantedStream` from `reservation.decoder_context()`, the factory hard end,
+   `reservation.revoked()`, and `reservation.publication_authority()`. Preserve
+   this immutable issued context and the **same** revocation atomic; do not
+   recapture a newer focus/audio context after resolution.
+3. Open `StreamPhase::Probe`, transfer its one-use file with `take_file`, wrap it
+   with `GrantedStream::wrap_probe`, and call the actual `probe_stream` outside
+   the session/control lock. Preserve its opaque `PreparedStreamInfo` on success.
+4. Retire and join the Probe producer. A successful metadata probe can close its
+   reader early, so a producer write error alone does not determine probe success.
+   Factory admission requires observed producer joining; core separately requires
+   the successful metadata proof. Do not open Decode after a failed metadata probe.
+5. Open `StreamPhase::Decode` for a fresh HTTP subscription and file descriptor
+   under the same source/provider lease. Never clone or rewind the Probe reader.
+   Wrap the file with the same grant, then use the core prepare/commit API and
+   registry attachment barrier. Invalid preparation must leave the old input intact.
+6. On retirement, revoke output, stop/reap the decoder, and call `factory.finish()`.
+   Inspect the joined-producer and provider-cleanup receipt before acknowledging
+   the host's retirement barriers. Cancellation or Drop is not that receipt.
+
+Each phase can be attempted only once, including failed opens. Retiring Probe
+cancels only that subscription; factory cancellation synchronously revokes the
+reservation and cancels both phases. A cancelled `OpenedStream::retire` or
+`StreamFactory::finish` await can be resumed while retaining its owner: the join
+handle and cleanup result stay owned, and a provider stop is not replayed. This
+does not make the consuming `AuthorizedSource::finish` await resumable; after a
+constructor failure, keep that cleanup operation under a stable task owner until
+completion. Never write request cancellation into the session-wide stop atomic.
+
+After redemption, unrelated focus/audio changes do not invalidate pending source
+preparation. The original issued binding remains immutable. Attach rebases only
+focus/audio from current state; owner, installation, runtime, scene, geometry,
+target slot/generation, source and policy changes still invalidate preparation.
+Read the authoritative status after commit rather than treating the caller's old
+candidate revisions as the final global state. Grant issuance/redemption and
+ordinary controls continue to require their full exact context.
+
+The transport checks the initial MPEG-TS packet headers before exposing bytes.
+First-response and idle defaults are eight seconds; each is capped at 30 seconds.
+Backpressure does not extend the absolute hard end. Probe forwarding is capped at
+8 MiB. Returned chunks are at most 64 KiB, with one outstanding chunk per stream;
+retained clones/slices retain their source and request admission permits. The
+transport retains at most one inbound frame up to 512 KiB while splitting it,
+plus the bounded output and 940-byte sniff prefix. These are application buffer
+bounds, separate from the HTTP parser's own bounded buffers.
+
+This bridge is an internal integration surface. Production capacity remains zero
+until actual broker-to-core media, native lifecycle, and output renewal are jointly
+qualified. Adjacent owned fixtures are not evidence of television playback.
 
 Output HMAC leases live in the private path, allowing native HLS clients to fetch
 children without custom headers. Every resource and body chunk rechecks its lease,

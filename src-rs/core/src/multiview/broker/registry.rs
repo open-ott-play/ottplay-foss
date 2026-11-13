@@ -246,7 +246,7 @@ fn decoder_context(b: &Binding) -> BoundContext {
         audio_revision: e.audio_revision,
     }
 }
-/// Focus/layout/audio revisions constrain preparation, not unchanged active input.
+/// Active unchanged input survives focus/audio updates and geometry changes.
 fn same_active_source(a: &Binding, b: &Binding) -> bool {
     a.server_epoch == b.server_epoch
         && a.session_id == b.session_id
@@ -258,6 +258,25 @@ fn same_active_source(a: &Binding, b: &Binding) -> bool {
         && a.native_expected.slot_generation == b.native_expected.slot_generation
         && a.native_expected.source_revision == b.native_expected.source_revision
         && a.backend_slot_revision == b.backend_slot_revision
+}
+/// Only an already redeemed explicit-slot source preparation may ignore focus
+/// and audio revisions. Geometry, source identity and both runtimes still fence
+/// its eventual attachment. Original grants and control commands use full CAS.
+fn same_preparing_source(a: &Binding, b: &Binding) -> bool {
+    same_active_source(a, b)
+        && a.backend_expected.geometry_revision == b.backend_expected.geometry_revision
+        && a.native_expected.expected.layout_revision == b.native_expected.expected.layout_revision
+}
+/// An attachment may advance its target source identity, not its scene or raster.
+fn same_preparation_scene(a: &Binding, b: &Binding) -> bool {
+    a.server_epoch == b.server_epoch
+        && a.session_id == b.session_id
+        && a.backend_expected.runtime == b.backend_expected.runtime
+        && a.backend_expected.scene == b.backend_expected.scene
+        && a.backend_expected.geometry_revision == b.backend_expected.geometry_revision
+        && a.native_expected.runtime == b.native_expected.runtime
+        && a.native_expected.expected.scene == b.native_expected.expected.scene
+        && a.native_expected.expected.layout_revision == b.native_expected.expected.layout_revision
 }
 fn same_scene(a: &Binding, b: &Binding) -> bool {
     a.server_epoch == b.server_epoch
@@ -588,7 +607,7 @@ impl Registry {
                         .get(&lease.context.native_expected.slot_id)
                         .is_none_or(|current| {
                             if matches!(lease.phase, Phase::Preparing | Phase::Attaching) {
-                                current != &lease.context
+                                !same_preparing_source(current, &lease.context)
                             } else {
                                 !same_active_source(current, &lease.context)
                             }
@@ -897,8 +916,9 @@ impl Registry {
         );
         Ok(result)
     }
-    /// Resolver monitors retain the immutable issue binding. Active fetches use
-    /// the promoted source identity and survive unrelated focus/layout changes.
+    /// Resolver monitors retain the immutable issue binding. Redeemed preparation
+    /// tolerates unrelated focus/audio changes; active input also survives layout
+    /// changes and checks its promoted source identity.
     pub fn validate_reservation(
         &self,
         p: &Principal,
@@ -932,7 +952,7 @@ impl Registry {
         if if lease.phase == Phase::Active {
             !same_active_source(current, &lease.context)
         } else {
-            current != &lease.context
+            !same_preparing_source(current, &lease.context)
         } {
             return Err(RegistryError::Stale);
         }
@@ -941,7 +961,9 @@ impl Registry {
     /// Arm the next GrantedFile attachment. This does not activate the decoder.
     /// The attachment itself enters PublicationAuthority once, which holds the
     /// barrier over the backend callback and promotion; callers must not wrap a
-    /// GrantedFile.publish call inside another registry publication callback.
+    /// GrantedFile.attach call inside another registry publication callback.
+    /// `expected` remains the exact issue binding. Only the already redeemed
+    /// source preparation may survive newer focus/audio revisions.
     pub fn prepare_attachment(
         &self,
         p: &Principal,
@@ -952,10 +974,19 @@ impl Registry {
         let mut s = self.lock()?;
         let now = Instant::now();
         sweep(&mut s, now);
-        authorize(&s, p, expected, now)?;
+        let session = live_session(&s, p, &expected.session_id, now)?;
+        let current = session
+            .slots
+            .get(&expected.native_expected.slot_id)
+            .ok_or(RegistryError::Stale)?;
+        if !expected.valid()
+            || expected.server_epoch != s.epoch
+            || !same_preparing_source(current, expected)
+        {
+            return Err(RegistryError::Stale);
+        }
         if !next.valid()
-            || next.server_epoch != s.epoch
-            || next.session_id != expected.session_id
+            || !same_preparation_scene(expected, next)
             || next.native_expected.slot_id != expected.native_expected.slot_id
         {
             return Err(RegistryError::InvalidRequest);
@@ -1250,15 +1281,23 @@ impl RegistryPublication {
             .get(&lease.context.native_expected.slot_id)
             .ok_or(DecoderError::StaleGeneration)?;
         let promotion = if lease.phase == Phase::Attaching {
-            if current != &lease.context {
+            if !same_preparing_source(current, &lease.context) {
                 return Err(DecoderError::StaleGeneration);
             }
-            Some(
-                lease
-                    .promotion
-                    .clone()
-                    .ok_or(DecoderError::PublicationDenied)?,
-            )
+            let mut next = lease
+                .promotion
+                .clone()
+                .ok_or(DecoderError::PublicationDenied)?;
+            // Preparation may finish after several focus/audio changes. Rebase
+            // only these globals under the barrier; never restore issue-time
+            // revisions or move the command to the currently focused slot.
+            next.backend_expected.focus_revision = current.backend_expected.focus_revision;
+            next.backend_expected.audio_revision = current.backend_expected.audio_revision;
+            next.native_expected.expected.focus_revision =
+                current.native_expected.expected.focus_revision.clone();
+            next.native_expected.expected.audio_revision =
+                current.native_expected.expected.audio_revision.clone();
+            Some(next)
         } else {
             if !same_active_source(current, &lease.context) {
                 return Err(DecoderError::StaleGeneration);
@@ -1299,7 +1338,7 @@ impl RegistryPublication {
                             .get(&lease.context.native_expected.slot_id)
                             .is_none_or(|current| {
                                 if matches!(lease.phase, Phase::Preparing | Phase::Attaching) {
-                                    current != &lease.context
+                                    !same_preparing_source(current, &lease.context)
                                 } else {
                                     !same_active_source(current, &lease.context)
                                 }

@@ -1,4 +1,4 @@
-//! Independently owned, bounded local-file decoders. No network source handling.
+//! Independently owned file/descriptor decoders. No network resolution or fetches.
 //!
 //! Each source advances its video and audio together; selecting another audio
 //! queue does not start a new decoder or reset the output encoder's sample clock.
@@ -35,6 +35,7 @@ pub enum DecoderError {
     PublicationDenied,
     Backpressure,
     Stalled,
+    Cancelled,
     Io,
 }
 
@@ -326,6 +327,199 @@ impl GrantedFile {
             .map_err(|_| DecoderError::Io)?;
         self.check_live()?;
         result
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum StreamPhase {
+    Probe,
+    Decode,
+}
+#[derive(Default)]
+struct StreamState {
+    probe_issued: bool,
+    probe_completed: bool,
+    decode_issued: bool,
+    started: bool,
+}
+struct StreamIdentity(Mutex<StreamState>);
+
+/// A trusted Rust transport factory transfers fresh, exclusively owned Probe
+/// and Decode read descriptors for this same immutable source identity. The host
+/// owns producer cancellation/join and must include it in WorkerRetired; dropping
+/// this type or reaping FFmpeg does not prove that the producer has retired.
+pub struct GrantedStream {
+    binding: Arc<Binding>,
+    identity: Arc<StreamIdentity>,
+}
+pub struct StreamInput {
+    reader: File,
+    phase: StreamPhase,
+    identity: Arc<StreamIdentity>,
+}
+
+/// Actual, bounded FFprobe metadata. Private fields bind this one-use receipt to
+/// its grant and the exact prepared configuration; callers cannot supply claims.
+pub struct PreparedStreamInfo {
+    information: MediaInfo,
+    identity: Arc<StreamIdentity>,
+    ffmpeg: PathBuf,
+    _ffprobe: PathBuf,
+    configured_ffmpeg: PathBuf,
+    configured_ffprobe: PathBuf,
+    frame_spec: FrameSpec,
+    fps: u32,
+}
+impl PreparedStreamInfo {
+    pub fn info(&self) -> MediaInfo {
+        self.information
+    }
+}
+
+/// A non-destructive preflight for the host's prepare/commit boundary. Call it
+/// before stopping the old decoder; the opaque proof/input are not cloneable.
+pub fn validate_stream_preparation(
+    config: &DecoderConfig,
+    source: &GrantedStream,
+    prepared: &PreparedStreamInfo,
+    input: &StreamInput,
+) -> Result<(), DecoderError> {
+    checked_frame_bytes(config)?;
+    source.binding.check(&source.binding.context)?;
+    if !Arc::ptr_eq(&prepared.identity, &source.identity)
+        || !Arc::ptr_eq(&input.identity, &source.identity)
+        || input.phase != StreamPhase::Decode
+    {
+        return Err(DecoderError::BindingMismatch);
+    }
+    if prepared.configured_ffmpeg != config.ffmpeg
+        || prepared.configured_ffprobe != config.ffprobe
+        || prepared.frame_spec != config.frame_spec
+        || prepared.fps != config.fps
+    {
+        return Err(DecoderError::InvalidInput);
+    }
+    let state = source.identity.0.lock().map_err(|_| DecoderError::Io)?;
+    if !state.probe_completed || !state.decode_issued || state.started {
+        return Err(DecoderError::StaleGeneration);
+    }
+    Ok(())
+}
+impl std::fmt::Debug for GrantedStream {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("GrantedStream { .. }")
+    }
+}
+impl std::fmt::Debug for StreamInput {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("StreamInput { .. }")
+    }
+}
+impl std::fmt::Debug for PreparedStreamInfo {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("PreparedStreamInfo { .. }")
+    }
+}
+impl GrantedStream {
+    pub fn from_authorized_stream(
+        context: BoundContext,
+        expires_at: Instant,
+        revoked: Arc<AtomicBool>,
+        authority: Arc<dyn PublicationAuthority>,
+    ) -> Result<Self, DecoderError> {
+        #[cfg(not(unix))]
+        {
+            let _ = (context, expires_at, revoked, authority);
+            return Err(DecoderError::Unsupported);
+        }
+        #[cfg(unix)]
+        {
+            if context.slot_id > 8 {
+                return Err(DecoderError::InvalidInput);
+            }
+            let binding = Arc::new(Binding {
+                context,
+                expires_at,
+                revoked,
+                authority,
+                active: AtomicBool::new(false),
+            });
+            binding.check(&context)?;
+            Ok(Self {
+                binding,
+                identity: Arc::new(StreamIdentity(Mutex::new(StreamState::default()))),
+            })
+        }
+    }
+
+    pub fn hard_end(&self) -> Instant {
+        self.binding.expires_at
+    }
+
+    pub fn check_binding(&self, expected: &BoundContext) -> Result<(), DecoderError> {
+        self.binding.check(expected)
+    }
+
+    pub fn attach(
+        &self,
+        expected: &BoundContext,
+        operation: &mut dyn FnMut() -> Result<(), DecoderError>,
+    ) -> Result<(), DecoderError> {
+        self.check_binding(expected)?;
+        if !self
+            .identity
+            .0
+            .lock()
+            .map_err(|_| DecoderError::Io)?
+            .started
+        {
+            return Err(DecoderError::StaleGeneration);
+        }
+        self.binding.publish(expected, true, operation)
+    }
+
+    fn wrap(&self, reader: File, phase: StreamPhase) -> Result<StreamInput, DecoderError> {
+        self.binding.check(&self.binding.context)?;
+        #[cfg(not(unix))]
+        {
+            let _ = (reader, phase);
+            return Err(DecoderError::Unsupported);
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::FileTypeExt;
+            let kind = reader
+                .metadata()
+                .map_err(|_| DecoderError::InvalidInput)?
+                .file_type();
+            if !kind.is_socket() && !kind.is_fifo() {
+                return Err(DecoderError::InvalidInput);
+            }
+            let mut state = self.identity.0.lock().map_err(|_| DecoderError::Io)?;
+            match phase {
+                StreamPhase::Probe if !state.probe_issued && !state.started => {
+                    state.probe_issued = true
+                }
+                StreamPhase::Decode
+                    if state.probe_completed && !state.decode_issued && !state.started =>
+                {
+                    state.decode_issued = true
+                }
+                _ => return Err(DecoderError::StaleGeneration),
+            }
+            Ok(StreamInput {
+                reader,
+                phase,
+                identity: self.identity.clone(),
+            })
+        }
+    }
+
+    pub fn wrap_probe(&self, reader: File) -> Result<StreamInput, DecoderError> {
+        self.wrap(reader, StreamPhase::Probe)
+    }
+    pub fn wrap_decode(&self, reader: File) -> Result<StreamInput, DecoderError> {
+        self.wrap(reader, StreamPhase::Decode)
     }
 }
 
@@ -695,6 +889,18 @@ fn tool(path: &Path) -> Result<PathBuf, DecoderError> {
     Ok(path)
 }
 fn captured(command: &mut Command) -> Result<Vec<u8>, DecoderError> {
+    captured_until(command, Instant::now() + Duration::from_secs(5), &|| Ok(()))
+}
+
+fn captured_until(
+    command: &mut Command,
+    deadline: Instant,
+    check: &dyn Fn() -> Result<(), DecoderError>,
+) -> Result<Vec<u8>, DecoderError> {
+    check()?;
+    if Instant::now() >= deadline {
+        return Err(DecoderError::ProbeTimeout);
+    }
     let child = command
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -718,8 +924,13 @@ fn captured(command: &mut Command) -> Result<Vec<u8>, DecoderError> {
                 .map(|_| bytes)
         })
         .map_err(|_| DecoderError::Io)?;
-    let began = Instant::now();
     let outcome = loop {
+        if let Err(error) = check() {
+            break Err(error);
+        }
+        if Instant::now() >= deadline {
+            break Err(DecoderError::ProbeTimeout);
+        }
         match process.0.as_mut().unwrap().try_wait() {
             Ok(Some(status)) => {
                 break if status.success() {
@@ -730,9 +941,6 @@ fn captured(command: &mut Command) -> Result<Vec<u8>, DecoderError> {
             }
             Err(_) => break Err(DecoderError::Io),
             Ok(None) => {}
-        }
-        if began.elapsed() >= Duration::from_secs(5) {
-            break Err(DecoderError::ProbeTimeout);
         }
         thread::sleep(Duration::from_millis(10));
     };
@@ -746,6 +954,29 @@ fn captured(command: &mut Command) -> Result<Vec<u8>, DecoderError> {
     }
     outcome?;
     Ok(bytes)
+}
+
+fn stream_fd_tool(
+    path: &Path,
+    deadline: Instant,
+    check: &dyn Fn() -> Result<(), DecoderError>,
+) -> Result<PathBuf, DecoderError> {
+    check()?;
+    if Instant::now() >= deadline {
+        return Err(DecoderError::ProbeTimeout);
+    }
+    let path = tool(path)?;
+    let bytes = captured_until(
+        Command::new(&path)
+            .args(["-v", "quiet", "-protocols"])
+            .stdin(Stdio::null()),
+        deadline,
+        check,
+    )?;
+    if !check_fd_protocol(&bytes) {
+        return Err(DecoderError::Unsupported);
+    }
+    Ok(path)
 }
 
 fn require_fd(path: &Path) -> Result<(), DecoderError> {
@@ -799,6 +1030,114 @@ pub fn probe_source(
     })
 }
 
+/// Probe a fresh, non-seekable MPEG-TS descriptor. The host must cancel and join
+/// its producer after this returns, including errors, before opening Decode.
+/// The returned receipt proves metadata/FFprobe retirement, not producer drain.
+pub fn probe_stream(
+    config: &DecoderConfig,
+    source: &GrantedStream,
+    input: StreamInput,
+    cancel: &AtomicBool,
+    deadline: Instant,
+) -> Result<PreparedStreamInfo, DecoderError> {
+    checked_frame_bytes(config)?;
+    if input.phase != StreamPhase::Probe || !Arc::ptr_eq(&input.identity, &source.identity) {
+        return Err(DecoderError::BindingMismatch);
+    }
+    {
+        let state = source.identity.0.lock().map_err(|_| DecoderError::Io)?;
+        if !state.probe_issued || state.probe_completed || state.started {
+            return Err(DecoderError::StaleGeneration);
+        }
+    }
+    let deadline = deadline
+        .min(source.hard_end())
+        .min(Instant::now() + Duration::from_secs(5));
+    let check = || {
+        if cancel.load(Ordering::Acquire) {
+            return Err(DecoderError::Cancelled);
+        }
+        source.binding.check(&source.binding.context)
+    };
+    let ffmpeg = stream_fd_tool(&config.ffmpeg, deadline, &check)?;
+    let ffprobe = stream_fd_tool(&config.ffprobe, deadline, &check)?;
+    let bytes = captured_until(
+        Command::new(&ffprobe)
+            .args([
+                "-v",
+                "quiet",
+                "-protocol_whitelist",
+                "fd",
+                "-format_whitelist",
+                "mpegts",
+                "-f",
+                "mpegts",
+                "-probesize",
+                "1048576",
+                "-analyzeduration",
+                "1000000",
+                "-show_entries",
+                "stream=codec_type,width,height,avg_frame_rate,r_frame_rate",
+                "-of",
+                "default=noprint_wrappers=0:nokey=0",
+                "-fd",
+                "0",
+                "-i",
+                "fd:",
+            ])
+            .stdin(Stdio::from(input.reader)),
+        deadline,
+        &check,
+    )?;
+    let information = metadata(&bytes)?;
+    check()?;
+    if Instant::now() >= deadline {
+        return Err(DecoderError::ProbeTimeout);
+    }
+    {
+        let mut state = source.identity.0.lock().map_err(|_| DecoderError::Io)?;
+        if state.probe_completed || state.started {
+            return Err(DecoderError::StaleGeneration);
+        }
+        state.probe_completed = true;
+    }
+    Ok(PreparedStreamInfo {
+        information,
+        identity: source.identity.clone(),
+        ffmpeg,
+        _ffprobe: ffprobe,
+        configured_ffmpeg: config.ffmpeg.clone(),
+        configured_ffprobe: config.ffprobe.clone(),
+        frame_spec: config.frame_spec,
+        fps: config.fps,
+    })
+}
+
+fn checked_frame_bytes(config: &DecoderConfig) -> Result<usize, DecoderError> {
+    let spec = config.frame_spec;
+    if spec.width == 0
+        || spec.height == 0
+        || spec.width > 640
+        || spec.height > 360
+        || spec.width % 2 != 0
+        || spec.height % 2 != 0
+        || config.fps == 0
+        || config.fps > 15
+    {
+        return Err(DecoderError::InvalidInput);
+    }
+    (spec.width as usize)
+        .checked_mul(spec.height as usize)
+        .and_then(|n| n.checked_mul(3))
+        .ok_or(DecoderError::InvalidInput)
+}
+
+#[derive(Clone, Copy)]
+enum InputFormat {
+    FileContainers,
+    MpegTs,
+}
+
 /// Return true for a complete block, false for clean EOF; reject partial blocks.
 fn block(reader: &mut impl Read, bytes: &mut [u8]) -> std::io::Result<bool> {
     let mut filled = 0;
@@ -846,22 +1185,7 @@ impl Decoder {
         video: Arc<LatestFrame>,
         audio: Arc<AudioQueue>,
     ) -> Result<Self, DecoderError> {
-        let spec = &config.frame_spec;
-        if spec.width == 0
-            || spec.height == 0
-            || spec.width > 640
-            || spec.height > 360
-            || spec.width % 2 != 0
-            || spec.height % 2 != 0
-            || config.fps == 0
-            || config.fps > 15
-        {
-            return Err(DecoderError::InvalidInput);
-        }
-        let frame_bytes = (spec.width as usize)
-            .checked_mul(spec.height as usize)
-            .and_then(|n| n.checked_mul(3))
-            .ok_or(DecoderError::InvalidInput)?;
+        checked_frame_bytes(config)?;
         if video.generation() != generation {
             return Err(DecoderError::StaleGeneration);
         }
@@ -871,8 +1195,113 @@ impl Decoder {
             return Err(DecoderError::StaleGeneration);
         }
         audio.check_generation(generation)?;
-        let mut command = Command::new(tool(&config.ffmpeg)?);
-        command.args(["-nostdin", "-hide_banner", "-loglevel", "quiet", "-nostats", "-filter_threads", "1", "-filter_complex_threads", "1", "-re", "-protocol_whitelist", "fd", "-format_whitelist", "mov,matroska,webm,mpegts,avi", "-threads", "1", "-max_pixels", "2073600", "-fd", "0", "-i", "fd:"])
+        let ffmpeg = tool(&config.ffmpeg)?;
+        Self::start_input(
+            config,
+            source.claim()?,
+            source.binding.clone(),
+            information,
+            InputFormat::FileContainers,
+            ffmpeg,
+            generation,
+            video,
+            audio,
+        )
+    }
+
+    pub fn start_stream(
+        config: &DecoderConfig,
+        source: &GrantedStream,
+        prepared: PreparedStreamInfo,
+        input: StreamInput,
+        generation: u64,
+        video: Arc<LatestFrame>,
+        audio: Arc<AudioQueue>,
+    ) -> Result<Self, DecoderError> {
+        validate_stream_preparation(config, source, &prepared, &input)?;
+        if source.binding.context.source_revision.checked_add(1) != Some(generation) {
+            return Err(DecoderError::StaleGeneration);
+        }
+        if video.generation() != generation {
+            return Err(DecoderError::StaleGeneration);
+        }
+        audio.check_generation(generation)?;
+        {
+            let mut state = source.identity.0.lock().map_err(|_| DecoderError::Io)?;
+            if state.started {
+                return Err(DecoderError::StaleGeneration);
+            }
+            state.started = true;
+        }
+        Self::start_input(
+            config,
+            input.reader,
+            Some(source.binding.clone()),
+            prepared.information,
+            InputFormat::MpegTs,
+            prepared.ffmpeg,
+            generation,
+            video,
+            audio,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn start_input(
+        config: &DecoderConfig,
+        input: File,
+        publication: Option<Arc<Binding>>,
+        information: MediaInfo,
+        format: InputFormat,
+        ffmpeg: PathBuf,
+        generation: u64,
+        video: Arc<LatestFrame>,
+        audio: Arc<AudioQueue>,
+    ) -> Result<Self, DecoderError> {
+        let frame_bytes = checked_frame_bytes(config)?;
+        let spec = &config.frame_spec;
+        if video.generation() != generation {
+            return Err(DecoderError::StaleGeneration);
+        }
+        audio.check_generation(generation)?;
+        if let Some(binding) = &publication {
+            binding.check(&binding.context)?;
+        }
+        let mut command = Command::new(ffmpeg);
+        command.args([
+            "-nostdin",
+            "-hide_banner",
+            "-loglevel",
+            "quiet",
+            "-nostats",
+            "-filter_threads",
+            "1",
+            "-filter_complex_threads",
+            "1",
+            "-re",
+            "-protocol_whitelist",
+            "fd",
+            "-format_whitelist",
+            match format {
+                InputFormat::FileContainers => "mov,matroska,webm,mpegts,avi",
+                InputFormat::MpegTs => "mpegts",
+            },
+            "-threads",
+            "1",
+            "-max_pixels",
+            "2073600",
+        ]);
+        if matches!(format, InputFormat::MpegTs) {
+            command.args([
+                "-f",
+                "mpegts",
+                "-analyzeduration",
+                "1000000",
+                "-probesize",
+                "1048576",
+            ]);
+        }
+        command.args(["-fd", "0", "-i", "fd:"])
             .args(["-map", "0:v:0", "-an", "-vf"])
             .arg(format!("scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={}:{}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={}", spec.width,spec.height,spec.width,spec.height,config.fps))
             .args(["-threads", "1", "-c:v", "rawvideo", "-pix_fmt", "rgb24", "-f", "rawvideo", "pipe:1"]);
@@ -895,7 +1324,7 @@ impl Decoder {
             ]);
         }
         command
-            .stdin(Stdio::from(source.claim()?))
+            .stdin(Stdio::from(input))
             .stdout(Stdio::piped())
             .stderr(if information.has_audio {
                 Stdio::piped()
@@ -930,7 +1359,7 @@ impl Decoder {
         let video_reader = video.clone();
         let process = decoder.process.clone();
         let queue = audio.clone();
-        let binding = source.binding.clone();
+        let binding = publication.clone();
         let began = Instant::now();
         let handle = thread::Builder::new()
             .name("multiview-video".into())
@@ -994,7 +1423,7 @@ impl Decoder {
             let queue = audio.clone();
             let process = decoder.process.clone();
             let video_audio = video.clone();
-            let binding = source.binding.clone();
+            let binding = publication.clone();
             let handle = thread::Builder::new()
                 .name("multiview-audio".into())
                 .spawn(move || {
@@ -1035,7 +1464,7 @@ impl Decoder {
         let process = decoder.process.clone();
         let cancelled = decoder.cancelled.clone();
         let queue = audio;
-        let binding = source.binding.clone();
+        let binding = publication.clone();
         let handle = thread::Builder::new()
             .name("multiview-decoder-state".into())
             .spawn(move || {
@@ -1111,12 +1540,16 @@ mod tests {
     struct Scratch(PathBuf);
     impl Scratch {
         fn new() -> Self {
+            static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
             let nonce = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos();
-            let root = std::env::temp_dir()
-                .join(format!("multiview-grant-{}-{nonce}", std::process::id()));
+            let root = std::env::temp_dir().join(format!(
+                "multiview-grant-{}-{nonce}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
             std::fs::create_dir(&root).unwrap();
             std::fs::write(root.join("source.bin"), b"original").unwrap();
             Self(root)
@@ -1196,6 +1629,169 @@ mod tests {
             focus_revision: 5,
             audio_revision: 6,
         }
+    }
+
+    #[cfg(unix)]
+    fn socket_file() -> File {
+        use std::os::{fd::OwnedFd, unix::net::UnixStream};
+        let (reader, writer) = UnixStream::pair().unwrap();
+        drop(writer);
+        File::from(OwnedFd::from(reader))
+    }
+
+    #[cfg(unix)]
+    fn stream_grant(revoked: Arc<AtomicBool>) -> GrantedStream {
+        GrantedStream::from_authorized_stream(
+            context(),
+            Instant::now() + Duration::from_secs(60),
+            revoked,
+            Arc::new(Gate {
+                allowed: Mutex::new(true),
+            }),
+        )
+        .unwrap()
+    }
+
+    #[cfg(unix)]
+    fn stream_config() -> DecoderConfig {
+        DecoderConfig {
+            ffmpeg: PathBuf::from("/not-an-executable/ffmpeg"),
+            ffprobe: PathBuf::from("/not-an-executable/ffprobe"),
+            frame_spec: FrameSpec {
+                width: 320,
+                height: 180,
+            },
+            fps: 10,
+        }
+    }
+
+    #[cfg(unix)]
+    fn sealed_stream_fixture(source: &GrantedStream, config: &DecoderConfig) -> PreparedStreamInfo {
+        // Private unit fixture only: production proofs are minted by FFprobe.
+        let mut state = source.identity.0.lock().unwrap();
+        state.probe_issued = true;
+        state.probe_completed = true;
+        PreparedStreamInfo {
+            information: MediaInfo {
+                width: 320,
+                height: 180,
+                fps: 10.0,
+                has_audio: false,
+            },
+            identity: source.identity.clone(),
+            ffmpeg: config.ffmpeg.clone(),
+            _ffprobe: config.ffprobe.clone(),
+            configured_ffmpeg: config.ffmpeg.clone(),
+            configured_ffprobe: config.ffprobe.clone(),
+            frame_spec: config.frame_spec,
+            fps: config.fps,
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stream_preflight_rejects_cross_grant_config_reuse_and_revocation_without_effects() {
+        let revoked = Arc::new(AtomicBool::new(false));
+        let source = stream_grant(revoked.clone());
+        let other = stream_grant(Arc::new(AtomicBool::new(false)));
+        let config = stream_config();
+        let proof = sealed_stream_fixture(&source, &config);
+        let other_proof = sealed_stream_fixture(&other, &config);
+        let input = source.wrap_decode(socket_file()).unwrap();
+        let other_input = other.wrap_decode(socket_file()).unwrap();
+        assert_eq!(
+            validate_stream_preparation(&config, &source, &proof, &other_input),
+            Err(DecoderError::BindingMismatch)
+        );
+        assert_eq!(
+            validate_stream_preparation(&config, &source, &other_proof, &input),
+            Err(DecoderError::BindingMismatch)
+        );
+        let mut changed = stream_config();
+        changed.fps = 11;
+        assert_eq!(
+            validate_stream_preparation(&changed, &source, &proof, &input),
+            Err(DecoderError::InvalidInput)
+        );
+        changed = stream_config();
+        changed.ffprobe = PathBuf::from("/a-different-tool");
+        assert_eq!(
+            validate_stream_preparation(&changed, &source, &proof, &input),
+            Err(DecoderError::InvalidInput)
+        );
+        assert_eq!(
+            validate_stream_preparation(&config, &source, &proof, &input),
+            Ok(())
+        );
+        assert!(matches!(
+            source.wrap_decode(socket_file()),
+            Err(DecoderError::StaleGeneration)
+        ));
+        revoked.store(true, Ordering::Release);
+        assert_eq!(
+            validate_stream_preparation(&config, &source, &proof, &input),
+            Err(DecoderError::Revoked)
+        );
+        assert!(!source.identity.0.lock().unwrap().started);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stream_probe_cancel_and_deadline_do_not_spawn_tools_or_complete_the_proof() {
+        for cancelled in [true, false] {
+            let source = stream_grant(Arc::new(AtomicBool::new(false)));
+            let input = source.wrap_probe(socket_file()).unwrap();
+            assert!(matches!(
+                source.wrap_probe(socket_file()),
+                Err(DecoderError::StaleGeneration)
+            ));
+            let deadline = if cancelled {
+                Instant::now() + Duration::from_secs(1)
+            } else {
+                Instant::now()
+            };
+            let result = probe_stream(
+                &stream_config(),
+                &source,
+                input,
+                &AtomicBool::new(cancelled),
+                deadline,
+            );
+            assert_eq!(
+                result.unwrap_err(),
+                if cancelled {
+                    DecoderError::Cancelled
+                } else {
+                    DecoderError::ProbeTimeout
+                }
+            );
+            assert!(!source.identity.0.lock().unwrap().probe_completed);
+            assert!(matches!(
+                source.wrap_decode(socket_file()),
+                Err(DecoderError::StaleGeneration)
+            ));
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stream_start_rejects_arbitrary_decode_generation_before_claim_or_spawn() {
+        let source = stream_grant(Arc::new(AtomicBool::new(false)));
+        let config = stream_config();
+        let proof = sealed_stream_fixture(&source, &config);
+        let input = source.wrap_decode(socket_file()).unwrap();
+        let generation = context().source_revision + 2;
+        let result = Decoder::start_stream(
+            &config,
+            &source,
+            proof,
+            input,
+            generation,
+            Arc::new(LatestFrame::new(config.frame_spec, generation).unwrap()),
+            Arc::new(AudioQueue::new(generation)),
+        );
+        assert!(matches!(result, Err(DecoderError::StaleGeneration)));
+        assert!(!source.identity.0.lock().unwrap().started);
     }
 
     #[test]

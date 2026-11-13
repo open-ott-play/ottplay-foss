@@ -323,6 +323,23 @@ impl PreparedSource {
     pub fn cancel(&self) {
         self.cancel.cancel();
     }
+    /// Fresh checked HTTP subscription for each host Probe/Decode open. This
+    /// reuses the resolved source lease, never redeems or resolves it a second time.
+    /// Only sniffed MPEG-TS is admitted; HLS/MP4 need a separate owned demuxer.
+    pub async fn open_mpeg_ts(
+        &self,
+        limits: super::stream_transport::StreamLimits,
+    ) -> Result<super::stream_transport::MpegTsStream, Error> {
+        super::stream_transport::MpegTsStream::open(
+            &self.transport,
+            self.url.as_str(),
+            self.credentials.as_ref(),
+            &self.cancel,
+            self._permit.clone(),
+            limits,
+        )
+        .await
+    }
     pub async fn fetch_root(&self) -> Result<Fetched, Error> {
         let mut fetched = self
             .transport

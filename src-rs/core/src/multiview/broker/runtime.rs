@@ -264,6 +264,24 @@ pub struct AuthorizedSource {
     guard: ResolutionGuard,
 }
 impl AuthorizedSource {
+    pub(super) fn check_authority(&self) -> Result<(), RuntimeError> {
+        self.guard.check()
+    }
+    pub(super) async fn open_mpeg_ts(
+        &self,
+        limits: super::stream_transport::StreamLimits,
+    ) -> Result<super::stream_transport::MpegTsStream, RuntimeError> {
+        self.guard.check()?;
+        let stream = self
+            .prepared
+            .as_ref()
+            .ok_or(RuntimeError::Unavailable)?
+            .open_mpeg_ts(limits)
+            .await
+            .map_err(RuntimeError::Network)?;
+        self.guard.check()?;
+        Ok(stream)
+    }
     pub fn reservation(&self) -> &Reservation {
         &self.guard.reservation
     }

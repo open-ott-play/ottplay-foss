@@ -4,7 +4,7 @@
 use super::{
     decoder::{
         self, AudioQueue, AudioQueueStats, BoundContext, Decoder, DecoderConfig, DecoderError,
-        GrantedFile,
+        GrantedFile, GrantedStream, PreparedStreamInfo, StreamInput,
     },
     encoder::{Encoder, EncoderConfig, EncoderState},
     frames::{compose_into, FrameSpec, FrameStatus, FrameView, LatestFrame},
@@ -128,6 +128,34 @@ pub struct ShutdownReceipt {
     pub output_removed: bool,
 }
 
+/// Owned preparation intent: capture while holding the host control barrier,
+/// then release it before any slow producer acquisition or media probe. This is
+/// not a source grant and cannot retarget a prepared source to the current focus.
+pub struct StreamPreparation {
+    binding: BoundContext,
+    config: DecoderConfig,
+    stop: Arc<AtomicBool>,
+}
+impl std::fmt::Debug for StreamPreparation {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("StreamPreparation { .. }")
+    }
+}
+impl StreamPreparation {
+    pub fn bound_context(&self) -> BoundContext {
+        self.binding
+    }
+    pub fn decoder_config(&self) -> &DecoderConfig {
+        &self.config
+    }
+    pub fn stop_token(&self) -> &AtomicBool {
+        &self.stop
+    }
+    fn belongs_to(&self, stop: &Arc<AtomicBool>) -> bool {
+        Arc::ptr_eq(&self.stop, stop)
+    }
+}
+
 /// Conservative concurrent pixel/PCM storage, deliberately separate from RSS.
 pub fn required_frame_buffer_bytes(frame: FrameSpec, canvas: CanvasSpec) -> Result<u64, Error> {
     if frame.width == 0
@@ -198,6 +226,45 @@ impl State {
 }
 fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     value.lock().unwrap_or_else(|poison| poison.into_inner())
+}
+
+fn capture_stream_binding(
+    state: &State,
+    runtime: u64,
+    slot: u8,
+    expected_source_revision: u64,
+) -> Result<BoundContext, Error> {
+    if usize::from(slot) >= state.geometry.rects().len() {
+        return Err(Error::InvalidSlot);
+    }
+    if state.slots[usize::from(slot)].generation != expected_source_revision {
+        return Err(Error::StaleRevision);
+    }
+    Ok(BoundContext {
+        runtime,
+        slot_id: slot,
+        source_revision: expected_source_revision,
+        geometry_revision: state.geometry.revision(),
+        focus_revision: state.focus_revision,
+        audio_revision: state.audio_revision,
+    })
+}
+fn validate_stream_binding(
+    state: &State,
+    runtime: u64,
+    binding: &BoundContext,
+) -> Result<(), Error> {
+    // The issue proof retains its full original context. Current source CAS is
+    // narrower: changing an unrelated focus or audio owner must not cancel an
+    // explicit-slot source preparation, and must never retarget it.
+    if runtime != binding.runtime
+        || state.geometry.revision() != binding.geometry_revision
+        || usize::from(binding.slot_id) >= state.geometry.rects().len()
+        || state.slots[usize::from(binding.slot_id)].generation != binding.source_revision
+    {
+        return Err(Error::StaleRevision);
+    }
+    Ok(())
 }
 
 pub struct Session {
@@ -383,6 +450,168 @@ impl Session {
             frame_spec: self.config.frame_spec,
             fps: lock(&self.state).geometry.canvas().fps,
         }
+    }
+    pub fn capture_stream_preparation(
+        &self,
+        slot: u8,
+        expected_source_revision: u64,
+    ) -> Result<StreamPreparation, Error> {
+        self.check()?;
+        if self.owned_pids.len() >= 256 {
+            return Err(Error::CapacityExceeded);
+        }
+        let state = lock(&self.state);
+        let binding = capture_stream_binding(
+            &state,
+            self.encoder.snapshot().generation,
+            slot,
+            expected_source_revision,
+        )?;
+        Ok(StreamPreparation {
+            binding,
+            config: DecoderConfig {
+                ffmpeg: self.config.ffmpeg.clone(),
+                ffprobe: self.config.ffprobe.clone(),
+                frame_spec: self.config.frame_spec,
+                fps: state.geometry.canvas().fps,
+            },
+            stop: self.stop.clone(),
+        })
+    }
+
+    /// The host must perform `probe_stream` outside its control mutex using the
+    /// owned preparation config/token. Commit has no pathname open or probe.
+    /// Stop/reap of the replaced child and spawning its replacement still occur
+    /// here; those are never executed inside state or publication-authority locks.
+    /// Hosts needing zero process work under their own control mutex need an
+    /// additional reserve/retire/attach split. Producer cleanup remains host-owned.
+    pub fn commit_stream(
+        &mut self,
+        preparation: StreamPreparation,
+        source: &GrantedStream,
+        prepared: PreparedStreamInfo,
+        input: StreamInput,
+    ) -> Result<u64, Error> {
+        self.check()?;
+        if !preparation.belongs_to(&self.stop) {
+            return Err(Error::StaleRevision);
+        }
+        if self.owned_pids.len() >= 256 {
+            return Err(Error::CapacityExceeded);
+        }
+        let binding = preparation.binding;
+        let slot = usize::from(binding.slot_id);
+        let generation = binding
+            .source_revision
+            .checked_add(1)
+            .filter(|generation| *generation < (u64::MAX >> 4))
+            .ok_or(Error::StaleRevision)?;
+        source
+            .check_binding(&binding)
+            .map_err(|_| Error::SourceFailed)?;
+        decoder::validate_stream_preparation(&preparation.config, source, &prepared, &input)
+            .map_err(|_| Error::SourceFailed)?;
+        let rate = prepared.info().pixel_rate();
+        {
+            let state = lock(&self.state);
+            validate_stream_binding(&state, self.encoder.snapshot().generation, &binding)?;
+            let others = state
+                .slots
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != slot)
+                .try_fold(0u64, |sum, (_, value)| sum.checked_add(value.pixel_rate))
+                .ok_or(Error::CapacityExceeded)?;
+            if others
+                .checked_add(rate)
+                .is_none_or(|sum| sum > self.config.max_input_pixel_rate)
+            {
+                return Err(Error::CapacityExceeded);
+            }
+            // Verify all checked state counters before the first source effect.
+            state
+                .control_epoch
+                .checked_add(2)
+                .ok_or(Error::StaleRevision)?;
+        }
+        let old = { lock(&self.decoders)[slot].take() };
+        if let Some(mut old) = old {
+            old.stop();
+        }
+        let (video, audio) = {
+            let mut state = lock(&self.state);
+            validate_stream_binding(&state, self.encoder.snapshot().generation, &binding)?;
+            let target = &mut state.slots[slot];
+            target
+                .video
+                .advance(target.generation, generation)
+                .map_err(|_| Error::StaleRevision)?;
+            target
+                .audio
+                .reset(target.generation, generation)
+                .map_err(|_| Error::StaleRevision)?;
+            target.generation = generation;
+            target.pid = None;
+            target.pixel_rate = rate;
+            target.stopped = false;
+            let result = (target.video.clone(), target.audio.clone());
+            state.control_epoch += 1;
+            result
+        };
+        let worker = match Decoder::start_stream(
+            &preparation.config,
+            source,
+            prepared,
+            input,
+            generation,
+            video.clone(),
+            audio,
+        ) {
+            Ok(worker) => worker,
+            Err(_) => {
+                let _ = video.mark_failed(generation);
+                lock(&self.state).slots[slot].pixel_rate = 0;
+                return Err(Error::SourceFailed);
+            }
+        };
+        let pid = worker.pid();
+        let mut pending = Some(worker);
+        let mut attach = || {
+            let mut workers = lock(&self.decoders);
+            if self.stop.load(Ordering::Acquire) {
+                return Err(DecoderError::PublicationDenied);
+            }
+            let mut state = lock(&self.state);
+            if state.slots[slot].generation != generation
+                || state.geometry.revision() != binding.geometry_revision
+                || workers[slot].is_some()
+            {
+                return Err(DecoderError::StaleGeneration);
+            }
+            workers[slot] = pending.take();
+            state.slots[slot].pid = Some(pid);
+            // Use CURRENT focus/audio policy. Never restore the captured policy.
+            state.update_audio_metrics();
+            Ok(())
+        };
+        if source.attach(&binding, &mut attach).is_err() {
+            if let Some(mut worker) = pending.take() {
+                worker.stop();
+            }
+            let attached = { lock(&self.decoders)[slot].take() };
+            if let Some(mut worker) = attached {
+                worker.stop();
+            }
+            let _ = video.mark_failed(generation);
+            let mut state = lock(&self.state);
+            state.slots[slot].pid = None;
+            state.slots[slot].pixel_rate = 0;
+            state.control_epoch += 1;
+            return Err(Error::SourceFailed);
+        }
+        self.owned_pids.push(pid);
+        self.encoder.touch();
+        Ok(generation)
     }
     pub fn replace_source(
         &mut self,
@@ -727,6 +956,150 @@ impl Drop for Session {
 mod tests {
     use super::super::geometry::{ImportedRect, OverlapPolicy};
     use super::*;
+
+    fn stream_state() -> State {
+        let canvas = CanvasSpec {
+            width: 16,
+            height: 4,
+            fps: 10,
+        };
+        let rects = (0..4)
+            .map(|slot| ImportedRect {
+                slot_id: slot,
+                x: u32::from(slot) * 4,
+                y: 0,
+                width: 4,
+                height: 4,
+                z: slot,
+            })
+            .collect::<Vec<_>>();
+        let geometry = ValidatedGeometry::new(canvas, 7, &rects, OverlapPolicy::Disjoint).unwrap();
+        let slots = (0..9)
+            .map(|slot| Slot {
+                generation: if slot == 2 { 5 } else { 0 },
+                pid: None,
+                pixel_rate: 0,
+                stopped: false,
+                video: Arc::new(
+                    LatestFrame::new(
+                        FrameSpec {
+                            width: 2,
+                            height: 2,
+                        },
+                        if slot == 2 { 5 } else { 0 },
+                    )
+                    .unwrap(),
+                ),
+                audio: Arc::new(AudioQueue::new(if slot == 2 { 5 } else { 0 })),
+            })
+            .collect();
+        State {
+            geometry,
+            control_epoch: 0,
+            focus_revision: 11,
+            audio_revision: 13,
+            focus: 2,
+            audio_policy: AudioPolicy::FollowsFocus,
+            slots,
+            audio_route: Arc::new(AtomicU64::new(0)),
+        }
+    }
+    #[test]
+    fn stream_preparation_keeps_explicit_target_when_other_focus_audio_and_sources_change() {
+        let mut state = stream_state();
+        let binding = capture_stream_binding(&state, 73, 2, 5).unwrap();
+        assert_eq!(
+            (
+                binding.slot_id,
+                binding.focus_revision,
+                binding.audio_revision
+            ),
+            (2, 11, 13)
+        );
+        state.focus = 0;
+        state.focus_revision += 1;
+        state.audio_policy = AudioPolicy::Slot(3);
+        state.audio_revision += 1;
+        state.slots[1].generation += 1;
+        assert_eq!(validate_stream_binding(&state, 73, &binding), Ok(()));
+        assert_eq!(binding.slot_id, 2);
+        assert_eq!(state.focus, 0);
+        assert_eq!(state.audio_policy, AudioPolicy::Slot(3));
+        assert_eq!(state.slots[2].generation, 5);
+    }
+    #[test]
+    fn stream_preparation_rejects_stale_runtime_geometry_target_source_and_hidden_target() {
+        let mut state = stream_state();
+        let binding = capture_stream_binding(&state, 73, 2, 5).unwrap();
+        assert_eq!(
+            capture_stream_binding(&state, 73, 4, 0),
+            Err(Error::InvalidSlot)
+        );
+        assert_eq!(
+            capture_stream_binding(&state, 73, 2, 4),
+            Err(Error::StaleRevision)
+        );
+        assert_eq!(
+            validate_stream_binding(&state, 74, &binding),
+            Err(Error::StaleRevision)
+        );
+        state.slots[2].generation += 1;
+        assert_eq!(
+            validate_stream_binding(&state, 73, &binding),
+            Err(Error::StaleRevision)
+        );
+        state.slots[2].generation = 5;
+        state.geometry = ValidatedGeometry::new(
+            state.geometry.canvas(),
+            8,
+            state.geometry.rects(),
+            OverlapPolicy::Disjoint,
+        )
+        .unwrap();
+        assert_eq!(
+            validate_stream_binding(&state, 73, &binding),
+            Err(Error::StaleRevision)
+        );
+        state.geometry = ValidatedGeometry::new(
+            state.geometry.canvas(),
+            7,
+            &state.geometry.rects()[..2],
+            OverlapPolicy::Disjoint,
+        )
+        .unwrap();
+        assert_eq!(
+            validate_stream_binding(&state, 73, &binding),
+            Err(Error::StaleRevision)
+        );
+    }
+    #[test]
+    fn owned_stream_preparation_carries_original_proof_and_session_specific_stop_token() {
+        let state = stream_state();
+        let binding = capture_stream_binding(&state, 73, 2, 5).unwrap();
+        let stop = Arc::new(AtomicBool::new(false));
+        let preparation = StreamPreparation {
+            binding,
+            config: DecoderConfig {
+                ffmpeg: "/not/executed".into(),
+                ffprobe: "/not/executed".into(),
+                frame_spec: FrameSpec {
+                    width: 2,
+                    height: 2,
+                },
+                fps: 10,
+            },
+            stop: stop.clone(),
+        };
+        assert!(preparation.belongs_to(&stop));
+        assert!(!preparation.belongs_to(&Arc::new(AtomicBool::new(false))));
+        let mut returned = preparation.bound_context();
+        returned.slot_id = 1;
+        assert_ne!(preparation.bound_context(), returned);
+        assert_eq!(preparation.bound_context(), binding);
+        assert_eq!(preparation.decoder_config().fps, 10);
+        stop.store(true, Ordering::Release);
+        assert!(preparation.stop_token().load(Ordering::Acquire));
+    }
 
     #[test]
     fn buffer_reservation_includes_conversion_transients_and_rejects_overflow_inputs() {

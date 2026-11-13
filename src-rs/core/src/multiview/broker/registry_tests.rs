@@ -572,7 +572,7 @@ fn active_lease_outlives_redemption_but_expires_without_renewal() {
 }
 
 #[test]
-fn focus_layout_audio_updates_preserve_active_but_retire_pending_sources() {
+fn geometry_change_preserves_active_but_retires_pending_sources() {
     let (registry, _) = fixture();
     let (reservation, old) = attached(&registry);
     let mut next = old.clone();
@@ -594,6 +594,217 @@ fn focus_layout_audio_updates_preserve_active_but_retire_pending_sources() {
         registry.with_binding_authority(&player(), &old, &mut || Ok(())),
         Err(RegistryError::Stale)
     );
+}
+
+#[test]
+fn redeemed_slot_preparation_survives_focus_audio_aba_and_preserves_latest_globals() {
+    let (registry, _) = fixture();
+    let issue0 = binding();
+    let mut issue1 = issue0.clone();
+    issue1.native_expected.slot_id = 1;
+    registry.add_slot(&player(), &issue1).unwrap();
+    let reservation0 = reserve(&registry, &issue0);
+    let reservation1 = reserve(&registry, &issue1);
+
+    // Simulate a slow probe: another slot receives focus/audio commands while
+    // this explicit slot's already redeemed source is still preparing.
+    let mut focused1 = issue1.clone();
+    focused1.backend_expected.focus_revision += 1;
+    focused1.backend_expected.audio_revision += 1;
+    focused1.native_expected.expected.focus_revision = "focused-slot1".into();
+    focused1.native_expected.expected.audio_revision = "audio-slot1".into();
+    registry
+        .update_binding(&player(), &issue1, &focused1)
+        .unwrap();
+    registry
+        .validate_reservation(&player(), &issue0, &reservation0)
+        .unwrap();
+    registry
+        .validate_reservation(&player(), &issue1, &reservation1)
+        .unwrap();
+    assert!(!reservation0.revoked().load(Ordering::Acquire));
+    assert_eq!(
+        registry.authorize(&player(), &issue0),
+        Err(RegistryError::Stale)
+    );
+    assert_eq!(
+        registry.update_binding(&player(), &issue1, &focused1),
+        Err(RegistryError::Stale)
+    );
+
+    let mut candidate = issue0.clone();
+    candidate.backend_slot_revision += 1;
+    registry
+        .prepare_attachment(&player(), &issue0, &candidate, &reservation0)
+        .unwrap();
+    assert_eq!(
+        publishes(&reservation0),
+        Err(DecoderError::PublicationDenied)
+    );
+
+    // Focus/audio may return to previous values while revisions still advance.
+    // Even an armed attachment must preserve the newest ABA metadata.
+    let mut returned1 = focused1.clone();
+    returned1.backend_expected.focus_revision += 1;
+    returned1.backend_expected.audio_revision += 1;
+    returned1.native_expected.expected.focus_revision = "returned-slot0-new-revision".into();
+    returned1.native_expected.expected.audio_revision = "returned-slot0-new-audio".into();
+    registry
+        .update_binding(&player(), &focused1, &returned1)
+        .unwrap();
+    registry
+        .validate_reservation(&player(), &issue0, &reservation0)
+        .unwrap();
+    reservation0
+        .publication_authority()
+        .attach(&reservation0.decoder_context(), &mut || Ok(()))
+        .unwrap();
+    let mut committed0 = candidate.clone();
+    committed0.backend_expected = returned1.backend_expected.clone();
+    committed0.native_expected.expected = returned1.native_expected.expected.clone();
+    registry.authorize(&player(), &committed0).unwrap();
+    registry.authorize(&player(), &returned1).unwrap();
+    assert_eq!(
+        registry.authorize(&player(), &candidate),
+        Err(RegistryError::Stale)
+    );
+    registry
+        .validate_reservation(&player(), &issue1, &reservation1)
+        .unwrap();
+    assert_eq!(reservation0.decoder_context(), decoder_context(&issue0));
+    publishes(&reservation0).unwrap();
+    let s = registry.lock().unwrap();
+    assert_eq!(s.sessions["session"].slots[&0], committed0);
+    assert_eq!(s.sessions["session"].slots[&1], returned1);
+    assert!(!s.sessions["session"].output_blocked);
+}
+
+#[test]
+fn focus_audio_relaxation_never_applies_to_original_grant_or_cached_response() {
+    let (registry, _) = fixture();
+    let issue = binding();
+    let original = request(&registry, &issue);
+    let grant = registry.mint(&player(), &original).unwrap();
+    let mut current = issue.clone();
+    current.backend_expected.focus_revision += 1;
+    current.backend_expected.audio_revision += 1;
+    current.native_expected.expected.focus_revision = "focus2".into();
+    current.native_expected.expected.audio_revision = "audio2".into();
+    registry
+        .update_binding(&player(), &issue, &current)
+        .unwrap();
+    assert_eq!(
+        registry.mint(&player(), &original).unwrap_err(),
+        RegistryError::Stale
+    );
+    assert!(matches!(
+        registry.redeem(&player(), &issue, &grant.input_grant),
+        Err(RegistryError::Stale)
+    ));
+    assert!(matches!(
+        registry.redeem(&player(), &current, &grant.input_grant),
+        Err(RegistryError::Expired)
+    ));
+    assert_eq!(
+        registry.validate_cached_grant(&player(), &original, &grant),
+        Err(RegistryError::Stale)
+    );
+    let fresh = registry
+        .mint(&player(), &request(&registry, &current))
+        .unwrap();
+    assert!(matches!(
+        registry.redeem(&player(), &issue, &fresh.input_grant),
+        Err(RegistryError::Stale)
+    ));
+    registry
+        .redeem(&player(), &current, &fresh.input_grant)
+        .unwrap();
+}
+
+#[test]
+fn source_scene_and_geometry_aba_cancel_preparing_and_armed_candidates() {
+    let changes: Vec<Box<dyn Fn(&mut Binding)>> = vec![
+        Box::new(|b| b.backend_expected.runtime += 1),
+        Box::new(|b| b.backend_expected.scene = "new-scene".into()),
+        Box::new(|b| b.backend_expected.geometry_revision += 1),
+        Box::new(|b| b.native_expected.runtime = "new-native".into()),
+        Box::new(|b| b.native_expected.expected.scene = "new-native-scene".into()),
+        Box::new(|b| b.native_expected.expected.layout_revision = "new-layout".into()),
+        Box::new(|b| b.native_expected.slot_generation = "new-generation".into()),
+        Box::new(|b| b.native_expected.source_revision = "new-source".into()),
+        Box::new(|b| b.backend_slot_revision += 1),
+    ];
+    for armed in [false, true] {
+        for change in &changes {
+            let (registry, _) = fixture();
+            let issue = binding();
+            let reservation = reserve(&registry, &issue);
+            let mut candidate = issue.clone();
+            candidate.backend_slot_revision += 1;
+            if armed {
+                registry
+                    .prepare_attachment(&player(), &issue, &candidate, &reservation)
+                    .unwrap();
+            }
+            let mut changed = issue.clone();
+            change(&mut changed);
+            registry
+                .update_binding(&player(), &issue, &changed)
+                .unwrap();
+            assert!(reservation.revoked().load(Ordering::Acquire));
+            assert_eq!(
+                registry.validate_reservation(&player(), &issue, &reservation),
+                Err(RegistryError::Revoked)
+            );
+            registry
+                .update_binding(&player(), &changed, &issue)
+                .unwrap();
+            assert_eq!(
+                registry.validate_reservation(&player(), &issue, &reservation),
+                Err(RegistryError::Revoked)
+            );
+            assert!(registry
+                .prepare_attachment(&player(), &issue, &candidate, &reservation)
+                .is_err());
+            assert!(reservation
+                .publication_authority()
+                .attach(&reservation.decoder_context(), &mut || panic!(
+                    "stale candidate attached"
+                ))
+                .is_err());
+            assert!(publishes(&reservation).is_err());
+        }
+    }
+}
+
+#[test]
+fn attachment_candidate_cannot_change_preparation_scene_or_geometry() {
+    let changes: Vec<Box<dyn Fn(&mut Binding)>> = vec![
+        Box::new(|b| b.backend_expected.runtime += 1),
+        Box::new(|b| b.backend_expected.scene = "new-scene".into()),
+        Box::new(|b| b.backend_expected.geometry_revision += 1),
+        Box::new(|b| b.native_expected.runtime = "new-native".into()),
+        Box::new(|b| b.native_expected.expected.scene = "new-native-scene".into()),
+        Box::new(|b| b.native_expected.expected.layout_revision = "new-layout".into()),
+        Box::new(|b| b.native_expected.slot_id = 1),
+    ];
+    for change in changes {
+        let (registry, _) = fixture();
+        let issue = binding();
+        let reservation = reserve(&registry, &issue);
+        let mut candidate = issue.clone();
+        candidate.backend_slot_revision += 1;
+        change(&mut candidate);
+        assert_eq!(
+            registry.prepare_attachment(&player(), &issue, &candidate, &reservation),
+            Err(RegistryError::InvalidRequest)
+        );
+        assert!(!reservation.revoked().load(Ordering::Acquire));
+        assert_eq!(
+            publishes(&reservation),
+            Err(DecoderError::PublicationDenied)
+        );
+    }
 }
 
 #[test]

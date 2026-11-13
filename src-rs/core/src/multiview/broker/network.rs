@@ -253,6 +253,11 @@ pub struct CheckedTransport {
     permits: Arc<Semaphore>,
     sources: Arc<Semaphore>,
 }
+/// Private response custody for a checked continuous-byte subscription.
+pub(super) struct OpenResponse {
+    pub response: reqwest::Response,
+    pub permit: Arc<OwnedSemaphorePermit>,
+}
 /// Bounded owned bytes, not a decoder grant. Intentionally not Debug/Serialize.
 pub struct Fetched {
     pub(super) url: Url,
@@ -379,39 +384,7 @@ impl CheckedTransport {
         permit: Arc<OwnedSemaphorePermit>,
     ) -> Result<Fetched, Error> {
         for hop in 0..=self.limits.redirects {
-            self.policy.check_origin(&url)?;
-            let host = url
-                .host_str()
-                .ok_or(Error::InvalidAddress)?
-                .trim_start_matches('[')
-                .trim_end_matches(']')
-                .to_owned();
-            let port = url.port_or_known_default().ok_or(Error::InvalidAddress)?;
-            let addresses = if let Ok(ip) = host.parse::<IpAddr>() {
-                vec![SocketAddr::new(ip, port)]
-            } else {
-                let dns_host = host.clone();
-                let dns_permit = permit.clone();
-                // Blocking system DNS may outlive timeout; retain admission until it exits.
-                tokio::task::spawn_blocking(move || {
-                    let _held = dns_permit;
-                    (dns_host.as_str(), port)
-                        .to_socket_addrs()
-                        .map(|a| a.take(65).collect::<Vec<_>>())
-                        .map_err(|_| Error::Transport)
-                })
-                .await
-                .map_err(|_| Error::Transport)??
-            };
-            self.policy.approve(&url, &addresses)?;
-            let client = Client::builder()
-                .no_proxy()
-                .redirect(reqwest::redirect::Policy::none())
-                .connect_timeout(Duration::from_secs(4))
-                .timeout(self.limits.timeout)
-                .resolve_to_addrs(&host, &addresses)
-                .build()
-                .map_err(|_| Error::Transport)?;
+            let client = self.checked_client(&url, permit.clone(), false).await?;
             let mut request = client
                 .request(method.clone(), url.clone())
                 .header(reqwest::header::ACCEPT_ENCODING, "identity");
@@ -490,6 +463,152 @@ impl CheckedTransport {
             });
         }
         Err(Error::RedirectDenied)
+    }
+
+    async fn checked_client(
+        &self,
+        url: &Url,
+        permit: Arc<OwnedSemaphorePermit>,
+        continuous: bool,
+    ) -> Result<Client, Error> {
+        self.policy.check_origin(url)?;
+        let host = url
+            .host_str()
+            .ok_or(Error::InvalidAddress)?
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .to_owned();
+        let port = url.port_or_known_default().ok_or(Error::InvalidAddress)?;
+        let addresses = if let Ok(ip) = host.parse::<IpAddr>() {
+            vec![SocketAddr::new(ip, port)]
+        } else {
+            let dns_host = host.clone();
+            // System DNS can outlive cancellation: keep the shared admission in
+            // its actual blocking worker, not merely in its abandoned awaiter.
+            tokio::task::spawn_blocking(move || {
+                let _permit = permit;
+                (dns_host.as_str(), port)
+                    .to_socket_addrs()
+                    .map(|a| a.take(65).collect::<Vec<_>>())
+                    .map_err(|_| Error::Transport)
+            })
+            .await
+            .map_err(|_| Error::Transport)??
+        };
+        self.policy.approve(url, &addresses)?;
+        let builder = Client::builder()
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none())
+            .connect_timeout(Duration::from_secs(4))
+            .resolve_to_addrs(&host, &addresses);
+        // HTTP/1 gives a bounded parser even before our stricter header check.
+        // Do not install a whole-response timeout on a continuous media body.
+        let builder = if continuous {
+            builder.http1_only()
+        } else {
+            builder.timeout(self.limits.timeout)
+        };
+        builder.build().map_err(|_| Error::Transport)
+    }
+
+    pub(super) async fn open_continuous(
+        &self,
+        raw: &str,
+        credentials: Option<&OriginCredentials>,
+        cancel: &CancellationToken,
+        deadline: tokio::time::Instant,
+    ) -> Result<OpenResponse, Error> {
+        if cancel.is_cancelled() {
+            return Err(Error::Cancelled);
+        }
+        let mut url = address(raw)?;
+        self.policy.check_origin(&url)?;
+        let permit = Arc::new(
+            self.permits
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| Error::Busy)?,
+        );
+        let operation = async {
+            for hop in 0..=self.limits.redirects {
+                let client = self.checked_client(&url, permit.clone(), true).await?;
+                let mut request = client
+                    .get(url.clone())
+                    .header(reqwest::header::ACCEPT_ENCODING, "identity");
+                if let Some(credentials) = credentials {
+                    request = request.headers(credentials.for_url(&url));
+                }
+                let response = request.send().await.map_err(|_| Error::Transport)?;
+                let headers = response.headers();
+                let header_bytes = headers
+                    .iter()
+                    .try_fold(0usize, |sum, (name, value)| {
+                        sum.checked_add(name.as_str().len() + value.as_bytes().len() + 4)
+                    })
+                    .ok_or(Error::TooLarge)?;
+                if headers.len() > 64 || header_bytes > 32 * 1024 {
+                    return Err(Error::TooLarge);
+                }
+                if response.status().is_redirection() {
+                    if hop == self.limits.redirects {
+                        return Err(Error::RedirectDenied);
+                    }
+                    let location = headers
+                        .get(LOCATION)
+                        .and_then(|v| v.to_str().ok())
+                        .ok_or(Error::RedirectDenied)?;
+                    let next = address(
+                        url.join(location)
+                            .map_err(|_| Error::RedirectDenied)?
+                            .as_str(),
+                    )?;
+                    if url.scheme() == "https" && next.scheme() != "https"
+                        || origin(&url) != origin(&next) && url.query().is_some()
+                    {
+                        return Err(Error::RedirectDenied);
+                    }
+                    self.policy.check_origin(&next)?;
+                    url = next;
+                    continue;
+                }
+                if response.status() != reqwest::StatusCode::OK {
+                    return Err(Error::Rejected);
+                }
+                if headers
+                    .get(reqwest::header::CONTENT_ENCODING)
+                    .is_some_and(|v| v != "identity")
+                {
+                    return Err(Error::Unsupported);
+                }
+                // Content type can reject a known unsupported container. It can
+                // never qualify a body: stream_transport sniffs actual packets.
+                let content = headers
+                    .get(CONTENT_TYPE)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("");
+                if content.len() > 128 {
+                    return Err(Error::InvalidResponse);
+                }
+                let content = content.to_ascii_lowercase();
+                if content.contains("mpegurl")
+                    || content.contains("mp4")
+                    || content.contains("matroska")
+                    || content.contains("text/html")
+                    || content.contains("json")
+                {
+                    return Err(Error::Unsupported);
+                }
+                return Ok(OpenResponse {
+                    response,
+                    permit: permit.clone(),
+                });
+            }
+            Err(Error::RedirectDenied)
+        };
+        tokio::select! { biased;
+            _ = cancel.cancelled() => Err(Error::Cancelled),
+            result = tokio::time::timeout_at(deadline, operation) => result.map_err(|_| Error::Timeout)?,
+        }
     }
 }
 
