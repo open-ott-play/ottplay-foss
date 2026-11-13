@@ -59,6 +59,8 @@ if (require.main === module) {
         [path.join(root, "scripts/generate-m3u-user-agents.cjs"), "--check"],
         { cwd: root, stdio: "inherit" }
     );
+    // Bulk library/reference migration is performance-held; its local host paths
+    // are exercised separately until the full-state ABI is qualified.
     for (const [file, apis, displaced] of [
         [
             "src/settings/cloud-codec.ts",
@@ -74,20 +76,6 @@ if (require.main === module) {
             "src/provider/source-identity.ts",
             ["utf16Dual32Fingerprint"],
             /2166136261/,
-        ],
-        [
-            "src/channels/library.ts",
-            [
-                "classicChannelLibraryDecision",
-                "classicChannelLibraryReduce",
-                "classicChannelLibraryGroups",
-            ],
-            /function normalizedGroups/,
-        ],
-        [
-            "src/channels/channel-references.ts",
-            ["createClassicChannelReferences"],
-            /function numberKey/,
         ],
         [
             "src/settings/global-favorites-portable.ts",

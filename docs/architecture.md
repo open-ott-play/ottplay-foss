@@ -62,6 +62,11 @@ playback plans and durable collection policies. FOSS supplies HTTP, DOM,
 storage, clocks and device effects. A shared algorithm change belongs in the
 core repository; a host lifetime or rendering change belongs here.
 
+Bulk channel-library mutations and channel-reference graphs retain their local
+Classic implementations while the shared full-state ABI remains performance-held.
+The [Core activation boundary](shared-core-activation.md) records the active
+contracts, measured limit and regression guard.
+
 ## Control and data flows
 
 ### Boot and source loading
