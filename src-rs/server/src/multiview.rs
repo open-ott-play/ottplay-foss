@@ -612,6 +612,17 @@ fn session_error(error: persistent::Error) -> Reply {
     };
     Reply::error(status, code)
 }
+fn fixture_lease_duration(config: &persistent::Config, lease_secs: u64) -> Result<Duration, Reply> {
+    if lease_secs == 0 || lease_secs > 60 {
+        return Err(Reply::error(StatusCode::BAD_REQUEST, "invalid_lease"));
+    }
+    let max_duration = config.max_duration.min(Duration::from_secs(lease_secs));
+    if config.startup_timeout > max_duration || config.stale_after > max_duration {
+        return Err(Reply::error(StatusCode::BAD_REQUEST, "invalid_lease"));
+    }
+    Ok(max_duration)
+}
+
 fn execute(
     fixture: &Fixture,
     control: &mut Control,
@@ -625,15 +636,13 @@ fn execute(
             if control.active.is_some() {
                 return Err(Reply::error(StatusCode::CONFLICT, "scene_exists"));
             }
-            if lease_secs == 0 || lease_secs > 60 {
-                return Err(Reply::error(StatusCode::BAD_REQUEST, "invalid_lease"));
-            }
+            let max_duration = fixture_lease_duration(&fixture.config, lease_secs)?;
             let geometry = geometry.validate()?;
             let visible_slots = geometry.rects().len();
             let receipt = geometry_receipt(&geometry);
             let expires = Instant::now() + Duration::from_secs(lease_secs);
             let mut config = fixture.config.clone();
-            config.max_duration = config.max_duration.min(Duration::from_secs(lease_secs));
+            config.max_duration = max_duration;
             let session = Session::start(config, geometry).map_err(session_error)?;
             let media_lease = Uuid::new_v4().to_string();
             locked(&fixture.media.leases).insert(

@@ -132,6 +132,17 @@ fn worker_rejects_ungranted_files_modified_plans_and_pre_cancelled_work() {
             WorkerError::InvalidInput
         );
     }
+    // Keep the inputs valid and within their grant so the modified-plan
+    // assertion specifically exercises plan validation, not file admission.
+    for (slot, source) in sources.iter_mut().enumerate() {
+        let granted = scratch.0.join(format!("inputs/granted-{slot}.dat"));
+        std::fs::write(&granted, b"granted fixture input").unwrap();
+        source.path = granted;
+    }
+    assert_eq!(
+        run_fixture(&config, &plan, &sources, &AtomicBool::new(false)).unwrap_err(),
+        WorkerError::Unsupported
+    );
     plan.filter_graph.push_str(";movie=forbidden");
     assert_eq!(
         run_fixture(&config, &plan, &sources, &AtomicBool::new(false)).unwrap_err(),
@@ -705,6 +716,35 @@ async fn http_json(response: axum::response::Response) -> serde_json::Value {
         .await
         .unwrap();
     serde_json::from_slice(&bytes).unwrap()
+}
+
+#[tokio::test]
+async fn fixture_http_rejects_lease_shorter_than_startup_before_session_start() {
+    use axum::http::StatusCode as S;
+    let scratch = Scratch::new();
+    let config = media::persistent::Config::new(
+        scratch.0.join("missing-ffmpeg"),
+        scratch.0.join("missing-ffprobe"),
+        scratch.0.clone(),
+    );
+    let router = http_fixture(config, vec![]);
+    let create = |lease_secs| {
+        format!(
+            r#"{{"op":"create","lease_secs":{lease_secs},"geometry":{{"canvas":{{"width":320,"height":180,"fps":10}},"revision":1,"rects":[{{"slot_id":0,"x":0,"y":0,"width":320,"height":180,"z":0}}],"overlap":"disjoint"}}}}"#
+        )
+    };
+
+    let short = http_call(&router, &create(5), Some("short-lease"), true).await;
+    assert_eq!(short.status(), S::BAD_REQUEST);
+    assert_eq!(http_json(short).await["error"], "invalid_lease");
+    assert_eq!(std::fs::read_dir(&scratch.0).unwrap().count(), 0);
+
+    // The exact startup-timeout boundary passes lease validation and reaches
+    // the deliberately missing tool, which fails closed before any process runs.
+    let boundary = http_call(&router, &create(10), Some("startup-boundary"), true).await;
+    assert_eq!(boundary.status(), S::SERVICE_UNAVAILABLE);
+    assert_eq!(http_json(boundary).await["error"], "output_failed");
+    assert_eq!(std::fs::read_dir(&scratch.0).unwrap().count(), 0);
 }
 
 #[tokio::test]

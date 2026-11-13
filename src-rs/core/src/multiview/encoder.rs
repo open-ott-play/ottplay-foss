@@ -942,11 +942,10 @@ mod runtime {
             }
             if !self.cleaned {
                 match fs::remove_dir_all(&self.directory) {
-                    Ok(()) => {}
-                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                    Ok(()) => self.cleaned = true,
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => self.cleaned = true,
                     Err(_) => failed = true,
                 }
-                self.cleaned = true;
             }
             self.permit.take();
             if lock(&self.shared.snapshot).state != EncoderState::Failed {
@@ -984,6 +983,66 @@ mod runtime {
             assert_eq!(playlist.last_sequence, 55);
             assert_eq!(playlist.segments.len(), 8);
         }
+        #[test]
+        fn failed_output_directory_cleanup_can_be_retried() {
+            let directory = std::env::temp_dir().join(format!(
+                "ottplay-encoder-cleanup-{}-{}",
+                std::process::id(),
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            struct Cleanup(PathBuf);
+            impl Drop for Cleanup {
+                fn drop(&mut self) {
+                    let _ = fs::remove_dir_all(&self.0);
+                    let _ = fs::remove_file(&self.0);
+                }
+            }
+            let _cleanup = Cleanup(directory.clone());
+            fs::write(&directory, b"not a directory").unwrap();
+            let now = Instant::now();
+            let shared = Arc::new(Shared {
+                stop: Arc::new(AtomicBool::new(false)),
+                started: now,
+                touched: Mutex::new(now),
+                snapshot: Mutex::new(EncoderSnapshot {
+                    pid: 0,
+                    generation: 1,
+                    frames: 0,
+                    state: EncoderState::Starting,
+                    monotonic_millis: 0,
+                    hls_sequence: None,
+                    hls_last_update_millis: 0,
+                    audio_samples_written: 0,
+                    video_frames_written: 0,
+                }),
+                error: Mutex::new(None),
+                audio_samples_written: AtomicU64::new(0),
+                video_frames_written: AtomicU64::new(0),
+            });
+            let mut encoder = Encoder {
+                shared,
+                directory: directory.clone(),
+                monitor: None,
+                video: None,
+                audio: None,
+                permit: None,
+                cleaned: false,
+            };
+
+            assert_eq!(encoder.stop(), Err(EncoderError::Io));
+            assert!(!encoder.cleaned);
+            fs::remove_file(&directory).unwrap();
+            fs::create_dir(&directory).unwrap();
+            fs::write(directory.join("owned-output.ts"), b"fixture output").unwrap();
+
+            assert_eq!(encoder.stop(), Ok(()));
+            assert!(encoder.cleaned);
+            assert!(!directory.exists());
+        }
+
         #[test]
         fn raw_target_duration_is_checked_not_rewritten() {
             assert_eq!(
