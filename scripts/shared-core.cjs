@@ -54,7 +54,48 @@ function checkStaged(directory) {
 module.exports = { check, checkStaged, stage };
 if (require.main === module) {
     check();
+    require("node:child_process").execFileSync(
+        process.execPath,
+        [path.join(root, "scripts/generate-m3u-user-agents.cjs"), "--check"],
+        { cwd: root, stdio: "inherit" }
+    );
+    // Bulk library/reference migration is performance-held; its local host paths
+    // are exercised separately until the full-state ABI is qualified.
     for (const [file, apis, displaced] of [
+        [
+            "src/settings/cloud-codec.ts",
+            ["readClassicCloudStorage", "cloudStorageEntry"],
+            /function cloudCodecEncode/,
+        ],
+        [
+            "src/offline/playback-selection.ts",
+            ["localSourceScanStatus"],
+            /row.generation > 9007199254740991/,
+        ],
+        [
+            "src/provider/source-identity.ts",
+            ["utf16Dual32Fingerprint"],
+            /2166136261/,
+        ],
+        [
+            "src/settings/global-favorites-portable.ts",
+            ["createClassicGlobalFavoritesPortableCodec"],
+            /function locatorKey/,
+        ],
+        [
+            "src/guide/reminders.ts",
+            [
+                "classicReminderValid",
+                "classicReminderAction",
+                "classicReminderNext",
+            ],
+            /Math\.ceil\(\(record\.start - now\)/,
+        ],
+        [
+            "src/playback/live-recovery.ts",
+            ["classicLiveStallLimits", "classicLiveStallPlan"],
+            /Math\.ceil\(\(limit\.timeout - age\)/,
+        ],
         [
             "src/core/index.ts",
             [

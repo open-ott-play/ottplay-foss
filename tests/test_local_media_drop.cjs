@@ -20,19 +20,22 @@ function load(name, requires = {}, globals = {}) {
                 target: ts.ScriptTarget.ES5,
             },
         }).outputText,
-        {
-            clearTimeout,
-            console,
-            exports,
-            require(name) {
-                assert.ok(Object.hasOwn(requires, name), name);
-                return requires[name];
+        require("./helpers/source-core-runtime.cjs")(
+            {
+                clearTimeout,
+                console,
+                exports,
+                require(name) {
+                    assert.ok(Object.hasOwn(requires, name), name);
+                    return requires[name];
+                },
+                setTimeout,
+                URL,
+                ...globals,
+                exports,
             },
-            setTimeout,
-            URL,
-            ...globals,
-            exports,
-        }
+            name
+        )
     );
     return exports;
 }

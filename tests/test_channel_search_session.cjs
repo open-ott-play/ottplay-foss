@@ -413,6 +413,7 @@ function fixture(code) {
     };
     host.window = host;
     vm.createContext(host);
+    require("./helpers/shared-core-runtime.cjs")(host, { vendorOnly: true });
     vm.runInContext(localizationRuntime(), host);
     vm.runInContext(code, host);
     const port = host.__ottClassicScreenPort;

@@ -108,19 +108,10 @@ function createLiveRecovery(ports: LiveRecoveryPorts) {
     }
     function limits(): { attempts: number; timeout: number } {
         var value = ports.settings();
-        return {
-            attempts:
-                isFinite(value.attempts) &&
-                Math.floor(value.attempts) === value.attempts &&
-                value.attempts >= 0 &&
-                value.attempts <= 5
-                    ? value.attempts
-                    : 0,
-            timeout:
-                [10, 15, 20, 30].indexOf(value.timeout) >= 0
-                    ? value.timeout * 1000
-                    : 15000,
-        };
+        return (window as any).OttPlayCore.classicLiveStallLimits(
+            value.attempts,
+            value.timeout
+        );
     }
     function tick(): void {
         var limit = limits();
@@ -140,10 +131,13 @@ function createLiveRecovery(ports: LiveRecoveryPorts) {
             lastProgress = time;
         }
         if (
-            time - lastTick > 5000 ||
-            time < lastProgress ||
-            handleId !== sample.handleId ||
-            activity !== sample.activity
+            (window as any).OttPlayCore.classicLiveStallResetWindow(
+                time,
+                lastTick,
+                lastProgress,
+                handleId !== sample.handleId,
+                activity !== sample.activity
+            )
         ) {
             lastProgress = time;
             position = null;
@@ -159,24 +153,36 @@ function createLiveRecovery(ports: LiveRecoveryPorts) {
             if (sample.blocked || sample.terminal || !restarting) {
                 restarting = false;
                 report(
-                    sample.terminal &&
-                        !sample.blocked &&
-                        armed &&
-                        attempts >= limit.attempts
-                        ? "exhausted"
-                        : "hidden"
+                    (window as any).OttPlayCore.classicLiveStallBlockedPhase(
+                        sample.terminal,
+                        sample.blocked,
+                        armed,
+                        attempts,
+                        limit.attempts,
+                        restarting
+                    )
                 );
             } else report("restarting");
             return;
         }
-        var valid = isFinite(sample.position) && sample.position >= 0;
-        var progress =
-            valid && position !== null && sample.position - position > 0.05;
+        var valid = (window as any).OttPlayCore.classicLiveStallValidPosition(
+            sample.position
+        );
+        var progress = (window as any).OttPlayCore.classicLiveStallProgress(
+            sample.position,
+            position
+        );
         if (progress && sample.ready) {
             armed = true;
             lastProgress = time;
             if (healthySince === null) healthySince = time;
-            if (time - healthySince >= 10000) attempts = 0;
+            attempts = (
+                window as any
+            ).OttPlayCore.classicLiveStallHealthyAttempts(
+                attempts,
+                healthySince,
+                time
+            );
         } else {
             healthySince = null;
             // A discontinuity is not evidence of a stall.
@@ -185,23 +191,28 @@ function createLiveRecovery(ports: LiveRecoveryPorts) {
         }
         position = valid ? sample.position : null;
         var age = time - lastProgress;
-        if (progress && sample.ready) {
-            restarting = false;
-            report("hidden");
-        } else if (!armed) report("hidden");
-        else if (attempts >= limit.attempts && age >= limit.timeout)
-            report("exhausted");
-        else if (restarting) report("restarting");
-        else if (age >= 3000 && attempts < limit.attempts)
-            report(
-                "countdown",
-                Math.max(0, Math.ceil((limit.timeout - age) / 1000))
-            );
-        else report("hidden");
+        if (progress && sample.ready) restarting = false;
+        var plan = (window as any).OttPlayCore.classicLiveStallPlan(
+            armed,
+            attempts,
+            age,
+            limit.attempts,
+            limit.timeout,
+            restarting,
+            progress && sample.ready
+        );
+        report(plan.phase, plan.remaining);
+        // Reporting may synchronously reenter the host. Re-evaluate current state.
         if (
-            !armed ||
-            attempts >= limit.attempts ||
-            time - lastProgress < limit.timeout
+            !(window as any).OttPlayCore.classicLiveStallPlan(
+                armed,
+                attempts,
+                time - lastProgress,
+                limit.attempts,
+                limit.timeout,
+                restarting,
+                false
+            ).restart
         )
             return;
         // Sampling can synchronously dispatch channel/mode changes. Recheck ownership.

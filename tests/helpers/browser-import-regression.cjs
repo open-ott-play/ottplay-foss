@@ -20,14 +20,20 @@ async function browserImportRegression(
             }
         ).outputText;
         require("acorn").parse(source, { ecmaVersion: 5 });
-        vm.runInNewContext(source, {
-            clearTimeout: (id) => id.owner.clear(id),
-            exports,
-            ...globals,
-            require: requireModule,
-            setTimeout: (fn, delay) => clock.set(fn, delay),
-            URL,
-        });
+        vm.runInNewContext(
+            source,
+            require("./source-core-runtime.cjs")(
+                {
+                    clearTimeout: (id) => id.owner.clear(id),
+                    exports,
+                    ...globals,
+                    require: requireModule,
+                    setTimeout: (fn, delay) => clock.set(fn, delay),
+                    URL,
+                },
+                relative
+            )
+        );
         return exports;
     }
     let clock;

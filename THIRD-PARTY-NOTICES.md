@@ -6,23 +6,15 @@ does not replace their licenses or establish permission for material whose
 provenance remains unverified. This is not a complete inventory of transitive
 native dependencies or a statement of store approval.
 
-## Separate native webOS application
+## Historical native webOS application
 
-The optional **OTTPlay Native** Plex application derives from
-[PlxNative](https://github.com/GLinnik21/plx-native), copyright Gleb Linnik and
-contributors, at the exact revision recorded in
-[`native/webos/upstream.json`](native/webos/upstream.json). The adapted native
-runtime and its overlay patches are **GPL-3.0-or-later**, not relicensed by the
-root MIT notice. See [`native/webos/COPYING`](native/webos/COPYING) and the
-[native target guide](native/webos/README.md).
-
-Its SDL, FFmpeg, libass, fonts, Rust dependencies and other components retain
-their respective licenses. The native build preserves upstream notices and
-collects corresponding source, including vendored Cargo packages, bundled
-native dependency source and Rust runtime source. Each distributed IPK must
-be accompanied by the matching source asset and digest records. This target
-is an independent executable with a separate application ID and is not linked
-into the MIT web player, Tauri shell or OTT server.
+The separate GPL-3.0-or-later SDL/PlxNative application is now maintained in
+[ottplay-lg](https://github.com/open-ott-play/ottplay-lg), with its preserved
+upstream attribution, license, patches and corresponding-source obligations.
+It is not linked into the MIT web player, Tauri shell or OTT server.
+Previously published FOSS native releases retain their own exact source assets
+and notices; removing the duplicate producer does not relicense those releases.
+See the [migration and provenance note](docs/native-webos.md).
 
 ## PLi-HD interface design
 

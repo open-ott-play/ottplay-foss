@@ -46,32 +46,16 @@ function createReminderService(ports: ReminderPorts) {
         return !disposed && ports.current();
     }
     function valid(value: any): value is ProgrammeReminder {
-        return (
-            !!value &&
-            value.sourceId === ports.sourceId &&
-            typeof value.id === "string" &&
-            value.id !== "" &&
-            typeof value.channelId === "string" &&
-            value.channelId !== "" &&
-            typeof value.programmeId === "string" &&
-            value.programmeId !== "" &&
-            typeof value.title === "string" &&
-            typeof value.start === "number" &&
-            isFinite(value.start) &&
-            typeof value.end === "number" &&
-            isFinite(value.end) &&
-            value.end > value.start
+        return (window as any).OttPlayCore.classicReminderValid(
+            value,
+            ports.sourceId
         );
     }
     function normalize(values: any[]): ProgrammeReminder[] {
-        var seen: Record<string, boolean> = Object.create(null);
-        return values
-            .filter(function (value) {
-                if (!valid(value) || seen[value.id]) return false;
-                seen[value.id] = true;
-                return true;
-            })
-            .map(clone);
+        return (window as any).OttPlayCore.classicReminderNormalize(
+            values,
+            ports.sourceId
+        );
     }
     function currentRecord(record: ProgrammeReminder): boolean {
         return (
@@ -106,9 +90,17 @@ function createReminderService(ports: ReminderPorts) {
         var lead = Math.max(0, Number(ports.leadSeconds()) || 0);
         records.forEach(function (record) {
             if (record.end <= now || !ports.resolve(record)) return;
-            if (!prompted[record.id]) next = Math.min(next, record.start);
-            if (lead && !notified[record.id] && record.start > now)
-                next = Math.min(next, Math.max(now, record.start - lead));
+            next = Math.min(
+                next,
+                (window as any).OttPlayCore.classicReminderNext(
+                    record.start,
+                    record.end,
+                    now,
+                    lead,
+                    !!prompted[record.id],
+                    !!notified[record.id]
+                )
+            );
         });
         if (!isFinite(next)) return;
         var expected = generation;
@@ -125,26 +117,32 @@ function createReminderService(ports: ReminderPorts) {
                         !ports.resolve(record)
                     )
                         return;
-                    if (record.start > now) {
-                        if (
-                            lead &&
-                            record.start - lead <= now &&
-                            !notified[record.id]
-                        ) {
-                            notified[record.id] = true;
-                            try {
-                                ports.notify(
-                                    clone(record),
-                                    Math.max(
-                                        0,
-                                        Math.ceil((record.start - now) / 60)
-                                    )
-                                );
-                            } catch (_) {}
-                        }
+                    var decision = (
+                        window as any
+                    ).OttPlayCore.classicReminderAction(
+                        record.start,
+                        record.end,
+                        now,
+                        lead,
+                        !!prompted[record.id],
+                        !!notified[record.id]
+                    );
+                    if (decision === "none") return;
+                    if (decision === "notify") {
+                        notified[record.id] = true;
+                        try {
+                            ports.notify(
+                                clone(record),
+                                (
+                                    window as any
+                                ).OttPlayCore.classicReminderMinutes(
+                                    record.start,
+                                    now
+                                )
+                            );
+                        } catch (_) {}
                         return;
                     }
-                    if (prompted[record.id]) return;
                     prompted[record.id] = true;
                     retirePrompt();
                     if (!currentRecord(record) || generation !== expected)

@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict"),
     fs = require("node:fs"),
     vm = require("node:vm"),
@@ -12,7 +13,7 @@ function moduleAt(file) {
                 target: ts.ScriptTarget.ES5,
             },
         }).outputText,
-        { exports, Promise, window: {} }
+        prepareSourceRealm({ exports, Promise, window: {} }, file)
     );
     return exports;
 }

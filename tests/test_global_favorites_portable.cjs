@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs"),
     path = require("node:path"),
@@ -15,7 +16,10 @@ const compiled = ts.transpileModule(fs.readFileSync(file, "utf8"), {
     },
 });
 const box = { encodeURIComponent, exports: {} };
-vm.runInNewContext(compiled.outputText, box);
+vm.runInNewContext(
+    compiled.outputText,
+    prepareSourceRealm(box, "src/settings/global-favorites-portable.ts")
+);
 const codec = box.exports.createGlobalFavoritesPortableCodec();
 function row(
     provider = "plex",

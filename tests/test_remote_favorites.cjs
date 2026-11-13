@@ -1,3 +1,4 @@
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -200,7 +201,10 @@ function fixture(storage = {}) {
         if (actual) return actual;
         throw new Error(name);
     };
-    vm.runInNewContext(compile("src/channels/channel-references.ts"), w);
+    vm.runInNewContext(
+        compile("src/channels/channel-references.ts"),
+        prepareSourceRealm(w, "src/channels/channel-references.ts")
+    );
     vm.runInNewContext(code, w);
     const shared = sharedFixture();
     shared.data.has = (key) => Object.hasOwn(storage, key);

@@ -8,6 +8,7 @@ const scripts = new Map();
 
 // Run the actual private implementation in the same realm as each host fixture.
 module.exports = function privateRuntime(context, relativeFile) {
+    require("./source-core-runtime.cjs")(context, relativeFile);
     const filename = path.resolve(__dirname, "../..", relativeFile);
     const source = fs.readFileSync(filename, "utf8");
     let cached = scripts.get(filename);

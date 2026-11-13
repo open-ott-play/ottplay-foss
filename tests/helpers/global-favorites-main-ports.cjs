@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./source-core-runtime.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs"),
     path = require("node:path"),
@@ -16,22 +17,36 @@ function actualModule(name, window, overrides = {}) {
             },
         }
     ).outputText;
-    vm.runInNewContext(code, {
-        console,
-        exports,
-        require(relative) {
-            if (Object.prototype.hasOwnProperty.call(overrides, relative))
-                return overrides[relative];
-            return actualModule(
-                path.posix.normalize(
-                    path.posix.join(path.posix.dirname(name), relative + ".ts")
-                ),
-                window
-            );
-        },
-        URL,
-        window,
-    });
+    vm.runInNewContext(
+        code,
+        prepareSourceRealm(
+            {
+                console,
+                exports,
+                require(relative) {
+                    if (
+                        Object.prototype.hasOwnProperty.call(
+                            overrides,
+                            relative
+                        )
+                    )
+                        return overrides[relative];
+                    return actualModule(
+                        path.posix.normalize(
+                            path.posix.join(
+                                path.posix.dirname(name),
+                                relative + ".ts"
+                            )
+                        ),
+                        window
+                    );
+                },
+                URL,
+                window,
+            },
+            name
+        )
+    );
     return exports;
 }
 function actualFunctions(file, names) {

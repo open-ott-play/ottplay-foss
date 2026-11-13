@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const {
     createMainPorts,
 } = require("./helpers/global-favorites-main-ports.cjs");
@@ -95,22 +96,25 @@ function fixture(partial = false) {
                     target: ts.ScriptTarget.ES5,
                 },
             }).outputText,
-            {
-                console,
-                exports,
-                Promise,
-                require: (relative) =>
-                    load(
-                        path.posix.normalize(
-                            path.posix.join(
-                                path.posix.dirname(name),
-                                relative + ".ts"
+            prepareSourceRealm(
+                {
+                    console,
+                    exports,
+                    Promise,
+                    require: (relative) =>
+                        load(
+                            path.posix.normalize(
+                                path.posix.join(
+                                    path.posix.dirname(name),
+                                    relative + ".ts"
+                                )
                             )
-                        )
-                    ),
-                Uint8Array,
-                window: w,
-            }
+                        ),
+                    Uint8Array,
+                    window: w,
+                },
+                name
+            )
         );
         return exports;
     }

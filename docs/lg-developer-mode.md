@@ -7,9 +7,9 @@ This runbook covers a computer connecting to a consumer LG webOS TV through Deve
 OTTPlay has two separate TV applications. Select one before downloading a package:
 
 - **Hosted OTTPlay:** `ottplay-foss-webos.ipk`, application ID `com.openottplay.player`. Its launcher opens [the hosted player](https://player.ottplay.here.now/). The IPK does not contain the full player, media or additional codecs. The TV needs access to the website and its selected providers.
-- **OTTPlay (native):** `ottplay-native-webos-VERSION.ipk`, application ID `com.openottplay.player.native`. Its release contains the native executable and matching storage service. Publishing a new hosted website does not replace that executable.
+- **OTTPlay native:** maintained separately in [ottplay-lg](https://github.com/open-ott-play/ottplay-lg). Use the package, application ID and installation instructions from the selected [ottplay-lg release](https://github.com/open-ott-play/ottplay-lg/releases). Publishing a new hosted website does not replace the native executable. Historical FOSS native releases used `ottplay-native-webos-VERSION.ipk` and application ID `com.openottplay.player.native`.
 
-Their profiles, Favorites and remote-control pairing are separate. An upstream PlxNative package or repository is a third application, not an OTTPlay update. Use the [hosted installation guide](lg-webos-installation.md) or [native delivery guide](native-webos-delivery.md) for the chosen release's package details.
+Their profiles, Favorites and remote-control pairing are separate. An upstream PlxNative package or repository is a third application, not an OTTPlay update. Use the [hosted installation guide](lg-webos-installation.md) or the [ottplay-lg documentation](https://github.com/open-ott-play/ottplay-lg) at the chosen release's tag. The [native migration notice](native-webos.md) records historical FOSS source and license continuity.
 
 Keep a small private installation record: TV model, webOS/firmware version, connection alias, intended application ID, release tag, package version and SHA-256. Add the actual installed version and test result afterward. Do not put account passwords, pairing passphrases, private keys, tokens or raw device identifiers into an issue report.
 
@@ -76,7 +76,7 @@ Keep generated keys private. If pairing fails, recheck the displayed passphrase,
 
 ## 5. Verify a release and perform the first installation
 
-Download from the selected [OTTPlay release](https://github.com/open-ott-play/ottplay-foss/releases), and keep its metadata and checksum with the IPK. Compare the downloaded SHA-256 with that same release. For example, on macOS:
+Download the hosted package from the selected [FOSS release](https://github.com/open-ott-play/ottplay-foss/releases). For the current native application, use [ottplay-lg releases](https://github.com/open-ott-play/ottplay-lg/releases) and that release's matching installation/update documentation. Keep the selected release's metadata and checksum with its IPK. Compare the downloaded SHA-256 with that same release. For example, on macOS:
 
 ```sh
 shasum -a 256 /path/to/APP_FILE.ipk
@@ -84,21 +84,29 @@ shasum -a 256 /path/to/APP_FILE.ipk
 
 Linux can use `sha256sum`; Windows can use `certutil -hashfile FILE SHA256`. A matching checksum ties the file to the supplied release evidence. It is not an LG approval or a guarantee of playback compatibility.
 
-Do not confuse the release label with the numeric installer version. The hosted package uses `1.0.<build number>`. A native tag such as `native-webos-vX.Y.Z-beta.N` uses numeric package version `X.Y.Z`. Read the actual release metadata rather than constructing a tag or inferring that a higher beta suffix changes the numeric version.
+Do not confuse the release label with the numeric installer version. The hosted package uses `1.0.<build number>`. Read the selected application's actual release metadata rather than constructing a tag or inferring that a higher beta suffix changes the numeric version.
 
-If the native application ID is already installed, continue to the checked-update procedure below. For a genuine first installation, run only the matching pair:
+For a genuine first hosted installation, run this matching pair. Updates to an installed native application follow the maintained project's release-specific procedure in section 7.
 
 ```sh
-# Hosted application
 ares-install --device YOUR_TV /path/to/ottplay-foss-webos.ipk
 ares-launch --device YOUR_TV com.openottplay.player
+```
 
-# OR: the separately verified native application
+### Historical FOSS native installation example
+
+The following commands apply only when deliberately installing an identified
+[historical FOSS native release](https://github.com/open-ott-play/ottplay-foss/releases/tag/native-webos-v0.2.0-beta.1).
+Those releases used tags such as `native-webos-vX.Y.Z-beta.N` and numeric
+package version `X.Y.Z`. Current native releases use ottplay-lg's own metadata
+and instructions linked above.
+
+```sh
 ares-install --device YOUR_TV /path/to/ottplay-native-webos-VERSION.ipk
 ares-launch --device YOUR_TV com.openottplay.player.native
 ```
 
-Then read back the installed inventory and running applications:
+For the application you installed, read back the installed inventory and running applications:
 
 ```sh
 ares-install --device YOUR_TV --listfull
@@ -130,36 +138,22 @@ Use the application's supported export or backup before updates, removal or expi
 
 If an application disappears, check Developer Mode first. Restore the connection and reinstall the intended verified package only after identifying what remains. Reinstalling is not evidence that old settings survived, and uninstalling is not a settings-preserving repair.
 
-## 7. Use the checked native update path
+## 7. Choose the maintained update path
 
-The repository's [native update helper](../scripts/update-webos-native.py) maintains an existing native installation. Device operations require macOS or Linux and an already working Ares alias. It does not provision keys, perform first installation or convert a hosted player into the native application.
+The separate SDL/PlxNative application is now maintained in
+[ottplay-lg](https://github.com/open-ott-play/ottplay-lg). Use its release-specific
+update and recovery instructions; the old FOSS native updater has been retired.
+This does not change the [classic hosted wrapper](lg-webos-installation.md).
 
-Run from the FOSS checkout, select an **actually published native tag**, and keep one private work directory throughout. First verify the official release without contacting the TV:
-
-```sh
-python3 scripts/update-webos-native.py --device YOUR_TV \
-  --tag NATIVE_RELEASE_TAG \
-  --work-dir /absolute/path/to/private/native-update
-```
-
-For the reviewed CLI 3.2.6 compatibility route, pass both the explicit SDK root and compatibility flag. Preflight performs read-only TV checks:
+The process-local, source-guarded CLI 3.2.6 compatibility wrapper remains available:
 
 ```sh
-python3 scripts/update-webos-native.py --device YOUR_TV \
-  --tag NATIVE_RELEASE_TAG \
-  --work-dir /absolute/path/to/private/native-update --preflight \
-  --ares-root /absolute/path/to/node_modules/@webos-tools/cli --ares-compat
+node scripts/webos-cli-compat.cjs /absolute/path/to/node_modules/@webos-tools/cli ares-device --help
 ```
 
-Read the result and resolve any identity, permission, release or pending-transaction error. When ready for the maintenance window, repeat that command with **`--apply` instead of `--preflight`**. This authorizes closing the app, capturing known state, installing once, restoring missing state and verifying launch.
-
-The compatibility option applies source-guarded workarounds inside that explicit CLI process; it does not edit the installed SDK or configure a global hook. It is not permission to substitute an arbitrary SDK version. The helper's ordered output checks reject incomplete captures instead of treating missing output as empty state.
-
-The updater verifies package/source identity, numeric version, installed layout and recovery identity. It refuses unsafe or conflicting state, downgrades, same-version different bytes and unresolved installation transactions. Its snapshot covers the known `ottplay-profile.json`, `ottplay-control.json` and `ott-state` paths when present. **This is not a complete DB8/Keymanager backup or a cross-TV settings export.** Keep previous verified packages and supported exports privately too.
-
-On timeout or uncertain installation, retain the journal and snapshot. Do not blindly repeat installation or move to a new work directory. Use preflight; if the exact intended package is installed and the pending journal allows recovery, the same command with **`--reconcile`** restores missing state and checks launch without installing another IPK. Old or conflicting snapshots remain stop conditions. A completed recovery must not be replayed over subsequent user changes.
-
-`--bundle-dir` can reuse downloaded assets but still checks the official release identity; it is not a fully offline or unpublished-package bypass. The local lock also does not replace coordination with another operator. Follow the [complete native delivery procedure](native-webos-delivery.md) for recovery decisions and state boundaries.
+It verifies the selected SDK source and does not patch the installation or set a
+global hook. Using it does not authorize device mutation. Continue to coordinate
+any install/restart and preserve the application's supported exports first.
 
 ## 8. Homebrew, permissions and storage boundaries
 

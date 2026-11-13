@@ -20,31 +20,30 @@ export function orderLocalItems(items: any[], seed: number | null): any[] {
 
 /** Native source completion is scoped to the same atomic catalogue snapshot. */
 export function localSourceScan(catalog: any, source: string): any {
-    if (catalog.sourceScans === undefined) return null;
-    function invalid(): never {
+    var scans = catalog.sourceScans;
+    var found: any = null;
+    var matches = 0;
+    if (Array.isArray(scans))
+        scans.forEach(function (scan: any) {
+            if (scan && scan.sourceId === source) {
+                found = scan;
+                matches++;
+            }
+        });
+    var status = (window as any).OttPlayCore.localSourceScanStatus(
+        scans !== undefined,
+        Array.isArray(scans),
+        matches,
+        found && found.generation,
+        found && found.state
+    );
+    if (status === "invalid")
         throw {
             localMediaCode: "catalog_unavailable",
             message: "Invalid local source scan",
         };
-    }
-    if (!Array.isArray(catalog.sourceScans)) return invalid();
-    var found: any = null;
-    catalog.sourceScans.forEach(function (scan: any) {
-        if (!scan || scan.sourceId !== source) return;
-        if (
-            found ||
-            typeof scan.generation !== "number" ||
-            !isFinite(scan.generation) ||
-            Math.floor(scan.generation) !== scan.generation ||
-            scan.generation < 1 ||
-            scan.generation > 9007199254740991 ||
-            ["pending", "scanning", "complete", "error"].indexOf(scan.state) < 0
-        )
-            invalid();
-        found = scan;
-    });
-    // An advertised source protocol cannot fall back to global completion
-    // before the requested folder has an authoritative scan record.
+    if (status === "legacy") return null;
+    // Keep host record identity and the existing pending/error presentation.
     return found || { generation: 0, state: "pending" };
 }
 

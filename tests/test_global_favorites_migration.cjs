@@ -1,4 +1,5 @@
 "use strict";
+const prepareSourceRealm = require("./helpers/source-core-runtime.cjs");
 const assert = require("node:assert/strict"),
     fs = require("node:fs"),
     vm = require("node:vm"),
@@ -70,28 +71,31 @@ function moduleAt(file, deps) {
                 target: ts.ScriptTarget.ES5,
             },
         }).outputText,
-        {
-            Array,
-            Error,
-            exports,
-            isFinite,
-            JSON,
-            Math,
-            Number,
-            Object,
-            Promise,
-            require: (name) =>
-                name === "../offline/local-item-path"
-                    ? actualModule("src/offline/local-item-path.ts", {})
-                    : name === "./global-favorites-providers"
-                      ? actualModule(
-                            "src/media/global-favorites-providers.ts",
-                            {}
-                        )
-                      : deps[name],
-            String,
-            window: {},
-        }
+        prepareSourceRealm(
+            {
+                Array,
+                Error,
+                exports,
+                isFinite,
+                JSON,
+                Math,
+                Number,
+                Object,
+                Promise,
+                require: (name) =>
+                    name === "../offline/local-item-path"
+                        ? actualModule("src/offline/local-item-path.ts", {})
+                        : name === "./global-favorites-providers"
+                          ? actualModule(
+                                "src/media/global-favorites-providers.ts",
+                                {}
+                            )
+                          : deps[name],
+                String,
+                window: {},
+            },
+            file
+        )
     );
     return exports;
 }

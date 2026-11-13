@@ -29,7 +29,10 @@ function compile(file, names) {
 }
 function moduleSource(file) {
     const exports = {};
-    vm.runInNewContext(compile(file), { exports });
+    vm.runInNewContext(
+        compile(file),
+        require("./helpers/source-core-runtime.cjs")({ exports }, file)
+    );
     return exports;
 }
 const base = "https://library.test/offline-media/" + "t".repeat(32);

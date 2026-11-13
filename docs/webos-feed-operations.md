@@ -61,3 +61,11 @@ loads the canonical player site, while the separate native application runs its
 installed code. Media sources must still be reachable. New installations can
 use the Developer Mode IPK route. Do not point Homebrew directly at the non-CORS
 GitHub JSON as a fallback.
+
+## Historical native routes
+
+The SDL/PlxNative application is now developed and released in
+[ottplay-lg](https://github.com/open-ott-play/ottplay-lg). Existing exact-tag
+`native-webos-*` metadata routes are retained only for historical FOSS installers.
+They do not imply a current FOSS native producer or a latest-release subscription.
+Classic hosted metadata, package generation and its tests remain active.
