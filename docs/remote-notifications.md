@@ -47,7 +47,13 @@ extends the original expiry. A short remaining lifetime can truncate the
 entrance or hold. Inactivity and explicit clearing still remove cards immediately.
 
 Severity has a text label, decorative badge and a uniformly thin, closed
-1 CSS pixel outline in the same accent color. Older WebViews retain fixed-font,
+1 CSS pixel outline in the same accent color. The badge matches the native LG
+presentation: twelve dots form a brightness trail that circles the stationary
+severity glyph once per second. The ring scales with the badge, fades with it
+and stays in place when repeated seek feedback updates the existing card.
+It uses CSS animation without extra timers, image downloads or frame polling;
+reduced-motion and low-memory/low-core modes keep the ring static.
+Older WebViews retain fixed-font,
 word-wrap and bounded-height fallbacks. Layout does not require backdrop filters,
 flex gap or external fonts. Heading height is measured when a card appears and
 when the viewport resizes; no animation-frame polling is needed. Low-memory or

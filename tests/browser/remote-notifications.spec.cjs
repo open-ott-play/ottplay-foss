@@ -584,6 +584,132 @@ for (const viewport of [
     });
 }
 
+for (const motion of ["full", "reduced", "lite"]) {
+    test(`shared banner activity ring preserves glyph, severity and layout (${motion})`, async ({
+        page,
+        context,
+        baseURL,
+    }, testInfo) => {
+        const origin = new URL(baseURL).origin;
+        await context.route("**/*", (route) =>
+            new URL(route.request().url()).origin === origin
+                ? route.continue()
+                : route.abort("blockedbyclient")
+        );
+        await context.routeWebSocket("**/*", (socket) => socket.close());
+        await page.addInitScript((lite) => {
+            Object.defineProperty(navigator, "deviceMemory", {
+                value: lite ? 1 : 4,
+            });
+            Object.defineProperty(navigator, "hardwareConcurrency", {
+                value: 4,
+            });
+        }, motion === "lite");
+        await page.emulateMedia({
+            reducedMotion: motion === "reduced" ? "reduce" : "no-preference",
+        });
+        await page.goto("/f/pc/");
+        await page.waitForFunction(
+            () =>
+                !!window.__ottNotificationBanners &&
+                !document.body.classList.contains("booting")
+        );
+        await page.clock.install();
+        await page.clock.pauseAt(Date.now() + 100);
+        await page.evaluate(() => {
+            const service = window.__ottNotificationBanners;
+            service.suspend();
+            for (const severity of ["info", "warning", "critical"]) {
+                const banner = service.create(
+                    { message: "Notification", severity },
+                    5000
+                );
+                banner.animate(5000);
+                for (const animation of banner.element.getAnimations({
+                    subtree: true,
+                })) {
+                    animation.pause();
+                    animation.currentTime = 480;
+                }
+            }
+        });
+        const banners = page.locator(".remote-notify");
+        await expect(banners).toHaveCount(3);
+        const colors = [
+            "rgb(167, 212, 255)",
+            "rgb(255, 217, 154)",
+            "rgb(255, 180, 188)",
+        ];
+        for (let i = 0; i < 3; i++) {
+            const sample = await banners.nth(i).evaluate((banner) => {
+                const icon = banner.querySelector(".remote-notify-icon");
+                const ring = icon.querySelector(".remote-notify-activity");
+                const motion = ring.getAnimations()[0];
+                const iconBounds = icon.getBoundingClientRect();
+                function at(time) {
+                    if (motion) motion.currentTime = time;
+                    return [...ring.children].map((dot) => {
+                        const r = dot.getBoundingClientRect();
+                        return {
+                            color: getComputedStyle(dot).backgroundColor,
+                            opacity: Number(getComputedStyle(dot).opacity),
+                            x:
+                                (r.x + r.width / 2 - iconBounds.x) /
+                                iconBounds.width,
+                            y:
+                                (r.y + r.height / 2 - iconBounds.y) /
+                                iconBounds.height,
+                        };
+                    });
+                }
+                return {
+                    accessible: icon.getAttribute("aria-hidden"),
+                    duration: motion?.effect.getTiming().duration,
+                    glyph: getComputedStyle(icon, "::before").content,
+                    glyphTransform: getComputedStyle(icon, "::before")
+                        .transform,
+                    initial: at(0),
+                    quarter: at(250),
+                    lap: at(1000),
+                    moving: !!motion,
+                    pointer: getComputedStyle(ring).pointerEvents,
+                };
+            });
+            expect(sample.accessible).toBe("true");
+            expect(sample.pointer).toBe("none");
+            expect(sample.glyph).toBe(i === 0 ? '"i"' : '"!"');
+            expect(sample.glyphTransform).toBe("none");
+            expect(sample.initial).toHaveLength(12);
+            expect(new Set(sample.initial.map((p) => p.opacity)).size).toBe(12);
+            for (const point of sample.initial) {
+                expect(point.color).toBe(colors[i]);
+                expect(Math.hypot(point.x - 0.5, point.y - 0.5)).toBeCloseTo(
+                    24 / 42,
+                    2
+                );
+                expect(point.opacity).toBeGreaterThanOrEqual(0.25);
+            }
+            expect(sample.lap).toEqual(sample.initial);
+            if (motion === "full") {
+                expect(sample.moving).toBe(true);
+                expect(sample.duration).toBe(1000);
+                expect(sample.quarter[0].x).toBeGreaterThan(1);
+                expect(sample.quarter[0].y).toBeCloseTo(0.5, 2);
+                expect(sample.initial[0].y).toBeLessThan(0);
+            } else {
+                expect(sample.moving).toBe(false);
+                expect(sample.quarter).toEqual(sample.initial);
+            }
+        }
+        await testInfo.attach(`activity-ring-${motion}`, {
+            body: await page.screenshot({ animations: "allow" }),
+            contentType: "image/png",
+        });
+        await page.evaluate(() => window.__ottNotificationBanners.suspend());
+        await expect(page.locator(".remote-notify-activity")).toHaveCount(0);
+    });
+}
+
 // Drive CSS animation time directly: geometry must change within a text line,
 // independently of runner speed. HTTP/runtime integration is covered above.
 test("shared banner text fades and its heading collapses continuously between line boundaries", async ({

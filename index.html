@@ -108,6 +108,25 @@
             line-height: 2.1;
         }
         .remote-notify-icon::before { content: "i"; }
+        .remote-notify-activity {
+            position: absolute;
+            top: -0.23em;
+            left: -0.23em;
+            width: 2.56em;
+            height: 2.56em;
+            pointer-events: none;
+            animation: remoteNotifyActivity 1s steps(12, end) infinite;
+        }
+        .remote-notify-activity-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0.16em;
+            height: 0.16em;
+            margin: -0.08em;
+            border-radius: 50%;
+            background: currentColor;
+        }
         .remote-notify-content { flex: 1 1 auto; min-width: 0; }
         .remote-notify-heading { overflow: hidden; }
         .remote-notify-heading-body { padding-bottom: 0.3em; }
@@ -216,6 +235,10 @@
             from { opacity: 1; }
             to { opacity: 0.18; }
         }
+        @keyframes remoteNotifyActivity {
+            to { transform: rotate(360deg); }
+        }
+        .remote-notify-lite .remote-notify-activity { animation: none; }
         .notify.remote-notify-lite { animation-name: remoteNotifySimpleIn; }
         .notify.remote-notify-lite.remote-notify-out { animation-name: remoteNotifySimpleOut; }
         .notify.remote-notify-lite::before { box-shadow: none; }
@@ -230,6 +253,7 @@
         @media (prefers-reduced-motion: reduce) {
             .notify.remote-notify, .notify.remote-notify.remote-notify-out,
             .notify.remote-notify::before, .remote-notify-icon, .remote-notify-image,
+            .remote-notify-activity,
             .remote-notify-content, .remote-notify-running .remote-notify-foldable,
             .remote-notify-running .remote-notify-foldable > .remote-notify-heading-body {
                 animation: none;
