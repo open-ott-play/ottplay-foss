@@ -22,6 +22,7 @@ EXPECTED_TESTS = (
     'real_four_nine_and_perimeter_frames_and_selected_audio',
     'owned_worker_cancellation_deadlines_busy_and_cleanup',
     'fixture_http_source_cas_dedupe_media_custody_and_retirement',
+    'streamed_decoder_short_track_pending_and_failure',
     'streamed_session_two_owner_continuity',
 )
 
@@ -298,6 +299,9 @@ class Attempt:
                      'src-rs/server/tests/support/streamed_session.rs',
                      'src-rs/server/tests/support/streamed_transport.rs',
                      'src-rs/server/tests/support/streamed_archive.rs',
+                     'src-rs/server/tests/support/streamed_decoder.rs',
+                     'src-rs/core/src/multiview/decoder.rs', 'src-rs/core/src/multiview/frames.rs',
+                     'src-rs/core/src/multiview/geometry.rs', 'src-rs/core/src/multiview/timing.rs',
                      'scripts/ci-multiview-unix-media.py',
                      'scripts/ci-native-favorites.py', 'scripts/ci-multiview-unix.py',
                      'scripts/ci-apt-mirror.py'):
@@ -328,6 +332,8 @@ class Attempt:
                                       'cleanup_confirmed': attempt.case != 'unknown-cleanup'
                                       and not (name == 'broker-ordinary' and attempt.case == 'broker-cleanup-unknown')
                                       and not (name == 'listener-ordinary' and attempt.case == 'listener-cleanup-unknown')})
+                if name == 'fixture-pending-clock':
+                    attempt.pending_env = dict(self.env)
                 text = attempt.response(name, argv)
                 self.budget.atomic(self.evidence / 'logs' / (name + '.log'),
                                    text.encode(), evidence=True)
@@ -367,6 +373,44 @@ class Attempt:
         return self.stack.__exit__(*args)
 
     def response(self, name, argv):
+        if name.startswith('pending-generate-'):
+            if self.case != 'pending-missing-input':
+                Path(argv[-1]).write_bytes(b'synthetic pending TS payload: ' + name.encode())
+            return ''
+        if name == 'fixture-pending-clock':
+            case = Path(self.driver.env['OTTPLAY_MULTIVIEW_PENDING_CASE_DIR'])
+            case.mkdir(mode=0o700)
+            manifest_path = Path(self.driver.env['OTTPLAY_MULTIVIEW_PENDING_INPUTS'])
+            manifest = json.loads(manifest_path.read_text())
+            rows = manifest['inputs']
+            scenarios = [('AudioTail', 'a1-v3'), ('VideoTail', 'a3-v1'), ('LateFailure', 'a1-v3'),
+                         ('Revoke', 'a1-v3'), ('Cancel', 'a1-v3')]
+            control = {'schema': 'ottplay.multiview.pending-clock-fixture.v1', 'pass': True,
+                       'input_manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+                       'case_count': 5, 'error': None, 'external_process_group_supervisor_required': True,
+                       'clean_eof_from_pending_claimed': False,
+                       'cases': [{'scenario': name, 'input': identity, 'pass': True, 'metadata_clean': True,
+                                  'error': None, 'input_sha256': next(row['sha256'] for row in rows if row['id'] == identity)}
+                                 for name, identity in scenarios]}
+            if self.case == 'pending-bad-control':
+                control['pass'] = False
+            if self.case == 'pending-wrong-manifest':
+                control['input_manifest_sha256'] = '0' * 64
+            if self.case == 'pending-wrong-scenario':
+                control['cases'][2]['scenario'] = 'Cancel'
+            if self.case == 'pending-wrong-input':
+                control['cases'][0]['input_sha256'] = '0' * 64
+            if self.case == 'pending-unclean-control':
+                control['cases'][0]['metadata_clean'] = False
+            if self.case == 'pending-leaked-temp':
+                (Path(self.driver.env['TMPDIR']) / 'owned-residue').write_text('must fail')
+            if self.case == 'pending-changed-input':
+                path = Path(rows[0]['path']); path.chmod(0o600); path.write_bytes(b'changed')
+            if self.case != 'pending-missing-control':
+                (case / 'CONTROL.json').write_text(json.dumps(control))
+            if self.case == 'pending-nonzero-exit':
+                raise RuntimeError('Synthetic pending command exited nonzero')
+            return passed(argv[1]) if self.case != 'pending-zero-tests' else 'running 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored;\n'
         if name.endswith('-head'):
             return 'a' * 40 + '\n'
         if name.endswith('-tree'):
@@ -583,6 +627,8 @@ class Attempt:
             names = list(EXPECTED_TESTS)
             if self.case == 'changed-inventory':
                 names[-1] = 'unexpected_new_ignored_fixture'
+            if self.case == 'missing-pending-fixture':
+                names.remove('streamed_decoder_short_track_pending_and_failure')
             if self.case == 'duplicate-inventory':
                 names.append(names[0])
             return ''.join(value + ': test\n' for value in names)
@@ -652,6 +698,83 @@ class Attempt:
 
 
 class BoundaryContracts(unittest.TestCase):
+    def test_pending_fixture_is_mandatory_exact_and_runs_before_expensive_stream(self):
+        for system in ('Linux', 'Darwin'):
+            with self.subTest(system=system), Attempt(system=system) as attempt:
+                attempt.run()
+                names = [row['name'] for row in attempt.driver.commands]
+                row = next(row for row in attempt.driver.commands if row['name'] == 'fixture-pending-clock')
+                self.assertEqual(row['argv'], [str(attempt.executable), ci.PENDING_TEST, '--ignored', '--exact',
+                                               '--test-threads=1', '--color=never'])
+                self.assertEqual(row['limit'], 120)
+                self.assertLess(names.index('fixture-pending-clock'), names.index('fixture-4'))
+                self.assertEqual(len([name for name in names if name == 'fixture-pending-clock']), 1)
+                self.assertTrue(all(name in names for name in ('fixture-1', 'fixture-2', 'fixture-3', 'fixture-4')))
+                self.assertNotIn('OTTPLAY_MULTIVIEW_PENDING_INPUTS', attempt.driver.env)
+                self.assertNotIn('OTTPLAY_MULTIVIEW_PENDING_CASE_DIR', attempt.driver.env)
+                self.assertEqual(attempt.driver.env['TMPDIR'], str(attempt.output / 'tmp'))
+                scratch = Path(attempt.pending_env['TMPDIR'])
+                self.assertTrue(all(char in str(scratch) for char in (" ", "'", ':', chr(92))))
+                self.assertEqual(scratch.stat().st_mode & 0o777, 0o700)
+                self.assertFalse(list(scratch.iterdir()))
+                result = attempt.terminal()
+                self.assertTrue(result['pending_clock']['pass'])
+                self.assertFalse(result['pending_clock']['production_admission'])
+                self.assertTrue((attempt.output / 'evidence/pending-clock-control.json').is_file())
+                self.assertEqual(attempt.driver.budget.deadline, attempt.driver.budget.started + 1800)
+                self.assertEqual(attempt.driver.budget.work_deadline, attempt.driver.budget.started + 1680)
+
+    def test_pending_fixture_refuses_missing_zero_nonzero_or_incorrect_receipts(self):
+        for case in ('missing-pending-fixture', 'pending-missing-input', 'pending-zero-tests',
+                     'pending-nonzero-exit', 'pending-missing-control', 'pending-bad-control',
+                     'pending-wrong-manifest', 'pending-wrong-scenario', 'pending-wrong-input',
+                     'pending-unclean-control', 'pending-leaked-temp', 'pending-changed-input'):
+            with self.subTest(case=case), Attempt(case=case) as attempt:
+                with self.assertRaises((RuntimeError, OSError)):
+                    attempt.run()
+                self.assertEqual(attempt.terminal()['status'], 'fail')
+                self.assertNotIn('OTTPLAY_MULTIVIEW_PENDING_INPUTS', attempt.driver.env)
+                self.assertNotIn('OTTPLAY_MULTIVIEW_PENDING_CASE_DIR', attempt.driver.env)
+                self.assertTrue(all(row['cleanup_confirmed'] for row in attempt.driver.commands))
+                self.assertNotIn('fixture-4', [row['name'] for row in attempt.driver.commands])
+
+    def test_pending_failures_deliver_bounded_control_and_preserve_original_error(self):
+        for case in ('pending-nonzero-exit', 'pending-bad-control', 'pending-wrong-scenario', 'pending-leaked-temp'):
+            with self.subTest(case=case), Attempt(case=case) as attempt:
+                with self.assertRaises(RuntimeError):
+                    attempt.run()
+                result = attempt.terminal()
+                self.assertEqual(result['status'], 'fail')
+                forensic = result['pending_clock_forensic']
+                self.assertFalse(forensic['qualified'])
+                self.assertTrue(forensic['forensic_only'])
+                self.assertEqual(len(forensic['evidence']), 2)
+                for row in forensic['evidence']:
+                    payload = (attempt.output / 'evidence' / row['path']).read_bytes()
+                    self.assertEqual(len(payload), row['bytes'])
+                    self.assertEqual(hashlib.sha256(payload).hexdigest(), row['sha256'])
+                if case == 'pending-nonzero-exit':
+                    self.assertIn('Synthetic pending command exited nonzero', result['error'])
+                self.assertEqual(attempt.driver.env['TMPDIR'], str(attempt.output / 'tmp'))
+                self.assertTrue(all(row['cleanup_confirmed'] for row in attempt.driver.commands))
+
+    def test_pending_forensic_copy_failure_cannot_mask_rust_failure_or_environment_restore(self):
+        atomic = guard.Budget.atomic
+        def refuse_forensic(budget, path, data, **kwargs):
+            if 'pending-clock-forensic-' in Path(path).name:
+                raise RuntimeError('synthetic forensic write refusal')
+            return atomic(budget, path, data, **kwargs)
+        with Attempt(case='pending-nonzero-exit') as attempt, mock.patch.object(guard.Budget, 'atomic', refuse_forensic):
+            with self.assertRaises(RuntimeError):
+                attempt.run()
+            result = attempt.terminal()
+            self.assertIn('Synthetic pending command exited nonzero', result['error'])
+            self.assertIn('synthetic forensic write refusal', result['pending_clock_forensic_error'])
+            self.assertEqual(result['status'], 'fail')
+            self.assertEqual(attempt.driver.env['TMPDIR'], str(attempt.output / 'tmp'))
+            self.assertNotIn('OTTPLAY_MULTIVIEW_PENDING_INPUTS', attempt.driver.env)
+            self.assertTrue(all(row['cleanup_confirmed'] for row in attempt.driver.commands))
+
     def failed(self, attempt, reason):
         with self.assertRaises(RuntimeError):
             attempt.run()
@@ -1662,7 +1785,7 @@ class MockMainTests(unittest.TestCase):
                 self.assertEqual(attempt.driver.env['CARGO_HOME'], str(attempt.output / 'cargo-home'))
                 fixtures = [entry for entry in attempt.driver.commands if entry['name'].startswith('fixture-')
                             and entry['name'] != 'fixture-build']
-                self.assertEqual(len(fixtures), 4)
+                self.assertEqual(len(fixtures), 5)
                 self.assertTrue(all('--exact' in entry['argv'] and '--ignored' in entry['argv'] for entry in fixtures))
                 self.assertTrue(all('--nocapture' not in entry['argv'] for entry in fixtures))
                 commands = [entry['name'] for entry in attempt.driver.commands]

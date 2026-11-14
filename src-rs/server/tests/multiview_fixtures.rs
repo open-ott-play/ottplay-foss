@@ -1045,3 +1045,14 @@ async fn fixture_http_source_cas_dedupe_media_custody_and_retirement() {
         .to_string_lossy()
         .starts_with("scene-")));
 }
+
+#[cfg(unix)]
+#[path = "support/streamed_decoder.rs"]
+mod streamed_decoder;
+
+#[cfg(unix)]
+#[test]
+#[ignore = "explicit real streamed Decoder clock/pending fixture; requires owned inputs and tools"]
+fn streamed_decoder_short_track_pending_and_failure() {
+    streamed_decoder::run_from_env().expect("streamed Decoder pending/clock/cleanup failed");
+}

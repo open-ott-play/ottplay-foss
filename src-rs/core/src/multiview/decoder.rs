@@ -898,17 +898,87 @@ struct PendingFirst {
     pts: RationalTime,
     bytes: Vec<u8>,
 }
+// Read-only qualification seam. No production/wire API or authority is exposed.
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct TimedAudioObservation {
+    pub generation: u64,
+    pub has_audio: bool,
+    pub fault: bool,
+    pub committed_frames: i128,
+    pub buffered_samples: usize,
+    pub pending_end_frames: Option<i128>,
+    pub target_frames: Option<i128>,
+    pub origin_presentation: Option<Instant>,
+    pub first_audio_due: Option<Instant>,
+}
 struct TimedAudio {
     clock: Arc<SourceClock>,
     first: Option<RationalTime>,
     front: i128,
     next: i128,
     ended: Option<i128>,
+    // Validated real-payload frontier; the producer terminal cause remains unknown.
+    // This never proves process retirement or releases source/decoder custody.
+    pending_end: Option<i128>,
     last_take_end: Option<i128>,
     unresolved_rendered_until: Option<Instant>,
     pending_first: Option<PendingFirst>,
 }
 impl AudioQueue {
+    #[cfg(test)]
+    pub(crate) fn timed_observation_for_test(
+        &self,
+        generation: u64,
+        tick: Instant,
+    ) -> Result<Option<TimedAudioObservation>, DecoderError> {
+        let state = self.state.lock().map_err(|_| DecoderError::Io)?;
+        if state.generation != generation {
+            return Err(DecoderError::StaleGeneration);
+        }
+        let Some(timed) = &state.timed else {
+            return Ok(None);
+        };
+        // Read the already-committed origin directly. Calling origin_at/due_at
+        // here would advance clock initialization from an observer.
+        let origin = timed
+            .clock
+            .state
+            .lock()
+            .map_err(|_| DecoderError::Io)?
+            .origin;
+        let (target_frames, first_audio_due) = match (origin, timed.first) {
+            (Some(origin), Some(first)) => {
+                let now_pts = timed_error(
+                    origin
+                        .pts
+                        .checked_add(elapsed_time(tick, origin.presentation)?),
+                )?;
+                let target = rational_samples(timed_error(now_pts.checked_sub(first))?)?;
+                let offset = timed_error(first.checked_sub(origin.pts))?;
+                if offset.numerator() < 0 {
+                    return Err(DecoderError::InvalidInput);
+                }
+                let due = origin
+                    .presentation
+                    .checked_add(timed_error(offset.to_duration_floor())?)
+                    .ok_or(DecoderError::InvalidInput)?;
+                (Some(target), Some(due))
+            }
+            _ => (None, None),
+        };
+        Ok(Some(TimedAudioObservation {
+            generation: state.generation,
+            has_audio: state.has_audio,
+            fault: timed.clock.fault.load(Ordering::Acquire),
+            committed_frames: timed.next,
+            buffered_samples: state.samples.len(),
+            pending_end_frames: timed.pending_end,
+            target_frames,
+            origin_presentation: origin.map(|origin| origin.presentation),
+            first_audio_due,
+        }))
+    }
     fn timed(&self, generation: u64, clock: Arc<SourceClock>) -> Result<(), DecoderError> {
         let mut s = self.state.lock().map_err(|_| DecoderError::Io)?;
         if s.generation != generation {
@@ -921,6 +991,7 @@ impl AudioQueue {
             front: 0,
             next: 0,
             ended: None,
+            pending_end: None,
             last_take_end: None,
             unresolved_rendered_until: None,
             pending_first: None,
@@ -934,6 +1005,7 @@ impl AudioQueue {
                 if due < until {
                     t.clock.fault.store(true, Ordering::Release);
                     t.pending_first = None;
+                    t.pending_end = None;
                     s.has_audio = false;
                     s.samples.clear();
                     return Err(DecoderError::InvalidInput);
@@ -1082,6 +1154,7 @@ impl AudioQueue {
         if timed_error(RationalTime::new(offset, 48_000))? != delta
             || offset != t.next
             || t.ended.is_some()
+            || t.pending_end.is_some()
         {
             return Err(DecoderError::InvalidInput);
         }
@@ -1106,6 +1179,38 @@ impl AudioQueue {
         );
         Ok(())
     }
+    // Call only after END N matches all N validated mux records, raw bytes and
+    // successful queue commits, through the active source publication barrier.
+    fn publish_pending_end(
+        &self,
+        generation: u64,
+        final_pts: RationalTime,
+    ) -> Result<(), DecoderError> {
+        let mut s = self.state.lock().map_err(|_| DecoderError::Io)?;
+        if s.generation != generation {
+            return Err(DecoderError::StaleGeneration);
+        }
+        if !s.has_audio {
+            return Err(DecoderError::PublicationDenied);
+        }
+        let t = s.timed.as_mut().ok_or(DecoderError::InvalidInput)?;
+        let delta = timed_error(final_pts.checked_sub(t.first.ok_or(DecoderError::InvalidInput)?))?;
+        let frontier = rational_samples(delta)?;
+        if t.clock.fault.load(Ordering::Acquire)
+            || t.pending_first.is_some()
+            || t.unresolved_rendered_until.is_some()
+            || t.ended.is_some()
+            || t.pending_end.is_some()
+            || frontier <= 0
+            || frontier != t.next
+            || timed_error(RationalTime::new(frontier, 48_000))? != delta
+        {
+            return Err(DecoderError::InvalidInput);
+        }
+        t.pending_end = Some(frontier);
+        Ok(())
+    }
+    #[cfg(test)]
     fn end_at(&self, generation: u64) {
         if let Ok(mut s) = self.state.lock() {
             if s.generation == generation {
@@ -1137,6 +1242,7 @@ impl AudioQueue {
             s.samples.clear();
             if let Some(t) = &mut s.timed {
                 t.pending_first = None;
+                t.pending_end = None;
             }
             return out;
         }
@@ -1174,6 +1280,7 @@ impl AudioQueue {
             s.samples.clear();
             if let Some(t) = &mut s.timed {
                 t.pending_first = None;
+                t.pending_end = None;
             }
             return out;
         };
@@ -1191,6 +1298,7 @@ impl AudioQueue {
                 s.samples.clear();
                 if let Some(t) = &mut s.timed {
                     t.pending_first = None;
+                    t.pending_end = None;
                 }
                 return out;
             }
@@ -1203,6 +1311,7 @@ impl AudioQueue {
                 .as_ref()
                 .unwrap()
                 .ended
+                .or(s.timed.as_ref().unwrap().pending_end)
                 .is_some_and(|end| target >= end)
         {
             clock.fault.store(true, Ordering::Release);
@@ -1210,6 +1319,7 @@ impl AudioQueue {
             s.samples.clear();
             if let Some(t) = &mut s.timed {
                 t.pending_first = None;
+                t.pending_end = None;
             }
             return out;
         }
@@ -1225,7 +1335,7 @@ impl AudioQueue {
         for frame in 0..960 {
             let wanted = target + frame as i128;
             let t = s.timed.as_ref().unwrap();
-            if wanted < 0 || t.ended.is_some_and(|end| wanted >= end) {
+            if wanted < 0 || t.ended.or(t.pending_end).is_some_and(|end| wanted >= end) {
                 continue;
             }
             if wanted == t.front && s.samples.len() >= 2 {
@@ -1249,6 +1359,7 @@ impl AudioQueue {
             s.samples.clear();
             if let Some(t) = &mut s.timed {
                 t.pending_first = None;
+                t.pending_end = None;
             }
         }
         out
@@ -1290,6 +1401,11 @@ mod timed_io {
         pub audio: Option<File>,
         pub video_path: PathBuf,
         pub audio_path: PathBuf,
+        pub video_witness: File,
+        pub audio_witness: Option<File>,
+        pub video_witness_path: PathBuf,
+        pub audio_witness_path: PathBuf,
+        pub witness_key: String,
         root: PathBuf,
     }
     impl MetadataPipes {
@@ -1299,6 +1415,9 @@ mod timed_io {
         }
         pub fn new(audio: bool) -> Result<Self, DecoderError> {
             static NEXT: AtomicU64 = AtomicU64::new(0);
+            let sequence = NEXT
+                .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1))
+                .map_err(|_| DecoderError::Io)?;
             let nonce = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|_| DecoderError::Io)?
@@ -1306,7 +1425,7 @@ mod timed_io {
             let root = std::env::temp_dir().join(format!(
                 "ottplay-decode-{}-{nonce}-{}",
                 std::process::id(),
-                NEXT.fetch_add(1, Ordering::Relaxed)
+                sequence
             ));
             fs::DirBuilder::new()
                 .mode(0o700)
@@ -1315,6 +1434,8 @@ mod timed_io {
             let result = (|| {
                 let video_path = root.join("video.fifo");
                 let audio_path = root.join("audio.fifo");
+                let video_witness_path = root.join("video-witness.fifo");
+                let audio_witness_path = root.join("audio-witness.fifo");
                 let open = |path: &Path| -> Result<File, DecoderError> {
                     let c = CString::new(path.as_os_str().as_bytes())
                         .map_err(|_| DecoderError::InvalidInput)?;
@@ -1334,9 +1455,40 @@ mod timed_io {
                 } else {
                     None
                 };
+                // Open witnesses read-only before spawning. Pre-writer read(0)
+                // is not a terminal signal; only the parsed host marker is.
+                let witness = |path: &Path| -> Result<File, DecoderError> {
+                    let c = CString::new(path.as_os_str().as_bytes())
+                        .map_err(|_| DecoderError::InvalidInput)?;
+                    if unsafe { mkfifo(c.as_ptr(), 0o600) } != 0 {
+                        return Err(DecoderError::Io);
+                    }
+                    OpenOptions::new()
+                        .read(true)
+                        .custom_flags(NONBLOCK)
+                        .open(path)
+                        .map_err(|_| DecoderError::Io)
+                };
+                let video_witness = witness(&video_witness_path)?;
+                let audio_witness = if audio.is_some() {
+                    Some(witness(&audio_witness_path)?)
+                } else {
+                    None
+                };
                 Ok(Self {
                     video,
                     audio,
+                    video_witness,
+                    audio_witness,
+                    video_witness_path,
+                    audio_witness_path,
+                    // Distinct per owned generation within this process; not a
+                    // secret/authentication token. Private FDs and source/queue
+                    // generation checks remain the authority.
+                    witness_key: format!(
+                        "ottplay_witness_{:016x}{sequence:016x}",
+                        std::process::id()
+                    ),
                     video_path,
                     audio_path,
                     root: root.clone(),
@@ -1353,11 +1505,286 @@ mod timed_io {
             let _ = fs::remove_dir_all(&self.root);
         }
     }
+    // FFmpeg first parses the filtergraph, then the metadata AVOption value.
+    // Escape both layers. A single quoted path loses its quotes before ':' is
+    // processed by the second parser. Never use lossy filesystem conversion.
+    pub(super) fn filter_file(path: &Path) -> Result<String, DecoderError> {
+        let value = path.to_str().ok_or(DecoderError::InvalidInput)?;
+        if value.is_empty() || value.chars().any(|c| c.is_control()) {
+            return Err(DecoderError::InvalidInput);
+        }
+        fn escape(value: &str, delimiters: &str) -> String {
+            let mut out = String::with_capacity(value.len());
+            for c in value.chars() {
+                if c == '\\' || c == '\'' || c.is_ascii_whitespace() || delimiters.contains(c) {
+                    out.push('\\');
+                }
+                out.push(c);
+            }
+            out
+        }
+        Ok(escape(&escape(value, ":"), "[],;"))
+    }
+
+    pub(super) fn witness_graphs(
+        config: &DecoderConfig,
+        content: FrameContentRect,
+        pipes: &MetadataPipes,
+        has_audio: bool,
+    ) -> Result<(String, Option<String>), DecoderError> {
+        let key = &pipes.witness_key;
+        let video_path = filter_file(&pipes.video_witness_path)?;
+        // Two independent single-kind graphs. The payload branches never pass
+        // through concat/metadata; only private witness branches carry sentinels.
+        let video = format!(
+            "[0:v:0]{},format=pix_fmts=rgb24,split=2[vout][vr];\
+             [vr]metadata=mode=delete,metadata=mode=add:key={key}:value=V_REAL[vreal];\
+             color=c=black:size={}x{}:rate={},trim=end_frame=1,setsar=1,format=pix_fmts=rgb24,\
+             metadata=mode=delete,metadata=mode=add:key={key}:value=V_END[vend];\
+             [vreal][vend]concat=n=2:v=1:a=0,metadata=mode=print:key={key}:file={video_path}:direct=1,nullsink",
+            content_filter(config.frame_spec, content, config.fps),
+            config.frame_spec.width, config.frame_spec.height, config.fps,
+        );
+        let audio = if has_audio {
+            let audio_path = filter_file(&pipes.audio_witness_path)?;
+            Some(format!(
+                "[0:a:0]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,asplit=2[aout][ar];\
+                 [ar]ametadata=mode=delete,ametadata=mode=add:key={key}:value=A_REAL[areal];\
+                 anullsrc=channel_layout=stereo:sample_rate=48000:nb_samples=1,atrim=end_sample=1,\
+                 aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,\
+                 ametadata=mode=delete,ametadata=mode=add:key={key}:value=A_END[aend];\
+                 [areal][aend]concat=n=2:v=0:a=1,ametadata=mode=print:key={key}:file={audio_path}:direct=1,anullsink"
+            ))
+        } else {
+            None
+        };
+        Ok((video, audio))
+    }
+
+    #[derive(Clone, Copy, Default)]
+    pub(super) struct WitnessState {
+        pub end: Option<u64>,
+        pub drained: bool,
+        pub error: bool,
+    }
+    pub(super) type Witness = Arc<Mutex<WitnessState>>;
+    pub(super) fn witness_snapshot(witness: &Witness) -> Result<WitnessState, DecoderError> {
+        let state = *witness.lock().map_err(|_| DecoderError::Io)?;
+        if state.error {
+            Err(DecoderError::InvalidInput)
+        } else {
+            Ok(state)
+        }
+    }
+    pub(super) struct WitnessParser {
+        key: String,
+        kind: char,
+        line: Vec<u8>,
+        header: Option<u64>,
+        real: u64,
+        end: Option<u64>,
+    }
+    impl WitnessParser {
+        pub fn new(key: String, kind: StreamKind) -> Result<Self, DecoderError> {
+            let suffix = key
+                .strip_prefix("ottplay_witness_")
+                .ok_or(DecoderError::InvalidInput)?;
+            if suffix.len() != 32
+                || !suffix
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            {
+                return Err(DecoderError::InvalidInput);
+            }
+            Ok(Self {
+                key,
+                kind: match kind {
+                    StreamKind::Video => 'V',
+                    StreamKind::Audio => 'A',
+                },
+                line: Vec::with_capacity(256),
+                header: None,
+                real: 0,
+                end: None,
+            })
+        }
+        pub fn feed(&mut self, bytes: &[u8]) -> Result<(), DecoderError> {
+            for &byte in bytes {
+                // Even a partial post-END line is forbidden, not only a second END.
+                if self.end.is_some() || (byte != b'\n' && !(0x20..=0x7e).contains(&byte)) {
+                    return Err(DecoderError::InvalidInput);
+                }
+                if byte != b'\n' {
+                    if self.line.len() == 256 {
+                        return Err(DecoderError::InvalidInput);
+                    }
+                    self.line.push(byte);
+                    continue;
+                }
+                let line =
+                    std::str::from_utf8(&self.line).map_err(|_| DecoderError::InvalidInput)?;
+                if let Some(ordinal) = self.header.take() {
+                    if ordinal != self.real {
+                        return Err(DecoderError::InvalidInput);
+                    }
+                    if line == format!("{}={}_REAL", self.key, self.kind) {
+                        self.real = self.real.checked_add(1).ok_or(DecoderError::InvalidInput)?;
+                    } else if line == format!("{}={}_END", self.key, self.kind) && self.real > 0 {
+                        self.end = Some(self.real);
+                    } else {
+                        return Err(DecoderError::InvalidInput);
+                    }
+                } else {
+                    let fields: Vec<_> = line.split_ascii_whitespace().collect();
+                    if fields.len() != 3 {
+                        return Err(DecoderError::InvalidInput);
+                    }
+                    let ordinal_text = fields[0]
+                        .strip_prefix("frame:")
+                        .ok_or(DecoderError::InvalidInput)?;
+                    // FromStr accepts a leading '+', but the producer protocol
+                    // is digits-only for ordinals (signed PTS is separate).
+                    if ordinal_text.is_empty() || !ordinal_text.bytes().all(|b| b.is_ascii_digit())
+                    {
+                        return Err(DecoderError::InvalidInput);
+                    }
+                    let ordinal = ordinal_text
+                        .parse::<u64>()
+                        .map_err(|_| DecoderError::InvalidInput)?;
+                    let pts = fields[1]
+                        .strip_prefix("pts:")
+                        .ok_or(DecoderError::InvalidInput)?;
+                    if pts != "NOPTS" && pts.parse::<i64>().is_err() {
+                        return Err(DecoderError::InvalidInput);
+                    }
+                    let time = fields[2]
+                        .strip_prefix("pts_time:")
+                        .ok_or(DecoderError::InvalidInput)?;
+                    if time.len() > 64
+                        || (time != "NOPTS" && !time.parse::<f64>().is_ok_and(f64::is_finite))
+                    {
+                        return Err(DecoderError::InvalidInput);
+                    }
+                    if ordinal != self.real {
+                        return Err(DecoderError::InvalidInput);
+                    }
+                    self.header = Some(ordinal);
+                }
+                self.line.clear();
+            }
+            Ok(())
+        }
+        pub fn finish(&self) -> Result<(), DecoderError> {
+            if self.end.is_none() || self.header.is_some() || !self.line.is_empty() {
+                Err(DecoderError::InvalidInput)
+            } else {
+                Ok(())
+            }
+        }
+    }
+    pub(super) struct WitnessReader {
+        file: File,
+        parser: WitnessParser,
+        pub state: Witness,
+    }
+    impl WitnessReader {
+        pub fn new(file: File, key: String, kind: StreamKind) -> Result<Self, DecoderError> {
+            Ok(Self {
+                file,
+                parser: WitnessParser::new(key, kind)?,
+                state: Arc::new(Mutex::new(WitnessState::default())),
+            })
+        }
+        // Exactly one bounded read per selected kind/sweep, with no lock over IO.
+        fn poll(&mut self, done: bool) -> Result<bool, DecoderError> {
+            let mut bytes = [0; 256];
+            let result = self.file.read(&mut bytes);
+            self.consume_read(result, &bytes, done)
+        }
+        pub(super) fn consume_read(
+            &mut self,
+            result: std::io::Result<usize>,
+            bytes: &[u8],
+            done: bool,
+        ) -> Result<bool, DecoderError> {
+            let count = match result {
+                Ok(n) if n <= bytes.len() => n,
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => return Ok(false),
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => 0,
+                _ => return Err(DecoderError::Io),
+            };
+            self.parser.feed(&bytes[..count])?;
+            let drained = done && count == 0;
+            if drained {
+                self.parser.finish()?;
+            }
+            let mut state = self.state.lock().map_err(|_| DecoderError::Io)?;
+            state.end = self.parser.end;
+            state.drained = drained;
+            Ok(drained)
+        }
+    }
+    pub(super) fn drain_witnesses(
+        readers: &mut [WitnessReader],
+        done: &AtomicBool,
+        cancel: &AtomicBool,
+        binding: Option<&Binding>,
+    ) -> Result<(), DecoderError> {
+        if readers.is_empty() || readers.len() > 2 {
+            return Err(DecoderError::InvalidInput);
+        }
+        let result = (|| loop {
+            check_clock_live(cancel, binding)?;
+            let mut all = true;
+            for reader in readers.iter_mut() {
+                all &= reader.poll(done.load(Ordering::Acquire))?;
+            }
+            if all {
+                return Ok(());
+            }
+            thread::sleep(Duration::from_millis(2));
+        })();
+        if result.is_err() {
+            for reader in readers {
+                if let Ok(mut state) = reader.state.lock() {
+                    state.error = true;
+                }
+            }
+        }
+        result
+    }
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct PendingWatermark {
+        packets: u64,
+        bytes: u64,
+    }
+    impl PendingWatermark {
+        pub fn validate(
+            self,
+            committed_packets: u64,
+            committed_bytes: u64,
+        ) -> Result<(), DecoderError> {
+            if self.packets == 0
+                || self.packets != committed_packets
+                || self.bytes != committed_bytes
+            {
+                Err(DecoderError::InvalidInput)
+            } else {
+                Ok(())
+            }
+        }
+    }
+    pub(super) enum StatsEvent {
+        Packet(PacketStats),
+        Pending(PendingWatermark),
+    }
     pub(super) struct StatsReader {
         file: File,
         bytes: Vec<u8>,
         parser: StatsParser,
         kind: StreamKind,
+        packets: u64,
+        raw_bytes: u64,
     }
     impl StatsReader {
         pub fn new(file: File, frame_bytes: usize, kind: StreamKind) -> Result<Self, DecoderError> {
@@ -1366,14 +1793,40 @@ mod timed_io {
                 bytes: Vec::with_capacity(256),
                 parser: timed_error(StatsParser::new(frame_bytes as u32))?,
                 kind,
+                packets: 0,
+                raw_bytes: 0,
             })
         }
+        #[cfg(test)]
         pub fn next(
             &mut self,
             done: &AtomicBool,
             cancel: &AtomicBool,
             binding: Option<&Binding>,
         ) -> Result<Option<PacketStats>, DecoderError> {
+            match self.next_inner(done, cancel, binding, None)? {
+                Some(StatsEvent::Packet(packet)) => Ok(Some(packet)),
+                None => Ok(None),
+                _ => Err(DecoderError::InvalidInput),
+            }
+        }
+        pub fn next_pending(
+            &mut self,
+            done: &AtomicBool,
+            cancel: &AtomicBool,
+            binding: Option<&Binding>,
+            witness: &Witness,
+        ) -> Result<StatsEvent, DecoderError> {
+            self.next_inner(done, cancel, binding, Some(witness))?
+                .ok_or(DecoderError::InvalidInput)
+        }
+        fn next_inner(
+            &mut self,
+            done: &AtomicBool,
+            cancel: &AtomicBool,
+            binding: Option<&Binding>,
+            witness: Option<&Witness>,
+        ) -> Result<Option<StatsEvent>, DecoderError> {
             let began = Instant::now();
             loop {
                 check_clock_live(cancel, binding)?;
@@ -1385,7 +1838,23 @@ mod timed_io {
                     {
                         return Err(DecoderError::InvalidInput);
                     }
-                    return Ok(Some(record));
+                    self.packets = self
+                        .packets
+                        .checked_add(1)
+                        .ok_or(DecoderError::InvalidInput)?;
+                    self.raw_bytes = self
+                        .raw_bytes
+                        .checked_add(record.byte_size as u64)
+                        .ok_or(DecoderError::InvalidInput)?;
+                    if let Some(witness) = witness {
+                        if witness_snapshot(witness)?
+                            .end
+                            .is_some_and(|end| self.packets > end)
+                        {
+                            return Err(DecoderError::InvalidInput);
+                        }
+                    }
+                    return Ok(Some(StatsEvent::Packet(record)));
                 }
                 if self.bytes.len() > 256 {
                     return Err(DecoderError::InvalidInput);
@@ -1401,9 +1870,23 @@ mod timed_io {
                     Err(_) => return Err(DecoderError::Io),
                     _ => return Err(DecoderError::Io),
                 }
+                if let Some(witness) = witness {
+                    let state = witness_snapshot(witness)?;
+                    if let Some(end) = state.end {
+                        if self.packets > end || (self.packets == end && !self.bytes.is_empty()) {
+                            return Err(DecoderError::InvalidInput);
+                        }
+                        if self.packets == end {
+                            return Ok(Some(StatsEvent::Pending(PendingWatermark {
+                                packets: end,
+                                bytes: self.raw_bytes,
+                            })));
+                        }
+                    }
+                }
                 // Our own read/write keeper intentionally suppresses FIFO EOF.
                 // Child retirement is a distinct signal, after draining bytes.
-                if done.load(Ordering::Acquire) {
+                if done.load(Ordering::Acquire) && witness.is_none() {
                     return if self.bytes.is_empty() {
                         Ok(None)
                     } else {
@@ -1415,6 +1898,70 @@ mod timed_io {
                 }
                 thread::sleep(Duration::from_millis(2));
             }
+        }
+    }
+    // Remain an owned reader after terminal publication. No byte, even a partial
+    // mux line/raw packet, may appear beyond the proven real frontier. Continue
+    // through global monitor completion and witness drain before exiting.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn pending_tail(
+        stats: &mut StatsReader,
+        raw: &mut impl Read,
+        witness: &Witness,
+        watermark: PendingWatermark,
+        clock: &SourceClock,
+        final_pts: RationalTime,
+        done: &AtomicBool,
+        cancel: &AtomicBool,
+        binding: Option<&Binding>,
+        mut interval_complete: impl FnMut() -> Result<(), DecoderError>,
+    ) -> Result<(), DecoderError> {
+        let interval_deadline = Instant::now() + Duration::from_secs(5);
+        let mut presented = false;
+        loop {
+            check_clock_live(cancel, binding)?;
+            if clock.fault.load(Ordering::Acquire) {
+                return Err(DecoderError::InvalidInput);
+            }
+            let state = witness_snapshot(witness)?;
+            if state.end != Some(watermark.packets) || !stats.bytes.is_empty() {
+                return Err(DecoderError::InvalidInput);
+            }
+            let mut byte = [0u8; 1];
+            match stats.file.read(&mut byte) {
+                Ok(0) => {}
+                Err(e)
+                    if e.kind() == std::io::ErrorKind::WouldBlock
+                        || e.kind() == std::io::ErrorKind::Interrupted => {}
+                Ok(_) => return Err(DecoderError::InvalidInput),
+                Err(_) => return Err(DecoderError::Io),
+            }
+            let eof = match raw.read(&mut byte) {
+                Ok(0) => true,
+                Err(e)
+                    if e.kind() == std::io::ErrorKind::WouldBlock
+                        || e.kind() == std::io::ErrorKind::Interrupted =>
+                {
+                    false
+                }
+                Ok(_) => return Err(DecoderError::InvalidInput),
+                Err(_) => return Err(DecoderError::Io),
+            };
+            if !presented {
+                if let Some(now) = clock.presentation_now()? {
+                    if clock.permitted_at(final_pts, Duration::ZERO, now)? {
+                        interval_complete()?;
+                        presented = true;
+                    }
+                }
+                if !presented && Instant::now() >= interval_deadline {
+                    return Err(DecoderError::Stalled);
+                }
+            }
+            if presented && done.load(Ordering::Acquire) && state.drained && eof {
+                return Ok(());
+            }
+            thread::sleep(Duration::from_millis(2));
         }
     }
     pub(super) fn raw(
@@ -1442,18 +1989,6 @@ mod timed_io {
             }
         }
         Ok(())
-    }
-    pub(super) fn verify_raw_end(
-        reader: &mut impl Read,
-        cancel: &AtomicBool,
-        binding: Option<&Binding>,
-    ) -> Result<(), DecoderError> {
-        check_clock_live(cancel, binding)?;
-        let mut b = [0];
-        match reader.read(&mut b) {
-            Ok(0) => Ok(()),
-            _ => Err(DecoderError::InvalidInput),
-        }
     }
 }
 
@@ -1583,6 +2118,7 @@ impl AudioQueue {
                 state.samples.clear();
                 if let Some(t) = &mut state.timed {
                     t.pending_first = None;
+                    t.pending_end = None;
                     t.unresolved_rendered_until = None;
                 }
             }
@@ -2384,6 +2920,22 @@ fn block(reader: &mut impl Read, bytes: &mut [u8]) -> std::io::Result<bool> {
     Ok(true)
 }
 
+// A short track may wait arbitrarily long for its live sibling. Once every
+// selected track has committed its terminal frontier, retain the original five
+// second no-progress bound while the global child monitor proves retirement.
+fn pending_exit_expired(
+    since: &mut Option<Instant>,
+    video_pending: bool,
+    audio_pending: bool,
+    now: Instant,
+) -> bool {
+    if !video_pending || !audio_pending {
+        return false;
+    }
+    let start = since.get_or_insert(now);
+    now.saturating_duration_since(*start) >= Duration::from_secs(5)
+}
+
 fn fail_owned(
     process: &Mutex<Process>,
     cancelled: &AtomicBool,
@@ -2866,6 +3418,30 @@ impl Decoder {
             .transpose()
             .map_err(|_| DecoderError::Io)?;
         let content = content_rect(information, config.frame_spec)?;
+        let (video_graph, audio_graph) =
+            timed_io::witness_graphs(config, content, &pipes, information.has_audio)?;
+        let video_witness_reader = timed_io::WitnessReader::new(
+            pipes
+                .video_witness
+                .try_clone()
+                .map_err(|_| DecoderError::Io)?,
+            pipes.witness_key.clone(),
+            StreamKind::Video,
+        )?;
+        let video_witness = video_witness_reader.state.clone();
+        let mut witness_readers = vec![video_witness_reader];
+        let audio_witness = if let Some(file) = &pipes.audio_witness {
+            let reader = timed_io::WitnessReader::new(
+                file.try_clone().map_err(|_| DecoderError::Io)?,
+                pipes.witness_key.clone(),
+                StreamKind::Audio,
+            )?;
+            let state = reader.state.clone();
+            witness_readers.push(reader);
+            Some(state)
+        } else {
+            None
+        };
         let mut cmd = Command::new(ffmpeg);
         cmd.args([
             "-nostdin",
@@ -2895,13 +3471,22 @@ impl Decoder {
             "0",
             "-i",
             "fd:",
-            "-map",
-            "0:v:0",
-            "-an",
-            "-vf",
+            "-filter_complex",
         ])
-        .arg(content_filter(config.frame_spec, content, config.fps))
-        .args([
+        .arg(video_graph);
+        if let Some(graph) = audio_graph {
+            cmd.arg("-filter_complex").arg(graph);
+        }
+        // Passthrough preserves the already-normalized fps-filter output: no
+        // post-split duplicate/drop or encoder flush packet can escape END N.
+        cmd.args([
+            "-map",
+            "[vout]",
+            "-an",
+            "-fps_mode:v",
+            "passthrough",
+            "-enc_time_base:v",
+            "filter",
             "-threads",
             "1",
             "-c:v",
@@ -2917,7 +3502,7 @@ impl Decoder {
         if information.has_audio {
             cmd.args([
                 "-map",
-                "0:a:0",
+                "[aout]",
                 "-vn",
                 "-threads",
                 "1",
@@ -2963,6 +3548,8 @@ impl Decoder {
             presentation,
         ));
         let finished = Arc::new(AtomicBool::new(false));
+        let video_pending = Arc::new(AtomicBool::new(false));
+        let audio_pending = Arc::new(AtomicBool::new(!information.has_audio));
         let video_complete = Arc::new(AtomicBool::new(false));
         let audio_complete = Arc::new(AtomicBool::new(!information.has_audio));
         let mut decoder = Self {
@@ -2988,9 +3575,34 @@ impl Decoder {
             let queue = audio.clone();
             let video = video.clone();
             let binding = publication.clone();
+            let done = finished.clone();
+            let handle = thread::Builder::new()
+                .name("multiview-witness".into())
+                .spawn(move || {
+                    let result = timed_io::drain_witnesses(
+                        &mut witness_readers,
+                        &done,
+                        &cancelled,
+                        binding.as_deref(),
+                    );
+                    if result.is_err() && !cancelled.load(Ordering::Acquire) {
+                        fail_owned(&process, &cancelled, &video, &queue, generation);
+                    }
+                })
+                .map_err(|_| DecoderError::Io)?;
+            decoder.readers.push(handle);
+        }
+
+        {
+            let process = decoder.process.clone();
+            let cancelled = decoder.cancelled.clone();
+            let queue = audio.clone();
+            let video = video.clone();
+            let binding = publication.clone();
             let clock = clock.clone();
             let done = finished.clone();
             let complete = video_complete.clone();
+            let pending = video_pending.clone();
             let handle = thread::Builder::new()
                 .name("multiview-timed-video".into())
                 .spawn(move || {
@@ -3001,10 +3613,18 @@ impl Decoder {
                             StreamKind::Video,
                         )?;
                         let mut sequence = 0u64;
+                        let mut committed_bytes = 0u64;
                         let mut final_end = None;
-                        while let Some(packet) =
-                            stats.next(&done, &cancelled, binding.as_deref())?
-                        {
+                        let watermark = loop {
+                            let packet = match stats.next_pending(
+                                &done,
+                                &cancelled,
+                                binding.as_deref(),
+                                &video_witness,
+                            )? {
+                                timed_io::StatsEvent::Packet(packet) => packet,
+                                timed_io::StatsEvent::Pending(watermark) => break watermark,
+                            };
                             let pts = timed_error(packet.timestamp())?;
                             if final_end.is_some_and(|expected| expected != pts) {
                                 return Err(DecoderError::InvalidInput);
@@ -3043,21 +3663,33 @@ impl Decoder {
                                     .map_err(|_| DecoderError::StaleGeneration)
                             };
                             publish_bound(binding.as_deref(), &mut operation)?;
-                        }
-                        if sequence == 0 {
-                            return Err(DecoderError::InvalidInput);
-                        }
-                        timed_io::verify_raw_end(&mut stdout, &cancelled, binding.as_deref())?;
-                        clock.wait(
+                            committed_bytes = committed_bytes
+                                .checked_add(frame_bytes as u64)
+                                .ok_or(DecoderError::InvalidInput)?;
+                        };
+                        watermark.validate(sequence, committed_bytes)?;
+                        pending.store(true, Ordering::Release);
+                        // Ended is a presentation slate at the last real frame's
+                        // interval, not clean EOF or decoder/source retirement.
+                        timed_io::pending_tail(
+                            &mut stats,
+                            &mut stdout,
+                            &video_witness,
+                            watermark,
+                            &clock,
                             final_end.ok_or(DecoderError::InvalidInput)?,
-                            Duration::ZERO,
+                            &done,
                             &cancelled,
                             binding.as_deref(),
-                            began,
+                            || {
+                                let mut operation = || {
+                                    video
+                                        .mark_ended(generation)
+                                        .map_err(|_| DecoderError::StaleGeneration)
+                                };
+                                publish_bound(binding.as_deref(), &mut operation)
+                            },
                         )?;
-                        video
-                            .mark_ended(generation)
-                            .map_err(|_| DecoderError::StaleGeneration)?;
                         Ok(())
                     })();
                     if result.is_ok() {
@@ -3070,7 +3702,9 @@ impl Decoder {
                 .map_err(|_| DecoderError::Io)?;
             decoder.readers.push(handle);
         }
-        if let (Some(mut stderr), Some(stats_file)) = (stderr, audio_stats) {
+        if let (Some(mut stderr), Some(stats_file), Some(audio_witness)) =
+            (stderr, audio_stats, audio_witness)
+        {
             let process = decoder.process.clone();
             let cancelled = decoder.cancelled.clone();
             let queue = audio.clone();
@@ -3078,6 +3712,7 @@ impl Decoder {
             let binding = publication.clone();
             let done = finished.clone();
             let complete = audio_complete.clone();
+            let pending = audio_pending.clone();
             let clock = clock.clone();
             let handle = thread::Builder::new()
                 .name("multiview-timed-audio".into())
@@ -3086,15 +3721,23 @@ impl Decoder {
                         let mut stats =
                             timed_io::StatsReader::new(stats_file, frame_bytes, StreamKind::Audio)?;
                         let mut packets = 0u64;
+                        let mut committed_bytes = 0u64;
                         let mut final_end = None;
                         let mut bytes = vec![0u8; AUDIO_BLOCK * 2];
-                        while let Some(packet) =
-                            stats.next(&done, &cancelled, binding.as_deref())?
-                        {
+                        let watermark = loop {
+                            let packet = match stats.next_pending(
+                                &done,
+                                &cancelled,
+                                binding.as_deref(),
+                                &audio_witness,
+                            )? {
+                                timed_io::StatsEvent::Packet(packet) => packet,
+                                timed_io::StatsEvent::Pending(watermark) => break watermark,
+                            };
                             let start = timed_error(packet.timestamp())?;
                             let size = packet.byte_size as usize;
                             let mut offset = 0usize;
-                            packets += 1;
+                            packets = packets.checked_add(1).ok_or(DecoderError::InvalidInput)?;
                             while offset < size {
                                 let count = (size - offset).min(AUDIO_BLOCK * 2);
                                 bytes.resize(count, 0);
@@ -3181,18 +3824,26 @@ impl Decoder {
                                 }
                                 offset += count;
                             }
-                        }
-                        if packets == 0 {
-                            return Err(DecoderError::InvalidInput);
-                        }
-                        timed_io::verify_raw_end(&mut stderr, &cancelled, binding.as_deref())?;
-                        queue.end_at(generation);
-                        clock.wait(
-                            final_end.ok_or(DecoderError::InvalidInput)?,
-                            Duration::ZERO,
+                            committed_bytes = committed_bytes
+                                .checked_add(size as u64)
+                                .ok_or(DecoderError::InvalidInput)?;
+                        };
+                        watermark.validate(packets, committed_bytes)?;
+                        let final_pts = final_end.ok_or(DecoderError::InvalidInput)?;
+                        let mut terminal = || queue.publish_pending_end(generation, final_pts);
+                        publish_bound(binding.as_deref(), &mut terminal)?;
+                        pending.store(true, Ordering::Release);
+                        timed_io::pending_tail(
+                            &mut stats,
+                            &mut stderr,
+                            &audio_witness,
+                            watermark,
+                            &clock,
+                            final_pts,
+                            &done,
                             &cancelled,
                             binding.as_deref(),
-                            began,
+                            || Ok(()),
                         )?;
                         Ok(())
                     })();
@@ -3214,6 +3865,7 @@ impl Decoder {
             let handle = thread::Builder::new()
                 .name("multiview-timed-state".into())
                 .spawn(move || {
+                    let mut pending_since = None;
                     while !cancelled.load(Ordering::Acquire) {
                         if clock.fault.load(Ordering::Acquire) {
                             fail_owned(&process, &cancelled, &video, &queue, generation);
@@ -3241,7 +3893,17 @@ impl Decoder {
                             .ok()
                             .and_then(|mut p| p.0.as_mut().map(Child::try_wait));
                         match status {
-                            Some(Ok(None)) => {}
+                            Some(Ok(None)) => {
+                                if pending_exit_expired(
+                                    &mut pending_since,
+                                    video_pending.load(Ordering::Acquire),
+                                    audio_pending.load(Ordering::Acquire),
+                                    Instant::now(),
+                                ) {
+                                    fail_owned(&process, &cancelled, &video, &queue, generation);
+                                    break;
+                                }
+                            }
                             Some(Ok(Some(s))) if s.success() => {
                                 finished.store(true, Ordering::Release);
                             }
@@ -3259,6 +3921,42 @@ impl Decoder {
             decoder.readers.push(handle);
         }
         Ok(decoder)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn readers_finished_for_test(&self) -> bool {
+        !self.readers.is_empty() && self.readers.iter().all(JoinHandle::is_finished)
+    }
+    #[cfg(test)]
+    pub(crate) fn child_running_for_test(&self) -> Result<bool, DecoderError> {
+        let mut process = self.process.lock().map_err(|_| DecoderError::Io)?;
+        let child = process.0.as_mut().ok_or(DecoderError::InvalidInput)?;
+        child
+            .try_wait()
+            .map(|status| status.is_none())
+            .map_err(|_| DecoderError::Io)
+    }
+    #[cfg(test)]
+    pub(crate) fn child_exit_success_for_test(&self) -> Result<Option<bool>, DecoderError> {
+        let mut process = self.process.lock().map_err(|_| DecoderError::Io)?;
+        let child = process.0.as_mut().ok_or(DecoderError::InvalidInput)?;
+        child
+            .try_wait()
+            .map(|status| status.map(|status| status.success()))
+            .map_err(|_| DecoderError::Io)
+    }
+    #[cfg(test)]
+    pub(crate) fn fail_owned_child_for_test(&self) -> Result<(), DecoderError> {
+        let mut process = self.process.lock().map_err(|_| DecoderError::Io)?;
+        let child = process.0.as_mut().ok_or(DecoderError::InvalidInput)?;
+        if child.try_wait().map_err(|_| DecoderError::Io)?.is_some() {
+            // A naturally finished child cannot qualify late-failure injection.
+            return Err(DecoderError::InvalidInput);
+        }
+        // Act on the retained owned Child handle, never a PID lookup. Do not
+        // set cancelled/finished or publish failure here: ordinary readers and
+        // the global monitor must observe/refine the real subprocess failure.
+        child.kill().map_err(|_| DecoderError::Io)
     }
 
     pub fn pid(&self) -> u32 {
@@ -3824,6 +4522,611 @@ mod tests {
             .all(|v| *v == 0));
         assert!(q.has_audio(1));
         assert_eq!(q.stats(1).selected_underflow_samples, 0);
+    }
+    #[test]
+    fn test_pending_observer_is_generation_scoped_and_does_not_advance_clock_or_queue() {
+        let (q, clock, wall) = queue_clock(rational(0, 1));
+        q.push_at(1, rational(0, 1), &pcm(7, 144)).unwrap();
+        let before = q.stats(1);
+        let observed = q.timed_observation_for_test(1, wall).unwrap().unwrap();
+        assert_eq!(observed.generation, 1);
+        assert_eq!(observed.committed_frames, 144);
+        assert_eq!(observed.buffered_samples, 288);
+        assert_eq!(observed.target_frames, Some(0));
+        assert_eq!(observed.origin_presentation, Some(wall));
+        assert_eq!(observed.first_audio_due, Some(wall));
+        assert_eq!(observed.pending_end_frames, None);
+        assert!(observed.has_audio && !observed.fault);
+        assert_eq!(q.stats(1), before);
+        assert_eq!(
+            q.timed_observation_for_test(2, wall),
+            Err(DecoderError::StaleGeneration)
+        );
+        q.publish_pending_end(1, rational(144, 48000)).unwrap();
+        assert_eq!(
+            q.timed_observation_for_test(1, wall)
+                .unwrap()
+                .unwrap()
+                .pending_end_frames,
+            Some(144)
+        );
+        q.mark_unavailable(1);
+        let failed = q.timed_observation_for_test(1, wall).unwrap().unwrap();
+        assert!(!failed.has_audio);
+        assert_eq!(failed.pending_end_frames, None);
+        clock.state.lock().unwrap().origin = None;
+        let undecided = q
+            .timed_observation_for_test(1, wall + Duration::from_secs(60))
+            .unwrap()
+            .unwrap();
+        assert_eq!(undecided.origin_presentation, None);
+        assert_eq!(undecided.target_frames, None);
+        assert!(clock.state.lock().unwrap().origin.is_none());
+    }
+    #[test]
+    fn pending_audio_tail_preserves_real_prefix_and_rejects_late_push() {
+        let (q, _, wall) = queue_clock(rational(0, 1));
+        q.set_selected(1, true).unwrap();
+        q.push_at(1, rational(0, 1), &pcm(4, 144)).unwrap();
+        q.publish_pending_end(1, rational(144, 48000)).unwrap();
+        assert_eq!(q.state.lock().unwrap().timed.as_ref().unwrap().ended, None);
+        let out = q.take_at(1, wall);
+        assert!(out[..288].iter().all(|v| *v == 4));
+        assert!(out[288..].iter().all(|v| *v == 0));
+        assert!(q
+            .take_at(1, wall + Duration::from_millis(20))
+            .iter()
+            .all(|v| *v == 0));
+        assert!(q.has_audio(1));
+        assert_eq!(q.stats(1).selected_underflow_samples, 0);
+        assert_eq!(
+            q.push_at(1, rational(144, 48000), &pcm(5, 1)),
+            Err(DecoderError::InvalidInput)
+        );
+        assert_eq!(
+            q.publish_pending_end(1, rational(144, 48000)),
+            Err(DecoderError::InvalidInput)
+        );
+    }
+    #[test]
+    fn pending_audio_frontier_requires_committed_exact_nonbackdated_samples() {
+        let (q, _, _) = queue_clock(rational(0, 1));
+        assert_eq!(
+            q.publish_pending_end(1, rational(0, 1)),
+            Err(DecoderError::InvalidInput)
+        );
+        q.push_at(1, rational(0, 1), &pcm(7, 144)).unwrap();
+        for end in [
+            rational(143, 48000),
+            rational(145, 48000),
+            rational(289, 96000),
+        ] {
+            assert_eq!(
+                q.publish_pending_end(1, end),
+                Err(DecoderError::InvalidInput)
+            );
+        }
+        {
+            let mut state = q.state.lock().unwrap();
+            state.timed.as_mut().unwrap().pending_first = Some(PendingFirst {
+                pts: rational(144, 48000),
+                bytes: pcm(1, 1),
+            });
+        }
+        assert_eq!(
+            q.publish_pending_end(1, rational(144, 48000)),
+            Err(DecoderError::InvalidInput)
+        );
+        q.state
+            .lock()
+            .unwrap()
+            .timed
+            .as_mut()
+            .unwrap()
+            .pending_first = None;
+        q.publish_pending_end(1, rational(144, 48000)).unwrap();
+    }
+    #[test]
+    fn pending_audio_cannot_hide_a_hole_before_frontier_or_survive_failure() {
+        let (q, clock, wall) = queue_clock(rational(0, 1));
+        q.set_selected(1, true).unwrap();
+        q.push_at(1, rational(0, 1), &pcm(8, 144)).unwrap();
+        q.publish_pending_end(1, rational(144, 48000)).unwrap();
+        q.state.lock().unwrap().samples.clear();
+        q.take_at(1, wall);
+        assert!(clock.fault.load(Ordering::Acquire));
+        assert!(!q.has_audio(1));
+        assert_eq!(
+            q.state.lock().unwrap().timed.as_ref().unwrap().pending_end,
+            None
+        );
+        let (q, _, _) = queue_clock(rational(0, 1));
+        q.push_at(1, rational(0, 1), &pcm(1, 144)).unwrap();
+        q.publish_pending_end(1, rational(144, 48000)).unwrap();
+        q.mark_unavailable(1);
+        assert_eq!(
+            q.state.lock().unwrap().timed.as_ref().unwrap().pending_end,
+            None
+        );
+        assert_eq!(
+            q.publish_pending_end(1, rational(144, 48000)),
+            Err(DecoderError::PublicationDenied)
+        );
+    }
+    #[test]
+    fn pending_audio_publication_keeps_generation_and_source_authority_fences() {
+        let (q, _, _) = queue_clock(rational(0, 1));
+        q.push_at(1, rational(0, 1), &pcm(1, 144)).unwrap();
+        assert_eq!(
+            q.publish_pending_end(2, rational(144, 48000)),
+            Err(DecoderError::StaleGeneration)
+        );
+        let gate = Arc::new(Gate {
+            allowed: Mutex::new(false),
+        });
+        let revoked = Arc::new(AtomicBool::new(false));
+        let binding = Binding {
+            context: context(),
+            expires_at: Instant::now() + Duration::from_secs(10),
+            revoked: revoked.clone(),
+            authority: gate.clone(),
+            active: AtomicBool::new(true),
+        };
+        let mut publish = || q.publish_pending_end(1, rational(144, 48000));
+        assert!(publish_bound(Some(&binding), &mut publish).is_err());
+        assert_eq!(
+            q.state.lock().unwrap().timed.as_ref().unwrap().pending_end,
+            None
+        );
+        *gate.allowed.lock().unwrap() = true;
+        revoked.store(true, Ordering::Release);
+        assert_eq!(
+            publish_bound(Some(&binding), &mut publish),
+            Err(DecoderError::Revoked)
+        );
+        assert_eq!(
+            q.state.lock().unwrap().timed.as_ref().unwrap().pending_end,
+            None
+        );
+    }
+    #[cfg(unix)]
+    fn witness_key() -> String {
+        "ottplay_witness_0123456789abcdef0123456789abcdef".into()
+    }
+    #[cfg(unix)]
+    fn witness_record(ordinal: u64, kind: char, end: bool) -> Vec<u8> {
+        format!(
+            "frame:{ordinal:<4} pts:0       pts_time:0\n{}={kind}_{}\n",
+            witness_key(),
+            if end { "END" } else { "REAL" }
+        )
+        .into_bytes()
+    }
+    #[cfg(unix)]
+    #[test]
+    fn witness_records_require_contiguous_private_real_then_one_terminal() {
+        let good = [witness_record(0, 'A', false), witness_record(1, 'A', true)].concat();
+        let mut parser = timed_io::WitnessParser::new(witness_key(), StreamKind::Audio).unwrap();
+        for byte in &good {
+            parser.feed(&[*byte]).unwrap();
+        }
+        parser.finish().unwrap();
+        assert_eq!(parser.feed(b"x"), Err(DecoderError::InvalidInput));
+        for bad in [
+            String::from_utf8(witness_record(0, 'A', false))
+                .unwrap()
+                .replacen("frame:0", "frame:+0", 1)
+                .into_bytes(),
+            vec![b'x'; 257],
+            witness_record(0, 'A', true),
+            witness_record(1, 'A', false),
+            witness_record(0, 'V', false),
+            String::from_utf8(witness_record(0, 'A', false))
+                .unwrap()
+                .replace("0123456789abcdef", "fedcba9876543210")
+                .into_bytes(),
+            [witness_record(0, 'A', false), witness_record(0, 'A', true)].concat(),
+            [good.clone(), witness_record(1, 'A', true)].concat(),
+        ] {
+            let mut parser =
+                timed_io::WitnessParser::new(witness_key(), StreamKind::Audio).unwrap();
+            assert!(parser.feed(&bad).is_err());
+        }
+        for partial in [
+            b"frame:0".to_vec(),
+            witness_record(0, 'A', false),
+            good[..good.len() - 1].to_vec(),
+        ] {
+            let mut parser =
+                timed_io::WitnessParser::new(witness_key(), StreamKind::Audio).unwrap();
+            parser.feed(&partial).unwrap();
+            assert_eq!(parser.finish(), Err(DecoderError::InvalidInput));
+        }
+    }
+    #[cfg(unix)]
+    #[test]
+    fn witness_interrupted_read_cannot_hide_post_terminal_bytes() {
+        let pipes = timed_io::MetadataPipes::new(false).unwrap();
+        let mut reader = timed_io::WitnessReader::new(
+            pipes.video_witness.try_clone().unwrap(),
+            witness_key(),
+            StreamKind::Video,
+        )
+        .unwrap();
+        let good = [witness_record(0, 'V', false), witness_record(1, 'V', true)].concat();
+        assert!(!reader.consume_read(Ok(good.len()), &good, false).unwrap());
+        assert!(!reader
+            .consume_read(
+                Err(std::io::Error::from(std::io::ErrorKind::Interrupted)),
+                &[],
+                true
+            )
+            .unwrap());
+        assert!(!timed_io::witness_snapshot(&reader.state).unwrap().drained);
+        assert_eq!(
+            reader.consume_read(Ok(1), b"x", true),
+            Err(DecoderError::InvalidInput)
+        );
+    }
+    #[cfg(unix)]
+    #[test]
+    fn witness_owned_worker_drains_both_kinds_without_presentation_and_joins() {
+        use std::io::Write;
+        let pipes = timed_io::MetadataPipes::new(true).unwrap();
+        let root = pipes.root_for_test();
+        let mut readers = vec![
+            timed_io::WitnessReader::new(
+                pipes.video_witness.try_clone().unwrap(),
+                witness_key(),
+                StreamKind::Video,
+            )
+            .unwrap(),
+            timed_io::WitnessReader::new(
+                pipes.audio_witness.as_ref().unwrap().try_clone().unwrap(),
+                witness_key(),
+                StreamKind::Audio,
+            )
+            .unwrap(),
+        ];
+        let states: Vec<_> = readers.iter().map(|r| r.state.clone()).collect();
+        let mut vw = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&pipes.video_witness_path)
+            .unwrap();
+        let mut aw = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&pipes.audio_witness_path)
+            .unwrap();
+        let done = Arc::new(AtomicBool::new(false));
+        let cancel = Arc::new(AtomicBool::new(false));
+        let worker = {
+            let done = done.clone();
+            let cancel = cancel.clone();
+            thread::spawn(move || timed_io::drain_witnesses(&mut readers, &done, &cancel, None))
+        };
+        // All fixture writes fit one small FIFO buffer; no producer child and no
+        // presentation clock runs. The independent worker must still drain END.
+        let write_result = vw
+            .write_all(&[witness_record(0, 'V', false), witness_record(1, 'V', true)].concat())
+            .and_then(|_| {
+                aw.write_all(
+                    &[witness_record(0, 'A', false), witness_record(1, 'A', true)].concat(),
+                )
+            });
+        let deadline = Instant::now() + Duration::from_secs(1);
+        while Instant::now() < deadline
+            && !states
+                .iter()
+                .all(|s| timed_io::witness_snapshot(s).is_ok_and(|s| s.end == Some(1)))
+        {
+            thread::sleep(Duration::from_millis(2));
+        }
+        let observed = states
+            .iter()
+            .all(|s| timed_io::witness_snapshot(s).is_ok_and(|s| s.end == Some(1) && !s.drained));
+        cancel.store(true, Ordering::Release);
+        let joined = worker.join();
+        assert!(write_result.is_ok());
+        assert!(observed);
+        assert_eq!(joined.unwrap(), Err(DecoderError::Cancelled));
+        drop(vw);
+        drop(aw);
+        drop(pipes);
+        assert!(!root.exists());
+    }
+    #[cfg(unix)]
+    #[test]
+    fn pending_stats_watermark_requires_exact_mux_records_and_committed_raw_bytes() {
+        use std::io::Write;
+        let pipes = timed_io::MetadataPipes::new(false).unwrap();
+        let witness = Arc::new(Mutex::new(timed_io::WitnessState {
+            end: Some(1),
+            drained: false,
+            error: false,
+        }));
+        let mut writer = pipes.video.try_clone().unwrap();
+        writer.write_all(b"V 0 0 1/10 18432\n").unwrap();
+        let mut reader =
+            timed_io::StatsReader::new(pipes.video.try_clone().unwrap(), 18432, StreamKind::Video)
+                .unwrap();
+        let done = AtomicBool::new(false);
+        let cancel = AtomicBool::new(false);
+        assert!(matches!(
+            reader.next_pending(&done, &cancel, None, &witness).unwrap(),
+            timed_io::StatsEvent::Packet(_)
+        ));
+        let timed_io::StatsEvent::Pending(proof) =
+            reader.next_pending(&done, &cancel, None, &witness).unwrap()
+        else {
+            panic!("expected verified pending frontier");
+        };
+        assert_eq!(proof.validate(1, 18432), Ok(()));
+        assert_eq!(proof.validate(0, 18432), Err(DecoderError::InvalidInput));
+        assert_eq!(proof.validate(1, 18431), Err(DecoderError::InvalidInput));
+        writer.write_all(b"V").unwrap();
+        assert!(reader.next_pending(&done, &cancel, None, &witness).is_err());
+    }
+    #[test]
+    fn pending_exit_watchdog_waits_for_all_selected_tracks_without_extending_limit() {
+        let start = Instant::now();
+        let mut since = None;
+        assert!(!pending_exit_expired(&mut since, true, false, start));
+        assert!(!pending_exit_expired(
+            &mut since,
+            true,
+            false,
+            start + Duration::from_secs(30)
+        ));
+        assert_eq!(since, None);
+        assert!(!pending_exit_expired(
+            &mut since,
+            true,
+            true,
+            start + Duration::from_secs(30)
+        ));
+        assert!(!pending_exit_expired(
+            &mut since,
+            true,
+            true,
+            start + Duration::from_secs(34)
+        ));
+        assert!(pending_exit_expired(
+            &mut since,
+            true,
+            true,
+            start + Duration::from_secs(35)
+        ));
+        assert_eq!(since, Some(start + Duration::from_secs(30)));
+    }
+    #[cfg(unix)]
+    fn pending_reader_fixture() -> (
+        timed_io::MetadataPipes,
+        timed_io::StatsReader,
+        timed_io::Witness,
+        timed_io::PendingWatermark,
+    ) {
+        use std::io::Write;
+        let pipes = timed_io::MetadataPipes::new(false).unwrap();
+        pipes
+            .video
+            .try_clone()
+            .unwrap()
+            .write_all(b"V 0 0 1/10 18432\n")
+            .unwrap();
+        let witness = Arc::new(Mutex::new(timed_io::WitnessState {
+            end: Some(1),
+            drained: false,
+            error: false,
+        }));
+        let mut reader =
+            timed_io::StatsReader::new(pipes.video.try_clone().unwrap(), 18432, StreamKind::Video)
+                .unwrap();
+        let done = AtomicBool::new(false);
+        let cancel = AtomicBool::new(false);
+        assert!(matches!(
+            reader.next_pending(&done, &cancel, None, &witness).unwrap(),
+            timed_io::StatsEvent::Packet(_)
+        ));
+        let timed_io::StatsEvent::Pending(proof) =
+            reader.next_pending(&done, &cancel, None, &witness).unwrap()
+        else {
+            panic!("pending fixture");
+        };
+        (pipes, reader, witness, proof)
+    }
+    #[cfg(unix)]
+    #[test]
+    fn pending_tail_requires_logical_interval_global_success_and_witness_drain() {
+        let (_pipes, mut stats, witness, proof) = pending_reader_fixture();
+        let master = Arc::new(PresentationClock::new());
+        let clock = Arc::new(SourceClock::with_presentation(false, Some(master.clone())));
+        let wall = Instant::now();
+        master.publish(wall).unwrap();
+        clock
+            .ready_at(StreamKind::Video, rational(0, 1), wall)
+            .unwrap();
+        let done = Arc::new(AtomicBool::new(false));
+        let cancel = Arc::new(AtomicBool::new(false));
+        let interval = Arc::new(AtomicBool::new(false));
+        struct CancelOnDrop(Arc<AtomicBool>);
+        impl Drop for CancelOnDrop {
+            fn drop(&mut self) {
+                self.0.store(true, Ordering::Release);
+            }
+        }
+        let (before, held_after_interval, joined) = thread::scope(|scope| {
+            let done_worker = done.clone();
+            let cancel_worker = cancel.clone();
+            let interval_worker = interval.clone();
+            let witness_worker = witness.clone();
+            let handle = scope.spawn(move || {
+                timed_io::pending_tail(
+                    &mut stats,
+                    &mut std::io::Cursor::new(Vec::<u8>::new()),
+                    &witness_worker,
+                    proof,
+                    &clock,
+                    rational(1, 10),
+                    &done_worker,
+                    &cancel_worker,
+                    None,
+                    || {
+                        interval_worker.store(true, Ordering::Release);
+                        Ok(())
+                    },
+                )
+            });
+            let _cancel_guard = CancelOnDrop(cancel.clone());
+            thread::sleep(Duration::from_millis(10));
+            let before = !interval.load(Ordering::Acquire) && !handle.is_finished();
+            master.publish(wall + Duration::from_millis(600)).unwrap();
+            let deadline = Instant::now() + Duration::from_secs(1);
+            while !interval.load(Ordering::Acquire) && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(2));
+            }
+            let held_after_interval = interval.load(Ordering::Acquire) && !handle.is_finished();
+            // Independent proof of global success is insufficient without the
+            // bounded witness reader's final post-exit drain.
+            done.store(true, Ordering::Release);
+            thread::sleep(Duration::from_millis(10));
+            let held_after_interval = held_after_interval && !handle.is_finished();
+            witness.lock().unwrap().drained = true;
+            let deadline = Instant::now() + Duration::from_secs(1);
+            while !handle.is_finished() && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(2));
+            }
+            if !handle.is_finished() {
+                cancel.store(true, Ordering::Release);
+            }
+            (before, held_after_interval, handle.join().unwrap())
+        });
+        assert!(before);
+        assert!(held_after_interval);
+        assert_eq!(joined, Ok(()));
+    }
+    #[cfg(unix)]
+    #[test]
+    fn pending_tail_rejects_extra_raw_stats_error_cancel_and_revocation() {
+        use std::io::Write;
+        for case in 0..6 {
+            let (pipes, mut stats, witness, proof) = pending_reader_fixture();
+            let (_, clock, _) = queue_clock(rational(0, 1));
+            let done = AtomicBool::new(true);
+            let cancel = AtomicBool::new(case == 3);
+            witness.lock().unwrap().drained = true;
+            if case == 1 {
+                pipes.video.try_clone().unwrap().write_all(b"V").unwrap();
+            }
+            if case == 2 {
+                witness.lock().unwrap().error = true;
+            }
+            let binding = Binding {
+                context: context(),
+                expires_at: Instant::now() + Duration::from_secs(10),
+                revoked: Arc::new(AtomicBool::new(case == 4)),
+                authority: Arc::new(Gate {
+                    allowed: Mutex::new(true),
+                }),
+                active: AtomicBool::new(true),
+            };
+            struct Raw {
+                extra: bool,
+                error: bool,
+            }
+            impl Read for Raw {
+                fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
+                    if self.error {
+                        return Err(std::io::Error::from(std::io::ErrorKind::Other));
+                    }
+                    if self.extra {
+                        out[0] = 1;
+                        Ok(1)
+                    } else {
+                        Ok(0)
+                    }
+                }
+            }
+            let mut raw = Raw {
+                extra: case == 0,
+                error: case == 5,
+            };
+            let mut published = false;
+            let result = timed_io::pending_tail(
+                &mut stats,
+                &mut raw,
+                &witness,
+                proof,
+                &clock,
+                rational(0, 1),
+                &done,
+                &cancel,
+                Some(&binding),
+                || {
+                    published = true;
+                    Ok(())
+                },
+            );
+            assert_eq!(
+                result,
+                Err(match case {
+                    3 => DecoderError::Cancelled,
+                    4 => DecoderError::Revoked,
+                    5 => DecoderError::Io,
+                    _ => DecoderError::InvalidInput,
+                })
+            );
+            assert!(!published);
+        }
+    }
+    #[cfg(unix)]
+    #[test]
+    fn witness_file_paths_escape_both_filter_grammar_layers() {
+        fn unescape(value: &str) -> String {
+            let mut chars = value.chars();
+            let mut result = String::new();
+            while let Some(c) = chars.next() {
+                result.push(if c == '\\' { chars.next().unwrap() } else { c });
+            }
+            result
+        }
+        let path = " /owned/a b/'quote':colon\\slash,[bracket];tail ";
+        let escaped = timed_io::filter_file(Path::new(path)).unwrap();
+        let inner = unescape(&escaped);
+        assert_ne!(inner, path);
+        assert!(inner.contains("\\:"));
+        assert!(inner.contains("\\'"));
+        assert_eq!(unescape(&inner), path);
+        assert!(timed_io::filter_file(Path::new("/bad\npath")).is_err());
+        use std::os::unix::ffi::OsStrExt;
+        assert!(
+            timed_io::filter_file(Path::new(std::ffi::OsStr::from_bytes(b"/bad\xff"))).is_err()
+        );
+    }
+    #[cfg(unix)]
+    #[test]
+    fn witness_graphs_keep_private_sentinels_out_of_payload_branches() {
+        let pipes = timed_io::MetadataPipes::new(true).unwrap();
+        let config = stream_config();
+        let content = FrameContentRect::full(config.frame_spec);
+        let (video, audio) = timed_io::witness_graphs(&config, content, &pipes, true).unwrap();
+        let audio = audio.unwrap();
+        assert!(video.starts_with(&format!(
+            "[0:v:0]{},format=pix_fmts=rgb24,split=2[vout][vr];",
+            content_filter(config.frame_spec, content, config.fps)
+        )));
+        assert!(audio.starts_with("[0:a:0]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,asplit=2[aout][ar];"));
+        assert_eq!(video.matches("trim=end_frame=1").count(), 1);
+        assert_eq!(audio.matches("atrim=end_sample=1").count(), 1);
+        assert!(video.contains("[vr]metadata=mode=delete,metadata=mode=add:"));
+        assert!(audio.contains("[ar]ametadata=mode=delete,ametadata=mode=add:"));
+        assert!(video.ends_with(":direct=1,nullsink"));
+        assert!(audio.ends_with(":direct=1,anullsink"));
+        assert!(!video.contains("[0:a:"));
+        assert!(!audio.contains("[0:v:"));
+        assert!(timed_io::witness_graphs(&config, content, &pipes, false)
+            .unwrap()
+            .1
+            .is_none());
     }
     #[test]
     fn clock_bounded_first_track_window_allows_future_audio_not_backdated() {

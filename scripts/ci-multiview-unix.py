@@ -3,12 +3,14 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import platform
 import re
 import shutil
 import stat
+import struct
 import sys
 import time
 
@@ -16,11 +18,13 @@ sys.dont_write_bytecode = True
 GUARD_SHA256 = '6f623bb7234b3619ff859dec0afe9c1ad938f29d606f0836b69434312867e020'
 STREAM_MEDIA_SHA256 = '97703a705a2c33a1536893eeca2d11e65022d44fa1189ff59f300e2040cdf4e9'
 STREAM_TEST = 'streamed_session_two_owner_continuity'
+PENDING_TEST = 'streamed_decoder_short_track_pending_and_failure'
 MKFIFO = Path('/usr/bin/mkfifo')
 TESTS = (
     ('real_four_nine_and_perimeter_frames_and_selected_audio', 600),
     ('owned_worker_cancellation_deadlines_busy_and_cleanup', 60),
     ('fixture_http_source_cas_dedupe_media_custody_and_retirement', 120),
+    (PENDING_TEST, 120),
     (STREAM_TEST, 110),
 )
 ACTIVATION_TESTS = frozenset({
@@ -663,6 +667,127 @@ def run_streamed_fixture(driver, budget, command, executable, tools, result):
                     driver.env[key] = value
 
 
+
+def run_pending_fixture(driver, budget, command, executable, tools, result):
+    """Exercise the genuine Decoder using two short, locally generated TS inputs."""
+    parent = driver.output / 'pending-clock'
+    parent.mkdir(mode=0o700)
+    inputs = parent / 'inputs'
+    inputs.mkdir(mode=0o700)
+    scratch = parent / "tmp space'colon:back\\slash"
+    scratch.mkdir(mode=0o700)
+    case = parent / 'case'
+    manifest_path = inputs / 'INPUTS.json'
+    rows = []
+    # Raw samples define exact 1s/3s track lengths. AAC padding is checked by
+    # the Rust fixture (49152/145408 decoded stereo frames), never guessed here.
+    for identity, video_frames, audio_seconds in (('a1-v3', 30, 1), ('a3-v1', 10, 3)):
+        video, audio = inputs / (identity + '.rgb'), inputs / (identity + '.s16')
+        rgb = bytearray()
+        for frame in range(video_frames):
+            budget.tick()
+            rgb.extend(bytes(((frame * 7) % 256, 80, 180)) * (96 * 64))
+        pcm = bytearray()
+        for frame in range(48000 * audio_seconds):
+            if frame % 4096 == 0:
+                budget.tick()
+            sample = round(10000 * math.sin(2 * math.pi * 320 * frame / 48000))
+            pcm.extend(struct.pack('<hh', sample, sample))
+        budget.atomic(video, rgb)
+        budget.atomic(audio, pcm)
+        output = inputs / (identity + '.ts')
+        observed = system_tool_identity(Path(tools['ffmpeg']['requested_path']), budget)
+        require(all(tools['ffmpeg'][key] == value for key, value in observed.items()),
+                'Pending generator executable identity changed')
+        command('pending-generate-' + identity, [tools['ffmpeg']['path'], '-nostdin', '-hide_banner',
+                '-loglevel', 'error', '-n', '-protocol_whitelist', 'file,pipe', '-f', 'rawvideo',
+                '-pixel_format', 'rgb24', '-video_size', '96x64', '-framerate', '10', '-i', str(video),
+                '-protocol_whitelist', 'file,pipe', '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', str(audio),
+                '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'libx264', '-threads:v', '1', '-preset', 'ultrafast',
+                '-tune', 'zerolatency', '-crf', '18', '-g', '10', '-keyint_min', '10', '-sc_threshold', '0',
+                '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-threads:a', '1', '-ar', '48000', '-ac', '2',
+                '-b:a', '96k', '-f', 'mpegts', str(output)], 30)
+        raw = stream_read(output, inputs, 1024**2, budget)
+        require(raw, 'Empty pending fixture transport input')
+        output.chmod(0o400)
+        rows.append({'id': identity, 'path': str(output), 'bytes': len(raw),
+                     'sha256': hashlib.sha256(raw).hexdigest()})
+    manifest = {'schema': 'ottplay.multiview.pending-inputs.v1', 'width': 96, 'height': 64,
+                'fps': 10, 'inputs': rows}
+    budget.atomic(manifest_path, (json.dumps(manifest, sort_keys=True) + '\n').encode())
+    manifest_path.chmod(0o400)
+    manifest_raw = stream_read(manifest_path, inputs, 16384, budget)
+    manifest_hash = hashlib.sha256(manifest_raw).hexdigest()
+    keys = ('OTTPLAY_MULTIVIEW_PENDING_INPUTS', 'OTTPLAY_MULTIVIEW_PENDING_CASE_DIR', 'TMPDIR')
+    old_env = {key: driver.env.get(key) for key in keys}
+    primary = None
+    try:
+        driver.env.update(OTTPLAY_MULTIVIEW_PENDING_INPUTS=str(manifest_path),
+                          OTTPLAY_MULTIVIEW_PENDING_CASE_DIR=str(case), TMPDIR=str(scratch))
+        text = command('fixture-pending-clock', [str(executable), PENDING_TEST, '--ignored', '--exact',
+                       '--test-threads=1', '--color=never'], 120)
+        require_one_pass(text, PENDING_TEST)
+        raw = stream_read(case / 'CONTROL.json', case, 131072, budget)
+        control = json.loads(raw)
+        expected = [('AudioTail', 'a1-v3'), ('VideoTail', 'a3-v1'), ('LateFailure', 'a1-v3'),
+                    ('Revoke', 'a1-v3'), ('Cancel', 'a1-v3')]
+        require(type(control) is dict and control.get('schema') == 'ottplay.multiview.pending-clock-fixture.v1'
+                and control.get('pass') is True and type(control.get('case_count')) is int
+                and control['case_count'] == 5 and control.get('error') is None
+                and control.get('input_manifest_sha256') == manifest_hash
+                and control.get('external_process_group_supervisor_required') is True
+                and control.get('clean_eof_from_pending_claimed') is False
+                and type(control.get('cases')) is list and len(control['cases']) == 5,
+                'Pending fixture CONTROL did not qualify all five scenarios')
+        for observed, (scenario, identity) in zip(control['cases'], expected):
+            require(type(observed) is dict and observed.get('scenario') == scenario
+                    and observed.get('input') == identity and observed.get('pass') is True
+                    and observed.get('metadata_clean') is True and observed.get('error') is None
+                    and observed.get('input_sha256') == next(row['sha256'] for row in rows if row['id'] == identity),
+                    'Pending fixture scenario identity, input or cleanup differs')
+        require(stream_read(manifest_path, inputs, 16384, budget) == manifest_raw
+                and not manifest_path.lstat().st_mode & 0o222, 'Pending input manifest changed')
+        for row in rows:
+            path = Path(row['path'])
+            require(not path.lstat().st_mode & 0o222
+                    and hashlib.sha256(stream_read(path, inputs, 1024**2, budget)).hexdigest() == row['sha256'],
+                    'Pending fixture input changed')
+        require(not any(scratch.iterdir()), 'Pending fixture temporary cleanup incomplete')
+        budget.json_evidence(driver.evidence / 'pending-clock-inputs.json', manifest)
+        budget.atomic(driver.evidence / 'pending-clock-control.json', raw, evidence=True)
+        result['pending_clock'] = {'pass': True, 'scenarios': [name for name, _ in expected],
+                                   'input_manifest_sha256': manifest_hash,
+                                   'control_sha256': hashlib.sha256(raw).hexdigest(),
+                                   'production_admission': False}
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        if primary is not None:
+            # Driver.run already retired its process group before returning or
+            # raising. Preserve bounded diagnostics without masking that error.
+            try:
+                forensic = []
+                for source, owned, destination, cap in (
+                    (manifest_path, inputs, 'pending-clock-forensic-inputs.json', 16384),
+                    (case / 'CONTROL.json', case, 'pending-clock-forensic-control.json', 131072),
+                ):
+                    if source.exists() or source.is_symlink():
+                        payload = stream_read(source, owned, cap, budget, cleanup=True)
+                        budget.atomic(driver.evidence / destination, payload, evidence=True, cleanup=True)
+                        forensic.append({'path': destination, 'bytes': len(payload),
+                                         'sha256': hashlib.sha256(payload).hexdigest()})
+                result['pending_clock_forensic'] = {'qualified': False, 'forensic_only': True,
+                                                    'evidence': forensic}
+            except BaseException as error:
+                result['pending_clock_forensic_error'] = str(error)
+        for key, value in old_env.items():
+            if value is None:
+                driver.env.pop(key, None)
+            else:
+                driver.env[key] = value
+
+
 def main(argv=None):
     started = time.monotonic()
     guard = load_guard()  # Import only; its WK main is never called.
@@ -696,7 +821,7 @@ def main(argv=None):
     # No rustc wrapper, external target directory, or user Cargo config overrides.
     for key in ('RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS'):
         driver.env.pop(key, None)
-    result = {'status': 'fail', 'qualification': 'four isolated Unix fixtures, mandatory stream analyzer, broker boundary and zero-capacity activation',
+    result = {'status': 'fail', 'qualification': 'five isolated Unix fixtures, mandatory stream analyzer, broker boundary and zero-capacity activation',
               'sustained_media_e2e': False, 'production_admission': False,
               'generated_media_hashes_available': False, 'new_dependencies': False}
     success = False
@@ -723,7 +848,11 @@ def main(argv=None):
                  'src-rs/server/src/multiview_broker.rs', 'src-rs/server/src/multiview_broker_live.rs',
                  'src-rs/server/src/multiview_broker_live_output_tests.rs', 'src-rs/server/src/media_connection.rs',
                  'src-rs/server/tests/support/streamed_session.rs', 'src-rs/server/tests/support/streamed_transport.rs',
-                 'src-rs/server/tests/support/streamed_archive.rs', 'scripts/ci-multiview-unix-media.py',
+                 'src-rs/server/tests/support/streamed_archive.rs',
+                 'src-rs/server/tests/support/streamed_decoder.rs',
+                 'src-rs/core/src/multiview/decoder.rs', 'src-rs/core/src/multiview/frames.rs',
+                 'src-rs/core/src/multiview/geometry.rs', 'src-rs/core/src/multiview/timing.rs',
+                 'scripts/ci-multiview-unix-media.py',
                  'src-rs/server/src/main.rs', 'scripts/ci-native-favorites.py',
                  'scripts/ci-multiview-unix.py', 'scripts/ci-apt-mirror.py')
         return {'commit': head, 'tree': tree, 'sha256': {p: budget.digest(root / p) for p in paths}}
@@ -862,7 +991,9 @@ def main(argv=None):
             [str(listener), LISTENER_TEST_PREFIX, '--test-threads=1', '--color=never'], 180)
         require_suite_pass(listener_text, listener_all, set())
         for index, (name, limit) in enumerate(TESTS):
-            if name == STREAM_TEST:
+            if name == PENDING_TEST:
+                run_pending_fixture(driver, budget, command, executable, tools, result)
+            elif name == STREAM_TEST:
                 run_streamed_fixture(driver, budget, command, executable, tools, result)
             else:
                 text = command('fixture-' + str(index + 1), [str(executable), name, '--ignored', '--exact',
