@@ -68,7 +68,13 @@ def suite_passed(names, ignored=()):
             + f'test result: ok. {len(names)} passed; 0 failed; {len(ignored)} ignored; 0 measured; 0 filtered out; finished in 0.01s\n')
 
 
-CORE_NAMES = ('multiview::frames::synthetic_contract', 'multiview::encoder::synthetic_stop_contract')
+CORE_REQUIRED_NAMES = (
+    'multiview::broker::registry::try_authority_tests::try_session_authority_returns_busy_without_callback_then_recovers',
+    'multiview::broker::registry::try_authority_tests::try_session_authority_maps_poison_to_unavailable_without_callback',
+    'multiview::broker::registry::try_authority_tests::try_session_authority_preserves_authorization_and_output_block',
+)
+CORE_NAMES = ('multiview::frames::synthetic_contract', 'multiview::encoder::synthetic_stop_contract',
+              *CORE_REQUIRED_NAMES)
 CORE_IGNORED = ('multiview::synthetic_ignored',)
 SERVER_NAMES = ('geometry_and_fixture_success_do_not_grant_production_admission',
                 'worker_rejects_ungranted_files_modified_plans_and_pre_cancelled_work')
@@ -82,6 +88,16 @@ ACTIVATION_NAMES = (
     'invalid_listener_selection_rejected_before_bind',
     'incompatible_dedicated_modes_reject_opt_in_before_binding',
     'restart_issues_fresh_epoch_without_promoting_capacity',
+)
+# These are deliberately synthetic; the production broker inventory is owner-frozen separately.
+BROKER_NAMES = (
+    'synthetic_broker_boundary_rejects_foreign_context',
+    'synthetic_broker_boundary_requires_authenticated_owner',
+)
+LISTENER_NAMES = (
+    'listener_tests::selected_media_dispatch_preserves_public_request_context_and_response',
+    'listener_tests::media_transport_failure_response_is_fixed_and_private',
+    'listener_tests::synthetic_additional_namespace_regression',
 )
 
 # Exact required-filter rows shared by both hosted OS logs in run43510059683.
@@ -270,8 +286,14 @@ class Attempt:
         self.output = self.parent / 'ottplay-multiview-unix-123-2'
         self.media = FakeMedia(self)
         for name in ('Cargo.toml', 'Cargo.lock', 'src-rs/core/Cargo.toml',
+                     'src-rs/core/src/multiview/broker/registry.rs',
                      'src-rs/server/Cargo.toml', 'src-rs/server/tests/multiview_fixtures.rs',
                      'src-rs/server/tests/multiview_activation.rs', 'src-rs/server/src/main.rs',
+                     'src-rs/server/src/multiview_broker.rs',
+                     'src-rs/server/src/multiview_broker_live.rs',
+                     'src-rs/server/src/multiview_broker_live_output_tests.rs',
+                     'src-rs/server/src/media_connection.rs',
+                     'src-rs/server/tests/multiview_broker_boundary.rs',
                      'src-rs/server/tests/support/streamed_session.rs',
                      'src-rs/server/tests/support/streamed_transport.rs',
                      'src-rs/server/tests/support/streamed_archive.rs',
@@ -302,10 +324,16 @@ class Attempt:
             def run(self, name, argv, limit=1500):
                 # Deliberately no subprocess, shell or native-runtime access.
                 self.commands.append({'name': name, 'argv': argv, 'limit': limit,
-                                      'cleanup_confirmed': attempt.case != 'unknown-cleanup'})
+                                      'cleanup_confirmed': attempt.case != 'unknown-cleanup'
+                                      and not (name == 'broker-ordinary' and attempt.case == 'broker-cleanup-unknown')
+                                      and not (name == 'listener-ordinary' and attempt.case == 'listener-cleanup-unknown')})
                 text = attempt.response(name, argv)
                 self.budget.atomic(self.evidence / 'logs' / (name + '.log'),
                                    text.encode(), evidence=True)
+                if name == 'broker-ordinary' and attempt.case == 'broker-nonzero-exit':
+                    raise RuntimeError('Synthetic broker command exited nonzero after successful stdout')
+                if name == 'listener-ordinary' and attempt.case == 'listener-nonzero-exit':
+                    raise RuntimeError('Synthetic listener command exited nonzero after successful stdout')
 
         fake_guard = types.SimpleNamespace(Budget=guard.Budget, Driver=MockDriver,
             FLOOR=guard.FLOOR, GROWTH_CAP=guard.GROWTH_CAP,
@@ -323,6 +351,7 @@ class Attempt:
             side_effect=lambda name, **kwargs: self.supplied.get(name)))
         self.stack.enter_context(mock.patch.object(ci, 'load_guard', return_value=fake_guard))
         self.stack.enter_context(mock.patch.object(ci, 'load_stream_media', return_value=self.media))
+        self.stack.enter_context(mock.patch.object(ci, 'BROKER_TESTS', frozenset(BROKER_NAMES)))
         self.stack.enter_context(mock.patch.object(ci, 'provision_tools', return_value=(self.supplied, 'synthetic mock supplier')))
         self.stack.enter_context(mock.patch.object(ci, 'activation_home_preflight',
             return_value={'parent': str(self.home), 'ancestors': [],
@@ -380,6 +409,58 @@ class Attempt:
                 else:
                     os.mkfifo(path)
             return 'synthetic FIFO creation via stdlib only\n'
+        if name == 'listener-test-build':
+            self.listener_executable = self.output / 'target/debug/deps/ottplay_server-listener-tests-synthetic'
+            self.listener_executable.parent.mkdir(parents=True, exist_ok=True)
+            self.listener_executable.write_text('synthetic listener test executable; never executed')
+            self.listener_executable.chmod(0o700)
+            manifest = self.root / 'src-rs/server/Cargo.toml'
+            listener = artifact(self.listener_executable, manifest, name='ottplay-server', kind='bin')
+            if self.case == 'listener-cargo-wrong-manifest':
+                listener = artifact(self.listener_executable, self.root / 'src-rs/core/Cargo.toml',
+                                    name='ottplay-server', kind='bin')
+            elif self.case == 'listener-cargo-wrong-target':
+                listener = artifact(self.listener_executable, manifest, name='synthetic_other_bin', kind='bin')
+            elif self.case == 'listener-cargo-wrong-kind':
+                listener = artifact(self.listener_executable, manifest, name='ottplay-server', kind='test')
+            elif self.case == 'listener-cargo-wrong-profile':
+                listener = artifact(self.listener_executable, manifest, name='ottplay-server', kind='bin', test_profile=False)
+            elif self.case == 'listener-cargo-escaped':
+                listener = artifact(Path(self.supplied['ffmpeg']), manifest, name='ottplay-server', kind='bin')
+            elif self.case == 'listener-cargo-relative':
+                listener = artifact(Path('target/debug/deps/synthetic_listener'), manifest, name='ottplay-server', kind='bin')
+            elif self.case == 'listener-cargo-symlink':
+                alias = self.listener_executable.with_name('synthetic_listener_alias')
+                alias.symlink_to(self.listener_executable)
+                listener = artifact(alias, manifest, name='ottplay-server', kind='bin')
+            elif self.case == 'listener-cargo-duplicate':
+                listener += listener
+            elif self.case == 'listener-cargo-missing':
+                listener = ''
+            return listener
+        if name == 'listener-inventory':
+            names = list(LISTENER_NAMES)
+            if self.case == 'listener-inventory-empty':
+                names = []
+            elif self.case == 'listener-inventory-missing':
+                names.pop(0)
+            elif self.case == 'listener-inventory-wrong-prefix':
+                names[-1] = 'synthetic_other_namespace::unselected_regression'
+            elif self.case == 'listener-inventory-duplicate':
+                names.append(names[0])
+            return ''.join(value + ': test\n' for value in names)
+        if name == 'listener-ignored-inventory':
+            return LISTENER_NAMES[0] + ': test\n' if self.case == 'listener-inventory-ignored' else ''
+        if name == 'listener-ordinary':
+            if self.case == 'listener-budget-exhausted':
+                self.driver.budget.work_deadline = self.driver.budget.clock() - 1
+            names = () if self.case == 'listener-zero-executed' else LISTENER_NAMES
+            text = suite_passed(names)
+            if self.case == 'listener-final-test-failed':
+                text = text.replace(LISTENER_NAMES[-1] + ' ... ok', LISTENER_NAMES[-1] + ' ... FAILED')
+            elif self.case == 'listener-conflicting-summary':
+                text += 'test result: FAILED. 0 passed; 1 failed; 0 ignored;\n'
+            return text
         if name in ('fixture-build', 'core-fixture-build'):
             core = name == 'core-fixture-build'
             path = self.output / ('target/debug/deps/' + ('ottplay_core' if core else 'multiview_fixtures') + '-synthetic')
@@ -398,8 +479,9 @@ class Attempt:
             if self.case == 'escaped-cargo-target':
                 return artifact(Path(self.supplied['ffmpeg']), manifest)
             self.activation = self.output / 'target/debug/deps/multiview_activation-synthetic'
+            self.broker_executable = self.output / 'target/debug/deps/multiview_broker_boundary-synthetic'
             self.normal_server = self.output / 'target/debug/ottplay-server'
-            for executable in (self.activation, self.normal_server):
+            for executable in (self.activation, self.broker_executable, self.normal_server):
                 executable.write_text('synthetic executable bytes; never executed')
                 executable.chmod(0o700)
             if self.case == 'hardlinked-normal-server':
@@ -407,13 +489,58 @@ class Attempt:
             activation = artifact(self.activation, manifest, name='multiview_activation')
             normal = artifact(self.normal_server, manifest, name='ottplay-server', kind='bin',
                               test_profile=self.case == 'normal-server-test-profile')
+            broker = artifact(self.broker_executable, manifest, name='multiview_broker_boundary')
+            if self.case == 'broker-cargo-wrong-manifest':
+                broker = artifact(self.broker_executable, self.root / 'src-rs/core/Cargo.toml',
+                                  name='multiview_broker_boundary')
+            elif self.case == 'broker-cargo-wrong-kind':
+                broker = artifact(self.broker_executable, manifest, name='multiview_broker_boundary', kind='lib')
+            elif self.case == 'broker-cargo-wrong-target':
+                broker = artifact(self.broker_executable, manifest, name='synthetic_other_boundary')
+            elif self.case == 'broker-cargo-wrong-profile':
+                broker = artifact(self.broker_executable, manifest, name='multiview_broker_boundary', test_profile=False)
+            elif self.case == 'broker-cargo-escaped':
+                broker = artifact(Path(self.supplied['ffmpeg']), manifest, name='multiview_broker_boundary')
+            elif self.case == 'broker-cargo-relative':
+                broker = artifact(Path('target/debug/deps/synthetic_broker'), manifest, name='multiview_broker_boundary')
+            elif self.case == 'broker-cargo-symlink':
+                alias = self.broker_executable.with_name('synthetic_broker_alias')
+                alias.symlink_to(self.broker_executable)
+                broker = artifact(alias, manifest, name='multiview_broker_boundary')
+            elif self.case == 'broker-cargo-duplicate':
+                broker += broker
+            elif self.case == 'broker-cargo-missing':
+                broker = ''
             if self.case == 'missing-normal-server':
                 normal = ''
             if self.case == 'duplicate-activation-target':
                 activation += activation
             if self.case == 'escaped-activation-target':
                 activation = artifact(Path(self.supplied['ffmpeg']), manifest, name='multiview_activation')
-            return 'synthetic cargo diagnostic\n' + text + activation + normal
+            return 'synthetic cargo diagnostic\n' + text + activation + broker + normal
+        if name == 'broker-inventory':
+            names = list(BROKER_NAMES)
+            if self.case == 'broker-inventory-empty':
+                names = []
+            elif self.case == 'broker-inventory-missing':
+                names.pop()
+            elif self.case == 'broker-inventory-extra':
+                names.append('synthetic_unreviewed_broker_boundary_test')
+            elif self.case == 'broker-inventory-duplicate':
+                names.append(names[0])
+            return ''.join(value + ': test\n' for value in names)
+        if name == 'broker-ignored-inventory':
+            return BROKER_NAMES[0] + ': test\n' if self.case == 'broker-inventory-ignored' else ''
+        if name == 'broker-ordinary':
+            if self.case == 'broker-budget-exhausted':
+                self.driver.budget.work_deadline = self.driver.budget.clock() - 1
+            names = () if self.case == 'broker-zero-executed' else BROKER_NAMES
+            text = suite_passed(names)
+            if self.case == 'broker-final-test-failed':
+                text = text.replace(BROKER_NAMES[-1] + ' ... ok', BROKER_NAMES[-1] + ' ... FAILED')
+            elif self.case == 'broker-conflicting-summary':
+                text += 'test result: FAILED. 0 passed; 1 failed; 0 ignored;\n'
+            return text
         if name == 'activation-inventory':
             names = list(ACTIVATION_NAMES)
             if self.case == 'zero-activation-inventory':
@@ -491,6 +618,14 @@ class Attempt:
                 self.normal_server.write_text('synthetic changed normal server executable')
             if name == 'fixture-3' and self.case == 'changed-core-binary':
                 self.core_executable.write_text('synthetic changed core executable')
+            if name == 'fixture-3' and self.case == 'broker-late-binary-change':
+                self.broker_executable.write_text('synthetic broker changed after its passing suite')
+            if name == 'fixture-3' and self.case == 'broker-late-source-change':
+                (self.root / 'src-rs/server/tests/multiview_broker_boundary.rs').write_text('synthetic changed broker source')
+            if name == 'fixture-3' and self.case == 'listener-late-binary-change':
+                self.listener_executable.write_text('synthetic listener changed after its passing suite')
+            if name == 'fixture-3' and self.case == 'listener-late-source-change':
+                (self.root / 'src-rs/server/src/main.rs').write_text('synthetic changed listener source')
             if name == 'fixture-3' and self.case == 'changed-system-tool':
                 Path(self.supplied['mkfifo']).write_text('synthetic changed tool executable')
             if name == 'fixture-3' and self.case == 'retargeted-system-tool':
@@ -513,6 +648,178 @@ class Attempt:
 
     def terminal(self):
         return json.loads((self.output / 'evidence/terminal.json').read_text())
+
+
+class BoundaryContracts(unittest.TestCase):
+    def failed(self, attempt, reason):
+        with self.assertRaises(RuntimeError):
+            attempt.run()
+        result = attempt.terminal()
+        self.assertEqual(result['status'], 'fail')
+        self.assertIn(reason, result['error'])
+        self.assertFalse(result['production_admission'])
+        self.assertFalse(result['sustained_media_e2e'])
+        return result
+
+    def test_broker_and_listener_gates_execute_exact_targets_and_preserve_existing_gates(self):
+        for system in ('Linux', 'Darwin'):
+            with self.subTest(system=system), Attempt(system=system) as attempt:
+                attempt.run()
+                result = attempt.terminal()
+                names = [row['name'] for row in attempt.driver.commands]
+                executed = next(row for row in attempt.driver.commands if row['name'] == 'broker-ordinary')
+                self.assertEqual(executed['argv'], [str(attempt.broker_executable), '--test-threads=1', '--color=never'])
+                self.assertEqual(executed['limit'], 180)
+                self.assertLess(names.index('broker-ordinary'), names.index('fixture-1'))
+                build = next(row for row in attempt.driver.commands if row['name'] == 'fixture-build')
+                self.assertEqual(build['argv'].count('multiview_broker_boundary'), 1)
+                self.assertIn('--test', build['argv'])
+                self.assertEqual(build['limit'], 900)
+                expected = hashlib.sha256(attempt.broker_executable.read_bytes()).hexdigest()
+                self.assertEqual(result['broker_binary_sha256'], expected)
+                self.assertEqual(result['ordinary_broker_tests'], sorted(BROKER_NAMES))
+                receipt = json.loads((attempt.output / 'evidence/fixture-binary.json').read_text())
+                self.assertEqual(receipt['broker_path'], str(attempt.broker_executable.relative_to(attempt.output)))
+                self.assertEqual(receipt['broker_sha256'], expected)
+                listener = next(row for row in attempt.driver.commands if row['name'] == 'listener-ordinary')
+                self.assertEqual(listener['argv'], [str(attempt.listener_executable), 'listener_tests::',
+                                                   '--test-threads=1', '--color=never'])
+                self.assertEqual(listener['limit'], 180)
+                self.assertLess(names.index('listener-ordinary'), names.index('fixture-1'))
+                for label in ('listener-inventory', 'listener-ignored-inventory'):
+                    command = next(row for row in attempt.driver.commands if row['name'] == label)
+                    self.assertEqual(command['argv'][:2], [str(attempt.listener_executable), 'listener_tests::'])
+                listener_build = next(row for row in attempt.driver.commands if row['name'] == 'listener-test-build')
+                self.assertEqual(listener_build['limit'], 900)
+                self.assertEqual(listener_build['argv'][listener_build['argv'].index('--bin') + 1], 'ottplay-server')
+                self.assertNotIn('--test', listener_build['argv'])
+                listener_sha = hashlib.sha256(attempt.listener_executable.read_bytes()).hexdigest()
+                self.assertEqual(result['listener_binary_sha256'], listener_sha)
+                self.assertEqual(result['ordinary_listener_tests'], sorted(LISTENER_NAMES))
+                self.assertEqual(receipt['listener_path'], str(attempt.listener_executable.relative_to(attempt.output)))
+                self.assertEqual(receipt['listener_sha256'], listener_sha)
+                self.assertTrue(ci.LISTENER_REQUIRED_TESTS <= set(LISTENER_NAMES))
+                self.assertNotEqual(attempt.listener_executable, attempt.normal_server)
+                self.assertEqual(result['ordinary_activation_tests'], sorted(ACTIVATION_NAMES))
+                self.assertEqual(result['tests'], list(EXPECTED_TESTS))
+                self.assertTrue(result['streamed_media']['pass'])
+                self.assertEqual(attempt.driver.budget.deadline, attempt.driver.budget.started + 1800)
+                self.assertEqual(attempt.driver.budget.work_deadline, attempt.driver.budget.started + 1680)
+
+    def test_broker_and_listener_cargo_targets_cannot_be_missing_ambiguous_foreign_or_unowned(self):
+        cases = {'broker-cargo-wrong-manifest': 'Fixture manifest differs',
+                 'broker-cargo-wrong-target': 'exactly one fixture executable',
+                 'broker-cargo-wrong-kind': 'exactly one fixture executable',
+                 'broker-cargo-wrong-profile': 'Expected actual test executable profile',
+                 'broker-cargo-escaped': 'Fixture executable escaped owned target',
+                 'broker-cargo-relative': 'Fixture executable escaped owned target',
+                 'broker-cargo-symlink': 'Fixture executable escaped owned target',
+                 'broker-cargo-duplicate': 'exactly one fixture executable',
+                 'broker-cargo-missing': 'exactly one fixture executable',
+                 'listener-cargo-wrong-manifest': 'Fixture manifest differs',
+                 'listener-cargo-wrong-target': 'exactly one fixture executable',
+                 'listener-cargo-wrong-kind': 'exactly one fixture executable',
+                 'listener-cargo-wrong-profile': 'Expected actual test executable profile',
+                 'listener-cargo-escaped': 'Fixture executable escaped owned target',
+                 'listener-cargo-relative': 'Fixture executable escaped owned target',
+                 'listener-cargo-symlink': 'Fixture executable escaped owned target',
+                 'listener-cargo-duplicate': 'exactly one fixture executable',
+                 'listener-cargo-missing': 'exactly one fixture executable'}
+        for case, reason in cases.items():
+            with self.subTest(case=case), Attempt(case) as attempt:
+                self.failed(attempt, reason)
+                names = [row['name'] for row in attempt.driver.commands]
+                self.assertIn('fixture-build', names)
+                if case.startswith('listener-'):
+                    self.assertIn('listener-test-build', names)
+                self.assertNotIn('broker-ordinary', names)
+
+    def test_broker_and_listener_inventories_and_results_cannot_false_green(self):
+        cases = {'default-empty': 'Frozen nonempty ordinary broker inventory required',
+                 'broker-inventory-empty': 'Exact ordinary broker inventory differs or contains ignored tests',
+                 'broker-inventory-missing': 'Exact ordinary broker inventory differs or contains ignored tests',
+                 'broker-inventory-extra': 'Exact ordinary broker inventory differs or contains ignored tests',
+                 'broker-inventory-duplicate': 'Duplicate ignored fixture inventory',
+                 'broker-inventory-ignored': 'Exact ordinary broker inventory differs or contains ignored tests',
+                 'broker-zero-executed': 'Ordinary suite count differs',
+                 'broker-final-test-failed': 'Ordinary suite execution/status differs',
+                 'broker-conflicting-summary': 'Ordinary suite summary differs',
+                 'listener-inventory-empty': 'Ordinary listener namespace inventory differs or contains ignored tests',
+                 'listener-inventory-missing': 'Ordinary listener namespace inventory differs or contains ignored tests',
+                 'listener-inventory-wrong-prefix': 'Ordinary listener namespace inventory differs or contains ignored tests',
+                 'listener-inventory-duplicate': 'Duplicate ignored fixture inventory',
+                 'listener-inventory-ignored': 'Ordinary listener namespace inventory differs or contains ignored tests',
+                 'listener-zero-executed': 'Ordinary suite count differs',
+                 'listener-final-test-failed': 'Ordinary suite execution/status differs',
+                 'listener-conflicting-summary': 'Ordinary suite summary differs'}
+        for case, reason in cases.items():
+            with self.subTest(case=case), Attempt(case) as attempt:
+                patch = (mock.patch.object(ci, 'BROKER_TESTS', frozenset())
+                         if case == 'default-empty' else contextlib.nullcontext())
+                with patch:
+                    self.failed(attempt, reason)
+                names = [row['name'] for row in attempt.driver.commands]
+                self.assertNotIn('fixture-1', names)
+                if case == 'default-empty':
+                    self.assertEqual(names, [])
+                else:
+                    stage = 'listener' if case.startswith('listener-') else 'broker'
+                    self.assertIn(stage + '-inventory', names)
+                    if case.endswith(('zero-executed', 'final-test-failed', 'conflicting-summary')):
+                        self.assertIn(stage + '-ordinary', names)
+
+    def test_broker_and_listener_late_failures_mutation_budget_and_cleanup_remain_terminal(self):
+        cases = {'broker-nonzero-exit': 'Synthetic broker command exited nonzero after successful stdout',
+                 'broker-late-binary-change': 'Broker test executable changed',
+                 'broker-late-source-change': 'Source or root lock changed',
+                 'broker-budget-exhausted': 'Original CI deadline exhausted',
+                 'broker-cleanup-unknown': 'Owned process cleanup unknown',
+                 'listener-nonzero-exit': 'Synthetic listener command exited nonzero after successful stdout',
+                 'listener-late-binary-change': 'Listener test executable changed',
+                 'listener-late-source-change': 'Source or root lock changed',
+                 'listener-budget-exhausted': 'Original CI deadline exhausted',
+                 'listener-cleanup-unknown': 'Owned process cleanup unknown'}
+        for case, reason in cases.items():
+            with self.subTest(case=case), Attempt(case) as attempt:
+                self.failed(attempt, reason)
+                names = [row['name'] for row in attempt.driver.commands]
+                stage = 'listener' if case.startswith('listener-') else 'broker'
+                self.assertIn(stage + '-ordinary', names)
+                if case.endswith(('late-binary-change', 'late-source-change', 'cleanup-unknown')):
+                    self.assertIn('fixture-4', names)
+                if case.endswith('nonzero-exit'):
+                    transcript = (attempt.output / f'evidence/logs/{stage}-ordinary.log').read_text()
+                    self.assertIn('test result: ok.', transcript)
+                    entry = next(row for row in attempt.driver.commands if row['name'] == stage + '-ordinary')
+                    self.assertTrue(entry['cleanup_confirmed'])
+
+
+class CoreRequiredContracts(unittest.TestCase):
+    def test_each_frozen_authority_regression_is_mandatory_and_cannot_be_ignored(self):
+        self.assertEqual(ci.CORE_REQUIRED_TESTS, frozenset(CORE_REQUIRED_NAMES))
+        self.assertEqual(len(CORE_REQUIRED_NAMES), 3)
+        for required in CORE_REQUIRED_NAMES:
+            for state in ('missing', 'ignored'):
+                with self.subTest(required=required, state=state), Attempt() as attempt:
+                    original = attempt.response
+                    def response(name, argv):
+                        text = original(name, argv)
+                        if name == 'core-multiview-inventory' and state == 'missing':
+                            return '\n'.join(line for line in text.splitlines() if line != required + ': test') + '\n'
+                        if name == 'core-multiview-ignored-inventory' and state == 'ignored':
+                            return text + required + ': test\n'
+                        return text
+                    with mock.patch.object(attempt, 'response', side_effect=response):
+                        with self.assertRaises(RuntimeError):
+                            attempt.run()
+                    result = attempt.terminal()
+                    self.assertEqual(result['status'], 'fail')
+                    self.assertIn('Required ordinary core regression is absent or ignored', result['error'])
+                    names = [row['name'] for row in attempt.driver.commands]
+                    self.assertIn('core-multiview-inventory', names)
+                    self.assertIn('core-multiview-ignored-inventory', names)
+                    self.assertNotIn('core-multiview-ordinary', names)
+                    self.assertNotIn('fixture-1', names)
 
 
 class StreamedContracts(unittest.TestCase):
@@ -914,6 +1221,9 @@ class ParsingTests(unittest.TestCase):
     def test_pinned_guard_and_exact_existing_fixture_inventory(self):
         self.assertEqual(hashlib.sha256(REFERENCE.read_bytes()).hexdigest(), ci.GUARD_SHA256)
         self.assertEqual(tuple(name for name, _ in ci.TESTS), EXPECTED_TESTS)
+        self.assertEqual(len(ci.BROKER_TESTS), 55)
+        self.assertEqual(hashlib.sha256("\n".join(sorted(ci.BROKER_TESTS)).encode("utf8")).hexdigest(),
+                         "6e92eb3d53b6de4ae38ec7bdfdef92883e87f4a2e887efe2c4539b20a1fc4f9f")
 
     def test_fd_must_be_in_input_section(self):
         self.assertTrue(ci.has_input_fd('Input:\n fd\nOutput:\n file\n'))

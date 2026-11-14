@@ -1391,6 +1391,28 @@ impl Registry {
         }
         operation()
     }
+    /// Check session publication authority without waiting for the registry
+    /// barrier. Contention fails closed without sweeping or invoking operation.
+    /// The callback retains the same bounded/non-reentrant contract as
+    /// with_session_authority and must not block on another resource.
+    pub fn try_with_session_authority(
+        &self,
+        p: &Principal,
+        session_id: &str,
+        operation: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<()> {
+        let mut s = self.state.try_lock().map_err(|error| match error {
+            std::sync::TryLockError::WouldBlock => RegistryError::Busy,
+            std::sync::TryLockError::Poisoned(_) => RegistryError::Unavailable,
+        })?;
+        let now = Instant::now();
+        sweep(&mut s, now);
+        let session = live_session(&s, p, session_id, now)?;
+        if session.output_blocked {
+            return Err(RegistryError::Revoked);
+        }
+        operation()
+    }
     pub fn with_binding_authority(
         &self,
         p: &Principal,
@@ -1563,3 +1585,165 @@ impl PublicationAuthority for RegistryPublication {
 #[cfg(test)]
 #[path = "registry_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod try_authority_tests {
+    use super::super::wire::{BackendExpected, NativeExpected, NativeRevisions};
+    use super::*;
+    use std::sync::{atomic::AtomicUsize, mpsc};
+
+    fn fixture() -> (Registry, Principal) {
+        let registry = Registry::new("server".into(), "epoch".into()).unwrap();
+        let principal = Principal {
+            subject: "owner".into(),
+            installation_id: "tv".into(),
+            permissions: BTreeSet::from([Permission::MultiviewControl]),
+        };
+        let binding = Binding {
+            server_epoch: "epoch".into(),
+            session_id: "session".into(),
+            backend_expected: BackendExpected {
+                runtime: 7,
+                scene: "scene".into(),
+                geometry_revision: 1,
+                focus_revision: 2,
+                audio_revision: 3,
+            },
+            native_expected: NativeExpected {
+                runtime: "native".into(),
+                expected: NativeRevisions {
+                    scene: "scene".into(),
+                    layout_revision: "layout".into(),
+                    focus_revision: "focus".into(),
+                    audio_revision: "audio".into(),
+                },
+                slot_id: 0,
+                slot_generation: "generation".into(),
+                source_revision: "source".into(),
+            },
+            backend_slot_revision: 4,
+        };
+        registry.create_session(&principal, &binding).unwrap();
+        (registry, principal)
+    }
+
+    #[test]
+    fn try_session_authority_returns_busy_without_callback_then_recovers() {
+        let (registry, principal) = fixture();
+        let held = registry.state.lock().unwrap();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let (finished_tx, finished_rx) = mpsc::channel();
+        let worker_registry = registry.clone();
+        let worker_principal = principal.clone();
+        let worker_calls = calls.clone();
+        let worker = std::thread::spawn(move || {
+            let result = worker_registry.try_with_session_authority(
+                &worker_principal,
+                "session",
+                &mut || {
+                    worker_calls.fetch_add(1, Ordering::SeqCst);
+                    Ok(())
+                },
+            );
+            finished_tx.send(result).unwrap();
+        });
+        // The result must arrive while the real registry lock is still held.
+        // Release before joining/asserting so a blocking regression fails
+        // boundedly rather than hanging the rest of the test process.
+        let observed = finished_rx.recv_timeout(Duration::from_secs(1));
+        let unchanged = !held.sessions["session"].revoked
+            && !held.sessions["session"].output_blocked
+            && held.leases.is_empty();
+        drop(held);
+        worker.join().unwrap();
+        assert_eq!(observed, Ok(Err(RegistryError::Busy)));
+        assert!(unchanged, "contention must not revoke or retire authority");
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        assert_eq!(
+            registry.try_with_session_authority(&principal, "session", &mut || {
+                calls.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            }),
+            Ok(())
+        );
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert!(!registry.state.lock().unwrap().sessions["session"].revoked);
+    }
+
+    #[test]
+    fn try_session_authority_maps_poison_to_unavailable_without_callback() {
+        let (registry, principal) = fixture();
+        let worker_registry = registry.clone();
+        assert!(std::thread::spawn(move || {
+            let _held = worker_registry.state.lock().unwrap();
+            panic!("synthetic registry poison");
+        })
+        .join()
+        .is_err());
+        let mut called = false;
+        let mut operation = || {
+            called = true;
+            Ok(())
+        };
+        assert_eq!(
+            registry.try_with_session_authority(&principal, "session", &mut operation),
+            Err(RegistryError::Unavailable)
+        );
+        assert_eq!(
+            registry.with_session_authority(&principal, "session", &mut operation),
+            Err(RegistryError::Unavailable)
+        );
+        assert!(!called);
+    }
+
+    #[test]
+    fn try_session_authority_preserves_authorization_and_output_block() {
+        let (registry, principal) = fixture();
+        let mut wrong_owner = principal.clone();
+        wrong_owner.installation_id = "other-tv".into();
+        let mut no_permission = principal.clone();
+        no_permission.permissions.clear();
+        for (actor, session_id, expected) in [
+            (&wrong_owner, "session", RegistryError::Forbidden),
+            (&no_permission, "session", RegistryError::Forbidden),
+            (&principal, "absent", RegistryError::NotFound),
+        ] {
+            let mut called = false;
+            let mut operation = || {
+                called = true;
+                Ok(())
+            };
+            assert_eq!(
+                registry.try_with_session_authority(actor, session_id, &mut operation),
+                Err(expected)
+            );
+            assert_eq!(
+                registry.with_session_authority(actor, session_id, &mut operation),
+                Err(expected)
+            );
+            assert!(!called);
+        }
+        registry
+            .state
+            .lock()
+            .unwrap()
+            .sessions
+            .get_mut("session")
+            .unwrap()
+            .output_blocked = true;
+        let mut called = false;
+        let mut operation = || {
+            called = true;
+            Ok(())
+        };
+        assert_eq!(
+            registry.try_with_session_authority(&principal, "session", &mut operation),
+            Err(RegistryError::Revoked)
+        );
+        assert_eq!(
+            registry.with_session_authority(&principal, "session", &mut operation),
+            Err(RegistryError::Revoked)
+        );
+        assert!(!called);
+    }
+}

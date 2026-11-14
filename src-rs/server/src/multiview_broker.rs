@@ -7,10 +7,10 @@
 use axum::{
     body::{Body, Bytes},
     extract::{DefaultBodyLimit, OriginalUri, Path, State},
-    http::{HeaderMap, HeaderValue, Method, StatusCode},
+    http::{HeaderMap, HeaderValue, Method, StatusCode, Version},
     response::{IntoResponse, Response},
     routing::{get, post},
-    Router,
+    Extension, Router,
 };
 use futures_util::Stream;
 use hmac::{Hmac, Mac};
@@ -32,6 +32,7 @@ use std::{
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use uuid::Uuid;
 
+use crate::media_connection::{ConnectionControl, MediaAuthority};
 use ottplay_core::multiview::broker::registry::{Registry, RegistryError, SourcePrincipal};
 
 #[cfg(test)]
@@ -239,9 +240,11 @@ fn exact_origin(origin: &str, https_only: bool) -> bool {
         && (url.scheme() == "https"
             || (!https_only
                 && url.scheme() == "http"
-                && url
+                && (url
                     .host_str()
-                    .is_some_and(|host| host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback()))))
+                    .is_some_and(|host| host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback()))
+                    || reqwest::Url::parse("http://[::1]")
+                        .is_ok_and(|loopback| url.host() == loopback.host()))))
 }
 fn private_lan(ip: IpAddr) -> bool {
     match ip {
@@ -564,7 +567,10 @@ impl Broker {
         result
     }
 
-    fn session_media<T>(
+    // Media callbacks run on the connection executor. Never wait for either
+    // publication barrier: an unverified authority closes only this response,
+    // leaving the unchanged output available to a later request.
+    fn try_session_media<T>(
         &self,
         owner: &Authenticated,
         session: &str,
@@ -573,9 +579,9 @@ impl Broker {
         let registry = self.0.registry.as_ref().ok_or(BoundaryError::Unavailable)?;
         let mut callback = Some(callback);
         let mut result = Err(BoundaryError::Revoked);
-        let checked = registry.with_session_authority(&owner.principal, session, &mut || {
+        let checked = registry.try_with_session_authority(&owner.principal, session, &mut || {
             if let Some(callback) = callback.take() {
-                result = match self.0.mutable.lock() {
+                result = match self.0.mutable.try_lock() {
                     Ok(mut state) if self.current_credential(&state, owner) => callback(&mut state),
                     Ok(_) => Err(BoundaryError::Unauthorized),
                     Err(_) => Err(BoundaryError::Unavailable),
@@ -583,10 +589,19 @@ impl Broker {
             }
             Ok(())
         });
-        if checked.is_err() {
-            return Err(BoundaryError::Revoked);
+        match checked {
+            Ok(()) => result,
+            Err(RegistryError::Busy | RegistryError::Unavailable) => {
+                Err(BoundaryError::Unavailable)
+            }
+            Err(_) => Err(BoundaryError::Revoked),
         }
-        result
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_mutable_lock_for_test(&self, operation: impl FnOnce()) {
+        let _guard = self.0.mutable.lock().expect("test mutable lock poisoned");
+        operation();
     }
 
     fn grant_reply(
@@ -878,19 +893,7 @@ impl Broker {
 
     #[cfg(test)]
     fn check_live_output(&self, record: &OutputRecord, token: &str) -> Result<(), BoundaryError> {
-        self.session_media(&record.authenticated, &record.binding.session_id, |state| {
-            if self.0.clock.now_ms() >= record.expires
-                || state.revoked_outputs.contains(&record.nonce)
-                || !state
-                    .outputs
-                    .get(&record.nonce)
-                    .is_some_and(|r| r.generation == record.generation)
-                || !self.verify(record, token)
-            {
-                return Err(BoundaryError::Revoked);
-            }
-            Ok(())
-        })
+        self.with_output_authority(record, token, || Ok(()))
     }
 
     fn signed_message(&self, record: &OutputRecord) -> Result<Vec<u8>, BoundaryError> {
@@ -1000,16 +1003,15 @@ impl Broker {
         Ok(())
     }
 
-    fn output_chunk(
+    fn with_output_authority<T>(
         &self,
         record: &OutputRecord,
         token: &str,
-        file: &str,
-        offset: usize,
-    ) -> Result<Option<Bytes>, BoundaryError> {
+        callback: impl FnOnce() -> Result<T, BoundaryError>,
+    ) -> Result<T, BoundaryError> {
         // Focus/audio/layout CAS changes do not tear down an unchanged encoder
         // generation. Source revocation blocks this session's output in Registry.
-        self.session_media(&record.authenticated, &record.binding.session_id, |state| {
+        self.try_session_media(&record.authenticated, &record.binding.session_id, |state| {
             if self.0.clock.now_ms() >= record.expires
                 || state.revoked_outputs.contains(&record.nonce)
                 || !state
@@ -1020,6 +1022,18 @@ impl Broker {
             {
                 return Err(BoundaryError::Revoked);
             }
+            callback()
+        })
+    }
+
+    fn output_chunk(
+        &self,
+        record: &OutputRecord,
+        token: &str,
+        file: &str,
+        offset: usize,
+    ) -> Result<Option<Bytes>, BoundaryError> {
+        self.with_output_authority(record, token, || {
             let bytes = record.files.get(file).ok_or(BoundaryError::Invalid)?;
             // A downstream chunk must not retain an entire segment allocation
             // after its response is dropped and output custody is reclaimed.
@@ -1273,7 +1287,7 @@ async fn sources(
             .ok_or(BoundaryError::Unavailable)?;
         let result = registry
             .sources(&owner.principal, &request)
-            .map_err(|_| BoundaryError::Conflict)?;
+            .map_err(registry_error)?;
         broker.authorized(&owner, &request.context, |_| {
             Ok(json_response(json_bytes(&result)?))
         })
@@ -1434,14 +1448,34 @@ async fn status(
     finish(&broker, &headers, result)
 }
 
-struct GuardedBody {
+// Body and real connection share one permit and output record. Neither EOF
+// nor response-body drop can release custody while the connection still writes.
+struct MediaCustody {
     broker: Broker,
     record: Arc<OutputRecord>,
     token: String,
+    _permit: OwnedSemaphorePermit,
+}
+impl MediaAuthority for MediaCustody {
+    fn authorized(&self) -> bool {
+        #[cfg(test)]
+        if self.record.live.is_some() {
+            return self
+                .broker
+                .check_live_output(&self.record, &self.token)
+                .is_ok();
+        }
+        self.broker
+            .with_output_authority(&self.record, &self.token, || Ok(()))
+            .is_ok()
+    }
+}
+
+struct GuardedBody {
+    custody: Arc<MediaCustody>,
     file: String,
     offset: usize,
     failed: bool,
-    _permit: OwnedSemaphorePermit,
     #[cfg(test)]
     live_bytes: Option<Bytes>,
 }
@@ -1454,8 +1488,9 @@ impl Stream for GuardedBody {
         #[cfg(test)]
         if let Some(bytes) = self.live_bytes.as_ref() {
             if self
+                .custody
                 .broker
-                .check_live_output(&self.record, &self.token)
+                .check_live_output(&self.custody.record, &self.custody.token)
                 .is_err()
             {
                 self.failed = true;
@@ -1473,10 +1508,12 @@ impl Stream for GuardedBody {
             self.offset += chunk.len();
             return Poll::Ready(Some(Ok(chunk)));
         }
-        match self
-            .broker
-            .output_chunk(&self.record, &self.token, &self.file, self.offset)
-        {
+        match self.custody.broker.output_chunk(
+            &self.custody.record,
+            &self.custody.token,
+            &self.file,
+            self.offset,
+        ) {
             Ok(Some(bytes)) => {
                 self.offset += bytes.len();
                 Poll::Ready(Some(Ok(bytes)))
@@ -1497,6 +1534,8 @@ async fn media(
     OriginalUri(uri): OriginalUri,
     Path((token, file)): Path<(String, String)>,
     method: Method,
+    version: Version,
+    connection: Option<Extension<ConnectionControl>>,
     headers: HeaderMap,
 ) -> Response {
     let result = async {
@@ -1519,7 +1558,7 @@ async fn media(
         let record = broker
             .0
             .mutable
-            .lock()
+            .try_lock()
             .map_err(|_| BoundaryError::Unavailable)?
             .outputs
             .get(nonce)
@@ -1534,6 +1573,12 @@ async fn media(
         }
         #[cfg(not(test))]
         broker.output_chunk(&record, &token, &file, usize::MAX)?;
+        // Private media needs its own supervised HTTP/1 connection. Reject before
+        // stream admission; an HTTP/2 request must never arm or cancel its peers.
+        if !matches!(version, Version::HTTP_10 | Version::HTTP_11) {
+            return Err(BoundaryError::Unavailable);
+        }
+        let Extension(connection) = connection.ok_or(BoundaryError::Unavailable)?;
         let permit = broker
             .0
             .streams
@@ -1559,20 +1604,25 @@ async fn media(
         } else {
             "video/mp2t"
         };
-        let body = GuardedBody {
+        let custody = Arc::new(MediaCustody {
             broker: broker.clone(),
             record,
             token,
+            _permit: permit,
+        });
+        let lease = connection.media_lease(custody.clone());
+        let body = GuardedBody {
+            custody,
             file,
             offset: 0,
             failed: false,
-            _permit: permit,
             #[cfg(test)]
             live_bytes,
         };
-        Ok(private_response(
-            ([("content-type", mime)], Body::from_stream(body)).into_response(),
-        ))
+        let mut response =
+            private_response(([("content-type", mime)], Body::from_stream(body)).into_response());
+        response.extensions_mut().insert(lease);
+        Ok(response)
     }
     .await;
     finish(&broker, &headers, result)

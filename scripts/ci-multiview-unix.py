@@ -33,6 +33,74 @@ ACTIVATION_TESTS = frozenset({
     'incompatible_dedicated_modes_reject_opt_in_before_binding',
     'restart_issues_fresh_epoch_without_promoting_capacity',
 })
+# Source-derived Unix inventory from the reviewed broker/connection freeze.
+BROKER_TESTS = frozenset({
+    'body_lifetime_checks_expiry_credential_session_and_replacement',
+    'broker::live::tests::configuration_rejects_lifetime_and_profile_without_launching_media',
+    'broker::live::tests::native_changes_are_operation_specific_before_any_effect',
+    'broker::live::tests::operation_identity_is_scoped_to_owner_installation_credential_route_and_session',
+    'broker::live::tests::operation_survives_waiter_cancellation_and_never_reexecutes_same_body',
+    'broker::live::tests::output_custody_requires_shutdown_proof_and_released_http_body',
+    'broker::live::tests::replacement_within_one_source_never_reports_the_previous_item',
+    'broker::live::tests::source_refs_follow_redemption_and_exact_promoted_revision_only',
+    'broker::live_output::tests::abandoned_blocking_read_keeps_admission_until_worker_really_finishes',
+    'broker::live_output::tests::actual_files_are_rewritten_and_segments_return_their_real_bytes',
+    'broker::live_output::tests::closed_playlist_grammar_rejects_unsupported_authority_and_ambiguous_windows',
+    'broker::live_output::tests::file_and_directory_symlinks_hardlinks_fifo_and_traversal_fail_closed',
+    'broker::live_output::tests::missing_non_ts_oversized_and_mutably_shared_files_are_rejected',
+    'broker::live_output::tests::only_exact_signed_prefix_and_owned_absolute_directory_are_accepted',
+    'broker::live_output::tests::opened_directory_inode_survives_a_path_replacement',
+    'broker::live_output::tests::raised_watermark_refreshes_same_signed_path_without_exposing_old_window',
+    'broker::live_output::tests::retained_slice_keeps_exact_allocation_budget_after_output_drop',
+    'broker::live_output::tests::segment_and_index_allocations_need_shared_byte_capacity',
+    'broker::live_output::tests::watermark_withholds_whole_window_and_refresh_never_serves_old_tail',
+    'broker_mutex_contention_denies_media_without_blocking_executor_and_recovers',
+    'cached_grants_are_not_returned_after_redemption_credential_revoke_or_expiry',
+    'catalog_cursor_expiration_is_distinct_from_stale_revisions',
+    'credential_revocation_cancels_active_source_authority_before_cleanup',
+    'eight_stalled_hyper_connections_hold_permits_until_transport_drop',
+    'exact_loopback_origins_support_ipv4_and_ipv6_without_relaxing_policy',
+    'fixture_injection_is_explicit_loopback_only_and_keeps_ordinary_caps_zero',
+    'generated_output_rejects_external_child_key_uri_and_unlisted_resource',
+    'healthy_hyper_progress_and_unchanged_focus_keep_media_authorized',
+    'input_grant_replay_is_scoped_exact_and_reauthorizes_the_source',
+    'media_connection::tests::authority_revocation_ends_a_connection_without_body_or_io_progress',
+    'media_connection::tests::final_flush_and_shutdown_keep_custody_after_body_drop_until_timeout',
+    'media_connection::tests::h2_media_drops_only_its_lease_without_arming_the_connection',
+    'media_connection::tests::late_admission_wakes_dormant_supervision_and_cannot_be_retargeted',
+    'media_connection::tests::media_marker_cannot_arm_a_different_or_replacement_connection',
+    'media_connection::tests::positive_normal_and_vectored_writes_extend_only_the_idle_budget',
+    'media_connection::tests::public_and_failed_responses_leave_pending_io_unbounded_by_media_policy',
+    'media_connection::tests::reads_flushes_pending_and_zero_byte_writes_do_not_refresh_idle',
+    'media_connection::tests::supervisor_abort_and_normal_completion_release_lease_without_detached_task',
+    'media_missing_connection_and_http2_fail_before_stream_admission',
+    'media_reads_do_not_renew_and_custody_requires_separate_reaping',
+    'native_auth_does_not_trust_origin_host_forwarding_or_loopback',
+    'native_transition_rejects_occupied_target_before_revoking_existing_work',
+    'native_transition_replays_committed_grant_without_reapplying_prior_cas',
+    'pairing_requires_separate_native_authority_and_explicit_lan_tls',
+    'private_media_revocation_and_timeout_do_not_arm_or_cancel_public_connection',
+    'registry_mutex_contention_denies_media_without_blocking_executor_and_recovers',
+    'removing_and_readding_an_active_source_blocks_output_before_worker_reaping',
+    'revoked_body_custody_is_not_removed_from_the_global_output_budget',
+    'session_and_installation_boundaries_do_not_share_idempotency_or_authority',
+    'signed_manifest_and_every_segment_require_same_private_prefix',
+    'stalled_media_write_deadline_drops_real_connection_and_releases_admission',
+    'streaming_permits_remain_owned_until_body_drop',
+    'strict_json_limits_and_unqualified_control_never_report_accepted_play',
+    'unchanged_output_survives_focus_cas_but_new_publication_requires_fresh_binding',
+    'unpolled_media_connections_end_on_current_authority_without_fake_reaping',
+})
+CORE_REQUIRED_TESTS = frozenset({
+    'multiview::broker::registry::try_authority_tests::try_session_authority_returns_busy_without_callback_then_recovers',
+    'multiview::broker::registry::try_authority_tests::try_session_authority_maps_poison_to_unavailable_without_callback',
+    'multiview::broker::registry::try_authority_tests::try_session_authority_preserves_authorization_and_output_block',
+})
+LISTENER_TEST_PREFIX = 'listener_tests::'
+LISTENER_REQUIRED_TESTS = frozenset({
+    'listener_tests::selected_media_dispatch_preserves_public_request_context_and_response',
+    'listener_tests::media_transport_failure_response_is_fixed_and_private',
+})
 FILTERS = {'testsrc2', 'drawbox', 'sine', 'scale', 'format', 'crop', 'pad',
            'setsar', 'setpts', 'fps', 'xstack', 'overlay'}
 
@@ -628,7 +696,7 @@ def main(argv=None):
     # No rustc wrapper, external target directory, or user Cargo config overrides.
     for key in ('RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS'):
         driver.env.pop(key, None)
-    result = {'status': 'fail', 'qualification': 'four isolated Unix fixtures, mandatory stream analyzer and zero-capacity activation',
+    result = {'status': 'fail', 'qualification': 'four isolated Unix fixtures, mandatory stream analyzer, broker boundary and zero-capacity activation',
               'sustained_media_e2e': False, 'production_admission': False,
               'generated_media_hashes_available': False, 'new_dependencies': False}
     success = False
@@ -649,7 +717,11 @@ def main(argv=None):
         require(not command(label + '-status', ['git', 'status', '--porcelain=v1', '--untracked-files=all']).strip(),
                 'Source checkout is dirty')
         paths = ('Cargo.toml', 'Cargo.lock', 'src-rs/core/Cargo.toml', 'src-rs/server/Cargo.toml',
+                 'src-rs/core/src/multiview/broker/registry.rs',
                  'src-rs/server/tests/multiview_fixtures.rs', 'src-rs/server/tests/multiview_activation.rs',
+                 'src-rs/server/tests/multiview_broker_boundary.rs',
+                 'src-rs/server/src/multiview_broker.rs', 'src-rs/server/src/multiview_broker_live.rs',
+                 'src-rs/server/src/multiview_broker_live_output_tests.rs', 'src-rs/server/src/media_connection.rs',
                  'src-rs/server/tests/support/streamed_session.rs', 'src-rs/server/tests/support/streamed_transport.rs',
                  'src-rs/server/tests/support/streamed_archive.rs', 'scripts/ci-multiview-unix-media.py',
                  'src-rs/server/src/main.rs', 'scripts/ci-native-favorites.py',
@@ -657,6 +729,7 @@ def main(argv=None):
         return {'commit': head, 'tree': tree, 'sha256': {p: budget.digest(root / p) for p in paths}}
 
     try:
+        require(BROKER_TESTS, 'Frozen nonempty ordinary broker inventory required')
         before = snapshot('before')
         budget.json_evidence(driver.evidence / 'source-before.json', before)
         activation_home = activation_home_preflight(driver, budget)
@@ -705,14 +778,24 @@ def main(argv=None):
         core_sha256 = budget.digest(core_executable)
         compiled = command('fixture-build', ['cargo', 'test', '--manifest-path', str(root / 'Cargo.toml'),
                           '--locked', '-p', 'ottplay-server', '--test', 'multiview_fixtures',
-                          '--test', 'multiview_activation', '--no-run', '--message-format=json'], 900)
+                          '--test', 'multiview_activation', '--test', 'multiview_broker_boundary',
+                          '--no-run', '--message-format=json'], 900)
         executable = test_executable(compiled, output / 'target', root / 'src-rs/server/Cargo.toml')
         binary_before = budget.digest(executable)
         activation = test_executable(compiled, output / 'target', root / 'src-rs/server/Cargo.toml',
                                      name='multiview_activation')
+        broker = test_executable(compiled, output / 'target', root / 'src-rs/server/Cargo.toml',
+                                name='multiview_broker_boundary')
         normal_server = test_executable(compiled, output / 'target', root / 'src-rs/server/Cargo.toml',
                                         name='ottplay-server', kind='bin', test_profile=False)
+        listener_compiled = command('listener-test-build', ['cargo', 'test', '--manifest-path', str(root / 'Cargo.toml'),
+                                    '--locked', '-p', 'ottplay-server', '--bin', 'ottplay-server',
+                                    '--no-run', '--message-format=json'], 900)
+        listener = test_executable(listener_compiled, output / 'target', root / 'src-rs/server/Cargo.toml',
+                                   name='ottplay-server', kind='bin')
         activation_sha256 = budget.digest(activation)
+        broker_sha256 = budget.digest(broker)
+        listener_sha256 = budget.digest(listener)
         # Cargo may hardlink its normal bin to debug/deps. Bind this already
         # target-validated executable with stable identity, not an evidence-file guard.
         normal_server_identity = system_tool_identity(normal_server, budget)
@@ -721,6 +804,8 @@ def main(argv=None):
             'path': str(executable.relative_to(output)), 'sha256': binary_before,
             'core_path': str(core_executable.relative_to(output)), 'core_sha256': core_sha256,
             'activation_path': str(activation.relative_to(output)), 'activation_sha256': activation_sha256,
+            'broker_path': str(broker.relative_to(output)), 'broker_sha256': broker_sha256,
+            'listener_path': str(listener.relative_to(output)), 'listener_sha256': listener_sha256,
             'normal_server_path': str(normal_server.relative_to(output)), 'normal_server_sha256': server_sha256,
             'normal_server_identity': normal_server_identity,
             'source_commit': before['commit'], 'root_lock_sha256': before['sha256']['Cargo.lock']})
@@ -731,7 +816,7 @@ def main(argv=None):
         require(core_all and all(name.startswith('multiview::') for name in core_all)
                 and core_ignored <= core_all, 'Core multiview test inventory differs')
         ordinary_core = core_all - core_ignored
-        require(all(name.startswith('multiview::') and name in ordinary_core for name in args.required_core_test),
+        require(all(name.startswith('multiview::') and name in ordinary_core for name in (*CORE_REQUIRED_TESTS, *args.required_core_test)),
                 'Required ordinary core regression is absent or ignored')
         core_text = command('core-multiview-ordinary', [str(core_executable), 'multiview::',
                             '--test-threads=1', '--color=never'], 300)
@@ -757,6 +842,25 @@ def main(argv=None):
         activation_text = command('activation-ordinary',
             [str(activation), '--test-threads=1', '--color=never'], 180)
         require_suite_pass(activation_text, ACTIVATION_TESTS, set())
+        broker_all = listed_names(command('broker-inventory',
+            [str(broker), '--list', '--format', 'terse']))
+        broker_ignored = listed_names(command('broker-ignored-inventory',
+            [str(broker), '--list', '--ignored', '--format', 'terse']))
+        require(broker_all == BROKER_TESTS and not broker_ignored,
+                'Exact ordinary broker inventory differs or contains ignored tests')
+        broker_text = command('broker-ordinary',
+            [str(broker), '--test-threads=1', '--color=never'], 180)
+        require_suite_pass(broker_text, BROKER_TESTS, set())
+        listener_all = listed_names(command('listener-inventory',
+            [str(listener), LISTENER_TEST_PREFIX, '--list', '--format', 'terse']))
+        listener_ignored = listed_names(command('listener-ignored-inventory',
+            [str(listener), LISTENER_TEST_PREFIX, '--list', '--ignored', '--format', 'terse']))
+        require(LISTENER_REQUIRED_TESTS <= listener_all and not listener_ignored
+                and all(name.startswith(LISTENER_TEST_PREFIX) for name in listener_all),
+                'Ordinary listener namespace inventory differs or contains ignored tests')
+        listener_text = command('listener-ordinary',
+            [str(listener), LISTENER_TEST_PREFIX, '--test-threads=1', '--color=never'], 180)
+        require_suite_pass(listener_text, listener_all, set())
         for index, (name, limit) in enumerate(TESTS):
             if name == STREAM_TEST:
                 run_streamed_fixture(driver, budget, command, executable, tools, result)
@@ -777,6 +881,8 @@ def main(argv=None):
         require(activation_home_before == activation_home_after, 'Activation fixture HOME cleanup incomplete or identity changed')
         activation_home_checked = True
         require(budget.digest(activation) == activation_sha256, 'Activation test executable changed')
+        require(budget.digest(broker) == broker_sha256, 'Broker test executable changed')
+        require(budget.digest(listener) == listener_sha256, 'Listener test executable changed')
         require(system_tool_identity(normal_server, budget) == normal_server_identity,
                 'Normal server executable changed')
         require(budget.digest(executable) == binary_before, 'Fixture executable changed')
@@ -793,6 +899,8 @@ def main(argv=None):
         budget.json_evidence(driver.evidence / 'file-sha256.json', receipts)
         result.update(source=before, fixture_binary_sha256=binary_before,
                       core_binary_sha256=core_sha256, activation_binary_sha256=activation_sha256,
+                      broker_binary_sha256=broker_sha256, ordinary_broker_tests=sorted(BROKER_TESTS),
+                      listener_binary_sha256=listener_sha256, ordinary_listener_tests=sorted(listener_all),
                       normal_server_binary_sha256=server_sha256, ordinary_activation_tests=sorted(ACTIVATION_TESTS),
                       activation_scope='Actual owned HTTP/TLS normal server; zero-capacity control shell only',
                       activation_fixture_parent=activation_home, activation_fixture_cleanup_confirmed=True,

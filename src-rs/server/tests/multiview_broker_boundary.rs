@@ -2,10 +2,12 @@
 //! Passing these tests does not qualify a compositor or increase caps above zero.
 #[path = "../src/multiview_broker.rs"]
 mod broker;
+#[path = "../src/media_connection.rs"]
+mod media_connection;
 
 use axum::{
     body::{to_bytes, Body, Bytes},
-    http::{HeaderMap, HeaderValue, Request, StatusCode},
+    http::{HeaderMap, HeaderValue, Request, StatusCode, Version},
     response::Response,
 };
 use broker::{
@@ -23,10 +25,12 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     net::IpAddr,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
     },
+    time::Duration,
 };
+use tokio::io::{AsyncReadExt, AsyncWriteExt, DuplexStream};
 use tower::Service;
 use uuid::Uuid;
 
@@ -210,7 +214,12 @@ impl Fixture {
         .await
     }
 }
-async fn call(broker: &Broker, request: Request<Body>) -> Response {
+async fn call(broker: &Broker, mut request: Request<Body>) -> Response {
+    // Manual body tests have no socket writer. Explicit synthetic ownership
+    // admits their body; connection-lifetime tests below use the real helper.
+    request
+        .extensions_mut()
+        .insert(media_connection::ConnectionControl::new());
     broker.router().call(request).await.unwrap()
 }
 
@@ -289,6 +298,41 @@ async fn json_body(response: Response) -> Value {
 }
 async fn get(broker: &Broker, path: &str) -> Response {
     call(broker, Request::get(path).body(Body::empty()).unwrap()).await
+}
+
+#[tokio::test]
+async fn catalog_cursor_expiration_is_distinct_from_stale_revisions() {
+    let fixture = Fixture::new();
+    let mut request = SourcesRequest {
+        version: VERSION,
+        context: fixture.binding.clone(),
+        cursor: None,
+    };
+    let response = fixture.post("sources", &request, "catalog_current").await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_body(response).await["items"].as_array().unwrap().len(),
+        1
+    );
+
+    // Missing/evicted cursors use the same Expired result as a swept cursor;
+    // no wall-clock sleeps or private registry state are needed here.
+    request.cursor = Some("expired_cursor_A".into());
+    let response = fixture.post("sources", &request, "catalog_expired").await;
+    assert_eq!(response.status(), StatusCode::GONE);
+    assert_eq!(
+        json_body(response).await,
+        json!({"version": 1, "error": "authority_revoked"})
+    );
+
+    request.cursor = None;
+    request.context.backend_expected.focus_revision += 1;
+    let response = fixture.post("sources", &request, "catalog_stale").await;
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+    assert_eq!(
+        json_body(response).await,
+        json!({"version": 1, "error": "revision_conflict"})
+    );
 }
 
 #[tokio::test]
@@ -372,6 +416,60 @@ async fn native_transition_rejects_occupied_target_before_revoking_existing_work
         .registry
         .validate_reservation(&principal(), &fixture.binding, &reservation)
         .is_ok());
+}
+
+#[test]
+fn exact_loopback_origins_support_ipv4_and_ipv6_without_relaxing_policy() {
+    for (bind_ip, origin) in [
+        ("127.0.0.1", "http://127.0.0.1:8794"),
+        ("127.0.0.1", "http://127.2.3.4:8794"),
+        ("::1", "http://[::1]:8794"),
+    ] {
+        let mut c = config();
+        c.listener.bind_ip = bind_ip.parse().unwrap();
+        c.origin = origin.into();
+        c.allowed_origins.push(origin.into());
+        for credential in &mut c.credentials {
+            credential.enrollment.origin = c.origin.clone();
+        }
+        assert!(
+            Broker::new(c, None, Arc::new(TestClock(AtomicU64::new(1_000)))).is_ok(),
+            "origin {origin}"
+        );
+    }
+
+    for origin in [
+        "http://localhost:8794",
+        "http://192.0.2.1:8794",
+        "http://[2001:db8::1]:8794",
+        "http://[::]:8794",
+        "http://[::ffff:7f00:1]:8794",
+        "http://[fe80::1%25en0]:8794",
+        "http://[0:0:0:0:0:0:0:1]:8794",
+        "http://[::1]:8794/",
+        "http://user@[::1]:8794",
+        "http://[::1]:8794?query=1",
+        "http://[::1]:8794#fragment",
+    ] {
+        for allowed_only in [false, true] {
+            let mut c = config();
+            if allowed_only {
+                c.allowed_origins.push(origin.into());
+            } else {
+                c.origin = origin.into();
+                for credential in &mut c.credentials {
+                    credential.enrollment.origin = c.origin.clone();
+                }
+            }
+            assert!(
+                matches!(
+                    Broker::new(c, None, Arc::new(TestClock(AtomicU64::new(1_000)))),
+                    Err(BoundaryError::Configuration)
+                ),
+                "origin {origin}, allowed_only {allowed_only}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -812,6 +910,407 @@ async fn media_reads_do_not_renew_and_custody_requires_separate_reaping() {
         .is_success());
 }
 
+// Real Hyper owns the writer and is supervised by the same helper as main.
+// The tiny duplex buffer deliberately stalls the transport after headers, not
+// a fake body's poll_next. Each connection gets a separate control owner.
+struct TestConnection {
+    client: Option<DuplexStream>,
+    task: Option<
+        tokio::task::JoinHandle<Result<Result<(), hyper::Error>, media_connection::MediaStop>>,
+    >,
+    control: media_connection::ConnectionControl,
+}
+impl TestConnection {
+    fn new(app: axum::Router, write_idle: Duration) -> Self {
+        let (client, server) = tokio::io::duplex(1_024);
+        let control = media_connection::ConnectionControl::with_test_budgets(
+            write_idle,
+            Duration::from_millis(10),
+        );
+        let owner = control.clone();
+        let requests = control.clone();
+        let task = tokio::spawn(async move {
+            let io = hyper_util::rt::TokioIo::new(owner.watch_io(server));
+            owner
+                .supervise(hyper::server::conn::http1::Builder::new().serve_connection(
+                    io,
+                    hyper::service::service_fn(
+                        move |mut request: Request<hyper::body::Incoming>| {
+                            let mut app = app.clone();
+                            let requests = requests.clone();
+                            let version = request.version();
+                            request.extensions_mut().insert(requests.clone());
+                            async move {
+                                let response = app.call(request).await.unwrap();
+                                let response = requests
+                                    .prepare_response(response, version)
+                                    .unwrap_or_else(|_| {
+                                        Response::builder()
+                                            .status(StatusCode::SERVICE_UNAVAILABLE)
+                                            .header("content-type", "application/json")
+                                            .body(Body::from(
+                                                r#"{"version":1,"error":"backend_unavailable"}"#,
+                                            ))
+                                            .unwrap()
+                                    });
+                                Ok::<_, std::convert::Infallible>(response)
+                            }
+                        },
+                    ),
+                ))
+                .await
+        });
+        Self {
+            client: Some(client),
+            task: Some(task),
+            control,
+        }
+    }
+
+    async fn begin(&mut self, path: &str) -> String {
+        self.begin_with_close(path, false).await
+    }
+
+    async fn begin_with_close(&mut self, path: &str, close: bool) -> String {
+        let client = self.client.as_mut().unwrap();
+        let connection_header = if close { "Connection: close\r\n" } else { "" };
+        tokio::time::timeout(Duration::from_secs(2), async {
+            client
+                .write_all(
+                    format!(
+                        "GET {path} HTTP/1.1\r\nHost: fixture.invalid\r\n{connection_header}\r\n"
+                    )
+                    .as_bytes(),
+                )
+                .await
+                .unwrap();
+            let mut head = Vec::new();
+            while !head.ends_with(b"\r\n\r\n") {
+                assert!(
+                    head.len() < 8_192,
+                    "response headers exceeded fixture bound"
+                );
+                head.push(client.read_u8().await.unwrap());
+            }
+            String::from_utf8(head).unwrap()
+        })
+        .await
+        .expect("Hyper response headers did not arrive")
+    }
+
+    async fn finished(&mut self) -> Result<Result<(), hyper::Error>, media_connection::MediaStop> {
+        let task = self.task.as_mut().unwrap();
+        match tokio::time::timeout(Duration::from_secs(2), &mut *task).await {
+            Ok(result) => {
+                self.task.take();
+                result.expect("owned connection task panicked")
+            }
+            Err(_) => {
+                task.abort();
+                let _ = task.await;
+                self.task.take();
+                panic!("owned connection did not terminate within fixture bound");
+            }
+        }
+    }
+
+    async fn close(mut self) {
+        self.client.take();
+        let _ = self.finished().await;
+    }
+}
+impl Drop for TestConnection {
+    fn drop(&mut self) {
+        // Abort also drops the actual Hyper future and socket on a failed test.
+        // Successful paths explicitly join; no detached watchdog is spawned.
+        if let Some(task) = self.task.take() {
+            task.abort();
+        }
+    }
+}
+
+#[tokio::test]
+async fn media_missing_connection_and_http2_fail_before_stream_admission() {
+    let fixture = Fixture::new();
+    let output = fixture.output(188, 10_000);
+    let response = fixture
+        .broker
+        .router()
+        .call(
+            Request::get(&output.playlist_path)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert!(response
+        .extensions()
+        .get::<media_connection::MediaLease>()
+        .is_none());
+    assert_eq!(
+        json_body(response).await,
+        json!({"version": 1, "error": "backend_unavailable"})
+    );
+
+    let control = media_connection::ConnectionControl::new();
+    let mut request = Request::get(&output.playlist_path)
+        .version(Version::HTTP_2)
+        .body(Body::empty())
+        .unwrap();
+    request.extensions_mut().insert(control.clone());
+    let response = fixture.broker.router().call(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert!(response
+        .extensions()
+        .get::<media_connection::MediaLease>()
+        .is_none());
+    assert!(!response.headers().contains_key("connection"));
+    assert!(!control.is_armed_for_test());
+    assert_eq!(
+        json_body(response).await,
+        json!({"version": 1, "error": "backend_unavailable"})
+    );
+
+    let mut held = Vec::new();
+    for _ in 0..8 {
+        let response = get(&fixture.broker, &output.playlist_path).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        held.push(response);
+    }
+}
+
+#[tokio::test]
+async fn eight_stalled_hyper_connections_hold_permits_until_transport_drop() {
+    let fixture = Fixture::new();
+    let output = fixture.output(131_072, 10_000);
+    let segment = output
+        .playlist_path
+        .replace("index.m3u8", "segment-000000.ts");
+    let mut held = Vec::new();
+    for _ in 0..8 {
+        let mut connection = TestConnection::new(fixture.broker.router(), Duration::from_secs(5));
+        let head = connection.begin(&segment).await;
+        assert!(head.starts_with("HTTP/1.1 200 "));
+        assert!(head.to_ascii_lowercase().contains("connection: close\r\n"));
+        assert!(connection.control.is_armed_for_test());
+        held.push(connection);
+    }
+    assert_eq!(
+        get(&fixture.broker, &segment).await.status(),
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    held.pop().unwrap().close().await;
+    assert_eq!(
+        get(&fixture.broker, &segment).await.status(),
+        StatusCode::OK
+    );
+    for connection in held {
+        connection.close().await;
+    }
+}
+
+#[tokio::test]
+async fn unpolled_media_connections_end_on_current_authority_without_fake_reaping() {
+    for variation in 0..5 {
+        let fixture = Fixture::new();
+        let output = fixture.output(131_072, 1_000);
+        let segment = output
+            .playlist_path
+            .replace("index.m3u8", "segment-000000.ts");
+        let mut connection = TestConnection::new(fixture.broker.router(), Duration::from_secs(5));
+        assert!(connection
+            .begin(&segment)
+            .await
+            .starts_with("HTTP/1.1 200 "));
+        // Let Hyper fill the tiny writer after headers; no body bytes are read.
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        assert_eq!(
+            fixture
+                .broker
+                .acknowledge_reaped(&output.session_id, &output.output_generation),
+            Err(BoundaryError::Conflict)
+        );
+        match variation {
+            0 => fixture.clock.0.store(2_001, Ordering::SeqCst),
+            1 => fixture.broker.revoke_credential("owner_A").unwrap(),
+            2 => {
+                fixture
+                    .registry
+                    .revoke_session(&principal(), &fixture.binding.session_id)
+                    .unwrap();
+            }
+            3 => fixture
+                .broker
+                .revoke_output(&fixture.binding.session_id)
+                .unwrap(),
+            _ => {
+                fixture.output(188, 1_000);
+            }
+        }
+        assert!(
+            matches!(
+                connection.finished().await,
+                Err(media_connection::MediaStop::AuthorityRevoked)
+            ),
+            "variation {variation}"
+        );
+        assert!(!connection.control.is_armed_for_test());
+        // Network termination releases custody only; owner acknowledgment still
+        // requires an explicit output tombstone and remains a separate action.
+        if variation < 3 {
+            assert_eq!(
+                fixture
+                    .broker
+                    .acknowledge_reaped(&output.session_id, &output.output_generation),
+                Err(BoundaryError::Conflict)
+            );
+            fixture
+                .broker
+                .revoke_output(&fixture.binding.session_id)
+                .unwrap();
+        }
+        fixture
+            .broker
+            .acknowledge_reaped(&output.session_id, &output.output_generation)
+            .unwrap();
+    }
+}
+
+#[tokio::test]
+async fn stalled_media_write_deadline_drops_real_connection_and_releases_admission() {
+    let fixture = Fixture::new();
+    let output = fixture.output(131_072, 10_000);
+    let segment = output
+        .playlist_path
+        .replace("index.m3u8", "segment-000000.ts");
+    let mut connection = TestConnection::new(fixture.broker.router(), Duration::from_millis(100));
+    assert!(connection
+        .begin(&segment)
+        .await
+        .starts_with("HTTP/1.1 200 "));
+    assert!(matches!(
+        connection.finished().await,
+        Err(media_connection::MediaStop::WriteIdle)
+    ));
+    assert!(!connection.control.is_armed_for_test());
+    // Timeout is transport cleanup, not fabricated revocation/worker proof.
+    assert_eq!(
+        fixture
+            .broker
+            .acknowledge_reaped(&output.session_id, &output.output_generation),
+        Err(BoundaryError::Conflict)
+    );
+    let mut held = Vec::new();
+    for _ in 0..8 {
+        let response = get(&fixture.broker, &segment).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        held.push(response);
+    }
+}
+
+#[tokio::test]
+async fn healthy_hyper_progress_and_unchanged_focus_keep_media_authorized() {
+    let fixture = Fixture::new();
+    let output = fixture.output(131_072, 10_000);
+    let segment = output
+        .playlist_path
+        .replace("index.m3u8", "segment-000000.ts");
+    let mut connection = TestConnection::new(fixture.broker.router(), Duration::from_secs(5));
+    assert!(connection
+        .begin(&segment)
+        .await
+        .starts_with("HTTP/1.1 200 "));
+    let mut next = fixture.binding.clone();
+    next.backend_expected.focus_revision += 1;
+    fixture
+        .registry
+        .update_binding(&principal(), &fixture.binding, &next)
+        .unwrap();
+    // Give independent authority checks time to run while the socket is full.
+    // Use a generous write budget: helper clock-state tests qualify deadline
+    // refresh, while this test qualifies real writes and unchanged-source CAS.
+    tokio::time::sleep(Duration::from_millis(30)).await;
+    assert!(!connection.task.as_ref().unwrap().is_finished());
+    let mut body = Vec::new();
+    let mut chunk = [0u8; 1_024];
+    for _ in 0..12 {
+        let count = tokio::time::timeout(
+            Duration::from_secs(2),
+            connection.client.as_mut().unwrap().read(&mut chunk),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_ne!(count, 0);
+        body.extend_from_slice(&chunk[..count]);
+        assert!(!connection.task.as_ref().unwrap().is_finished());
+    }
+    tokio::time::timeout(
+        Duration::from_secs(2),
+        connection.client.as_mut().unwrap().read_to_end(&mut body),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert!(body.len() >= 131_072);
+    assert!(matches!(connection.finished().await, Ok(Ok(()))));
+    assert!(!connection.control.is_armed_for_test());
+}
+
+#[tokio::test]
+async fn private_media_revocation_and_timeout_do_not_arm_or_cancel_public_connection() {
+    for revoke in [false, true] {
+        let fixture = Fixture::new();
+        let output = fixture.output(131_072, 10_000);
+        let segment = output
+            .playlist_path
+            .replace("index.m3u8", "segment-000000.ts");
+        let private_idle = if revoke {
+            Duration::from_secs(5)
+        } else {
+            Duration::from_millis(100)
+        };
+        let mut private = TestConnection::new(fixture.broker.router(), private_idle);
+        assert!(private.begin(&segment).await.starts_with("HTTP/1.1 200 "));
+        let public_app = axum::Router::new().route(
+            "/public",
+            axum::routing::get(|| async { Bytes::from(vec![0x55; 131_072]) }),
+        );
+        let mut public = TestConnection::new(public_app, Duration::from_millis(100));
+        assert!(public
+            .begin_with_close("/public", true)
+            .await
+            .starts_with("HTTP/1.1 200 "));
+        assert!(!public.control.is_armed_for_test());
+        if revoke {
+            fixture
+                .broker
+                .revoke_output(&fixture.binding.session_id)
+                .unwrap();
+        }
+        let result = private.finished().await;
+        assert!(matches!(
+            (revoke, result),
+            (true, Err(media_connection::MediaStop::AuthorityRevoked))
+                | (false, Err(media_connection::MediaStop::WriteIdle))
+        ));
+        tokio::time::sleep(Duration::from_millis(150)).await;
+        assert!(!public.task.as_ref().unwrap().is_finished());
+        assert!(!public.control.is_armed_for_test());
+        let mut bytes = Vec::new();
+        tokio::time::timeout(
+            Duration::from_secs(2),
+            public.client.as_mut().unwrap().read_to_end(&mut bytes),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(bytes.len() >= 131_072);
+        assert!(matches!(public.finished().await, Ok(Ok(()))));
+    }
+}
+
 #[tokio::test]
 async fn streaming_permits_remain_owned_until_body_drop() {
     let fixture = Fixture::new();
@@ -970,4 +1469,198 @@ fn generated_output_rejects_external_child_key_uri_and_unlisted_resource() {
     for playlist in ["#EXTM3U\nhttps://unowned.example.test/a.ts\n", "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"https://unowned.example.test/key\"\nsegment-000000.ts\n", "#EXTM3U\n../segment-000000.ts\n", "#EXTM3U\nsegment-000001.ts\n"] {
         assert_eq!(fixture.broker.publish_output(&owner, &fixture.binding, playlist, BTreeMap::from([("segment-000000.ts".into(), Bytes::from_static(b"fixture"))]), 1_000), Err(BoundaryError::Invalid));
     }
+}
+
+// The owner thread has its own finite hold deadline. Even the old blocking
+// media implementation cannot hang a current-thread runtime forever: it wakes
+// after five seconds, then fails the two-second elapsed/held assertions below.
+struct HeldMediaMutex {
+    release: Option<std::sync::mpsc::Sender<()>>,
+    thread: Option<std::thread::JoinHandle<()>>,
+    held: Arc<AtomicBool>,
+}
+impl HeldMediaMutex {
+    fn new(fixture: &Fixture, registry_lock: bool) -> Self {
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let held = Arc::new(AtomicBool::new(false));
+        let worker_held = held.clone();
+        let broker = fixture.broker.clone();
+        let registry = fixture.registry.clone();
+        let session = fixture.binding.session_id.clone();
+        let thread = std::thread::spawn(move || {
+            let wait = || {
+                worker_held.store(true, Ordering::SeqCst);
+                entered_tx.send(()).expect("held-lock receiver disappeared");
+                let _ = release_rx.recv_timeout(Duration::from_secs(5));
+                worker_held.store(false, Ordering::SeqCst);
+            };
+            if registry_lock {
+                registry
+                    .with_session_authority(&principal(), &session, &mut || {
+                        wait();
+                        Ok(())
+                    })
+                    .expect("fixture session must authorize the lock holder");
+            } else {
+                broker.with_mutable_lock_for_test(wait);
+            }
+        });
+        let owner = Self {
+            release: Some(release_tx),
+            thread: Some(thread),
+            held,
+        };
+        // Construct the RAII owner first so an assertion failure still releases
+        // and joins the worker. No sleep is used to guess mutex acquisition.
+        entered_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("fixture mutex was not acquired within its bound");
+        assert!(owner.is_held());
+        owner
+    }
+
+    fn is_held(&self) -> bool {
+        self.held.load(Ordering::SeqCst)
+    }
+
+    fn release(mut self) {
+        let _ = self.release.take().unwrap().send(());
+        self.thread
+            .take()
+            .unwrap()
+            .join()
+            .expect("held-lock worker panicked");
+        assert!(!self.is_held());
+    }
+}
+impl Drop for HeldMediaMutex {
+    fn drop(&mut self) {
+        if let Some(release) = self.release.take() {
+            let _ = release.send(());
+        }
+        if let Some(thread) = self.thread.take() {
+            // Do not double-panic during test unwinding. The finite worker
+            // deadline also bounds this join if an assertion failed elsewhere.
+            let _ = thread.join();
+        }
+    }
+}
+
+async fn media_mutex_contention_fails_closed_then_recovers(registry_lock: bool) {
+    // Fixture and router retain their broker while the worker holds its mutex;
+    // this test never asks a last-owner shutdown to run under that lock.
+    let fixture = Fixture::new();
+    let output = fixture.output(131_072, 10_000);
+    let segment = output
+        .playlist_path
+        .replace("index.m3u8", "segment-000000.ts");
+    let response = get(&fixture.broker, &segment).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let mut body = response.into_body().into_data_stream();
+    let mut connection = TestConnection::new(fixture.broker.router(), Duration::from_secs(30));
+    assert!(connection
+        .begin(&segment)
+        .await
+        .starts_with("HTTP/1.1 200 "));
+    assert!(connection.control.is_armed_for_test());
+
+    let held = HeldMediaMutex::new(&fixture, registry_lock);
+    let started = std::time::Instant::now();
+    let chunk = tokio::time::timeout(Duration::from_secs(2), body.next())
+        .await
+        .expect("body authority check waited for a contended mutex");
+    assert!(matches!(chunk, Some(Err(_))), "no new chunk may escape");
+    // A Tokio timeout cannot preempt a blocking first poll; elapsed and held
+    // checks catch that old behavior after the worker's independent deadline.
+    assert!(started.elapsed() < Duration::from_secs(2));
+    assert!(held.is_held());
+    assert!(
+        body.next().await.is_none(),
+        "denied body must stay terminal"
+    );
+
+    let started = std::time::Instant::now();
+    let denied = tokio::time::timeout(Duration::from_secs(2), get(&fixture.broker, &segment))
+        .await
+        .expect("media admission waited for a contended mutex");
+    assert!(started.elapsed() < Duration::from_secs(2));
+    assert!(held.is_held());
+    assert_eq!(denied.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert!(denied
+        .extensions()
+        .get::<media_connection::MediaLease>()
+        .is_none());
+    assert_eq!(
+        json_body(denied).await,
+        json!({"version": 1, "error": "backend_unavailable"})
+    );
+
+    tokio::time::timeout(
+        Duration::from_secs(2),
+        tokio::time::sleep(Duration::from_millis(10)),
+    )
+    .await
+    .expect("current-thread timer could not progress under media contention");
+    assert!(held.is_held());
+    // Either per-chunk authority or the independent connection check can win.
+    // Both must terminate the real Hyper future while the lock is still held;
+    // an idle timeout (30s here), manual body drop, or lock release cannot pass.
+    assert!(matches!(
+        connection.finished().await,
+        Err(media_connection::MediaStop::AuthorityRevoked) | Ok(Err(_))
+    ));
+    assert!(held.is_held());
+    assert!(!connection.control.is_armed_for_test());
+    held.release();
+
+    // Busy/poison is a transport refusal, not persisted authority revocation.
+    // The failed manual body still owns exactly one permit; the real Hyper
+    // connection released its own permit on completion, not merely body EOF.
+    assert_eq!(
+        fixture
+            .broker
+            .acknowledge_reaped(&output.session_id, &output.output_generation),
+        Err(BoundaryError::Conflict)
+    );
+    let mut admitted = Vec::new();
+    for _ in 0..7 {
+        let response = get(&fixture.broker, &segment).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        admitted.push(response);
+    }
+    assert_eq!(
+        get(&fixture.broker, &segment).await.status(),
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    drop(body);
+    let response = get(&fixture.broker, &segment).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    admitted.push(response);
+    assert_eq!(
+        get(&fixture.broker, &segment).await.status(),
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    fixture.broker.revoke_output(&output.session_id).unwrap();
+    assert_eq!(
+        fixture
+            .broker
+            .acknowledge_reaped(&output.session_id, &output.output_generation),
+        Err(BoundaryError::Conflict)
+    );
+    drop(admitted);
+    fixture
+        .broker
+        .acknowledge_reaped(&output.session_id, &output.output_generation)
+        .unwrap();
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn registry_mutex_contention_denies_media_without_blocking_executor_and_recovers() {
+    media_mutex_contention_fails_closed_then_recovers(true).await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn broker_mutex_contention_denies_media_without_blocking_executor_and_recovers() {
+    media_mutex_contention_fails_closed_then_recovers(false).await;
 }

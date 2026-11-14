@@ -2377,6 +2377,7 @@ mod tests {
             .router()
             .call(
                 Request::get(&output.playlist_path)
+                    .extension(crate::media_connection::ConnectionControl::new())
                     .body(Body::empty())
                     .unwrap(),
             )

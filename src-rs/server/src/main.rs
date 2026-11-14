@@ -3,6 +3,7 @@ mod debug_api;
 mod companion;
 mod control_discovery;
 mod hosted_epg;
+mod media_connection;
 mod msx;
 mod multiview_broker;
 mod multiview_operator;
@@ -237,17 +238,154 @@ async fn supervise_listeners(mut tasks: JoinSet<anyhow::Result<()>>) -> anyhow::
     Err(failure)
 }
 
+fn media_transport_unavailable() -> axum::response::Response {
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        [
+            ("cache-control", "no-store"),
+            ("referrer-policy", "no-referrer"),
+            ("x-content-type-options", "nosniff"),
+        ],
+        Json(serde_json::json!({"version":1,"error":"backend_unavailable"})),
+    )
+        .into_response()
+}
+
+async fn dispatch_media_request(
+    mut app: Router,
+    control: media_connection::ConnectionControl,
+    mut request: axum::extract::Request,
+) -> Result<axum::response::Response, std::convert::Infallible> {
+    let version = request.version();
+    // This control belongs to the accepted socket, never the listener/router.
+    request.extensions_mut().insert(control.clone());
+    let response = match app.call(request).await {
+        Ok(response) => response,
+        Err(never) => match never {},
+    };
+    // Only the broker's admitted-media extension can arm supervision. Public
+    // and unsuccessful private replies pass through unchanged, including H2.
+    Ok(control
+        .prepare_response(response, version)
+        .unwrap_or_else(|_| media_transport_unavailable()))
+}
+
+async fn serve_private_http(listener: TcpListener, app: Router) -> anyhow::Result<()> {
+    let mut connections = JoinSet::new();
+    loop {
+        let accepted = tokio::select! {
+            accepted = listener.accept() => accepted,
+            Some(_) = connections.join_next(), if !connections.is_empty() => continue,
+        };
+        let (stream, peer) = match accepted {
+            Ok(connection) => connection,
+            Err(error) => {
+                // Match axum 0.7's accept retry policy; no public request timer.
+                if !matches!(
+                    error.kind(),
+                    std::io::ErrorKind::ConnectionRefused
+                        | std::io::ErrorKind::ConnectionAborted
+                        | std::io::ErrorKind::ConnectionReset
+                ) {
+                    tracing::error!("HTTP accept error");
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
+                continue;
+            }
+        };
+        let app = app
+            .clone()
+            .layer(axum::Extension(axum::extract::ConnectInfo(peer)));
+        connections.spawn(async move {
+            let control = media_connection::ConnectionControl::default();
+            let io = hyper_util::rt::TokioIo::new(control.watch_io(stream));
+            let request_control = control.clone();
+            let service = hyper::service::service_fn(
+                move |request: hyper::Request<hyper::body::Incoming>| {
+                    dispatch_media_request(
+                        app.clone(),
+                        request_control.clone(),
+                        request.map(axum::body::Body::new),
+                    )
+                },
+            );
+            // Preserve axum::serve's auto HTTP selection and WebSocket upgrades.
+            let builder =
+                hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new());
+            match control
+                .supervise(builder.serve_connection_with_upgrades(io, service))
+                .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(_)) => tracing::debug!("HTTP serve connection error"),
+                Err(_) => tracing::debug!("Private media connection stopped"),
+            }
+        });
+    }
+}
+
+async fn serve_private_tls_connection(
+    stream: tokio::net::TcpStream,
+    acceptor: TlsAcceptor,
+    app: Router,
+) {
+    let control = media_connection::ConnectionControl::default();
+    // Observe actual TCP writes below TLS buffering. No lease/timer exists
+    // during this handshake, and ordinary responses never arm one.
+    let tls = match acceptor.accept(control.watch_io(stream)).await {
+        Ok(stream) => stream,
+        Err(_) => {
+            tracing::warn!("TLS handshake failed");
+            return;
+        }
+    };
+    let io = hyper_util::rt::TokioIo::new(tls);
+    let request_control = control.clone();
+    let service =
+        hyper::service::service_fn(move |request: hyper::Request<hyper::body::Incoming>| {
+            dispatch_media_request(
+                app.clone(),
+                request_control.clone(),
+                request.map(axum::body::Body::new),
+            )
+        });
+    // TLS ALPN remains HTTP/1.1. Keep admitted lease ownership through final
+    // flush/shutdown; the helper closes only admitted private-media responses.
+    match control
+        .supervise(
+            hyper::server::conn::http1::Builder::new()
+                .serve_connection(io, service)
+                .with_upgrades(),
+        )
+        .await
+    {
+        Ok(Ok(())) => {}
+        Ok(Err(_)) => tracing::warn!("TLS serve connection error"),
+        Err(_) => tracing::debug!("Private media connection stopped"),
+    }
+}
+
 async fn serve_tls(
     listener: TcpListener,
     app: Router,
     config: Arc<ServerConfig>,
+    private_media: bool,
 ) -> anyhow::Result<()> {
     let acceptor = TlsAcceptor::from(config);
+    let mut private_connections = JoinSet::new();
     loop {
-        let (stream, peer) = match listener.accept().await {
+        let accepted = tokio::select! {
+            accepted = listener.accept() => accepted,
+            Some(_) = private_connections.join_next(), if !private_connections.is_empty() => continue,
+        };
+        let (stream, peer) = match accepted {
             Ok(connection) => connection,
             Err(error) => {
-                tracing::warn!("TLS accept error: {error}");
+                if private_media {
+                    tracing::warn!("TLS accept error");
+                } else {
+                    tracing::warn!("TLS accept error: {error}");
+                }
                 continue;
             }
         };
@@ -255,6 +393,12 @@ async fn serve_tls(
         let app = app
             .clone()
             .layer(axum::Extension(axum::extract::ConnectInfo(peer)));
+        if private_media {
+            // Dropping the listener must also drop its supervisors and I/O.
+            private_connections.spawn(serve_private_tls_connection(stream, acceptor, app));
+            continue;
+        }
+        // Preserve the existing unselected TLS connection path.
         tokio::spawn(async move {
             let tls = match acceptor.accept(stream).await {
                 Ok(stream) => stream,
@@ -314,39 +458,47 @@ async fn serve_listeners_with_private(
     for listener in listeners.http {
         let address = listener.local_addr()?;
         println!("ottplay-server: http://{address}");
-        let app = multiview_service::route_for_listener(
-            app.clone(),
-            private.as_deref(),
-            multiview_service::ListenerEndpoint {
-                local_addr: address,
-                tls: false,
-            },
-        )
-        .layer(axum::Extension(msx::Scheme("http")));
+        let endpoint = multiview_service::ListenerEndpoint {
+            local_addr: address,
+            tls: false,
+        };
+        let private_media = private
+            .as_deref()
+            .is_some_and(|service| service.router_for(endpoint).is_some());
+        let app =
+            multiview_service::route_for_listener(app.clone(), private.as_deref(), endpoint)
+                .layer(axum::Extension(msx::Scheme("http")));
         tasks.spawn(async move {
-            axum::serve(
-                listener,
-                app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-            )
-            .await
-            .with_context(|| format!("HTTP listener {address} failed"))
+            if private_media {
+                serve_private_http(listener, app)
+                    .await
+                    .with_context(|| format!("HTTP listener {address} failed"))
+            } else {
+                axum::serve(
+                    listener,
+                    app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+                )
+                .await
+                .with_context(|| format!("HTTP listener {address} failed"))
+            }
         });
     }
     for listener in listeners.https {
         let address = listener.local_addr()?;
         println!("ottplay-server: https://{address}");
-        let app = multiview_service::route_for_listener(
-            app.clone(),
-            private.as_deref(),
-            multiview_service::ListenerEndpoint {
-                local_addr: address,
-                tls: true,
-            },
-        )
-        .layer(axum::Extension(msx::Scheme("https")));
+        let endpoint = multiview_service::ListenerEndpoint {
+            local_addr: address,
+            tls: true,
+        };
+        let private_media = private
+            .as_deref()
+            .is_some_and(|service| service.router_for(endpoint).is_some());
+        let app =
+            multiview_service::route_for_listener(app.clone(), private.as_deref(), endpoint)
+                .layer(axum::Extension(msx::Scheme("https")));
         let config = tls_config.clone().context("missing TLS configuration")?;
         tasks.spawn(async move {
-            serve_tls(listener, app, config)
+            serve_tls(listener, app, config, private_media)
                 .await
                 .with_context(|| format!("HTTPS listener {address} failed"))
         });
@@ -681,6 +833,76 @@ fn player_asset_routes(directory: &std::path::Path) -> Router {
 #[cfg(test)]
 mod listener_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn selected_media_dispatch_preserves_public_request_context_and_response() {
+        use axum::{
+            body::{to_bytes, Body},
+            extract::ConnectInfo,
+            http::Version,
+            Extension,
+        };
+        let peer: std::net::SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        for version in [Version::HTTP_11, Version::HTTP_2] {
+            let app =
+                Router::new()
+                    .route(
+                        "/public",
+                        get(
+                            |ConnectInfo(peer): ConnectInfo<std::net::SocketAddr>,
+                             Extension(scheme): Extension<msx::Scheme>,
+                             Extension(_control): Extension<
+                                media_connection::ConnectionControl,
+                            >| async move {
+                                (
+                                    StatusCode::ACCEPTED,
+                                    [
+                                        ("cache-control", "public, max-age=60"),
+                                        ("x-public", "preserved"),
+                                    ],
+                                    format!("{} {}", peer, scheme.0),
+                                )
+                            },
+                        ),
+                    )
+                    .layer(Extension(ConnectInfo(peer)))
+                    .layer(Extension(msx::Scheme("http")));
+            let control = media_connection::ConnectionControl::default();
+            let request = axum::http::Request::builder()
+                .uri("/public")
+                .version(version)
+                .body(Body::empty())
+                .unwrap();
+            let response = dispatch_media_request(app, control.clone(), request)
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::ACCEPTED);
+            assert_eq!(response.headers()["cache-control"], "public, max-age=60");
+            assert_eq!(response.headers()["x-public"], "preserved");
+            assert!(!response.headers().contains_key("connection"));
+            assert!(!control.is_armed_for_test());
+            let body = to_bytes(response.into_body(), 1024).await.unwrap();
+            assert_eq!(&body[..], b"127.0.0.1:12345 http");
+        }
+    }
+
+    #[tokio::test]
+    async fn media_transport_failure_response_is_fixed_and_private() {
+        let response = media_transport_unavailable();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        assert_eq!(response.headers()["referrer-policy"], "no-referrer");
+        assert_eq!(response.headers()["x-content-type-options"], "nosniff");
+        assert_eq!(response.headers()["content-type"], "application/json");
+        assert!(!response.headers().contains_key("connection"));
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&body).unwrap(),
+            serde_json::json!({"version":1,"error":"backend_unavailable"})
+        );
+    }
 
     #[test]
     fn stalker_relay_requires_config_and_defaults_to_loopback() {

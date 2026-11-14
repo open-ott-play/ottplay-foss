@@ -39,6 +39,20 @@ def fake_reader(raw, *, shallow=b"false\n", commit=b"commit\n"):
 
 
 class DiffContracts(unittest.TestCase):
+    def test_broker_boundary_and_server_main_changes_never_skip(self):
+        for path in (
+            "src-rs/server/tests/multiview_broker_boundary.rs",
+            "src-rs/server/src/main.rs",
+        ):
+            for status in ("A", "M", "D"):
+                with self.subTest(path=path, status=status):
+                    raw = record(path, status,
+                                 before="000000" if status == "A" else "100644",
+                                 after="000000" if status == "D" else "100644")
+                    self.assertEqual(scope.classify_diff(raw), {
+                        "run": True, "reason": "related-path-change",
+                    })
+
     def test_streamed_analyzer_and_support_paths_never_skip(self):
         paths = (
             "scripts/ci-multiview-unix-media.py",
