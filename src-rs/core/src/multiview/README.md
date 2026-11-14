@@ -113,7 +113,13 @@ Persistent Session uses a common wall-capture clock for audio/video output. The
 compositor freezes source views before recording `captured_at`; a newly captured
 image cannot be assigned to an earlier output tick. Complete-write counters,
 limited catch-up and bounded reuse of an earlier committed image preserve encoded
-output time. Captured images may remain eligible for two rational video periods,
+output time. A bounded three-target window retains eligible captures for the
+current output tick and the next two ticks, rather than discarding all intermediate
+captures while one image waits for a delayed writer. Each target uses a capture
+whose timestamp is no later than that target. The current bucket remains leased
+through a partial write; the window advances only after the full frame write has
+completed and the previous committed reference has been replaced. Captured images
+may remain eligible for two rational video periods,
 including naturally sparse 1–4 FPS output. A committed image can be reused for at
 most two ticks. Physical writes and pacer debt retain the stricter minimum of two
 video periods, 200 ms and the configured stall limit; excess pressure terminates
@@ -134,7 +140,7 @@ be re-entered after steady operation. The compositor starts before encoder
 readiness; failed startup stops and joins it. Existing
 standalone legacy encoder constructors retain their previous scheduling path.
 
-Session reserves five output canvases, per-source storage and the existing small
+Session reserves six output canvases, per-source storage and the existing small
 buffer allowance within its configured frame-buffer cap. Transition black frames
 use fixed-size zero chunks. This reservation does not bound FFmpeg RSS, operating
 system pipe buffers or total process memory. Source and media fixture qualification

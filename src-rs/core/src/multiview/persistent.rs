@@ -174,7 +174,7 @@ pub fn required_frame_buffer_bytes(frame: FrameSpec, canvas: CanvasSpec) -> Resu
     slot.checked_mul(36)
         .and_then(|slots| {
             output
-                .checked_mul(5)
+                .checked_mul(6)
                 .and_then(|outputs| slots.checked_add(outputs))
         })
         .and_then(|pixels| pixels.checked_add(1024 * 1024))
@@ -406,8 +406,10 @@ impl Session {
             return Err(Error::InvalidConfig);
         }
         // Reader + mailbox + render snapshot + Vec-to-Arc conversion transient
-        // per slot; five canvases cover committed, pending, in-flight and
-        // conversion buffers; PCM and small-buffer allowance remain separate.
+        // per slot; six canvases cover three target buckets (including the
+        // leased selection), old committed pixels and two conversion buffers.
+        // The old committed allocation must drop before rotation/refill; PCM
+        // and small-buffer allowance remain separate.
         // This reserves pixel storage, not FFmpeg RSS, allocators or thread stacks.
         let reserved = required_frame_buffer_bytes(config.frame_spec, canvas)?;
         if config.frame_spec.width == 0
@@ -1013,6 +1015,10 @@ impl Session {
         self.encoder.touch();
         Ok(state.audio_revision)
     }
+    /// Read the output encoder's first closed failure without changing state.
+    pub fn output_failure(&self) -> Option<super::encoder::EncoderError> {
+        self.encoder.failure()
+    }
     pub fn snapshot(&self) -> Snapshot {
         let output = self.encoder.snapshot();
         let state = lock(&self.state);
@@ -1591,7 +1597,9 @@ mod tests {
             width: 320,
             height: 180,
         };
-        assert_eq!(required_frame_buffer_bytes(frame, canvas), Ok(15_045_376));
+        let required = required_frame_buffer_bytes(frame, canvas).unwrap();
+        assert_eq!(required, 16_600_576);
+        assert_eq!(16 * 1024 * 1024 - required, 176_640);
         assert!(required_frame_buffer_bytes(
             FrameSpec {
                 width: u32::MAX,
@@ -1628,8 +1636,17 @@ mod tests {
             PathBuf::from("no-probe-must-start"),
             PathBuf::from("no-output-must-open"),
         );
-        // The old four-canvas reservation is insufficient for capture mode.
-        config.frame_memory_budget = 13_490_176;
+        // The default budget still admits the six-canvas reservation without tools.
+        assert_eq!(config.frame_memory_budget, 16 * 1024 * 1024);
+        assert!(required <= config.frame_memory_budget);
+        // Raising the configured budget beyond the existing cap remains invalid.
+        config.frame_memory_budget = 64 * 1024 * 1024 + 1;
+        assert_eq!(
+            Session::start(config.clone(), geometry.clone()).err(),
+            Some(Error::InvalidConfig)
+        );
+        // Exactly the previous five-canvas budget must reject before tool startup.
+        config.frame_memory_budget = 15_045_376;
         assert_eq!(
             Session::start(config, geometry).err(),
             Some(Error::InvalidConfig)

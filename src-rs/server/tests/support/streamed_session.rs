@@ -11,6 +11,7 @@ mod pump;
 use archive_v2::{sha256, Archive};
 use ottplay_core::multiview::{
     decoder::{self, BoundContext, DecoderError, GrantedStream, PublicationAuthority},
+    encoder::{EncoderError, EncoderState},
     frames::FrameSpec,
     geometry::{CanvasSpec, ImportedRect, OverlapPolicy, ValidatedGeometry},
     persistent::{AudioPolicy, Config, Session, SlotState, Snapshot},
@@ -278,6 +279,36 @@ fn snapshot_json(snapshot: &Snapshot) -> Value {
         "hls_sequence":snapshot.hls_sequence,"hls_last_update_millis":snapshot.hls_last_update_millis,
         "audio_samples_written":snapshot.audio_samples_written,"video_frames_written":snapshot.video_frames_written,"slots":slots})
 }
+// Only closed enum labels and the already logged numeric/enum snapshot enter
+// this fixture error. Never include subprocess stderr, tool paths or grant data.
+fn output_failure_message(
+    snapshot: &Snapshot,
+    cause: impl FnOnce() -> Option<EncoderError>,
+) -> Option<String> {
+    if snapshot.output_state != EncoderState::Failed {
+        return None;
+    }
+    let cause = match cause() {
+        Some(EncoderError::InvalidConfig) => "InvalidConfig",
+        Some(EncoderError::Unsupported) => "Unsupported",
+        Some(EncoderError::Busy) => "Busy",
+        Some(EncoderError::Cancelled) => "Cancelled",
+        Some(EncoderError::StartupTimeout) => "StartupTimeout",
+        Some(EncoderError::Stalled) => "Stalled",
+        Some(EncoderError::Deadline) => "Deadline",
+        Some(EncoderError::Idle) => "Idle",
+        Some(EncoderError::DiskLimit) => "DiskLimit",
+        Some(EncoderError::Io) => "Io",
+        Some(EncoderError::ProcessFailed) => "ProcessFailed",
+        Some(EncoderError::InvalidManifest) => "InvalidManifest",
+        None => "Unavailable",
+    };
+    Some(format!(
+        "encoder output Failed: cause={cause}; snapshot={}",
+        snapshot_json(snapshot)
+    ))
+}
+
 struct Events {
     file: File,
     started: Instant,
@@ -321,6 +352,11 @@ impl Events {
         self.previous_write_us = writing.elapsed().as_micros();
         self.bytes += bytes.len();
         self.count += 1;
+        // Preserve the exact observation before failing; the scenario boundary
+        // retains this error in CONTROL and still executes its normal cleanup.
+        if let Some(failure) = output_failure_message(&snapshot, || session.output_failure()) {
+            return Err(failure);
+        }
         Ok(snapshot) // The exact logged value is the one used by every assertion.
     }
 }
@@ -887,4 +923,99 @@ fn run_case(
         pass,
         "streamed Session fixture failed; inspect owned CONTROL/EVENTS/archive",
     )
+}
+
+#[cfg(test)]
+mod output_failure_tests {
+    use super::*;
+
+    fn snapshot(state: EncoderState) -> Snapshot {
+        Snapshot {
+            runtime: u64::MAX,
+            geometry_revision: 2,
+            focus_revision: 3,
+            audio_revision: 4,
+            focus_slot: 0,
+            audio_policy: AudioPolicy::Muted,
+            audio_slot: None,
+            encoder_pid: 7,
+            output_generation: 11,
+            output_frames: 19,
+            output_state: state,
+            hls_sequence: Some(23),
+            hls_last_update_millis: 29,
+            audio_samples_written: 31,
+            video_frames_written: 37,
+            slots: Vec::new(),
+            monotonic_millis: 41,
+            audio_callback_misses: 43,
+        }
+    }
+
+    #[test]
+    fn failed_output_records_each_closed_cause_and_the_observed_counters() {
+        for (cause, expected) in [
+            (EncoderError::InvalidConfig, "InvalidConfig"),
+            (EncoderError::Unsupported, "Unsupported"),
+            (EncoderError::Busy, "Busy"),
+            (EncoderError::Cancelled, "Cancelled"),
+            (EncoderError::StartupTimeout, "StartupTimeout"),
+            (EncoderError::Stalled, "Stalled"),
+            (EncoderError::Deadline, "Deadline"),
+            (EncoderError::Idle, "Idle"),
+            (EncoderError::DiskLimit, "DiskLimit"),
+            (EncoderError::Io, "Io"),
+            (EncoderError::ProcessFailed, "ProcessFailed"),
+            (EncoderError::InvalidManifest, "InvalidManifest"),
+        ] {
+            let message = output_failure_message(&snapshot(EncoderState::Failed), || Some(cause))
+                .expect("Failed must fail immediately with a closed cause");
+            assert!(message.starts_with(&format!("encoder output Failed: cause={expected};")));
+            assert!(
+                expected.len() <= 15 && expected.bytes().all(|byte| byte.is_ascii_alphabetic())
+            );
+            let observed: Value =
+                serde_json::from_str(message.split_once("; snapshot=").unwrap().1)
+                    .expect("counter snapshot remains structured JSON");
+            assert_eq!(observed, snapshot_json(&snapshot(EncoderState::Failed)));
+            assert_eq!(observed["output_frames"], 19);
+            assert_eq!(observed["audio_samples_written"], 31);
+            assert_eq!(observed["video_frames_written"], 37);
+            assert!(!message.contains('\n') && message.len() <= 4096);
+        }
+    }
+
+    #[test]
+    fn failed_output_without_latched_cause_is_explicitly_uncertain() {
+        let message = output_failure_message(&snapshot(EncoderState::Failed), || None)
+            .expect("Failed without a cause must still fail immediately");
+        assert!(message.starts_with("encoder output Failed: cause=Unavailable;"));
+        assert!(!message.contains("ProcessFailed") && !message.contains("StartupTimeout"));
+    }
+
+    #[test]
+    fn nonfailed_output_never_turns_a_stale_or_missing_cause_into_failure() {
+        for state in [
+            EncoderState::Starting,
+            EncoderState::Playing,
+            EncoderState::Stopped,
+        ] {
+            for cause in [
+                None,
+                Some(EncoderError::Io),
+                Some(EncoderError::ProcessFailed),
+            ] {
+                let accessed = std::cell::Cell::new(false);
+                assert!(output_failure_message(&snapshot(state), || {
+                    accessed.set(true);
+                    cause
+                })
+                .is_none());
+                assert!(
+                    !accessed.get(),
+                    "nonfailed output must not query the failure accessor"
+                );
+            }
+        }
+    }
 }
