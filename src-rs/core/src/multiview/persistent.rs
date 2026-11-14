@@ -6,7 +6,7 @@ use super::{
         self, AudioQueue, AudioQueueStats, BoundContext, Decoder, DecoderConfig, DecoderError,
         GrantedFile, GrantedStream, PreparedStreamInfo, PresentationClock, StreamInput,
     },
-    encoder::{Encoder, EncoderConfig, EncoderState},
+    encoder::{CaptureFence, CaptureVideoFeed, Encoder, EncoderConfig, EncoderState},
     frames::{compose_into, FrameSpec, FrameStatus, FrameView, LatestFrame},
     geometry::{CanvasSpec, ValidatedGeometry},
 };
@@ -171,7 +171,14 @@ pub fn required_frame_buffer_bytes(frame: FrameSpec, canvas: CanvasSpec) -> Resu
     }
     let slot = u64::from(frame.width) * u64::from(frame.height) * 3;
     let output = u64::from(canvas.width) * u64::from(canvas.height) * 3;
-    Ok(slot * 36 + output * 4 + 1024 * 1024)
+    slot.checked_mul(36)
+        .and_then(|slots| {
+            output
+                .checked_mul(5)
+                .and_then(|outputs| slots.checked_add(outputs))
+        })
+        .and_then(|pixels| pixels.checked_add(1024 * 1024))
+        .ok_or(Error::InvalidConfig)
 }
 
 struct Slot {
@@ -182,6 +189,23 @@ struct Slot {
     video: Arc<LatestFrame>,
     audio: Arc<AudioQueue>,
 }
+// Freeze source mailboxes first. The wall stamp describes this immutable
+// observation, never source PTS and never the later completion of composition.
+fn freeze_frames(
+    slots: &[Slot],
+    visible: usize,
+    stale_after: Duration,
+) -> (Vec<(u8, FrameView)>, Instant) {
+    let now = Instant::now();
+    let frames = slots
+        .iter()
+        .enumerate()
+        .take(visible)
+        .map(|(slot, source)| (slot as u8, source.video.snapshot(now, stale_after)))
+        .collect();
+    (frames, Instant::now())
+}
+
 struct State {
     geometry: ValidatedGeometry,
     // Reject a composed tick captured before any control mutation.
@@ -192,8 +216,52 @@ struct State {
     audio_policy: AudioPolicy,
     slots: Vec<Slot>,
     audio_route: Arc<AtomicU64>,
+    capture_video: Arc<CaptureVideoFeed>,
 }
 impl State {
+    fn bootstrap_sources_empty(&self) -> bool {
+        self.control_epoch == 0
+            && self.slots.iter().all(|source| {
+                source.generation == 0
+                    && source.pid.is_none()
+                    && source.pixel_rate == 0
+                    && !source.stopped
+                    && source.video.sequence() == 0
+                    && !source.audio.has_audio(0)
+            })
+    }
+    fn capture_fence(&self) -> CaptureFence {
+        let mut source_revisions = [0; 9];
+        for (revision, source) in source_revisions.iter_mut().zip(&self.slots) {
+            *revision = source.generation;
+        }
+        let stopped_mask = self
+            .slots
+            .iter()
+            .enumerate()
+            .fold(0u16, |mask, (slot, source)| {
+                mask | if source.stopped { 1u16 << slot } else { 0 }
+            });
+        CaptureFence {
+            control_epoch: self.control_epoch,
+            visual_revision: self.geometry.revision(),
+            stopped_mask,
+            visible_mask: (1u16 << self.geometry.rects().len()) - 1,
+            source_revisions,
+        }
+    }
+    // State remains locked through capture-fence publication. Visual/source
+    // changes fence old reuse; focus/audio-only epochs remain video-compatible.
+    fn advance_control(&mut self) -> Result<(), Error> {
+        self.control_epoch = self
+            .control_epoch
+            .checked_add(1)
+            .ok_or(Error::StaleRevision)?;
+        self.capture_video
+            .invalidate(self.capture_fence(), Instant::now())
+            .map_err(|_| Error::OutputFailed)
+    }
+
     fn audio_slot(&self) -> Option<u8> {
         let slot = match self.audio_policy {
             AudioPolicy::Muted => return None,
@@ -295,6 +363,26 @@ fn mix_audio_tick(
     queues[slot].take_at(generation, tick)
 }
 
+// Own the compositor before potentially blocking encoder startup. Failure at
+// either startup check must stop/join it; success transfers its handle to Session.
+struct CompositorStartup {
+    stop: Arc<AtomicBool>,
+    thread: Option<JoinHandle<()>>,
+}
+impl CompositorStartup {
+    fn into_handle(mut self) -> JoinHandle<()> {
+        self.thread.take().unwrap()
+    }
+}
+impl Drop for CompositorStartup {
+    fn drop(&mut self) {
+        if let Some(thread) = self.thread.take() {
+            self.stop.store(true, Ordering::Release);
+            let _ = thread.join();
+        }
+    }
+}
+
 pub struct Session {
     config: Config,
     state: Arc<Mutex<State>>,
@@ -317,9 +405,9 @@ impl Session {
         {
             return Err(Error::InvalidConfig);
         }
-        let canvas_bytes = u64::from(canvas.width) * u64::from(canvas.height) * 3;
         // Reader + mailbox + render snapshot + Vec-to-Arc conversion transient
-        // per slot; likewise four canvas buffers; PCM and small-buffer allowance.
+        // per slot; five canvases cover committed, pending, in-flight and
+        // conversion buffers; PCM and small-buffer allowance remain separate.
         // This reserves pixel storage, not FFmpeg RSS, allocators or thread stacks.
         let reserved = required_frame_buffer_bytes(config.frame_spec, canvas)?;
         if config.frame_spec.width == 0
@@ -353,6 +441,22 @@ impl Session {
         }
         let audio_queues: Vec<_> = slots.iter().map(|source| source.audio.clone()).collect();
         let audio_route = Arc::new(AtomicU64::new(0));
+        let (initial_frames, initial_captured_at) =
+            freeze_frames(&slots, geometry.rects().len(), config.stale_after);
+        let mut initial_pixels = Vec::new();
+        compose_into(&geometry, &initial_frames, &mut initial_pixels)
+            .map_err(|_| Error::InvalidConfig)?;
+        let video = Arc::new(CaptureVideoFeed::new(
+            initial_pixels.into(),
+            CaptureFence {
+                control_epoch: 0,
+                visual_revision: geometry.revision(),
+                stopped_mask: 0,
+                visible_mask: (1u16 << geometry.rects().len()) - 1,
+                source_revisions: [0; 9],
+            },
+            initial_captured_at,
+        ));
         let state = Arc::new(Mutex::new(State {
             geometry: geometry.clone(),
             control_epoch: 0,
@@ -362,12 +466,9 @@ impl Session {
             audio_policy: AudioPolicy::FollowsFocus,
             slots,
             audio_route: audio_route.clone(),
+            capture_video: video.clone(),
         }));
         let stop = Arc::new(AtomicBool::new(false));
-        let video = Arc::new(Mutex::new(Arc::<[u8]>::from(vec![
-            0;
-            canvas_bytes as usize
-        ])));
         lock(&state).update_audio_metrics();
         let audio_callback_misses = Arc::new(AtomicU64::new(0));
         let presentation_clock = Arc::new(PresentationClock::new());
@@ -375,7 +476,69 @@ impl Session {
         let audio = Arc::new(move |tick: Instant| {
             mix_audio_tick(&audio_clock, &audio_route, &audio_queues, tick)
         });
-        let encoder = Encoder::start_timed_audio(
+        let decoders = Arc::new(Mutex::new(
+            (0..9).map(|_| None).collect::<Vec<Option<Decoder>>>(),
+        ));
+        let (compose_state, compose_stop, compose_decoders, compose_video) =
+            (state.clone(), stop.clone(), decoders.clone(), video.clone());
+        let stale_after = config.stale_after;
+        let compositor_thread = thread::Builder::new()
+            .name("multiview-compositor".into())
+            .spawn(move || {
+                let period = Duration::from_secs_f64(1.0 / f64::from(canvas.fps));
+                let mut next = Instant::now();
+                while !compose_stop.load(Ordering::Acquire) {
+                    let (geometry, fence, frames, captured_at) = {
+                        let state = lock(&compose_state);
+                        let (frames, captured_at) =
+                            freeze_frames(&state.slots, state.geometry.rects().len(), stale_after);
+                        (
+                            state.geometry.clone(),
+                            state.capture_fence(),
+                            frames,
+                            captured_at,
+                        )
+                    };
+                    let mut pixels = Vec::new();
+                    if compose_into(&geometry, &frames, &mut pixels).is_err() {
+                        compose_stop.store(true, Ordering::Release);
+                        break;
+                    }
+                    {
+                        let state = lock(&compose_state);
+                        if state.capture_fence() == fence
+                            && compose_video
+                                .publish(pixels.into(), fence, captured_at)
+                                .is_err()
+                        {
+                            compose_stop.store(true, Ordering::Release);
+                        }
+                    }
+                    next += period;
+                    let now = Instant::now();
+                    if next > now {
+                        thread::sleep(next - now);
+                    } else {
+                        next = now;
+                    }
+                }
+                // Encoder failure/lease expiry also reaps all input children, without
+                // requiring a subsequent client command to discover the failure.
+                for mut worker in take_workers(&compose_decoders) {
+                    worker.stop();
+                }
+            })
+            .map_err(|_| Error::OutputFailed)?;
+        let compositor = CompositorStartup {
+            stop: stop.clone(),
+            thread: Some(compositor_thread),
+        };
+        // Session is not exposed and no source may attach during the encoder's
+        // explicit all-empty synthetic black/silence priming interval.
+        if !lock(&state).bootstrap_sources_empty() {
+            return Err(Error::InvalidConfig);
+        }
+        let encoder = Encoder::start_capture_av(
             EncoderConfig {
                 ffmpeg: config.ffmpeg.clone(),
                 mkfifo: config.mkfifo.clone(),
@@ -399,65 +562,13 @@ impl Session {
         {
             return Err(Error::OutputFailed);
         }
-        let decoders = Arc::new(Mutex::new(
-            (0..9).map(|_| None).collect::<Vec<Option<Decoder>>>(),
-        ));
-        let (compose_state, compose_stop, compose_decoders) =
-            (state.clone(), stop.clone(), decoders.clone());
-        let stale_after = config.stale_after;
-        let compositor = thread::spawn(move || {
-            let period = Duration::from_secs_f64(1.0 / f64::from(canvas.fps));
-            let mut next = Instant::now();
-            while !compose_stop.load(Ordering::Acquire) {
-                let (geometry, epoch, frames) = {
-                    let state = lock(&compose_state);
-                    let now = Instant::now();
-                    (
-                        state.geometry.clone(),
-                        state.control_epoch,
-                        state
-                            .slots
-                            .iter()
-                            .enumerate()
-                            .filter(|(slot, _)| *slot < state.geometry.rects().len())
-                            .map(|(slot, source)| {
-                                (slot as u8, source.video.snapshot(now, stale_after))
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                };
-                let mut pixels = Vec::new();
-                if compose_into(&geometry, &frames, &mut pixels).is_err() {
-                    compose_stop.store(true, Ordering::Release);
-                    break;
-                }
-                {
-                    let state = lock(&compose_state);
-                    if state.control_epoch == epoch {
-                        *lock(&video) = pixels.into();
-                    }
-                }
-                next += period;
-                let now = Instant::now();
-                if next > now {
-                    thread::sleep(next - now);
-                } else {
-                    next = now;
-                }
-            }
-            // Encoder failure/lease expiry also reaps all input children, without
-            // requiring a subsequent client command to discover the failure.
-            for mut worker in take_workers(&compose_decoders) {
-                worker.stop();
-            }
-        });
         let encoder_pid = encoder.snapshot().pid;
         Ok(Self {
             config,
             state,
             decoders,
             stop,
-            compositor: Some(compositor),
+            compositor: Some(compositor.into_handle()),
             encoder,
             owned_pids: vec![encoder_pid],
             audio_callback_misses,
@@ -592,7 +703,7 @@ impl Session {
             target.pixel_rate = rate;
             target.stopped = false;
             let result = (target.video.clone(), target.audio.clone());
-            state.control_epoch += 1;
+            state.advance_control()?;
             result
         };
         let worker = match Decoder::start_stream_with_clock(
@@ -644,7 +755,7 @@ impl Session {
             let mut state = lock(&self.state);
             state.slots[slot].pid = None;
             state.slots[slot].pixel_rate = 0;
-            state.control_epoch += 1;
+            state.advance_control()?;
             return Err(Error::SourceFailed);
         }
         self.owned_pids.push(pid);
@@ -728,7 +839,7 @@ impl Session {
             source.pixel_rate = rate;
             source.stopped = false;
             let result = (next, source.video.clone(), source.audio.clone());
-            state.control_epoch += 1;
+            state.advance_control()?;
             result
         };
         match Decoder::start(&config, source, generation, video.clone(), audio) {
@@ -767,7 +878,7 @@ impl Session {
                     let mut state = lock(&self.state);
                     state.slots[usize::from(slot)].pid = None;
                     state.slots[usize::from(slot)].pixel_rate = 0;
-                    state.control_epoch += 1;
+                    state.advance_control()?;
                     return Err(Error::SourceFailed);
                 }
                 self.owned_pids.push(pid);
@@ -815,7 +926,7 @@ impl Session {
         source.pid = None;
         source.pixel_rate = 0;
         source.stopped = true;
-        state.control_epoch += 1;
+        state.advance_control()?;
         state.update_audio_metrics();
         self.encoder.touch();
         Ok(next)
@@ -843,7 +954,7 @@ impl Session {
         // Hidden workers intentionally keep advancing. Resource admission still
         // counts them. Suspending/checkpointing hidden VOD is not advertised.
         state.geometry = geometry;
-        state.control_epoch += 1;
+        state.advance_control()?;
         state.update_audio_metrics();
         self.encoder.touch();
         Ok(())
@@ -868,7 +979,7 @@ impl Session {
                 .checked_add(1)
                 .ok_or(Error::StaleRevision)?;
         }
-        state.control_epoch += 1;
+        state.advance_control()?;
         state.update_audio_metrics();
         self.encoder.touch();
         Ok(state.focus_revision)
@@ -897,7 +1008,7 @@ impl Session {
             .audio_revision
             .checked_add(1)
             .ok_or(Error::StaleRevision)?;
-        state.control_epoch += 1;
+        state.advance_control()?;
         state.update_audio_metrics();
         self.encoder.touch();
         Ok(state.audio_revision)
@@ -1130,6 +1241,166 @@ mod tests {
     }
 
     #[test]
+    fn compositor_owner_stops_and_joins_on_encoder_startup_failure() {
+        let stop = Arc::new(AtomicBool::new(false));
+        let finished = Arc::new(AtomicBool::new(false));
+        let saw_stop = Arc::new(AtomicBool::new(false));
+        let (thread_stop, thread_finished, thread_saw_stop) =
+            (stop.clone(), finished.clone(), saw_stop.clone());
+        let worker = thread::spawn(move || {
+            // Bounded fallback keeps a broken cleanup test from hanging.
+            let until = Instant::now() + Duration::from_millis(100);
+            while !thread_stop.load(Ordering::Acquire) && Instant::now() < until {
+                thread::yield_now();
+            }
+            thread_saw_stop.store(thread_stop.load(Ordering::Acquire), Ordering::Release);
+            thread_finished.store(true, Ordering::Release);
+        });
+        let result = (|| {
+            let _startup = CompositorStartup {
+                stop: stop.clone(),
+                thread: Some(worker),
+            };
+            // Same RAII return path as a failed blocking Encoder start/check.
+            Err::<(), Error>(Error::OutputFailed)
+        })();
+        assert_eq!(result, Err(Error::OutputFailed));
+        assert!(stop.load(Ordering::Acquire));
+        assert!(finished.load(Ordering::Acquire));
+        assert!(saw_stop.load(Ordering::Acquire));
+    }
+    #[test]
+    fn compositor_owner_transfer_does_not_cancel_successful_startup() {
+        let stop = Arc::new(AtomicBool::new(false));
+        let thread_stop = stop.clone();
+        let worker = thread::spawn(move || {
+            let until = Instant::now() + Duration::from_millis(100);
+            while !thread_stop.load(Ordering::Acquire) && Instant::now() < until {
+                thread::yield_now();
+            }
+        });
+        let owner = CompositorStartup {
+            stop: stop.clone(),
+            thread: Some(worker),
+        };
+        let worker = owner.into_handle();
+        assert!(!stop.load(Ordering::Acquire));
+        stop.store(true, Ordering::Release);
+        worker.join().unwrap();
+    }
+    #[test]
+    fn scene_visual_source_fences_distinguish_nonvisual_focus_audio_changes() {
+        let mut state = stream_state();
+        for source in &mut state.slots {
+            source.generation = 0;
+        }
+        let pixels: Arc<[u8]> = vec![0; 16 * 4 * 3].into();
+        let old = state.capture_fence();
+        state.capture_video = Arc::new(CaptureVideoFeed::new(pixels.clone(), old, Instant::now()));
+        assert!(state
+            .capture_video
+            .publish(pixels.clone(), old, Instant::now())
+            .unwrap());
+        state.focus = 0;
+        state.audio_policy = AudioPolicy::Muted;
+        state.advance_control().unwrap();
+        let nonvisual = state.capture_fence();
+        assert_eq!(nonvisual.control_epoch, old.control_epoch + 1);
+        assert_eq!(nonvisual.visual_revision, old.visual_revision);
+        assert_eq!(nonvisual.source_revisions, old.source_revisions);
+        // A stale composition must not publish even though the encoder may
+        // continue an already selected visually compatible immutable frame.
+        assert!(state
+            .capture_video
+            .publish(pixels.clone(), old, Instant::now())
+            .is_err());
+        assert!(state
+            .capture_video
+            .publish(pixels.clone(), nonvisual, Instant::now())
+            .unwrap());
+        state.geometry = ValidatedGeometry::new(
+            state.geometry.canvas(),
+            8,
+            state.geometry.rects(),
+            OverlapPolicy::Disjoint,
+        )
+        .unwrap();
+        state.advance_control().unwrap();
+        let visual = state.capture_fence();
+        assert_eq!(visual.visual_revision, 8);
+        assert!(state
+            .capture_video
+            .publish(pixels.clone(), nonvisual, Instant::now())
+            .is_err());
+        assert!(state
+            .capture_video
+            .publish(pixels, visual, Instant::now())
+            .unwrap());
+        state.slots[2].generation += 1;
+        state.slots[2].stopped = true;
+        state.advance_control().unwrap();
+        let replacement = state.capture_fence();
+        assert_eq!(
+            replacement.source_revisions[2],
+            visual.source_revisions[2] + 1
+        );
+        assert_eq!(replacement.stopped_mask, 1 << 2);
+        assert_eq!(replacement.visible_mask, 15);
+        // Active writer admission/black transition and partial-frame behavior
+        // are tested at the encoder boundary, not fabricated in an unbound feed.
+    }
+    #[test]
+    fn bootstrap_rejects_any_real_source_even_without_a_decoder_pid() {
+        let mut state = stream_state();
+        assert!(!state.bootstrap_sources_empty());
+        for source in &mut state.slots {
+            source.generation = 0;
+            source.video = Arc::new(
+                LatestFrame::new(
+                    FrameSpec {
+                        width: 2,
+                        height: 2,
+                    },
+                    0,
+                )
+                .unwrap(),
+            );
+            source.audio = Arc::new(AudioQueue::new(0));
+        }
+        assert!(state.bootstrap_sources_empty());
+        state.slots[0]
+            .video
+            .publish(0, 1, vec![0; 12], Instant::now())
+            .unwrap();
+        assert!(!state.bootstrap_sources_empty());
+    }
+    #[test]
+    fn capture_wall_stamp_follows_frozen_frame_views_without_changing_source_sequence() {
+        let state = stream_state();
+        let received = Instant::now();
+        state.slots[2]
+            .video
+            .publish(5, 17, vec![3; 2 * 2 * 3], received)
+            .unwrap();
+        let (frames, captured_at) = freeze_frames(&state.slots, 4, Duration::from_secs(1));
+        let frame = match &frames[2].1 {
+            FrameView::Ready(frame) => frame,
+            _ => panic!("expected frozen source frame"),
+        };
+        assert_eq!(frame.sequence, 17);
+        assert!(captured_at >= frame.received_at);
+        let (again, next_capture) = freeze_frames(&state.slots, 4, Duration::from_secs(1));
+        let again = match &again[2].1 {
+            FrameView::Ready(frame) => frame,
+            _ => panic!("expected unchanged frozen source"),
+        };
+        assert_eq!(again.sequence, 17);
+        assert!(next_capture >= captured_at);
+        // A new actual observation may be visually static. Encoder reuse, not
+        // this observation, must retain the earlier capture stamp/sequence.
+    }
+
+    #[test]
     fn presentation_tick_advances_before_muted_or_absent_owner_return() {
         let clock = PresentationClock::new();
         let route = AtomicU64::new(0);
@@ -1199,6 +1470,17 @@ mod tests {
             audio_policy: AudioPolicy::FollowsFocus,
             slots,
             audio_route: Arc::new(AtomicU64::new(0)),
+            capture_video: Arc::new(CaptureVideoFeed::new(
+                Arc::<[u8]>::from(vec![0; 8 * 8 * 3]),
+                CaptureFence {
+                    control_epoch: 0,
+                    visual_revision: 7,
+                    stopped_mask: 0,
+                    visible_mask: 15,
+                    source_revisions: [0, 0, 5, 0, 0, 0, 0, 0, 0],
+                },
+                Instant::now(),
+            )),
         }
     }
     #[test]
@@ -1309,7 +1591,7 @@ mod tests {
             width: 320,
             height: 180,
         };
-        assert_eq!(required_frame_buffer_bytes(frame, canvas), Ok(13_490_176));
+        assert_eq!(required_frame_buffer_bytes(frame, canvas), Ok(15_045_376));
         assert!(required_frame_buffer_bytes(
             FrameSpec {
                 width: u32::MAX,
@@ -1346,7 +1628,8 @@ mod tests {
             PathBuf::from("no-probe-must-start"),
             PathBuf::from("no-output-must-open"),
         );
-        config.frame_memory_budget = 13_490_175;
+        // The old four-canvas reservation is insufficient for capture mode.
+        config.frame_memory_budget = 13_490_176;
         assert_eq!(
             Session::start(config, geometry).err(),
             Some(Error::InvalidConfig)

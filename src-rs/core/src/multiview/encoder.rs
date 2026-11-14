@@ -7,6 +7,240 @@ use std::sync::{atomic::AtomicBool, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 pub type VideoFeed = Arc<Mutex<Arc<[u8]>>>;
+/// A capture-time fence, independent of source PTS or file A/V alignment.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CaptureFence {
+    pub control_epoch: u64,
+    pub visual_revision: u64,
+    pub stopped_mask: u16,
+    pub visible_mask: u16,
+    pub source_revisions: [u64; 9],
+}
+#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
+#[derive(Debug)]
+struct CaptureFrame {
+    generation: u64,
+    sequence: u64,
+    fence: CaptureFence,
+    captured_at: Instant,
+    pixels: CapturePixels,
+}
+enum CapturePixels {
+    Rgb(Arc<[u8]>),
+    Black(usize),
+}
+impl std::fmt::Debug for CapturePixels {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Rgb(bytes) => f.debug_tuple("Rgb").field(&bytes.len()).finish(),
+            Self::Black(bytes) => f.debug_tuple("Black").field(bytes).finish(),
+        }
+    }
+}
+#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
+impl CaptureFrame {
+    fn len(&self) -> usize {
+        match &self.pixels {
+            CapturePixels::Rgb(bytes) => bytes.len(),
+            CapturePixels::Black(bytes) => *bytes,
+        }
+    }
+}
+impl CaptureFence {
+    fn same_visual(self, other: Self) -> bool {
+        self.visual_revision == other.visual_revision
+            && self.stopped_mask == other.stopped_mask
+            && self.visible_mask == other.visible_mask
+            && self.source_revisions == other.source_revisions
+    }
+}
+#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
+struct CaptureState {
+    active: bool,
+    generation: Option<u64>,
+    fence: CaptureFence,
+    previous: Option<(CaptureFence, Instant)>,
+    sequence: u64,
+    last_capture: Instant,
+    pending: Option<Arc<CaptureFrame>>,
+}
+/// One protected, unconsumed candidate. A newer/future publication cannot
+/// replace it before the writer has considered its capture timestamp.
+pub struct CaptureVideoFeed {
+    state: Mutex<CaptureState>,
+    bytes: usize,
+}
+impl CaptureVideoFeed {
+    pub fn new(initial: Arc<[u8]>, fence: CaptureFence, captured_at: Instant) -> Self {
+        Self {
+            bytes: initial.len(),
+            state: Mutex::new(CaptureState {
+                active: false,
+                generation: None,
+                fence,
+                previous: None,
+                sequence: 0,
+                last_capture: captured_at,
+                pending: Some(Arc::new(CaptureFrame {
+                    generation: 0,
+                    sequence: 0,
+                    fence,
+                    captured_at,
+                    pixels: CapturePixels::Rgb(initial),
+                })),
+            }),
+        }
+    }
+    pub fn invalidate(&self, fence: CaptureFence, changed_at: Instant) -> Result<(), EncoderError> {
+        let mut state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        if fence == state.fence {
+            return Ok(());
+        }
+        if fence.control_epoch <= state.fence.control_epoch || changed_at < state.last_capture {
+            return Err(EncoderError::InvalidConfig);
+        }
+        if state.fence.same_visual(fence) {
+            state.fence = fence;
+            return Ok(());
+        }
+        state.previous = Some((state.fence, changed_at));
+        state.fence = fence;
+        state.sequence = state
+            .sequence
+            .checked_add(1)
+            .ok_or(EncoderError::InvalidConfig)?;
+        state.last_capture = changed_at;
+        state.pending = Some(Arc::new(CaptureFrame {
+            generation: state.generation.unwrap_or(0),
+            sequence: state.sequence,
+            fence,
+            captured_at: changed_at,
+            pixels: CapturePixels::Black(self.bytes),
+        }));
+        Ok(())
+    }
+    /// False means that the older candidate retains the one publication credit.
+    /// It is never replaced with a potentially future capture.
+    pub fn publish(
+        &self,
+        pixels: Arc<[u8]>,
+        fence: CaptureFence,
+        captured_at: Instant,
+    ) -> Result<bool, EncoderError> {
+        if pixels.len() != self.bytes {
+            return Err(EncoderError::InvalidConfig);
+        }
+        let mut state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        if state.fence != fence || captured_at < state.last_capture {
+            return Err(EncoderError::InvalidConfig);
+        }
+        if !state.active
+            && state
+                .fence
+                .source_revisions
+                .iter()
+                .any(|revision| *revision != 0)
+        {
+            return Err(EncoderError::InvalidConfig);
+        }
+        if state.pending.is_some() && state.active {
+            return Ok(false);
+        }
+        state.sequence = state
+            .sequence
+            .checked_add(1)
+            .ok_or(EncoderError::InvalidConfig)?;
+        state.last_capture = captured_at;
+        state.pending = Some(Arc::new(CaptureFrame {
+            generation: state.generation.unwrap_or(0),
+            sequence: state.sequence,
+            fence,
+            captured_at,
+            pixels: CapturePixels::Rgb(pixels),
+        }));
+        Ok(true)
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn empty_sources(&self, generation: u64) -> Result<bool, EncoderError> {
+        let state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        Ok(state.generation == Some(generation)
+            && state
+                .fence
+                .source_revisions
+                .iter()
+                .all(|revision| *revision == 0))
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn activate(&self, generation: u64) -> Result<(), EncoderError> {
+        let mut state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        if state.generation != Some(generation)
+            || state.active
+            || state
+                .fence
+                .source_revisions
+                .iter()
+                .any(|revision| *revision != 0)
+        {
+            return Err(EncoderError::InvalidConfig);
+        }
+        state.active = true;
+        Ok(())
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn bind(&self, generation: u64) -> Result<(), EncoderError> {
+        let mut state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        if state.generation.is_some() {
+            return Err(EncoderError::InvalidConfig);
+        }
+        state.generation = Some(generation);
+        if let Some(frame) = &mut state.pending {
+            let frame = Arc::get_mut(frame).ok_or(EncoderError::InvalidConfig)?;
+            frame.generation = generation;
+        }
+        Ok(())
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn take_at(
+        &self,
+        generation: u64,
+        target: Instant,
+    ) -> Result<(CaptureFence, Option<Arc<CaptureFrame>>), EncoderError> {
+        let mut state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        if state.generation != Some(generation) {
+            return Err(EncoderError::InvalidConfig);
+        }
+        let frame = if state
+            .pending
+            .as_ref()
+            .is_some_and(|frame| frame.captured_at <= target)
+        {
+            state.pending.take()
+        } else {
+            None
+        };
+        Ok((state.fence, frame))
+    }
+    #[cfg(test)]
+    fn matches(&self, generation: u64, fence: CaptureFence) -> Result<bool, EncoderError> {
+        let state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        Ok(state.generation == Some(generation) && state.fence.same_visual(fence))
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn accepts(
+        &self,
+        generation: u64,
+        fence: CaptureFence,
+        target: Instant,
+    ) -> Result<bool, EncoderError> {
+        let state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        Ok(state.generation == Some(generation)
+            && (state.fence.same_visual(fence)
+                || state.previous.is_some_and(|(previous, until)| {
+                    previous.same_visual(fence) && target < until
+                })))
+    }
+}
+
 pub type AudioFeed = Arc<dyn Fn() -> Vec<i16> + Send + Sync>;
 /// Opt-in source-clock mixer. The argument is the fixed 50 Hz presentation tick,
 /// not the wall-clock instant at which a delayed callback happens to execute.
@@ -131,6 +365,80 @@ mod runtime {
         }
     }
 
+    struct CaptureStartupState {
+        video_done: bool,
+        audio_done: bool,
+        epoch: Option<Instant>,
+    }
+    struct CaptureStartup {
+        state: Mutex<CaptureStartupState>,
+        audio_reserved: AtomicBool,
+        deadline: Instant,
+        quantum: Duration,
+        video_units: u64,
+        audio_units: u64,
+        feed: Arc<CaptureVideoFeed>,
+        generation: u64,
+    }
+    impl CaptureStartup {
+        fn new(fps: u32, deadline: Instant, feed: Arc<CaptureVideoFeed>, generation: u64) -> Self {
+            let (mut a, mut b) = (fps, 50);
+            while b != 0 {
+                (a, b) = (b, a % b);
+            }
+            Self {
+                state: Mutex::new(CaptureStartupState {
+                    video_done: false,
+                    audio_done: false,
+                    epoch: None,
+                }),
+                audio_reserved: AtomicBool::new(false),
+                deadline,
+                quantum: Duration::from_nanos(1_000_000_000 / u64::from(a)),
+                video_units: u64::from(fps / a),
+                audio_units: u64::from(50 / a),
+                feed,
+                generation,
+            }
+        }
+        fn finish(&self, video: bool, shared: &Shared) -> Result<Instant, EncoderError> {
+            {
+                let mut state = lock(&self.state);
+                if video {
+                    state.video_done = true;
+                } else {
+                    state.audio_done = true;
+                }
+                if state.video_done && state.audio_done && state.epoch.is_none() {
+                    self.feed.activate(self.generation)?;
+                    let steady = Instant::now();
+                    state.epoch = Some(
+                        steady
+                            .checked_sub(self.quantum)
+                            .ok_or(EncoderError::InvalidConfig)?,
+                    );
+                }
+            }
+            loop {
+                if shared.stop.load(Ordering::Acquire) {
+                    return Err(EncoderError::Cancelled);
+                }
+                if Instant::now() > self.deadline {
+                    return Err(EncoderError::StartupTimeout);
+                }
+                if let Some(epoch) = lock(&self.state).epoch {
+                    return Ok(epoch);
+                }
+                if !self.feed.empty_sources(self.generation)? {
+                    return Err(EncoderError::InvalidConfig);
+                }
+                thread::sleep(Duration::from_millis(2));
+            }
+        }
+        fn ready(&self) -> bool {
+            lock(&self.state).epoch.is_some() && self.audio_reserved.load(Ordering::Acquire)
+        }
+    }
     struct Shared {
         stop: Arc<AtomicBool>,
         started: Instant,
@@ -139,6 +447,7 @@ mod runtime {
         error: Mutex<Option<EncoderError>>,
         audio_samples_written: AtomicU64,
         video_frames_written: AtomicU64,
+        capture_startup: Option<Arc<CaptureStartup>>,
     }
     fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
         mutex.lock().unwrap_or_else(|poison| poison.into_inner())
@@ -211,6 +520,330 @@ mod runtime {
             .checked_add(Duration::from_millis(20))
             .ok_or(EncoderError::InvalidConfig)
     }
+    enum VideoInput {
+        Legacy(VideoFeed),
+        Capture(Arc<CaptureVideoFeed>),
+    }
+    fn media_target(epoch: Instant, index: u64, rate: u32) -> Result<Instant, EncoderError> {
+        if rate == 0 {
+            return Err(EncoderError::InvalidConfig);
+        }
+        let seconds = index / u64::from(rate);
+        let nanos = (u128::from(index % u64::from(rate)) * 1_000_000_000 / u128::from(rate)) as u32;
+        epoch
+            .checked_add(Duration::new(seconds, nanos))
+            .ok_or(EncoderError::InvalidConfig)
+    }
+    fn capture_debt(canvas: CanvasSpec, stall: Duration) -> Duration {
+        Duration::from_nanos(2_000_000_000 / u64::from(canvas.fps))
+            .min(Duration::from_millis(200))
+            .min(stall)
+    }
+    struct CapturePacer {
+        epoch: Instant,
+        rate: u32,
+        bucket: u64,
+        starts: u8,
+    }
+    impl CapturePacer {
+        fn new(epoch: Instant, rate: u32) -> Self {
+            Self {
+                epoch,
+                rate,
+                bucket: 0,
+                starts: 0,
+            }
+        }
+        fn permit_at(&mut self, now: Instant) -> Result<bool, EncoderError> {
+            let elapsed = now
+                .checked_duration_since(self.epoch)
+                .ok_or(EncoderError::InvalidConfig)?;
+            let bucket = u64::try_from(
+                elapsed
+                    .as_nanos()
+                    .checked_mul(u128::from(self.rate))
+                    .ok_or(EncoderError::InvalidConfig)?
+                    / 1_000_000_000,
+            )
+            .map_err(|_| EncoderError::InvalidConfig)?;
+            if bucket != self.bucket {
+                self.bucket = bucket;
+                self.starts = 0;
+            }
+            if self.starts == 2 {
+                return Ok(false);
+            }
+            self.starts += 1;
+            Ok(true)
+        }
+        fn wait_start(
+            &mut self,
+            target: Instant,
+            debt: Duration,
+            shared: &Shared,
+        ) -> Result<Instant, EncoderError> {
+            loop {
+                if shared.stop.load(Ordering::Acquire) {
+                    return Err(EncoderError::Cancelled);
+                }
+                let now = Instant::now();
+                if now < target {
+                    sleep_until(target, shared);
+                    continue;
+                }
+                if now.duration_since(target) > debt {
+                    return Err(EncoderError::Stalled);
+                }
+                if self.permit_at(now)? {
+                    return Ok(now);
+                }
+                let next = media_target(
+                    self.epoch,
+                    self.bucket
+                        .checked_add(1)
+                        .ok_or(EncoderError::InvalidConfig)?,
+                    self.rate,
+                )?;
+                sleep_until(next, shared);
+            }
+        }
+    }
+    fn write_capture_complete(
+        writer: &mut impl Write,
+        bytes: &[u8],
+        shared: &Shared,
+        stall: Duration,
+        absolute: Instant,
+        mut authorized: impl FnMut() -> Result<bool, EncoderError>,
+    ) -> Result<(), EncoderError> {
+        let mut offset = 0;
+        let mut advanced = Instant::now();
+        while offset < bytes.len() {
+            if shared.stop.load(Ordering::Acquire) {
+                return Err(EncoderError::Cancelled);
+            }
+            if Instant::now() > absolute || advanced.elapsed() >= stall {
+                return Err(EncoderError::Stalled);
+            }
+            if !authorized()? {
+                return Err(EncoderError::Cancelled);
+            }
+            match writer.write(&bytes[offset..]) {
+                Ok(0) => return Err(EncoderError::ProcessFailed),
+                Ok(count) if count <= bytes.len() - offset => {
+                    offset += count;
+                    advanced = Instant::now();
+                }
+                Ok(_) => return Err(EncoderError::Io),
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                    thread::sleep(Duration::from_millis(2))
+                }
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+                Err(_) => return Err(EncoderError::Io),
+            }
+        }
+        // Completion cannot acknowledge an expired/revoked partial frame.
+        if Instant::now() > absolute {
+            return Err(EncoderError::Stalled);
+        }
+        if !authorized()? {
+            return Err(EncoderError::Cancelled);
+        }
+        Ok(())
+    }
+    fn write_black_complete(
+        writer: &mut impl Write,
+        bytes: usize,
+        shared: &Shared,
+        stall: Duration,
+        absolute: Instant,
+        mut authorized: impl FnMut() -> Result<bool, EncoderError>,
+    ) -> Result<(), EncoderError> {
+        let zeros = [0u8; 4096];
+        let mut remaining = bytes;
+        while remaining != 0 {
+            let count = remaining.min(zeros.len());
+            write_capture_complete(
+                writer,
+                &zeros[..count],
+                shared,
+                stall,
+                absolute,
+                &mut authorized,
+            )?;
+            remaining -= count;
+        }
+        Ok(())
+    }
+    fn select_capture(
+        feed: &CaptureVideoFeed,
+        generation: u64,
+        target: Instant,
+        debt: Duration,
+        committed: &Option<Arc<CaptureFrame>>,
+        repeats: &mut u8,
+    ) -> Result<Arc<CaptureFrame>, EncoderError> {
+        let (_, next) = feed.take_at(generation, target)?;
+        let frame = match next {
+            Some(frame) => {
+                if committed
+                    .as_ref()
+                    .is_some_and(|old| frame.sequence <= old.sequence)
+                {
+                    return Err(EncoderError::InvalidConfig);
+                }
+                *repeats = 0;
+                frame
+            }
+            None => {
+                *repeats = repeats.checked_add(1).ok_or(EncoderError::Stalled)?;
+                if *repeats > 2 {
+                    return Err(EncoderError::Stalled);
+                }
+                committed.as_ref().cloned().ok_or(EncoderError::Stalled)?
+            }
+        };
+        if frame.generation != generation
+            || !feed.accepts(generation, frame.fence, target)?
+            || target
+                .checked_duration_since(frame.captured_at)
+                .is_none_or(|age| age > debt)
+        {
+            return Err(EncoderError::Stalled);
+        }
+        Ok(frame)
+    }
+    fn capture_video_loop(
+        mut writer: impl Write,
+        feed: Arc<CaptureVideoFeed>,
+        canvas: CanvasSpec,
+        stall: Duration,
+        shared: Arc<Shared>,
+    ) {
+        let generation = lock(&shared.snapshot).generation;
+        let debt = capture_debt(canvas, stall);
+        let mut committed = None;
+        let mut repeats = 0;
+        let result = (|| -> Result<(), EncoderError> {
+            let startup = shared
+                .capture_startup
+                .as_ref()
+                .ok_or(EncoderError::InvalidConfig)?;
+            for _ in 0..startup.video_units {
+                write_black_complete(
+                    &mut writer,
+                    canvas.width as usize * canvas.height as usize * 3,
+                    &shared,
+                    stall,
+                    startup.deadline,
+                    || feed.empty_sources(generation),
+                )?;
+                shared.video_frames_written.fetch_add(1, Ordering::Relaxed);
+            }
+            let epoch = startup.finish(true, &shared)?;
+            let mut pacer = CapturePacer::new(epoch, canvas.fps);
+            let mut index = startup.video_units;
+            while !shared.stop.load(Ordering::Acquire) {
+                let target = media_target(epoch, index, canvas.fps)?;
+                pacer.wait_start(target, debt, &shared)?;
+                let frame =
+                    select_capture(&feed, generation, target, debt, &committed, &mut repeats)?;
+                if frame.len() != canvas.width as usize * canvas.height as usize * 3 {
+                    return Err(EncoderError::InvalidConfig);
+                }
+                let absolute = target
+                    .checked_add(debt)
+                    .ok_or(EncoderError::InvalidConfig)?;
+                // The selected immutable frame is atomic across ordinary control
+                // changes; output stop/deadline still aborts partial writes.
+                match &frame.pixels {
+                    CapturePixels::Rgb(bytes) => write_capture_complete(
+                        &mut writer,
+                        bytes,
+                        &shared,
+                        stall,
+                        absolute,
+                        || Ok(true),
+                    )?,
+                    CapturePixels::Black(bytes) => {
+                        write_black_complete(&mut writer, *bytes, &shared, stall, absolute, || {
+                            Ok(true)
+                        })?
+                    }
+                }
+                shared.video_frames_written.fetch_add(1, Ordering::Relaxed);
+                committed = Some(frame);
+                index = index.checked_add(1).ok_or(EncoderError::InvalidConfig)?;
+            }
+            Ok(())
+        })();
+        if let Err(error) = result {
+            if !shared.stop.load(Ordering::Acquire) {
+                fail(&shared, error);
+            }
+        }
+    }
+    fn capture_audio_loop(
+        mut writer: impl Write,
+        feed: AudioInput,
+        canvas: CanvasSpec,
+        stall: Duration,
+        shared: Arc<Shared>,
+    ) {
+        let debt = capture_debt(canvas, stall);
+        let result = (|| -> Result<(), EncoderError> {
+            let startup = shared
+                .capture_startup
+                .as_ref()
+                .ok_or(EncoderError::InvalidConfig)?;
+            let generation = lock(&shared.snapshot).generation;
+            let silent = [0u8; 3840];
+            for _ in 0..startup.audio_units {
+                write_capture_complete(
+                    &mut writer,
+                    &silent,
+                    &shared,
+                    stall,
+                    startup.deadline,
+                    || startup.feed.empty_sources(generation),
+                )?;
+                shared
+                    .audio_samples_written
+                    .fetch_add(1920, Ordering::Relaxed);
+            }
+            let epoch = startup.finish(false, &shared)?;
+            let mut pacer = CapturePacer::new(epoch, 50);
+            let mut index = startup.audio_units;
+            while !shared.stop.load(Ordering::Acquire) {
+                let target = media_target(epoch, index, 50)?;
+                pacer.wait_start(target, debt, &shared)?;
+                let samples = feed.at(target);
+                startup.audio_reserved.store(true, Ordering::Release);
+                if samples.len() != 1920 {
+                    return Err(EncoderError::InvalidConfig);
+                }
+                let mut bytes = [0u8; 3840];
+                for (target, sample) in bytes.chunks_exact_mut(2).zip(samples) {
+                    target.copy_from_slice(&sample.to_le_bytes());
+                }
+                let absolute = target
+                    .checked_add(debt)
+                    .ok_or(EncoderError::InvalidConfig)?;
+                write_capture_complete(&mut writer, &bytes, &shared, stall, absolute, || Ok(true))?;
+                shared
+                    .audio_samples_written
+                    .fetch_add(1920, Ordering::Relaxed);
+                index = index.checked_add(1).ok_or(EncoderError::InvalidConfig)?;
+            }
+            Ok(())
+        })();
+        if let Err(error) = result {
+            if !shared.stop.load(Ordering::Acquire) {
+                fail(&shared, error);
+            }
+        }
+    }
+
     fn video_loop(
         mut writer: std::process::ChildStdin,
         feed: VideoFeed,
@@ -653,7 +1286,12 @@ mod runtime {
             audio: AudioFeed,
             stop: Arc<AtomicBool>,
         ) -> Result<Self, EncoderError> {
-            Self::start_audio(config, video, AudioInput::Legacy(audio), stop)
+            Self::start_audio(
+                config,
+                VideoInput::Legacy(video),
+                AudioInput::Legacy(audio),
+                stop,
+            )
         }
         pub fn start_timed_audio(
             config: EncoderConfig,
@@ -661,11 +1299,29 @@ mod runtime {
             audio: TimedAudioFeed,
             stop: Arc<AtomicBool>,
         ) -> Result<Self, EncoderError> {
-            Self::start_audio(config, video, AudioInput::Timed(audio), stop)
+            Self::start_audio(
+                config,
+                VideoInput::Legacy(video),
+                AudioInput::Timed(audio),
+                stop,
+            )
+        }
+        pub fn start_capture_av(
+            config: EncoderConfig,
+            video: Arc<CaptureVideoFeed>,
+            audio: TimedAudioFeed,
+            stop: Arc<AtomicBool>,
+        ) -> Result<Self, EncoderError> {
+            Self::start_audio(
+                config,
+                VideoInput::Capture(video),
+                AudioInput::Timed(audio),
+                stop,
+            )
         }
         fn start_audio(
             config: EncoderConfig,
-            video: VideoFeed,
+            video: VideoInput,
             audio: AudioInput,
             stop: Arc<AtomicBool>,
         ) -> Result<Self, EncoderError> {
@@ -713,8 +1369,12 @@ mod runtime {
                 return Err(EncoderError::Unsupported);
             }
             let expected = canvas.width as usize * canvas.height as usize * 3;
-            match video.try_lock() {
-                Ok(frame) if frame.len() == expected => {}
+            match &video {
+                VideoInput::Legacy(video) => match video.try_lock() {
+                    Ok(frame) if frame.len() == expected => {}
+                    _ => return Err(EncoderError::InvalidConfig),
+                },
+                VideoInput::Capture(video) if video.bytes == expected => {}
                 _ => return Err(EncoderError::InvalidConfig),
             }
             let permit = Permit::acquire()?;
@@ -723,6 +1383,10 @@ mod runtime {
                     value.checked_add(1)
                 })
                 .map_err(|_| EncoderError::InvalidConfig)?;
+            if let VideoInput::Capture(feed) = &video {
+                feed.bind(generation)?;
+            }
+            let capture_mode = matches!(&video, VideoInput::Capture(_));
             let nonce = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_err(|_| EncoderError::Io)?
@@ -877,7 +1541,19 @@ mod runtime {
             let video_writer = child.0.stdin.take().ok_or(EncoderError::Io)?;
             nonblocking(video_writer.as_fd()).map_err(|_| EncoderError::Io)?;
             let started = Instant::now();
+            let capture_startup = match &video {
+                VideoInput::Capture(feed) => Some(Arc::new(CaptureStartup::new(
+                    canvas.fps,
+                    started
+                        .checked_add(config.startup_timeout)
+                        .ok_or(EncoderError::InvalidConfig)?,
+                    feed.clone(),
+                    generation,
+                ))),
+                VideoInput::Legacy(_) => None,
+            };
             let shared = Arc::new(Shared {
+                capture_startup,
                 stop,
                 started,
                 touched: Mutex::new(started),
@@ -910,8 +1586,14 @@ mod runtime {
             let shared_video = shared.clone();
             match thread::Builder::new()
                 .name("multiview-video".into())
-                .spawn(move || video_loop(video_writer, video, canvas, stall, shared_video))
-            {
+                .spawn(move || match video {
+                    VideoInput::Legacy(video) => {
+                        video_loop(video_writer, video, canvas, stall, shared_video)
+                    }
+                    VideoInput::Capture(video) => {
+                        capture_video_loop(video_writer, video, canvas, stall, shared_video)
+                    }
+                }) {
                 Ok(handle) => encoder.video = Some(handle),
                 Err(_) => {
                     drop(child);
@@ -922,8 +1604,13 @@ mod runtime {
             let shared_audio = shared.clone();
             match thread::Builder::new()
                 .name("multiview-audio".into())
-                .spawn(move || audio_loop(audio_writer, audio, stall, shared_audio))
-            {
+                .spawn(move || {
+                    if capture_mode {
+                        capture_audio_loop(audio_writer, audio, canvas, stall, shared_audio);
+                    } else {
+                        audio_loop(audio_writer, audio, stall, shared_audio);
+                    }
+                }) {
                 Ok(handle) => encoder.audio = Some(handle),
                 Err(_) => {
                     drop(child);
@@ -952,7 +1639,14 @@ mod runtime {
             }
             loop {
                 match encoder.snapshot().state {
-                    EncoderState::Playing => return Ok(encoder),
+                    EncoderState::Playing
+                        if shared
+                            .capture_startup
+                            .as_ref()
+                            .is_none_or(|startup| startup.ready()) =>
+                    {
+                        return Ok(encoder)
+                    }
                     EncoderState::Failed => {
                         return Err(lock(&shared.error).unwrap_or(EncoderError::ProcessFailed))
                     }
@@ -1051,6 +1745,634 @@ mod runtime {
                 Arc<AtomicBool>,
             ) -> Result<Encoder, EncoderError> = Encoder::start_timed_audio;
         }
+        fn first_pixel(frame: &CaptureFrame) -> u8 {
+            match &frame.pixels {
+                CapturePixels::Rgb(bytes) => bytes[0],
+                CapturePixels::Black(_) => 0,
+            }
+        }
+        fn fence(epoch: u64) -> CaptureFence {
+            CaptureFence {
+                control_epoch: epoch,
+                visual_revision: epoch,
+                stopped_mask: 0,
+                visible_mask: 1,
+                source_revisions: [epoch; 9],
+            }
+        }
+        fn shared_at(epoch: Instant) -> Arc<Shared> {
+            Arc::new(Shared {
+                stop: Arc::new(AtomicBool::new(false)),
+                started: epoch,
+                touched: Mutex::new(epoch),
+                error: Mutex::new(None),
+                snapshot: Mutex::new(EncoderSnapshot {
+                    pid: 1,
+                    generation: 1,
+                    frames: 0,
+                    state: EncoderState::Playing,
+                    monotonic_millis: 0,
+                    hls_sequence: None,
+                    hls_last_update_millis: 0,
+                    audio_samples_written: 0,
+                    video_frames_written: 0,
+                }),
+                audio_samples_written: AtomicU64::new(0),
+                video_frames_written: AtomicU64::new(0),
+                capture_startup: None,
+            })
+        }
+        fn isolated_capture_shared(
+            epoch: Instant,
+            feed: Arc<CaptureVideoFeed>,
+            video: bool,
+        ) -> Arc<Shared> {
+            let mut shared = shared_at(epoch);
+            let startup = Arc::new(CaptureStartup::new(
+                10,
+                epoch + Duration::from_secs(2),
+                feed,
+                1,
+            ));
+            {
+                let mut state = lock(&startup.state);
+                if video {
+                    state.audio_done = true;
+                } else {
+                    state.video_done = true;
+                }
+            }
+            let owned = Arc::get_mut(&mut shared).unwrap();
+            if video {
+                owned
+                    .audio_samples_written
+                    .store(startup.audio_units * 1920, Ordering::Relaxed);
+            } else {
+                owned
+                    .video_frames_written
+                    .store(startup.video_units, Ordering::Relaxed);
+            }
+            owned.capture_startup = Some(startup);
+            shared
+        }
+        fn tiny_canvas() -> CanvasSpec {
+            CanvasSpec {
+                width: 2,
+                height: 2,
+                fps: 10,
+            }
+        }
+        #[test]
+        fn capture_handoff_preserves_eligible_pending_despite_newer_future_publications() {
+            let epoch = Instant::now();
+            let feed = CaptureVideoFeed::new(Arc::from(vec![0; 12]), fence(0), epoch);
+            feed.bind(1).unwrap();
+            feed.activate(1).unwrap();
+            let (_, initial) = feed.take_at(1, epoch).unwrap();
+            assert_eq!(initial.unwrap().sequence, 0);
+            let early = epoch + Duration::from_millis(2);
+            assert!(feed
+                .publish(Arc::from(vec![1; 12]), fence(0), early)
+                .unwrap());
+            assert!(!feed
+                .publish(
+                    Arc::from(vec![2; 12]),
+                    fence(0),
+                    epoch + Duration::from_millis(102)
+                )
+                .unwrap());
+            let (_, candidate) = feed.take_at(1, epoch + Duration::from_millis(100)).unwrap();
+            assert_eq!(first_pixel(&candidate.unwrap()), 1);
+            assert!(feed
+                .publish(
+                    Arc::from(vec![3; 12]),
+                    fence(0),
+                    epoch + Duration::from_millis(202)
+                )
+                .unwrap());
+            assert!(feed
+                .take_at(1, epoch + Duration::from_millis(200))
+                .unwrap()
+                .1
+                .is_none());
+            assert_eq!(
+                first_pixel(
+                    &feed
+                        .take_at(1, epoch + Duration::from_millis(300))
+                        .unwrap()
+                        .1
+                        .unwrap()
+                ),
+                3
+            );
+        }
+        #[test]
+        fn capture_boundaries_and_control_replacement_fail_without_backdating() {
+            let epoch = Instant::now();
+            let feed = CaptureVideoFeed::new(Arc::from(vec![0; 12]), fence(0), epoch);
+            feed.bind(1).unwrap();
+            feed.activate(1).unwrap();
+            let mut repeats = 0;
+            let initial = select_capture(
+                &feed,
+                1,
+                epoch,
+                Duration::from_millis(200),
+                &None,
+                &mut repeats,
+            )
+            .unwrap();
+            let committed = Some(initial);
+            assert!(select_capture(
+                &feed,
+                1,
+                epoch + Duration::from_millis(100),
+                Duration::from_millis(200),
+                &committed,
+                &mut repeats
+            )
+            .is_ok());
+            assert!(select_capture(
+                &feed,
+                1,
+                epoch + Duration::from_millis(200),
+                Duration::from_millis(200),
+                &committed,
+                &mut repeats
+            )
+            .is_ok());
+            assert!(select_capture(
+                &feed,
+                1,
+                epoch + Duration::from_millis(200) + Duration::from_nanos(1),
+                Duration::from_millis(200),
+                &committed,
+                &mut 0
+            )
+            .is_err());
+            assert!(select_capture(
+                &feed,
+                1,
+                epoch + Duration::from_millis(200),
+                Duration::from_millis(200),
+                &committed,
+                &mut repeats
+            )
+            .is_err());
+            feed.invalidate(fence(1), epoch + Duration::from_millis(1))
+                .unwrap();
+            feed.invalidate(fence(1), epoch + Duration::from_millis(1))
+                .unwrap();
+            assert!(!feed.matches(1, fence(0)).unwrap());
+            assert!(select_capture(
+                &feed,
+                1,
+                epoch,
+                Duration::from_millis(200),
+                &committed,
+                &mut 0
+            )
+            .is_ok());
+            assert!(!feed
+                .accepts(1, fence(0), epoch + Duration::from_millis(1))
+                .unwrap());
+            let transitioned = select_capture(
+                &feed,
+                1,
+                epoch + Duration::from_millis(1),
+                Duration::from_millis(200),
+                &committed,
+                &mut 0,
+            )
+            .unwrap();
+            assert!(matches!(transitioned.pixels, CapturePixels::Black(12)));
+            assert!(feed
+                .publish(Arc::from(vec![1; 12]), fence(0), epoch)
+                .is_err());
+            assert!(feed
+                .invalidate(fence(0), epoch + Duration::from_millis(1))
+                .is_err());
+        }
+        #[test]
+        fn capture_rational_targets_and_both_pacer_credit_limits_are_exact() {
+            let epoch = Instant::now();
+            for rate in [1, 10, 15, 30, 50] {
+                let target = media_target(epoch, u64::from(rate) * 65, rate).unwrap();
+                assert_eq!(target.duration_since(epoch), Duration::from_secs(65));
+                let mut pacer = CapturePacer::new(epoch, rate);
+                assert!(pacer.permit_at(epoch).unwrap());
+                assert!(pacer.permit_at(epoch).unwrap());
+                assert!(!pacer.permit_at(epoch).unwrap());
+                assert!(pacer
+                    .permit_at(media_target(epoch, 1, rate).unwrap() + Duration::from_nanos(1))
+                    .unwrap());
+            }
+            assert_eq!(
+                capture_debt(tiny_canvas(), Duration::from_secs(1)),
+                Duration::from_millis(200)
+            );
+            let mut fast = tiny_canvas();
+            fast.fps = 30;
+            assert_eq!(
+                capture_debt(fast, Duration::from_secs(1)),
+                Duration::from_nanos(66_666_666)
+            );
+            assert!(media_target(epoch, u64::MAX, 1).is_err());
+        }
+        struct PressureWriter {
+            blocked_until: Instant,
+            inject_after: Option<(usize, Duration)>,
+            frame_bytes: usize,
+            accepted: Arc<Mutex<Vec<u8>>>,
+            stop_after: usize,
+            stop: Arc<AtomicBool>,
+        }
+        impl Write for PressureWriter {
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                if self
+                    .inject_after
+                    .is_some_and(|(after, _)| lock(&self.accepted).len() >= after)
+                {
+                    let (_, duration) = self.inject_after.take().unwrap();
+                    self.blocked_until = Instant::now() + duration;
+                }
+                if Instant::now() < self.blocked_until {
+                    return Err(io::ErrorKind::WouldBlock.into());
+                }
+                let count = bytes.len().min(7);
+                let mut accepted = lock(&self.accepted);
+                accepted.extend_from_slice(&bytes[..count]);
+                if accepted.len() >= self.frame_bytes * self.stop_after {
+                    self.stop.store(true, Ordering::Release);
+                }
+                Ok(count)
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+        #[test]
+        fn production_capture_video_writer_recovers_bounded_pressure_with_immutable_partial_bytes()
+        {
+            let epoch = Instant::now();
+            let feed = Arc::new(CaptureVideoFeed::new(
+                Arc::from(vec![0; 12]),
+                fence(0),
+                epoch,
+            ));
+            feed.bind(1).unwrap();
+            let shared = isolated_capture_shared(epoch, feed.clone(), true);
+            let accepted = Arc::new(Mutex::new(Vec::new()));
+            let producer = feed.clone();
+            let stop = shared.stop.clone();
+            let publishing = thread::spawn(move || {
+                let mut value = 1u8;
+                while !stop.load(Ordering::Acquire) {
+                    producer
+                        .publish(Arc::from(vec![value; 12]), fence(0), Instant::now())
+                        .unwrap();
+                    value = value.wrapping_add(1);
+                    thread::sleep(Duration::from_millis(15));
+                }
+            });
+            let writer = PressureWriter {
+                blocked_until: epoch,
+                inject_after: Some((12, Duration::from_millis(100))),
+                frame_bytes: 12,
+                accepted: accepted.clone(),
+                stop_after: 5,
+                stop: shared.stop.clone(),
+            };
+            capture_video_loop(
+                writer,
+                feed,
+                tiny_canvas(),
+                Duration::from_secs(1),
+                shared.clone(),
+            );
+            publishing.join().unwrap();
+            assert_eq!(shared.video_frames_written.load(Ordering::Relaxed), 5);
+            assert!(lock(&shared.error).is_none());
+            let bytes = lock(&accepted);
+            assert_eq!(bytes.len(), 60);
+            assert!(bytes[..12].iter().all(|byte| *byte == 0));
+            assert!(bytes
+                .chunks_exact(12)
+                .all(|frame| frame.iter().all(|byte| *byte == frame[0])));
+            assert!(bytes[24] != bytes[48]);
+        }
+        #[test]
+        fn production_capture_video_writer_terminates_pressure_beyond_debt_bound() {
+            let epoch = Instant::now();
+            let feed = Arc::new(CaptureVideoFeed::new(
+                Arc::from(vec![0; 12]),
+                fence(0),
+                epoch,
+            ));
+            feed.bind(1).unwrap();
+            let shared = isolated_capture_shared(epoch, feed.clone(), true);
+            let accepted = Arc::new(Mutex::new(Vec::new()));
+            let writer = PressureWriter {
+                blocked_until: epoch,
+                inject_after: Some((12, Duration::from_millis(350))),
+                frame_bytes: 12,
+                accepted: accepted.clone(),
+                stop_after: 5,
+                stop: shared.stop.clone(),
+            };
+            capture_video_loop(
+                writer,
+                feed,
+                tiny_canvas(),
+                Duration::from_secs(1),
+                shared.clone(),
+            );
+            assert_eq!(*lock(&shared.error), Some(EncoderError::Stalled));
+            assert_eq!(shared.video_frames_written.load(Ordering::Relaxed), 1);
+            assert_eq!(*lock(&accepted), vec![0; 12]);
+        }
+        #[test]
+        fn production_capture_audio_writer_keeps_pcm_ticks_contiguous_after_asymmetric_pressure() {
+            let epoch = Instant::now();
+            let feed = Arc::new(CaptureVideoFeed::new(
+                Arc::from(vec![0; 12]),
+                fence(0),
+                epoch,
+            ));
+            feed.bind(1).unwrap();
+            let shared = isolated_capture_shared(epoch, feed, false);
+            let ticks = Arc::new(Mutex::new(Vec::new()));
+            let recorded = ticks.clone();
+            let audio = AudioInput::Timed(Arc::new(move |tick| {
+                let mut ticks = lock(&recorded);
+                ticks.push(tick);
+                vec![ticks.len() as i16; 1920]
+            }));
+            let accepted = Arc::new(Mutex::new(Vec::new()));
+            let writer = PressureWriter {
+                blocked_until: epoch,
+                inject_after: Some((5 * 3840, Duration::from_millis(100))),
+                frame_bytes: 3840,
+                accepted: accepted.clone(),
+                stop_after: 11,
+                stop: shared.stop.clone(),
+            };
+            capture_audio_loop(
+                writer,
+                audio,
+                tiny_canvas(),
+                Duration::from_secs(1),
+                shared.clone(),
+            );
+            assert!(lock(&shared.error).is_none());
+            assert_eq!(
+                shared.audio_samples_written.load(Ordering::Relaxed),
+                11 * 1920
+            );
+            let startup = shared.capture_startup.as_ref().unwrap();
+            let common = lock(&startup.state).epoch.unwrap();
+            let ticks = lock(&ticks);
+            assert_eq!(ticks.len(), 6);
+            for (index, tick) in ticks.iter().enumerate() {
+                assert_eq!(*tick, media_target(common, 5 + index as u64, 50).unwrap());
+            }
+            let bytes = lock(&accepted);
+            assert!(bytes[..5 * 3840].iter().all(|byte| *byte == 0));
+            for (index, block) in bytes[5 * 3840..].chunks_exact(3840).enumerate() {
+                assert!(block
+                    .chunks_exact(2)
+                    .all(|pair| i16::from_le_bytes([pair[0], pair[1]]) == index as i16 + 1));
+            }
+        }
+        #[test]
+        fn capture_bootstrap_quantum_is_equal_for_video_and_fifty_hz_audio() {
+            let now = Instant::now();
+            for fps in 1..=30 {
+                let feed = Arc::new(CaptureVideoFeed::new(Arc::from(vec![0; 12]), fence(0), now));
+                let startup = CaptureStartup::new(fps, now + Duration::from_secs(2), feed, 1);
+                assert_eq!(
+                    u128::from(startup.video_units) * 1_000_000_000 / u128::from(fps),
+                    startup.quantum.as_nanos()
+                );
+                assert_eq!(
+                    u128::from(startup.audio_units) * 20_000_000,
+                    startup.quantum.as_nanos()
+                );
+                assert!(startup.quantum <= Duration::from_secs(1));
+                assert!(startup.video_units <= 30 && startup.audio_units <= 50);
+            }
+        }
+        #[test]
+        fn actual_both_writer_startup_primes_only_black_silence_then_latches_one_epoch() {
+            let began = Instant::now();
+            let feed = Arc::new(CaptureVideoFeed::new(
+                Arc::from(vec![9; 12]),
+                fence(0),
+                began,
+            ));
+            feed.bind(1).unwrap();
+            let mut shared = shared_at(began);
+            let startup = Arc::new(CaptureStartup::new(
+                10,
+                began + Duration::from_secs(2),
+                feed.clone(),
+                1,
+            ));
+            Arc::get_mut(&mut shared).unwrap().capture_startup = Some(startup.clone());
+            let vbytes = Arc::new(Mutex::new(Vec::new()));
+            let abytes = Arc::new(Mutex::new(Vec::new()));
+            let observed = Arc::new(Mutex::new(Vec::new()));
+            let record = observed.clone();
+            let audio = AudioInput::Timed(Arc::new(move |tick| {
+                lock(&record).push(tick);
+                vec![7; 1920]
+            }));
+            let publisher_feed = feed.clone();
+            let publisher_stop = shared.stop.clone();
+            let publisher = thread::spawn(move || {
+                while !publisher_stop.load(Ordering::Acquire) {
+                    publisher_feed
+                        .publish(Arc::from(vec![9; 12]), fence(0), Instant::now())
+                        .unwrap();
+                    thread::sleep(Duration::from_millis(10));
+                }
+            });
+            let video_writer = PressureWriter {
+                blocked_until: began + Duration::from_millis(350),
+                inject_after: None,
+                frame_bytes: 12,
+                accepted: vbytes.clone(),
+                stop_after: 3,
+                stop: shared.stop.clone(),
+            };
+            let audio_writer = PressureWriter {
+                blocked_until: began,
+                inject_after: None,
+                frame_bytes: 3840,
+                accepted: abytes.clone(),
+                stop_after: 6,
+                stop: shared.stop.clone(),
+            };
+            let vshared = shared.clone();
+            let vfeed = feed.clone();
+            let video = thread::spawn(move || {
+                capture_video_loop(
+                    video_writer,
+                    vfeed,
+                    tiny_canvas(),
+                    Duration::from_secs(1),
+                    vshared,
+                )
+            });
+            capture_audio_loop(
+                audio_writer,
+                audio,
+                tiny_canvas(),
+                Duration::from_secs(1),
+                shared.clone(),
+            );
+            video.join().unwrap();
+            publisher.join().unwrap();
+            assert!(lock(&shared.error).is_none());
+            assert!(lock(&vbytes)[..12].iter().all(|byte| *byte == 0));
+            assert!(lock(&abytes)[..5 * 3840].iter().all(|byte| *byte == 0));
+            let epoch = lock(&startup.state).epoch.unwrap();
+            let steady = epoch + startup.quantum;
+            assert!(steady.duration_since(began) >= Duration::from_millis(350));
+            assert_eq!(*lock(&observed).first().unwrap(), steady);
+            assert_eq!(
+                shared.audio_samples_written.load(Ordering::Relaxed),
+                6 * 1920
+            );
+            assert!(shared.video_frames_written.load(Ordering::Relaxed) >= startup.video_units);
+            assert!(startup.ready());
+        }
+        #[test]
+        fn focus_changes_preserve_visual_candidates_and_partial_frame_contents() {
+            let now = Instant::now();
+            let feed = CaptureVideoFeed::new(Arc::from(vec![8; 12]), fence(0), now);
+            feed.bind(1).unwrap();
+            feed.activate(1).unwrap();
+            let (_, frame) = feed.take_at(1, now).unwrap();
+            let frame = frame.unwrap();
+            let mut focus = fence(0);
+            focus.control_epoch = 1;
+            feed.invalidate(focus, now + Duration::from_millis(1))
+                .unwrap();
+            assert!(feed
+                .accepts(1, frame.fence, now + Duration::from_millis(2))
+                .unwrap());
+            assert_eq!(first_pixel(&frame), 8);
+            let visual = CaptureFence {
+                control_epoch: 2,
+                visual_revision: 1,
+                ..focus
+            };
+            feed.invalidate(visual, now + Duration::from_millis(3))
+                .unwrap();
+            assert!(feed
+                .accepts(1, frame.fence, now + Duration::from_millis(2))
+                .unwrap());
+            assert!(!feed
+                .accepts(1, frame.fence, now + Duration::from_millis(3))
+                .unwrap());
+            // Frame already selected for a partial write remains immutable;
+            // the next target sees the new typed slate rather than old pixels.
+            assert_eq!(first_pixel(&frame), 8);
+            let (_, pending) = feed.take_at(1, now + Duration::from_millis(3)).unwrap();
+            assert!(matches!(pending.unwrap().pixels, CapturePixels::Black(12)));
+        }
+
+        #[test]
+        fn actual_partial_rgb_write_finishes_old_image_across_normal_visual_change() {
+            struct ChangeWriter {
+                feed: Arc<CaptureVideoFeed>,
+                bytes: Arc<Mutex<Vec<u8>>>,
+                stop: Arc<AtomicBool>,
+                changed: bool,
+            }
+            impl Write for ChangeWriter {
+                fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                    let mut all = lock(&self.bytes);
+                    let count = bytes.len().min(7);
+                    all.extend_from_slice(&bytes[..count]);
+                    if all.len() > 12 && !self.changed {
+                        self.changed = true;
+                        let mut visual = fence(0);
+                        visual.control_epoch = 1;
+                        visual.visual_revision = 1;
+                        self.feed.invalidate(visual, Instant::now()).unwrap();
+                    }
+                    if all.len() == 24 {
+                        self.stop.store(true, Ordering::Release);
+                    }
+                    Ok(count)
+                }
+                fn flush(&mut self) -> io::Result<()> {
+                    Ok(())
+                }
+            }
+            let began = Instant::now();
+            let feed = Arc::new(CaptureVideoFeed::new(
+                Arc::from(vec![8; 12]),
+                fence(0),
+                began,
+            ));
+            feed.bind(1).unwrap();
+            let shared = isolated_capture_shared(began, feed.clone(), true);
+            let bytes = Arc::new(Mutex::new(Vec::new()));
+            let writer = ChangeWriter {
+                feed: feed.clone(),
+                bytes: bytes.clone(),
+                stop: shared.stop.clone(),
+                changed: false,
+            };
+            capture_video_loop(
+                writer,
+                feed.clone(),
+                tiny_canvas(),
+                Duration::from_secs(1),
+                shared.clone(),
+            );
+            assert!(lock(&shared.error).is_none());
+            assert_eq!(*lock(&bytes), [vec![0; 12], vec![8; 12]].concat());
+            assert_eq!(shared.video_frames_written.load(Ordering::Relaxed), 2);
+            let (_, next) = feed
+                .take_at(1, Instant::now() + Duration::from_millis(100))
+                .unwrap();
+            assert!(matches!(next.unwrap().pixels, CapturePixels::Black(12)));
+        }
+        #[test]
+        fn retained_rgb_allocation_is_released_after_committed_replacement() {
+            let now = Instant::now();
+            let pixels: Arc<[u8]> = Arc::from(vec![7; 12]);
+            let weak = Arc::downgrade(&pixels);
+            let feed = CaptureVideoFeed::new(pixels, fence(0), now);
+            feed.bind(1).unwrap();
+            feed.activate(1).unwrap();
+            let (_, old) = feed.take_at(1, now).unwrap();
+            let mut committed = old;
+            assert!(weak.upgrade().is_some());
+            feed.publish(
+                Arc::from(vec![8; 12]),
+                fence(0),
+                now + Duration::from_millis(1),
+            )
+            .unwrap();
+            let fresh = select_capture(
+                &feed,
+                1,
+                now + Duration::from_millis(2),
+                Duration::from_millis(200),
+                &committed,
+                &mut 0,
+            )
+            .unwrap();
+            committed = Some(fresh);
+            assert!(weak.upgrade().is_none());
+            assert_eq!(first_pixel(committed.as_ref().unwrap()), 8);
+        }
+
         fn leaf(start: u64, count: u64, duration: &str, target: u32) -> Vec<u8> {
             let mut text=format!("#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-TARGETDURATION:{target}\n#EXT-X-MEDIA-SEQUENCE:{start}\n#EXT-X-INDEPENDENT-SEGMENTS\n");
             for index in start..start + count {
@@ -1105,6 +2427,7 @@ mod runtime {
                 error: Mutex::new(None),
                 audio_samples_written: AtomicU64::new(0),
                 video_frames_written: AtomicU64::new(0),
+                capture_startup: None,
             });
             let mut encoder = Encoder {
                 shared,
@@ -1199,6 +2522,14 @@ impl Encoder {
     pub fn start_timed_audio(
         _: EncoderConfig,
         _: VideoFeed,
+        _: TimedAudioFeed,
+        _: Arc<AtomicBool>,
+    ) -> Result<Self, EncoderError> {
+        Err(EncoderError::Unsupported)
+    }
+    pub fn start_capture_av(
+        _: EncoderConfig,
+        _: Arc<CaptureVideoFeed>,
         _: TimedAudioFeed,
         _: Arc<AtomicBool>,
     ) -> Result<Self, EncoderError> {
