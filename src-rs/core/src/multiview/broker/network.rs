@@ -198,6 +198,15 @@ fn public_ip(ip: IpAddr) -> bool {
 pub struct OriginCredentials {
     origin: String,
     headers: HeaderMap,
+    peer: Option<PeerEvidence>,
+}
+/// Connected-peer evidence, distinct from a source/HLS authorization witness.
+/// Only this transport can mint it; it never crosses a wire or diagnostic.
+#[derive(Clone)]
+struct PeerEvidence {
+    origin: String,
+    address: SocketAddr,
+    transport: Arc<()>,
 }
 impl OriginCredentials {
     pub fn new(base: &str, headers: HeaderMap) -> Result<Self, Error> {
@@ -216,6 +225,7 @@ impl OriginCredentials {
         Ok(Self {
             origin: origin(&url),
             headers,
+            peer: None,
         })
     }
     fn for_url(&self, url: &Url) -> HeaderMap {
@@ -252,6 +262,37 @@ pub struct CheckedTransport {
     limits: Limits,
     permits: Arc<Semaphore>,
     sources: Arc<Semaphore>,
+    identity: Arc<()>,
+    #[cfg(test)]
+    fixture_dns: Option<FixtureDns>,
+}
+#[cfg(test)]
+type FixtureDns = Arc<dyn Fn(&str, u16) -> Result<Vec<SocketAddr>, Error> + Send + Sync>;
+
+struct CheckedClient {
+    client: Client,
+    addresses: Vec<SocketAddr>,
+    transport: Arc<()>,
+    require_peer: bool,
+}
+impl CheckedClient {
+    fn peer(&self, url: &Url, peer: Option<SocketAddr>) -> Result<Option<PeerEvidence>, Error> {
+        let Some(peer) = peer else {
+            return if self.require_peer {
+                Err(Error::DestinationDenied)
+            } else {
+                Ok(None)
+            };
+        };
+        if Some(peer.port()) != url.port_or_known_default() || !self.addresses.contains(&peer) {
+            return Err(Error::DestinationDenied);
+        }
+        Ok(Some(PeerEvidence {
+            origin: origin(url),
+            address: peer,
+            transport: self.transport.clone(),
+        }))
+    }
 }
 /// Private response custody for a checked continuous-byte subscription.
 pub(super) struct OpenResponse {
@@ -263,6 +304,7 @@ pub struct Fetched {
     pub(super) url: Url,
     bytes: Vec<u8>,
     content_type: String,
+    peer: Option<PeerEvidence>,
     pub(super) provenance: Option<Arc<()>>,
 }
 impl Fetched {
@@ -295,7 +337,52 @@ impl CheckedTransport {
             limits,
             permits: Arc::new(Semaphore::new(limits.concurrent)),
             sources: Arc::new(Semaphore::new(limits.concurrent)),
+            identity: Arc::new(()),
+            #[cfg(test)]
+            fixture_dns: None,
         })
+    }
+    /// The Plex resolver calls this only after validating its enrolled machine ID.
+    /// Bind a new source-local copy; never retarget enrolled/shared credentials.
+    pub(super) fn bind_credentials(
+        &self,
+        mut credentials: OriginCredentials,
+        response: &Fetched,
+    ) -> Result<OriginCredentials, Error> {
+        let peer = response.peer.as_ref().ok_or(Error::DestinationDenied)?;
+        if credentials.origin != origin(&response.url) {
+            return Err(Error::DestinationDenied);
+        }
+        self.validate_peer(&response.url, peer)?;
+        if credentials.peer.as_ref().is_some_and(|old| {
+            old.origin != peer.origin
+                || old.address != peer.address
+                || !Arc::ptr_eq(&old.transport, &peer.transport)
+        }) {
+            return Err(Error::DestinationDenied);
+        }
+        credentials.peer = Some(peer.clone());
+        Ok(credentials)
+    }
+    fn validate_peer(&self, url: &Url, peer: &PeerEvidence) -> Result<(), Error> {
+        if peer.origin != origin(url)
+            || !Arc::ptr_eq(&self.identity, &peer.transport)
+            || Some(peer.address.port()) != url.port_or_known_default()
+        {
+            return Err(Error::DestinationDenied);
+        }
+        // Literal IP URLs bypass reqwest DNS overrides; they must already name
+        // the attested IP. Keep the URL unchanged to preserve Host and TLS SNI.
+        let host = url.host_str().ok_or(Error::InvalidAddress)?;
+        if host
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .parse::<IpAddr>()
+            .is_ok_and(|ip| ip != peer.address.ip())
+        {
+            return Err(Error::DestinationDenied);
+        }
+        self.policy.approve(url, &[peer.address])
     }
     pub(super) fn reserve_source(&self) -> Result<Arc<OwnedSemaphorePermit>, Error> {
         self.sources
@@ -384,8 +471,11 @@ impl CheckedTransport {
         permit: Arc<OwnedSemaphorePermit>,
     ) -> Result<Fetched, Error> {
         for hop in 0..=self.limits.redirects {
-            let client = self.checked_client(&url, permit.clone(), false).await?;
-            let mut request = client
+            let checked = self
+                .checked_client(&url, credentials, permit.clone(), false)
+                .await?;
+            let mut request = checked
+                .client
                 .request(method.clone(), url.clone())
                 .header(reqwest::header::ACCEPT_ENCODING, "identity");
             if let Some(credentials) = credentials {
@@ -397,6 +487,7 @@ impl CheckedTransport {
                     .body(body.clone());
             }
             let mut response = request.send().await.map_err(|_| Error::Transport)?;
+            let peer = checked.peer(&url, response.remote_addr())?;
             if response.status().is_redirection() {
                 // Never replay a mutation or its provider key across a redirect.
                 if method != Method::GET || hop == self.limits.redirects {
@@ -459,6 +550,7 @@ impl CheckedTransport {
                 url,
                 bytes,
                 content_type,
+                peer,
                 provenance: None,
             });
         }
@@ -468,9 +560,10 @@ impl CheckedTransport {
     async fn checked_client(
         &self,
         url: &Url,
+        credentials: Option<&OriginCredentials>,
         permit: Arc<OwnedSemaphorePermit>,
         continuous: bool,
-    ) -> Result<Client, Error> {
+    ) -> Result<CheckedClient, Error> {
         self.policy.check_origin(url)?;
         let host = url
             .host_str()
@@ -479,14 +572,28 @@ impl CheckedTransport {
             .trim_end_matches(']')
             .to_owned();
         let port = url.port_or_known_default().ok_or(Error::InvalidAddress)?;
-        let addresses = if let Ok(ip) = host.parse::<IpAddr>() {
+        let binding = credentials
+            .filter(|credentials| credentials.origin == origin(url))
+            .and_then(|credentials| credentials.peer.as_ref());
+        let addresses = if let Some(peer) = binding {
+            self.validate_peer(url, peer)?;
+            // This is the pre-send confidentiality barrier, not a post-send
+            // comparison. Never refresh DNS or fail over to an unattested peer.
+            vec![peer.address]
+        } else if let Ok(ip) = host.parse::<IpAddr>() {
             vec![SocketAddr::new(ip, port)]
         } else {
             let dns_host = host.clone();
+            #[cfg(test)]
+            let fixture_dns = self.fixture_dns.clone();
             // System DNS can outlive cancellation: keep the shared admission in
             // its actual blocking worker, not merely in its abandoned awaiter.
             tokio::task::spawn_blocking(move || {
                 let _permit = permit;
+                #[cfg(test)]
+                if let Some(resolve) = fixture_dns {
+                    return resolve(&dns_host, port);
+                }
                 (dns_host.as_str(), port)
                     .to_socket_addrs()
                     .map(|a| a.take(65).collect::<Vec<_>>())
@@ -508,7 +615,12 @@ impl CheckedTransport {
         } else {
             builder.timeout(self.limits.timeout)
         };
-        builder.build().map_err(|_| Error::Transport)
+        Ok(CheckedClient {
+            client: builder.build().map_err(|_| Error::Transport)?,
+            addresses,
+            transport: self.identity.clone(),
+            require_peer: binding.is_some(),
+        })
     }
 
     pub(super) async fn open_continuous(
@@ -531,14 +643,18 @@ impl CheckedTransport {
         );
         let operation = async {
             for hop in 0..=self.limits.redirects {
-                let client = self.checked_client(&url, permit.clone(), true).await?;
-                let mut request = client
+                let checked = self
+                    .checked_client(&url, credentials, permit.clone(), true)
+                    .await?;
+                let mut request = checked
+                    .client
                     .get(url.clone())
                     .header(reqwest::header::ACCEPT_ENCODING, "identity");
                 if let Some(credentials) = credentials {
                     request = request.headers(credentials.for_url(&url));
                 }
                 let response = request.send().await.map_err(|_| Error::Transport)?;
+                checked.peer(&url, response.remote_addr())?;
                 let headers = response.headers();
                 let header_bytes = headers
                     .iter()

@@ -194,6 +194,10 @@ impl ServerSource {
                 {
                     return Err(Error::InvalidResponse);
                 }
+                // HTTP identity is not cryptographic authentication. It does,
+                // however, bind subsequent token requests to this actual peer;
+                // a DNS update must never silently select another endpoint.
+                let credentials = transport.bind_credentials(credentials, &identity)?;
                 let path = format!("library/metadata/{rating_key}");
                 let metadata = transport
                     .get(
@@ -389,18 +393,18 @@ impl PreparedSource {
         let mut total = root.bytes().len();
         let mut result = vec![root];
         let mut queue = VecDeque::new();
-        let mut playlists = HashSet::new();
-        playlists.insert(result[0].url.as_str().to_owned());
+        // Count shared playlists once, including while they are still queued.
+        let mut scheduled_playlists = HashSet::new();
+        scheduled_playlists.insert(result[0].url.as_str().to_owned());
         for resource in self.parse_hls(&result[0])?.resources {
+            if resource.kind == ResourceKind::Playlist
+                && !scheduled_playlists.insert(resource.url.as_str().to_owned())
+            {
+                continue;
+            }
             queue.push_back((resource, 1usize));
         }
         while let Some((resource, depth)) = queue.pop_front() {
-            if resource.kind == ResourceKind::Playlist
-                && !playlists.insert(resource.url.as_str().to_owned())
-            {
-                // Shared playlists and cycles have already queued their children.
-                continue;
-            }
             if result.len() >= 128 || depth > 4 {
                 return Err(Error::TooLarge);
             }
@@ -413,6 +417,11 @@ impl PreparedSource {
             }
             if resource.kind == ResourceKind::Playlist {
                 for child in self.parse_hls(&fetched)?.resources {
+                    if child.kind == ResourceKind::Playlist
+                        && !scheduled_playlists.insert(child.url.as_str().to_owned())
+                    {
+                        continue;
+                    }
                     if queue.len() + result.len() >= 128 {
                         return Err(Error::TooLarge);
                     }
@@ -483,9 +492,7 @@ impl SessionLease {
                         // Busy happens before any upstream IO. A cancelled DNS
                         // worker can still hold admission: use the existing
                         // outer cleanup deadline while waiting for its release.
-                        Err(Error::Busy) => {
-                            tokio::time::sleep(Duration::from_millis(25)).await
-                        }
+                        Err(Error::Busy) => tokio::time::sleep(Duration::from_millis(25)).await,
                         result => return result.map(|_| ()).map_err(|_| Error::CleanupUnconfirmed),
                     }
                 }

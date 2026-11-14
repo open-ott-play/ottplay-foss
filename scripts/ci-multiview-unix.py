@@ -14,7 +14,7 @@ import time
 
 sys.dont_write_bytecode = True
 GUARD_SHA256 = '6f623bb7234b3619ff859dec0afe9c1ad938f29d606f0836b69434312867e020'
-STREAM_MEDIA_SHA256 = '444efc203c60b31baa9896ab96d7aa0568a09f5b6591524f1b9c8fff4e9e7e64'
+STREAM_MEDIA_SHA256 = '97703a705a2c33a1536893eeca2d11e65022d44fa1189ff59f300e2040cdf4e9'
 STREAM_TEST = 'streamed_session_two_owner_continuity'
 MKFIFO = Path('/usr/bin/mkfifo')
 TESTS = (
@@ -586,7 +586,7 @@ def run_streamed_fixture(driver, budget, command, executable, tools, result):
                      'reject_wrong_owner', 'reject_449_frame_48k_hole', 'reject_898_interleaved_counter',
                      'ported_original_rule_agreement', 'reject_later_onset_trim',
                      'reject_event_restart_regression_wrong_owner', 'safety_cap_above_acceptance',
-                     'reject_wrong_video_and_frozen_marker', 'exact_tail_coverage'}
+                     'reject_wrong_video_and_frozen_marker', 'exact_tail_coverage', 'a_return_duration_before_crop'}
         require(type(controls) is dict and set(controls) == true_keys | {'tools_started', 'long_media_generated'}
                 and all(controls[key] is True for key in true_keys)
                 and controls['tools_started'] is False and controls['long_media_generated'] is False,

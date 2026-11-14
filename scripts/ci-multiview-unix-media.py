@@ -201,6 +201,22 @@ def _ownership(values, source):
             'pass': observed == source and rms >= 20 and own >= .97 and leak <= 3e-5}
 
 
+def _return_audio(raw):
+    # The command requests two seconds of mono s16 at RATE. Permit at most
+    # one AAC-LC frame at the encoder's fixed 48 kHz, plus resampling rounding.
+    # Check completeness before the unchanged 250 ms exclusion, not after it.
+    expected = 2 * RATE
+    tolerance = math.ceil(1024 * RATE / 48000) + 1
+    require(len(raw) % 2 == 0, 'A-return PCM is not sample aligned')
+    samples = len(raw) // 2
+    require(expected - tolerance <= samples <= expected + tolerance,
+            'A-return PCM duration differs before crop')
+    result = _ownership(_pcm(raw[8000:72000]), 1)
+    result.update(decoded_seconds=samples / RATE, expected_decoded_seconds=2,
+                  codec_tolerance_samples=tolerance, duration_checked_before_crop=True)
+    return result
+
+
 def _windows(values, source):
     starts = list(range(0, len(values) - WINDOW + 1, WINDOW))
     if starts and starts[-1] + WINDOW < len(values):
@@ -747,9 +763,9 @@ def _finish(case, work):
             _unlink_owned(path)
         measurements.append(dict(row, raw_sha256=identity, measurement=measured))
     returned_pcm = _read(work / 'A-return.s16', 128000)
-    # Preserve the existing separate2s check exactly: this fixed byte crop skips
-    # 250ms; it is not a newly chosen first-pure search or healthy-tail trim.
-    returned_audio = _ownership(_pcm(returned_pcm[8000:72000]), 1)
+    # Verify the requested clip duration before applying the original fixed
+    # 250 ms exclusion. Truncated PCM must not become a shorter passing interval.
+    returned_audio = _return_audio(returned_pcm)
     returned_video = measurements[-1]
     passed = (audio_a['pass'] and audio_b['pass'] and returned_audio['pass']
               and all(row['measurement']['pass'] for row in measurements))
@@ -866,6 +882,27 @@ def self_test():
     require(not _video(_frame(0, 0) * 20, row, (WIDTH, HEIGHT), 2)['pass'], 'Frozen marker was accepted')
     tail = _audio(raw(tone(2, seconds=1.2004375)), 2, .5)
     require(tail['pass'] and tail['exact_end_covered'], 'Overlapping exact-tail coverage failed')
+    require(_return_audio(raw(tone(1, seconds=2)))['pass'], 'Full A-return clip failed')
+    return_tolerance = math.ceil(1024 * RATE / 48000) + 1
+    for samples in (2 * RATE - return_tolerance, 2 * RATE + return_tolerance):
+        require(_return_audio(raw(tone(1, seconds=samples / RATE)))['pass'],
+                'Codec-frame A-return duration boundary failed')
+    for samples in (round(.75 * RATE), round(1.9 * RATE),
+                    2 * RATE - return_tolerance - 1, 2 * RATE + return_tolerance + 1):
+        try:
+            _return_audio(raw(tone(1, seconds=samples / RATE)))
+        except ValueError:
+            pass
+        else:
+            raise ValueError('Truncated or overlong A-return PCM was accepted')
+    try:
+        _return_audio(raw(tone(1, seconds=2))[:-1])
+    except ValueError:
+        pass
+    else:
+        raise ValueError('Unaligned A-return PCM was accepted')
+    require(not _return_audio(raw(tone(2, seconds=2)))['pass'],
+            'A-return duration bypassed ownership')
     require(AUDIO_FS >= AUDIO_CAP + 65536, 'Safety output cap could mimic accepted complete PCM')
     events, current = [], (0, 1)
     phases = ['stable_identity_baseline', 'A_initial_begin', 'A_initial_monitor', 'A_initial_end',
@@ -916,6 +953,7 @@ def self_test():
             'ported_original_rule_agreement': True, 'reject_later_onset_trim': True,
             'reject_event_restart_regression_wrong_owner': True, 'safety_cap_above_acceptance': True,
             'reject_wrong_video_and_frozen_marker': True, 'exact_tail_coverage': True,
+            'a_return_duration_before_crop': True,
             'tools_started': False, 'long_media_generated': False}
 
 

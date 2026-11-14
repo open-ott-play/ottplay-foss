@@ -119,7 +119,7 @@ CAPTURED_FILTER_ROWS = ''' .. sine              |->A       Generate sine wave au
 class FakeMedia:
     """Seven-function frozen analyzer API; commands remain synthetic Driver data."""
 
-    helper_sha256 = "444efc203c60b31baa9896ab96d7aa0568a09f5b6591524f1b9c8fff4e9e7e64"
+    helper_sha256 = "97703a705a2c33a1536893eeca2d11e65022d44fa1189ff59f300e2040cdf4e9"
 
     def __init__(self, attempt):
         self.attempt = attempt
@@ -137,6 +137,7 @@ class FakeMedia:
                 "reject_event_restart_regression_wrong_owner": True,
                 "safety_cap_above_acceptance": True,
                 "reject_wrong_video_and_frozen_marker": True, "exact_tail_coverage": True,
+                "a_return_duration_before_crop": True,
                 "tools_started": False, "long_media_generated": False}
 
     @staticmethod
