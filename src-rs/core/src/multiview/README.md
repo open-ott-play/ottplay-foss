@@ -192,3 +192,9 @@ by the state barrier. The last-capture field may also be a visual-invalidation b
 publication attempt. Absolute clock instants and source data are not exposed.
 RGB ownership conversion completes before the session control mutex is acquired;
 the visual fence is still checked while publishing under that mutex.
+
+The compositor waits toward its existing absolute next deadline using sleep
+requests capped at 5 ms and checks cancellation between requests. This improves
+cancellation responsiveness and avoids requesting a whole output period in one
+sleep; it does not guarantee an operating-system wakeup deadline, change capture
+frequency or relax the capture-age and output-debt limits.

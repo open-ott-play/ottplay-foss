@@ -206,6 +206,23 @@ fn freeze_frames(
     (frames, Instant::now())
 }
 
+// Keep the same absolute tick deadline while making each sleep request bounded
+// and interruptible by stop. This does not bound an OS scheduler's oversleep.
+fn wait_compositor_deadline(
+    stop: &AtomicBool,
+    deadline: Instant,
+    mut now: impl FnMut() -> Instant,
+    mut sleep: impl FnMut(Duration),
+) {
+    while !stop.load(Ordering::Acquire) {
+        let current = now();
+        if current >= deadline {
+            return;
+        }
+        sleep((deadline - current).min(Duration::from_millis(5)));
+    }
+}
+
 struct State {
     geometry: ValidatedGeometry,
     // Reject a composed tick captured before a visual mutation.
@@ -529,7 +546,7 @@ impl Session {
                     next += period;
                     let now = Instant::now();
                     if next > now {
-                        thread::sleep(next - now);
+                        wait_compositor_deadline(&compose_stop, next, Instant::now, thread::sleep);
                     } else {
                         next = now;
                     }
@@ -1306,6 +1323,82 @@ mod tests {
         assert!(!stop.load(Ordering::Acquire));
         stop.store(true, Ordering::Release);
         worker.join().unwrap();
+    }
+    #[test]
+    fn compositor_waiter_keeps_absolute_deadline_with_bounded_sleep_requests() {
+        use std::cell::{Cell, RefCell};
+        let began = Instant::now();
+        let deadline = began + Duration::from_millis(13);
+        for oversleep in [Duration::ZERO, Duration::from_millis(7)] {
+            let stop = AtomicBool::new(false);
+            let clock = Cell::new(began);
+            let requests = RefCell::new(Vec::new());
+            wait_compositor_deadline(
+                &stop,
+                deadline,
+                || clock.get(),
+                |requested| {
+                    assert!(clock.get() < deadline);
+                    assert!(requested > Duration::ZERO);
+                    assert!(requested <= Duration::from_millis(5));
+                    assert!(requested <= deadline - clock.get());
+                    requests.borrow_mut().push(requested);
+                    clock.set(clock.get() + requested + oversleep);
+                },
+            );
+            assert!(clock.get() >= deadline, "Never return early without stop");
+            assert_eq!(deadline, began + Duration::from_millis(13));
+            if oversleep.is_zero() {
+                assert_eq!(
+                    *requests.borrow(),
+                    vec![
+                        Duration::from_millis(5),
+                        Duration::from_millis(5),
+                        Duration::from_millis(3)
+                    ]
+                );
+                assert_eq!(clock.get(), deadline);
+            } else {
+                // This models oversleep to prove bounded requests and no
+                // rebasing; it makes no assertion about actual OS scheduling.
+                assert_eq!(
+                    *requests.borrow(),
+                    vec![Duration::from_millis(5), Duration::from_millis(1)]
+                );
+                assert_eq!(clock.get(), began + Duration::from_millis(20));
+            }
+        }
+    }
+    #[test]
+    fn compositor_waiter_stops_without_another_clock_or_sleep_request() {
+        use std::cell::Cell;
+        let began = Instant::now();
+        let deadline = began + Duration::from_millis(50);
+        let stop = AtomicBool::new(false);
+        let clock_reads = Cell::new(0);
+        let sleeps = Cell::new(0);
+        wait_compositor_deadline(
+            &stop,
+            deadline,
+            || {
+                clock_reads.set(clock_reads.get() + 1);
+                began
+            },
+            |requested| {
+                assert_eq!(requested, Duration::from_millis(5));
+                sleeps.set(sleeps.get() + 1);
+                stop.store(true, Ordering::Release);
+            },
+        );
+        assert_eq!(sleeps.get(), 1);
+        assert_eq!(clock_reads.get(), 1);
+        wait_compositor_deadline(
+            &stop,
+            deadline,
+            || panic!("stopped: no clock sample"),
+            |_| panic!("stopped: no sleep"),
+        );
+        assert_eq!(deadline, began + Duration::from_millis(50));
     }
     #[test]
     fn scene_visual_source_fences_distinguish_nonvisual_focus_audio_changes() {
