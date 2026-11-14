@@ -2,7 +2,12 @@
 //! Ordinary tests also exercise the closed, authenticated fixture adapter.
 //! Normal tests cover planning/admission. Run the ignored fixture explicitly with
 //! OTTPLAY_MULTIVIEW_FFMPEG and OTTPLAY_MULTIVIEW_FFPROBE absolute tool paths.
-//! This finite-file proof does not qualify server resources or LG concurrency.
+//! Finite-file cases do not qualify server resources or LG concurrency. The
+//! separate streamed case requires both its control result and CI media analysis.
+
+#[cfg(unix)]
+#[path = "support/streamed_session.rs"]
+mod streamed_session;
 
 #[path = "../src/multiview.rs"]
 mod admission;
@@ -16,6 +21,13 @@ use std::{
     sync::atomic::AtomicBool,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(unix)]
+#[test]
+#[ignore = "explicit owned streamed HLS continuity fixture; requires bounded CI media analysis"]
+fn streamed_session_two_owner_continuity() {
+    streamed_session::run_from_env().expect("streamed Session control and cleanup failed");
+}
 
 #[test]
 fn geometry_and_fixture_success_do_not_grant_production_admission() {

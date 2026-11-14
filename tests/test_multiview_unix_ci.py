@@ -22,6 +22,7 @@ EXPECTED_TESTS = (
     'real_four_nine_and_perimeter_frames_and_selected_audio',
     'owned_worker_cancellation_deadlines_busy_and_cleanup',
     'fixture_http_source_cas_dedupe_media_custody_and_retirement',
+    'streamed_session_two_owner_continuity',
 )
 
 
@@ -99,6 +100,155 @@ CAPTURED_FILTER_ROWS = ''' .. sine              |->A       Generate sine wave au
 '''
 
 
+class FakeMedia:
+    """Seven-function frozen analyzer API; commands remain synthetic Driver data."""
+
+    helper_sha256 = "1932be1c85bd52d0bd2e468a9dd04355f1735e4593f95ba3cdc03a41bb76d35f"
+
+    def __init__(self, attempt):
+        self.attempt = attempt
+        self.calls = []
+        self.inputs_root = self.analysis_root = None
+        self.audio_commands = self.video_commands = ()
+
+    def self_test(self):
+        self.calls.append("self_test")
+        return {"pass": True, "pure_positive": True,
+                "reject_100ms_hole_despite_global_pass": True,
+                "reject_20ms_phase_jump": True, "reject_wrong_owner": True,
+                "reject_449_frame_48k_hole": True, "reject_898_interleaved_counter": True,
+                "ported_original_rule_agreement": True, "reject_later_onset_trim": True,
+                "reject_event_restart_regression_wrong_owner": True,
+                "safety_cap_above_acceptance": True,
+                "reject_wrong_video_and_frozen_marker": True, "exact_tail_coverage": True,
+                "tools_started": False, "long_media_generated": False}
+
+    @staticmethod
+    def command(name, tool, output, seconds=40, stdout=False):
+        return {"name": name, "argv": [tool["path"] if isinstance(tool, dict) else tool,
+                                       "-n", str(output)],
+                "timeout_seconds": seconds,
+                "stdout_file": str(output) if stdout else None}
+
+    def prepare_inputs(self, work_root, tools):
+        self.calls.append("prepare_inputs")
+        self.inputs_root = Path(work_root)
+        self.inputs_root.mkdir(mode=0o700, exist_ok=True)
+        self.tools = tools
+        return [self.command(f"stream-source-{number}-{phase}", tools["ffmpeg"],
+                             self.inputs_root / f"source-{number}.{suffix}", seconds)
+                for number in (1, 2)
+                for phase, suffix, seconds in (("encode", "mp4", 30), ("transport", "ts", 15))]
+
+    def seal_inputs(self, work_root):
+        self.calls.append("seal_inputs")
+        self.inputs_root = Path(work_root)
+        rows = []
+        for number in (1, 2):
+            path = self.inputs_root / f"source-{number}.ts"
+            raw = path.read_bytes()
+            rows.append({"id": number, "path": str(path), "bytes": len(raw),
+                         "sha256": hashlib.sha256(raw).hexdigest()})
+        self.input_manifest = self.inputs_root / "INPUTS.json"
+        self.input_manifest.write_text(json.dumps({
+            "schema": "ottplay.multiview.stream-inputs.v1", "seconds": 80,
+            "fps": 10, "width": 96, "height": 64, "inputs": rows,
+        }) + "\n")
+        return self.input_manifest
+
+    def prepare_audio(self, case_root, work_root, tools):
+        self.calls.append("prepare_audio")
+        self.analysis_root = Path(work_root)
+        self.analysis_root.mkdir(mode=0o700, exist_ok=True)
+        probe = self.command("stream-video-probe", tools["ffprobe"],
+                             Path(case_root) / "archive/index.m3u8", 20)
+        probe["stdout_file"] = str(self.analysis_root / "video-probe.json")
+        self.audio_commands = (
+            probe,
+            self.command("stream-b-prefix-audio", tools["ffmpeg"], self.analysis_root / "B-prefix.s16"),
+            self.command("stream-a-prefix-audio", tools["ffmpeg"], self.analysis_root / "A-prefix.s16"),
+        )
+        return list(self.audio_commands)
+
+    def prepare_video(self, case_root, work_root, tools):
+        self.calls.append("prepare_video")
+        completed = {row["name"] for row in self.attempt.driver.commands}
+        if not {row["name"] for row in self.audio_commands} <= completed:
+            raise ValueError("Synthetic audio commands were not completed before video planning")
+        self.analysis_root = Path(work_root)
+        self.video_commands = (
+            self.command("stream-video-window-00", tools["ffmpeg"], self.analysis_root / "video-00.rgb"),
+            self.command("stream-a-return-audio", tools["ffmpeg"], self.analysis_root / "A-return.s16"),
+        )
+        return list(self.video_commands)
+
+    def finish(self, case_root, work_root):
+        self.calls.append("finish")
+        completed = {row["name"] for row in self.attempt.driver.commands}
+        if not {row["name"] for row in self.video_commands} <= completed:
+            raise ValueError("Synthetic video commands were not completed before finish")
+        result = {"schema": "ottplay.multiview.stream-media.v1", "pass": True,
+                  "helper_sha256": self.helper_sha256,
+                  "scope": "Synthetic mocked CI orchestration only; no media qualification"}
+        path = Path(work_root) / "qualification.json"
+        for row in self.video_commands:
+            if row["name"].startswith("stream-video-window-"):
+                Path(row["argv"][-1]).unlink()
+        case, work = Path(case_root), Path(work_root)
+        segment = case / "archive/segment-000000.ts"
+        segment.write_bytes(b"\x47" + b"\0" * 187)
+        archive = {"qualified": True, "complete_capture": True, "contiguous_from_zero": True,
+                   "failure_reason": None, "unique_manifests": 1, "segment_count": 1,
+                   "segments": [{"sequence": 0, "name": segment.name, "bytes": segment.stat().st_size,
+                                 "sha256": hashlib.sha256(segment.read_bytes()).hexdigest(), "extinf_seconds": 1.0}]}
+        (case / "archive/ARCHIVE.json").write_text(json.dumps(archive) + "\n")
+        playlist = "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:1.0,\nsegment-000000.ts\n#EXT-X-ENDLIST\n"
+        (case / "EVENTS.jsonl").write_text('{"phase":"synthetic","snapshot":{}}\n')
+        (case / "archive/CAPTURE.jsonl").write_text('{"stage":"synthetic","outcome":"accepted"}\n')
+        for name in ("A-END-LIVE.m3u8", "B-END-LIVE.m3u8", "archive/index.m3u8",
+                     "archive/A-selected-prefix.m3u8", "archive/B-selected-prefix.m3u8"):
+            (case / name).write_text(playlist)
+        observation = case / "archive/observations/000001.m3u8"
+        observation.parent.mkdir(mode=0o700)
+        observation.write_text(playlist)
+        for name in ("audio-B.json", "audio-B-original-rules.json", "audio-A-initial.json", "video.json"):
+            (work / name).write_text('{"pass":true}\n')
+        (work / "video-plan.json").write_text("[]\n")
+        result["case_sha256"] = {name: hashlib.sha256((case / name).read_bytes()).hexdigest()
+                                 for name in ("CONTROL.json", "EVENTS.jsonl", "A-END-LIVE.m3u8",
+                                              "B-END-LIVE.m3u8", "archive/index.m3u8", "archive/ARCHIVE.json",
+                                              "archive/A-selected-prefix.m3u8", "archive/B-selected-prefix.m3u8")}
+        result["work_pcm_sha256"] = {name: hashlib.sha256((work / name).read_bytes()).hexdigest()
+                                     for name in ("B-prefix.s16", "A-prefix.s16", "A-return.s16")}
+        path.write_text(json.dumps(result) + "\n")
+        case_files = [("CONTROL.json", 1024**2), ("EVENTS.jsonl", 8 * 1024**2),
+                      ("A-END-LIVE.m3u8", 65536), ("B-END-LIVE.m3u8", 65536),
+                      ("archive/index.m3u8", 65536), ("archive/ARCHIVE.json", 1024**2),
+                      ("archive/CAPTURE.jsonl", 8 * 1024**2),
+                      ("archive/A-selected-prefix.m3u8", 65536), ("archive/B-selected-prefix.m3u8", 65536),
+                      ("archive/segment-000000.ts", 2 * 1024**2), ("archive/observations/000001.m3u8", 65536)]
+        analysis_files = [(name, 1024**2) for name in ("audio-B.json", "audio-B-original-rules.json",
+                          "audio-A-initial.json", "video.json", "qualification.json")]
+        analysis_files += [("B-prefix.s16", 4 * 1024**2), ("A-prefix.s16", 4 * 1024**2),
+                           ("A-return.s16", 128000), ("video-probe.json", 2 * 1024**2), ("video-plan.json", 65536)]
+        evidence = [{"path": str(parent / name), "relative_name": prefix + name, "max_bytes": maximum}
+                    for parent, prefix, rows in ((case, "stream-media/case/", case_files),
+                                                (work, "stream-media/analysis/", analysis_files))
+                    for name, maximum in rows]
+        return {"result": result, "evidence": evidence}
+
+    def failure_evidence(self, case_root, work_root):
+        self.calls.append("failure_evidence")
+        path = Path(case_root) / "CONTROL.json"
+        evidence = ([{"path": str(path), "relative_name": "stream-media-forensic/case/CONTROL.json",
+                     "max_bytes": 1024 * 1024}] if path.is_file() else [])
+        return {"schema": "ottplay.multiview.stream-forensic.v1", "qualified": False,
+                "forensic_only": True, "incomplete": True, "errors": ["MISSING_REQUIRED"],
+                "omitted_files": 0, "evidence_bytes": path.stat().st_size if evidence else 0,
+                "evidence": evidence, "preserves_original_error": True,
+                "cleanup_must_run_unconditionally": True}
+
+
 class Attempt:
     """Real bounded evidence/finalization; every command and supplier is mocked."""
 
@@ -118,9 +268,14 @@ class Attempt:
         if self.case in ('preexisting-home-fixture', 'changed-preexisting-home-fixture'):
             self.preexisting_home_fixture.mkdir(mode=0o700)
         self.output = self.parent / 'ottplay-multiview-unix-123-2'
+        self.media = FakeMedia(self)
         for name in ('Cargo.toml', 'Cargo.lock', 'src-rs/core/Cargo.toml',
                      'src-rs/server/Cargo.toml', 'src-rs/server/tests/multiview_fixtures.rs',
                      'src-rs/server/tests/multiview_activation.rs', 'src-rs/server/src/main.rs',
+                     'src-rs/server/tests/support/streamed_session.rs',
+                     'src-rs/server/tests/support/streamed_transport.rs',
+                     'src-rs/server/tests/support/streamed_archive.rs',
+                     'scripts/ci-multiview-unix-media.py',
                      'scripts/ci-native-favorites.py', 'scripts/ci-multiview-unix.py',
                      'scripts/ci-apt-mirror.py'):
             path = self.root / name
@@ -167,6 +322,7 @@ class Attempt:
         self.stack.enter_context(mock.patch.object(ci.shutil, 'which',
             side_effect=lambda name, **kwargs: self.supplied.get(name)))
         self.stack.enter_context(mock.patch.object(ci, 'load_guard', return_value=fake_guard))
+        self.stack.enter_context(mock.patch.object(ci, 'load_stream_media', return_value=self.media))
         self.stack.enter_context(mock.patch.object(ci, 'provision_tools', return_value=(self.supplied, 'synthetic mock supplier')))
         self.stack.enter_context(mock.patch.object(ci, 'activation_home_preflight',
             return_value={'parent': str(self.home), 'ancestors': [],
@@ -203,6 +359,18 @@ class Attempt:
             return ''.join(' ... ' + value + ' synthetic\n' for value in ci.FILTERS)
         if name == 'ffmpeg-muxers':
             return ' E hls synthetic\n'
+        if name == 'stream-stats-mux-pre':
+            return ' -stats_mux_pre[:stream_specifier] synthetic mux statistics output\n'
+        if name.startswith('stream-source-'):
+            path = Path(argv[-1])
+            path.write_bytes(b'\x47' + b'\0' * 187 if path.suffix == '.ts' else b'synthetic encoded work')
+            return 'synthetic finite source output; no media process\n'
+        if name == 'stream-video-probe':
+            return '{"streams":[],"frames":[]}\n'
+        if name in ('stream-b-prefix-audio', 'stream-a-prefix-audio', 'stream-a-return-audio') \
+                or name.startswith('stream-video-window-'):
+            Path(argv[-1]).write_bytes(b'synthetic analysis work; never decoded')
+            return 'synthetic analysis output; no media process\n'
         if name == 'mkfifo-smoke':
             for path in argv[1:]:
                 if self.case == 'missing-smoke-fifo' and path == argv[2]:
@@ -298,6 +466,16 @@ class Attempt:
                 return text.replace(SERVER_NAMES[0] + ' ... ok', SERVER_NAMES[0] + ' ... FAILED')
             return text
         if name.startswith('fixture-'):
+            if name == 'fixture-4':
+                case = Path(self.driver.env['OTTPLAY_MULTIVIEW_STREAM_CASE_DIR'])
+                case.mkdir(mode=0o700)
+                (case / 'archive').mkdir(mode=0o700)
+                sealed = Path(self.driver.env['OTTPLAY_MULTIVIEW_STREAM_INPUTS'])
+                manifest = json.loads(sealed.read_text())
+                (case / 'CONTROL.json').write_text(json.dumps({
+                    'pass': True, 'input_manifest_sha256': hashlib.sha256(sealed.read_bytes()).hexdigest(),
+                    'inputs': manifest['inputs'],
+                }) + '\n')
             if self.case == 'zero-tests':
                 return 'running 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 3 filtered out\n'
             text = passed(argv[1])
@@ -335,6 +513,366 @@ class Attempt:
 
     def terminal(self):
         return json.loads((self.output / 'evidence/terminal.json').read_text())
+
+
+class StreamedContracts(unittest.TestCase):
+    def test_changed_or_oversized_media_source_is_refused_before_import(self):
+        with tempfile.TemporaryDirectory(prefix="stream-source-guard-offline-") as raw:
+            root = Path(raw).resolve()
+            (root / "scripts").mkdir()
+            path = root / "scripts/ci-multiview-unix-media.py"
+            path.write_text('raise AssertionError("Changed analyzer must never execute")\n')
+            with self.assertRaisesRegex(RuntimeError, "Reviewed stream analyzer changed"):
+                ci.load_stream_media(root, guard.Budget())
+            path.write_bytes(b"#" * (256 * 1024 + 1))
+            with self.assertRaisesRegex(RuntimeError, "Nonregular/linked/oversized input"):
+                ci.load_stream_media(root, guard.Budget())
+
+    def failed(self, attempt, reason):
+        with self.assertRaisesRegex(RuntimeError, "Unix fixture qualification failed"):
+            attempt.run()
+        result = attempt.terminal()
+        self.assertEqual(result["status"], "fail")
+        self.assertIn(reason, result["error"])
+        self.assertFalse(result["production_admission"])
+        self.assertFalse(result["sustained_media_e2e"])
+        return result
+
+    def test_fourth_fixture_requires_full_ordered_analyzer_and_owned_receipts(self):
+        with Attempt() as attempt:
+            attempt.run()
+            result = attempt.terminal()
+            self.assertIs(result["streamed_media"]["pass"], True)
+            self.assertEqual(attempt.media.calls, ["self_test", "prepare_inputs", "seal_inputs",
+                             "prepare_audio", "prepare_video", "finish"])
+            commands = {row["name"]: row for row in attempt.driver.commands}
+            fourth = commands["fixture-4"]
+            self.assertEqual(fourth["limit"], 110)
+            self.assertEqual(fourth["argv"][1:], ["streamed_session_two_owner_continuity",
+                             "--ignored", "--exact", "--test-threads=1", "--color=never"])
+            names = [row["name"] for row in attempt.driver.commands]
+            self.assertLess(names.index("activation-ordinary"), names.index("fixture-4"))
+            self.assertLess(names.index("stream-source-2-transport"), names.index("fixture-4"))
+            self.assertLess(names.index("fixture-4"), names.index("stream-video-probe"))
+            self.assertEqual(result["ordinary_activation_tests"], sorted(ACTIVATION_NAMES))
+            self.assertEqual(len(result["streamed_input_evidence"]), 3)
+            self.assertEqual(attempt.driver.budget.deadline - attempt.driver.budget.started, 1800)
+            self.assertEqual(attempt.driver.budget.work_deadline - attempt.driver.budget.started, 1680)
+            self.assertTrue(result["streamed_media_evidence"])
+            for row in result["streamed_media_evidence"]:
+                self.assertFalse(row["relative_name"].endswith(".rgb"))
+            for path in (attempt.media.input_manifest,
+                         *(attempt.media.inputs_root / f"source-{number}.ts" for number in (1, 2))):
+                self.assertFalse(path.stat().st_mode & 0o222)
+            self.assertNotIn("OTTPLAY_MULTIVIEW_STREAM_INPUTS", attempt.driver.env)
+            self.assertNotIn("OTTPLAY_MULTIVIEW_STREAM_CASE_DIR", attempt.driver.env)
+
+    def test_passed_libtest_cannot_replace_failed_or_absent_analyzer_result(self):
+        for fault in ("false-pass", "truthy-pass", "missing-pass", "absent-packet",
+                      "wrong-schema", "wrong-helper", "structural"):
+            with self.subTest(fault=fault), Attempt() as attempt:
+                original = attempt.media.finish
+                def finish(case, work):
+                    if fault == "structural":
+                        raise ValueError("Synthetic analyzer structural refusal")
+                    packet = original(case, work)
+                    if fault == "absent-packet":
+                        return None
+                    if fault == "false-pass":
+                        packet["result"]["pass"] = False
+                    elif fault == "truthy-pass":
+                        packet["result"]["pass"] = 1
+                    elif fault == "missing-pass":
+                        del packet["result"]["pass"]
+                    elif fault == "wrong-schema":
+                        packet["result"]["schema"] = "wrong.schema"
+                    else:
+                        packet["result"]["helper_sha256"] = "0" * 64
+                    return packet
+                with mock.patch.object(attempt.media, "finish", side_effect=finish):
+                    result = self.failed(attempt, "Synthetic analyzer structural refusal" if fault == "structural"
+                                         else "Stream media analyzer did not qualify")
+                self.assertNotIn("streamed_media", result)
+                self.assertIn("fixture-4", [row["name"] for row in attempt.driver.commands])
+                self.assertIs(result["streamed_forensic"]["qualified"], False)
+
+    def test_success_packet_requires_complete_evidence_and_matching_hash_bindings(self):
+        faults = ("empty", "missing-archive", "missing-pcm", "missing-observation",
+                  "qualification-mismatch", "bad-sequence", "bad-count", "bad-case-hash", "bad-pcm-hash")
+        for fault in faults:
+            with self.subTest(fault=fault), Attempt() as attempt:
+                original = attempt.media.finish
+                def finish(case, work):
+                    packet = original(case, work)
+                    if fault == "empty":
+                        packet["evidence"] = []
+                    elif fault in ("missing-archive", "missing-pcm", "missing-observation"):
+                        def keep(row):
+                            name = row["relative_name"]
+                            return not (fault == "missing-archive" and name.startswith("stream-media/case/archive/")
+                                        or fault == "missing-pcm" and name.endswith("B-prefix.s16")
+                                        or fault == "missing-observation" and "/observations/" in name)
+                        packet["evidence"] = list(filter(keep, packet["evidence"]))
+                    elif fault == "qualification-mismatch":
+                        (Path(work) / "qualification.json").write_text('{"pass":false}\n')
+                    elif fault in ("bad-sequence", "bad-count"):
+                        path = Path(case) / "archive/ARCHIVE.json"
+                        archive = json.loads(path.read_text())
+                        if fault == "bad-sequence":
+                            archive["segments"][0]["sequence"] = 1
+                        else:
+                            archive["segment_count"] = 2
+                        path.write_text(json.dumps(archive))
+                    else:
+                        key = "case_sha256" if fault == "bad-case-hash" else "work_pcm_sha256"
+                        name = "CONTROL.json" if fault == "bad-case-hash" else "B-prefix.s16"
+                        packet["result"][key][name] = "0" * 64
+                        (Path(work) / "qualification.json").write_text(json.dumps(packet["result"]))
+                    return packet
+                reason = ("Incomplete stream media evidence inventory" if fault.startswith("missing-") or fault == "empty"
+                          else "Stream analyzer result/evidence differ" if fault == "qualification-mismatch"
+                          else "Stream archive sequence inventory differs" if fault == "bad-sequence"
+                          else "Invalid stream archive evidence inventory" if fault == "bad-count"
+                          else "Stream analyzer hashes do not bind adopted evidence")
+                with mock.patch.object(attempt.media, "finish", side_effect=finish):
+                    result = self.failed(attempt, reason)
+                self.assertIn("finish", attempt.media.calls)
+                self.assertNotIn("streamed_media", result)
+
+    def test_selftest_and_required_mux_capability_refuse_before_input_commands(self):
+        for fault in ("missing-negative", "tools-started", "long-media", "missing-mux", "description-only-mux"):
+            with self.subTest(fault=fault), Attempt() as attempt:
+                if "mux" in fault:
+                    original = attempt.response
+                    def response(name, argv):
+                        if name == "stream-stats-mux-pre":
+                            return "Description mentions -stats_mux_pre but no option row" if fault == "description-only-mux" else ""
+                        return original(name, argv)
+                    patch = mock.patch.object(attempt, "response", side_effect=response)
+                    reason = "FFmpeg stats_mux_pre is required"
+                else:
+                    report = attempt.media.self_test()
+                    if fault == "missing-negative":
+                        del report["reject_898_interleaved_counter"]
+                    else:
+                        report["tools_started" if fault == "tools-started" else "long_media_generated"] = True
+                    patch = mock.patch.object(attempt.media, "self_test", return_value=report)
+                    reason = "Stream analyzer negative controls failed"
+                with patch:
+                    self.failed(attempt, reason)
+                self.assertFalse(any(row["name"].startswith("stream-source-") for row in attempt.driver.commands))
+
+    def test_fourth_zero_ignored_or_wrong_execution_never_reaches_analysis(self):
+        for fault in ("zero", "ignored", "wrong", "duplicate"):
+            with self.subTest(fault=fault), Attempt() as attempt:
+                original = attempt.response
+                def response(name, argv):
+                    text = original(name, argv)
+                    if name != "fixture-4":
+                        return text
+                    if fault == "zero":
+                        return "running 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored;\n"
+                    if fault == "ignored":
+                        return text.replace(" ... ok", " ... ignored").replace("1 passed; 0 failed; 0 ignored", "0 passed; 0 failed; 1 ignored")
+                    if fault == "wrong":
+                        return passed("wrong_streamed_fixture")
+                    return text + text
+                with mock.patch.object(attempt, "response", side_effect=response):
+                    self.failed(attempt, "Expected exactly one executed test" if fault in ("zero", "duplicate")
+                                else "Exact fixture did not pass")
+                self.assertNotIn("prepare_audio", attempt.media.calls)
+                self.assertNotIn("finish", attempt.media.calls)
+
+    def test_command_deadline_argv_and_probe_output_boundaries(self):
+        for fault in ("wrong-count", "wrong-deadline", "unattested-tool", "network", "escaped-probe"):
+            with self.subTest(fault=fault), Attempt() as attempt:
+                method = "prepare_audio" if fault == "escaped-probe" else "prepare_inputs"
+                original = getattr(attempt.media, method)
+                def prepare(*args):
+                    specs = original(*args)
+                    if fault == "wrong-count":
+                        return specs[:-1]
+                    if fault == "wrong-deadline":
+                        specs[0]["timeout_seconds"] += 1
+                    elif fault == "unattested-tool":
+                        specs[0]["argv"][0] = "/synthetic/unattested"
+                    elif fault == "network":
+                        specs[0]["argv"].insert(1, "https://synthetic.invalid/input")
+                    elif fault == "escaped-probe":
+                        specs[0]["stdout_file"] = str(attempt.directory / "escape.json")
+                    return specs
+                reason = {"wrong-count": "Stream command inventory differs",
+                          "wrong-deadline": "Stream command identity or deadline differs",
+                          "unattested-tool": "Unattested, external or redirected stream command",
+                          "network": "Unattested, external or redirected stream command",
+                          "escaped-probe": "Unexpected stream stdout"}[fault]
+                with mock.patch.object(attempt.media, method, side_effect=prepare):
+                    self.failed(attempt, reason)
+
+    def test_sealed_input_and_control_binding_refuse_tampering(self):
+        for fault in ("manifest-geometry", "manifest-id", "payload", "control-hash", "control-inputs"):
+            with self.subTest(fault=fault), Attempt() as attempt:
+                if fault.startswith("control-"):
+                    original = attempt.response
+                    def response(name, argv):
+                        text = original(name, argv)
+                        if name == "fixture-4":
+                            path = Path(attempt.driver.env["OTTPLAY_MULTIVIEW_STREAM_CASE_DIR"]) / "CONTROL.json"
+                            value = json.loads(path.read_text())
+                            if fault == "control-hash":
+                                value["input_manifest_sha256"] = "0" * 64
+                            else:
+                                value["inputs"][0]["id"] = 9
+                            path.write_text(json.dumps(value))
+                        return text
+                    patch = mock.patch.object(attempt, "response", side_effect=response)
+                    reason = "Stream CONTROL is not bound"
+                else:
+                    original = attempt.media.seal_inputs
+                    def seal(root):
+                        path = original(root)
+                        value = json.loads(path.read_text())
+                        if fault == "manifest-geometry":
+                            value["width"] = 97
+                        elif fault == "manifest-id":
+                            value["inputs"][0]["id"] = 2
+                        else:
+                            Path(value["inputs"][0]["path"]).write_bytes(b"changed payload")
+                        path.write_text(json.dumps(value))
+                        return path
+                    patch = mock.patch.object(attempt.media, "seal_inputs", side_effect=seal)
+                    reason = {"manifest-geometry": "Sealed stream input schema differs",
+                              "manifest-id": "Sealed stream input row differs",
+                              "payload": "Sealed stream input payload differs"}[fault]
+                with patch:
+                    self.failed(attempt, reason)
+                self.assertNotIn("prepare_audio", attempt.media.calls)
+
+    def test_forensics_cannot_mask_primary_failure_or_skip_owned_cleanup(self):
+        primary = "Synthetic fourth fixture failed after owned process cleanup"
+        for fault in ("valid", "collector-fails", "wrong-qualified", "adoption-fails", "partial-malformed"):
+            with self.subTest(fault=fault), Attempt() as attempt:
+                original_response = attempt.response
+                def response(name, argv):
+                    text = original_response(name, argv)
+                    if name == "fixture-4":
+                        if fault == "partial-malformed":
+                            path = Path(attempt.driver.env["OTTPLAY_MULTIVIEW_STREAM_CASE_DIR"]) / "CONTROL.json"
+                            path.write_text("{")
+                        raise RuntimeError(primary)
+                    return text
+                original_forensic = attempt.media.failure_evidence
+                def forensic(case, work):
+                    if fault == "collector-fails":
+                        raise ValueError("Synthetic forensic collector failed")
+                    report = original_forensic(case, work)
+                    if fault == "wrong-qualified":
+                        report["qualified"] = True
+                    elif fault == "adoption-fails":
+                        report["evidence"][0]["relative_name"] = "stream-media-forensic/analysis/video-00.rgb"
+                    elif fault == "partial-malformed":
+                        report["errors"] = ["MALFORMED_STRUCTURE"]
+                    return report
+                with mock.patch.object(attempt, "response", side_effect=response), \
+                     mock.patch.object(attempt.media, "failure_evidence", side_effect=forensic):
+                    result = self.failed(attempt, primary)
+                self.assertEqual(result["error"], primary)
+                self.assertTrue(all(row["cleanup_confirmed"] for row in attempt.driver.commands))
+                self.assertTrue(result["activation_fixture_cleanup_confirmed"])
+                self.assertNotIn("OTTPLAY_MULTIVIEW_STREAM_CASE_DIR", attempt.driver.env)
+                if fault in ("valid", "partial-malformed"):
+                    self.assertIs(result["streamed_forensic"]["qualified"], False)
+                    self.assertTrue(result["streamed_forensic"]["incomplete"])
+                    if fault == "partial-malformed":
+                        adopted = attempt.output / "evidence/stream-media-forensic/case/CONTROL.json"
+                        self.assertEqual(adopted.read_text(), "{")
+                else:
+                    self.assertIn("streamed_forensic_error", result)
+
+    def test_large_jsonl_bound_and_cumulative_cap_are_not_weakened(self):
+        with tempfile.TemporaryDirectory(prefix="stream-evidence-offline-") as raw:
+            root = Path(raw).resolve()
+            roots = tuple(root / name for name in ("inputs", "case", "analysis"))
+            for path in roots:
+                path.mkdir()
+            evidence = root / "evidence"
+            evidence.mkdir()
+            driver = types.SimpleNamespace(evidence=evidence)
+            path = roots[1] / "EVENTS.jsonl"
+            payload = b'{"phase":"synthetic","snapshot":{}}\n' * 130000
+            self.assertGreater(len(payload), 4 * 1024**2)
+            self.assertLess(len(payload), 8 * 1024**2)
+            path.write_bytes(payload)
+            spec = {"path": str(path), "relative_name": "stream-media/case/EVENTS.jsonl",
+                    "max_bytes": 8 * 1024**2}
+            receipts = ci.adopt_stream_evidence(driver, guard.Budget(), [spec], roots)
+            self.assertEqual(receipts[0]["sha256"], hashlib.sha256(payload).hexdigest())
+            self.assertEqual((evidence / spec["relative_name"]).read_bytes(), payload)
+            other = roots[1] / "CONTROL.json"
+            other.write_bytes(b"{}")
+            budget = guard.Budget()
+            budget.evidence_total = guard.EVIDENCE_CAP - 1
+            with self.assertRaisesRegex(RuntimeError, "Incremental evidence cap exceeded"):
+                ci.adopt_stream_evidence(driver, budget, [{"path": str(other),
+                    "relative_name": "stream-media/case/CONTROL.json", "max_bytes": 1024**2}], roots)
+            with path.open("wb") as stream:
+                stream.truncate(8 * 1024**2 + 1)
+            with self.assertRaisesRegex(RuntimeError, "Nonregular/linked/oversized input"):
+                ci.stream_read(path, roots[1], 8 * 1024**2, guard.Budget())
+
+    def test_evidence_allowlist_and_single_link_custody_are_unchanged(self):
+        for fault in ("symlink", "hardlink", "fifo", "escape", "rgb", "duplicate", "oversized-spec"):
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory(prefix="stream-custody-offline-") as raw:
+                root = Path(raw).resolve()
+                roots = tuple(root / name for name in ("inputs", "case", "analysis"))
+                for path in roots:
+                    path.mkdir()
+                evidence = root / "evidence"
+                evidence.mkdir()
+                source = roots[1] / "CONTROL.json"
+                source.write_bytes(b"{}")
+                spec = {"path": str(source), "relative_name": "stream-media/case/CONTROL.json",
+                        "max_bytes": 1024**2}
+                if fault in ("symlink", "hardlink"):
+                    actual = roots[1] / "actual.json"
+                    source.rename(actual)
+                    if fault == "symlink":
+                        source.symlink_to(actual)
+                    else:
+                        os.link(actual, source)
+                elif fault == "fifo":
+                    source.unlink()
+                    os.mkfifo(source)
+                elif fault == "escape":
+                    spec["path"] = str(root / "outside.json")
+                elif fault == "rgb":
+                    spec["relative_name"] = "stream-media/analysis/video-00.rgb"
+                elif fault == "oversized-spec":
+                    spec["max_bytes"] += 1
+                specs = [spec, spec] if fault == "duplicate" else [spec]
+                with self.assertRaises((RuntimeError, FileNotFoundError)):
+                    ci.adopt_stream_evidence(types.SimpleNamespace(evidence=evidence), guard.Budget(), specs, roots)
+
+    def test_terminal_cap_preserves_primary_error_and_restores_previous_env(self):
+        primary = "Synthetic original failure with exhausted remaining evidence budget"
+        with Attempt() as attempt:
+            original = attempt.response
+            def response(name, argv):
+                text = original(name, argv)
+                if name == "fixture-4":
+                    attempt.driver.budget.evidence_total = guard.EVIDENCE_CAP
+                    raise RuntimeError(primary)
+                return text
+            previous = {"OTTPLAY_MULTIVIEW_STREAM_INPUTS": "/synthetic/old-inputs.json",
+                        "OTTPLAY_MULTIVIEW_STREAM_CASE_DIR": "/synthetic/old-case"}
+            with mock.patch.dict(os.environ, previous), \
+                 mock.patch.object(attempt, "response", side_effect=response):
+                with self.assertRaisesRegex(RuntimeError, primary):
+                    attempt.run()
+            self.assertFalse((attempt.output / "evidence/terminal.json").exists())
+            self.assertTrue(all(row["cleanup_confirmed"] for row in attempt.driver.commands))
+            for key, value in previous.items():
+                self.assertEqual(attempt.driver.env[key], value)
 
 
 class ParsingTests(unittest.TestCase):
@@ -797,7 +1335,7 @@ class MockMainTests(unittest.TestCase):
                 self.assertEqual(attempt.driver.env['CARGO_HOME'], str(attempt.output / 'cargo-home'))
                 fixtures = [entry for entry in attempt.driver.commands if entry['name'].startswith('fixture-')
                             and entry['name'] != 'fixture-build']
-                self.assertEqual(len(fixtures), 3)
+                self.assertEqual(len(fixtures), 4)
                 self.assertTrue(all('--exact' in entry['argv'] and '--ignored' in entry['argv'] for entry in fixtures))
                 self.assertTrue(all('--nocapture' not in entry['argv'] for entry in fixtures))
                 commands = [entry['name'] for entry in attempt.driver.commands]

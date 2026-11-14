@@ -14,11 +14,14 @@ import time
 
 sys.dont_write_bytecode = True
 GUARD_SHA256 = '6f623bb7234b3619ff859dec0afe9c1ad938f29d606f0836b69434312867e020'
+STREAM_MEDIA_SHA256 = '1932be1c85bd52d0bd2e468a9dd04355f1735e4593f95ba3cdc03a41bb76d35f'
+STREAM_TEST = 'streamed_session_two_owner_continuity'
 MKFIFO = Path('/usr/bin/mkfifo')
 TESTS = (
     ('real_four_nine_and_perimeter_frames_and_selected_audio', 600),
     ('owned_worker_cancellation_deadlines_busy_and_cleanup', 60),
     ('fixture_http_source_cas_dedupe_media_custody_and_retirement', 120),
+    (STREAM_TEST, 110),
 )
 ACTIVATION_TESTS = frozenset({
     'no_flag_keeps_private_paths_absent_and_health_available',
@@ -287,6 +290,311 @@ def activation_home_snapshot(home, budget, *, cleanup=False):
     return sorted(entries, key=lambda item: item['name'])
 
 
+def load_stream_media(root, budget):
+    path = root / 'scripts/ci-multiview-unix-media.py'
+    raw = budget.read(path, 256 * 1024)
+    require(hashlib.sha256(raw).hexdigest() == STREAM_MEDIA_SHA256, 'Reviewed stream analyzer changed')
+    spec = importlib.util.spec_from_file_location('ci_multiview_stream_media', path)
+    module = importlib.util.module_from_spec(spec)
+    # Execute exactly the bounded, hashed source bytes, never an old pyc cache.
+    exec(compile(raw, str(path), 'exec'), module.__dict__)
+    require(all(callable(getattr(module, name, None)) for name in (
+        'self_test', 'prepare_inputs', 'seal_inputs', 'prepare_audio', 'prepare_video',
+        'finish', 'failure_evidence')), 'Stream analyzer API differs')
+    budget.tick()
+    return module
+
+
+def stream_read(path, parent, maximum, budget, *, cleanup=False):
+    path, parent = Path(path), Path(parent)
+    budget.tick(cleanup=cleanup)
+    require(path.is_absolute() and path.is_relative_to(parent) and path != parent
+            and '..' not in path.parts and path.resolve(strict=True) == path,
+            'Stream file escaped its owned root or contains a symlink')
+    before = path.lstat()
+    raw = budget.read(path, maximum, cleanup=cleanup)
+    after = path.lstat()
+    fields = ('st_dev', 'st_ino', 'st_mode', 'st_nlink', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
+    require(all(getattr(before, key) == getattr(after, key) for key in fields)
+            and path.resolve(strict=True) == path, 'Stream file identity changed')
+    return raw
+
+
+def seal_stream_inputs(path, parent, budget, *, make_readonly=True):
+    path, parent = Path(path), Path(parent)
+    require(path == parent / 'INPUTS.json', 'Unexpected sealed input manifest path')
+    raw = stream_read(path, parent, 65536, budget)
+    if not make_readonly:
+        require(not path.lstat().st_mode & 0o222, 'Stream input manifest is no longer read-only')
+    value = json.loads(raw)
+    require(type(value) is dict and set(value) == {'schema', 'seconds', 'fps', 'width', 'height', 'inputs'}
+            and value['schema'] == 'ottplay.multiview.stream-inputs.v1'
+            and all(type(value[key]) is int and value[key] == expected for key, expected in
+                    (('seconds', 80), ('fps', 10), ('width', 96), ('height', 64)))
+            and type(value['inputs']) is list and len(value['inputs']) == 2,
+            'Sealed stream input schema differs')
+    for source, row in enumerate(value['inputs'], 1):
+        require(type(row) is dict and set(row) == {'id', 'path', 'bytes', 'sha256'}
+                and type(row['id']) is int and row['id'] == source
+                and row['path'] == str(parent / f'source-{source}.ts')
+                and type(row['bytes']) is int and 0 < row['bytes'] <= 16 * 1024**2
+                and type(row['sha256']) is str and re.fullmatch('[0-9a-f]{64}', row['sha256']),
+                'Sealed stream input row differs')
+        payload = stream_read(Path(row['path']), parent, 16 * 1024**2, budget)
+        require(len(payload) == row['bytes'] and hashlib.sha256(payload).hexdigest() == row['sha256'],
+                'Sealed stream input payload differs')
+        if make_readonly:
+            Path(row['path']).chmod(0o400)
+        else:
+            require(not Path(row['path']).lstat().st_mode & 0o222, 'Stream input payload is no longer read-only')
+    if make_readonly:
+        path.chmod(0o400)
+    return {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'inputs': value['inputs']}
+
+
+def bind_stream_control(case, seal, budget):
+    control = json.loads(stream_read(case / 'CONTROL.json', case, 1024**2, budget))
+    require(type(control) is dict and control.get('pass') is True
+            and control.get('input_manifest_sha256') == seal['sha256']
+            and json.dumps(control.get('inputs'), sort_keys=True) == json.dumps(seal['inputs'], sort_keys=True),
+            'Stream CONTROL is not bound to the sealed inputs')
+    current = seal_stream_inputs(Path(seal['path']), Path(seal['path']).parent, budget, make_readonly=False)
+    require(current == seal, 'Sealed stream inputs changed')
+    require(all(not Path(path).lstat().st_mode & 0o222 for path in
+                [seal['path'], *(row['path'] for row in seal['inputs'])]), 'Stream inputs are not read-only')
+
+
+def execute_stream_specs(driver, budget, command, stage, specs, roots, tools):
+    inputs, case, analysis = roots
+    expected = {
+        'inputs': [('stream-source-1-encode', 30, 'ffmpeg', inputs / 'source-1.mp4'),
+                   ('stream-source-1-transport', 15, 'ffmpeg', inputs / 'source-1.ts'),
+                   ('stream-source-2-encode', 30, 'ffmpeg', inputs / 'source-2.mp4'),
+                   ('stream-source-2-transport', 15, 'ffmpeg', inputs / 'source-2.ts')],
+        'audio': [('stream-video-probe', 20, 'ffprobe', case / 'archive/index.m3u8'),
+                  ('stream-b-prefix-audio', 40, 'ffmpeg', analysis / 'B-prefix.s16'),
+                  ('stream-a-prefix-audio', 40, 'ffmpeg', analysis / 'A-prefix.s16')],
+    }
+    require(type(specs) is list and 1 <= len(specs) <= 15, 'Invalid stream command inventory')
+    if stage == 'video':
+        expected[stage] = [(f'stream-video-window-{number:02d}', 40, 'ffmpeg', analysis / f'video-{number:02d}.rgb')
+                           for number in range(len(specs) - 1)]
+        expected[stage].append(('stream-a-return-audio', 40, 'ffmpeg', analysis / 'A-return.s16'))
+        require(len(specs) >= 2, 'Missing stream video commands')
+    require(stage in expected and len(specs) == len(expected[stage]), 'Stream command inventory differs')
+    for spec, (name, seconds, tool_name, output) in zip(specs, expected[stage]):
+        require(type(spec) is dict and set(spec) == {'name', 'argv', 'timeout_seconds', 'stdout_file'}
+                and spec['name'] == name and type(spec['timeout_seconds']) is int
+                and spec['timeout_seconds'] == seconds, 'Stream command identity or deadline differs')
+        argv = spec['argv']
+        require(type(argv) is list and 2 <= len(argv) <= 96
+                and all(type(arg) is str and 0 < len(arg) <= 8192 for arg in argv)
+                and argv[0] == tools[tool_name]['path'] and argv[-1] == str(output)
+                and not any(re.search(r'(?i)(?:[a-z][a-z0-9+.-]*://|(?:https?|tcp|udp|rtsp|rtp|srt|ftp|unix|pipe|fd):)', arg)
+                            for arg in argv), 'Unattested, external or redirected stream command')
+        probe = analysis / 'video-probe.json' if name == 'stream-video-probe' else None
+        require(spec['stdout_file'] == (str(probe) if probe else None)
+                and not any(row['name'] == name for row in driver.commands), 'Unexpected stream stdout or repeated command')
+        if probe:
+            require(not probe.exists() and not probe.is_symlink(), 'Fresh stream probe output required')
+        observed = system_tool_identity(Path(tools[tool_name]['requested_path']), budget)
+        require(all(tools[tool_name][key] == item for key, item in observed.items()), 'Tool executable identity changed')
+        text = command(name, argv, seconds)
+        if probe:
+            raw = text.encode('utf8')
+            require(len(raw) <= 2 * 1024**2 and type(json.loads(raw)) is dict, 'Invalid bounded stream probe JSON')
+            require(not probe.exists() and not probe.is_symlink(), 'Stream probe output appeared during command')
+            budget.atomic(probe, raw)
+
+
+def adopt_stream_evidence(driver, budget, specs, roots, *, forensic=False):
+    inputs, case, analysis = roots
+    case_files = {'CONTROL.json': 1024**2, 'EVENTS.jsonl': 8 * 1024**2,
+                  'A-END-LIVE.m3u8': 65536, 'B-END-LIVE.m3u8': 65536,
+                  'archive/index.m3u8': 65536, 'archive/ARCHIVE.json': 1024**2,
+                  'archive/CAPTURE.jsonl': 8 * 1024**2,
+                  'archive/A-selected-prefix.m3u8': 65536, 'archive/B-selected-prefix.m3u8': 65536}
+    if forensic:
+        case_files['archive/partial-prefix.m3u8'] = 65536
+    analysis_files = {name: 1024**2 for name in ('audio-B.json', 'audio-B-original-rules.json',
+                       'audio-A-initial.json', 'video.json', 'qualification.json')}
+    analysis_files.update({'B-prefix.s16': 4 * 1024**2, 'A-prefix.s16': 4 * 1024**2,
+                          'A-return.s16': 128000, 'video-probe.json': 2 * 1024**2, 'video-plan.json': 65536})
+    require(type(specs) is list and len(specs) <= 600, 'Invalid stream evidence inventory')
+    seen, adopted = set(), []
+    prefix = 'stream-media-forensic' if forensic else 'stream-media'
+    for spec in specs:
+        budget.tick(cleanup=forensic)
+        require(type(spec) is dict and set(spec) == {'path', 'relative_name', 'max_bytes'}, 'Invalid stream evidence spec')
+        name, maximum = spec['relative_name'], spec['max_bytes']
+        require(type(name) is str and name not in seen and type(maximum) is int and maximum > 0,
+                'Duplicate or invalid stream evidence name/bound')
+        seen.add(name)
+        pieces = Path(name).parts
+        require(len(pieces) >= 3 and pieces[0] == prefix and '..' not in pieces
+                and not Path(name).is_absolute() and str(Path(name)) == name,
+                'Stream evidence path escaped its fixed tree')
+        label, leaf = pieces[1], '/'.join(pieces[2:])
+        allowed, parent = 0, None
+        if label == 'inputs' and not forensic:
+            parent = inputs
+            allowed = 65536 if leaf == 'INPUTS.json' else 16 * 1024**2 if leaf in ('source-1.ts', 'source-2.ts') else 0
+        elif label == 'analysis':
+            parent, allowed = analysis, analysis_files.get(leaf, 0)
+        elif label == 'case':
+            parent, allowed = case, case_files.get(leaf, 0)
+            if re.fullmatch(r'archive/segment-[0-9]{6}\.ts', leaf) and int(leaf[16:22]) <= 255:
+                allowed = 2 * 1024**2
+            if re.fullmatch(r'archive/observations/[0-9]{6}\.m3u8', leaf) and 1 <= int(Path(leaf).stem) <= 256:
+                allowed = 65536
+        require(parent is not None and allowed and maximum <= allowed
+                and spec['path'] == str(parent / leaf), 'Stream evidence is not in the reviewed allowlist')
+        raw = stream_read(Path(spec['path']), parent, maximum, budget, cleanup=forensic)
+        destination = driver.evidence / name
+        require(not destination.exists() and not destination.is_symlink(), 'Stream evidence output already exists')
+        destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        budget.atomic(destination, raw, evidence=True, cleanup=forensic)
+        adopted.append({'relative_name': name, 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()})
+    return adopted
+
+
+def require_complete_stream_evidence(packet, roots, budget):
+    _, case, analysis = roots
+    specs = packet['evidence']
+    require(type(specs) is list and 0 < len(specs) <= 600, 'Incomplete stream media evidence inventory')
+    proof = json.loads(stream_read(case / 'archive/ARCHIVE.json', case, 1024**2, budget))
+    require(type(proof) is dict and type(proof.get('segments')) is list
+            and 1 <= len(proof['segments']) <= 256
+            and type(proof.get('segment_count')) is int and proof['segment_count'] == len(proof['segments'])
+            and type(proof.get('unique_manifests')) is int and 1 <= proof['unique_manifests'] <= 256,
+            'Invalid stream archive evidence inventory')
+    case_names = {'CONTROL.json', 'EVENTS.jsonl', 'A-END-LIVE.m3u8', 'B-END-LIVE.m3u8',
+                  'archive/index.m3u8', 'archive/ARCHIVE.json', 'archive/CAPTURE.jsonl',
+                  'archive/A-selected-prefix.m3u8', 'archive/B-selected-prefix.m3u8'}
+    for number, row in enumerate(proof['segments']):
+        require(type(row) is dict and type(row.get('sequence')) is int and row['sequence'] == number
+                and row.get('name') == f'segment-{number:06d}.ts', 'Stream archive sequence inventory differs')
+        case_names.add('archive/' + row['name'])
+    case_names.update(f'archive/observations/{number:06d}.m3u8' for number in range(1, proof['unique_manifests'] + 1))
+    analysis_names = {'audio-B.json', 'audio-B-original-rules.json', 'audio-A-initial.json', 'video.json',
+                      'qualification.json', 'B-prefix.s16', 'A-prefix.s16', 'A-return.s16',
+                      'video-probe.json', 'video-plan.json'}
+    expected = {'stream-media/case/' + name for name in case_names}
+    expected.update('stream-media/analysis/' + name for name in analysis_names)
+    names = [spec.get('relative_name') if type(spec) is dict else None for spec in specs]
+    require(all(type(name) is str for name in names) and len(names) == len(expected) and set(names) == expected,
+            'Incomplete stream media evidence inventory')
+    report = json.loads(stream_read(analysis / 'qualification.json', analysis, 1024**2, budget))
+    require(json.dumps(report, sort_keys=True, allow_nan=False)
+            == json.dumps(packet['result'], sort_keys=True, allow_nan=False), 'Stream analyzer result/evidence differ')
+
+
+def bind_stream_evidence_hashes(report, adopted):
+    hashes = {row['relative_name']: row['sha256'] for row in adopted}
+    case_names = {'CONTROL.json', 'EVENTS.jsonl', 'A-END-LIVE.m3u8', 'B-END-LIVE.m3u8',
+                  'archive/index.m3u8', 'archive/ARCHIVE.json',
+                  'archive/A-selected-prefix.m3u8', 'archive/B-selected-prefix.m3u8'}
+    pcm_names = {'B-prefix.s16', 'A-prefix.s16', 'A-return.s16'}
+    for key, names, prefix in (('case_sha256', case_names, 'stream-media/case/'),
+                               ('work_pcm_sha256', pcm_names, 'stream-media/analysis/')):
+        values = report.get(key)
+        require(type(values) is dict and set(values) == names
+                and all(type(value) is str and re.fullmatch('[0-9a-f]{64}', value)
+                        and hashes.get(prefix + name) == value for name, value in values.items()),
+                'Stream analyzer hashes do not bind adopted evidence')
+
+
+def run_streamed_fixture(driver, budget, command, executable, tools, result):
+    parent = driver.output / 'streamed'
+    parent.mkdir(mode=0o700)
+    roots = (parent / 'inputs', parent / 'case', parent / 'analysis')
+    inputs, case, analysis = roots
+    media = primary = None
+    old_env = {key: driver.env.get(key) for key in ('OTTPLAY_MULTIVIEW_STREAM_INPUTS', 'OTTPLAY_MULTIVIEW_STREAM_CASE_DIR')}
+    try:
+        media = load_stream_media(driver.root, budget)
+        controls = media.self_test()
+        true_keys = {'pass', 'pure_positive', 'reject_100ms_hole_despite_global_pass', 'reject_20ms_phase_jump',
+                     'reject_wrong_owner', 'reject_449_frame_48k_hole', 'reject_898_interleaved_counter',
+                     'ported_original_rule_agreement', 'reject_later_onset_trim',
+                     'reject_event_restart_regression_wrong_owner', 'safety_cap_above_acceptance',
+                     'reject_wrong_video_and_frozen_marker', 'exact_tail_coverage'}
+        require(type(controls) is dict and set(controls) == true_keys | {'tools_started', 'long_media_generated'}
+                and all(controls[key] is True for key in true_keys)
+                and controls['tools_started'] is False and controls['long_media_generated'] is False,
+                'Stream analyzer negative controls failed')
+        budget.json_evidence(driver.evidence / 'streamed-self-test.json', controls)
+        help_text = command('stream-stats-mux-pre', [tools['ffmpeg']['path'], '-hide_banner', '-h', 'full'])
+        require(re.search(r'(?m)^\s*-stats_mux_pre(?:\[|:|\s)', help_text), 'FFmpeg stats_mux_pre is required')
+        execute_stream_specs(driver, budget, command, 'inputs', media.prepare_inputs(inputs, tools), roots, tools)
+        seal = seal_stream_inputs(media.seal_inputs(inputs), inputs, budget)
+        input_specs = [{'path': seal['path'], 'relative_name': 'stream-media/inputs/INPUTS.json', 'max_bytes': 65536}]
+        input_specs += [{'path': row['path'], 'relative_name': 'stream-media/inputs/' + Path(row['path']).name,
+                         'max_bytes': 16 * 1024**2} for row in seal['inputs']]
+        result['streamed_input_evidence'] = adopt_stream_evidence(driver, budget, input_specs, roots)
+        require(not case.exists() and not case.is_symlink(), 'Fresh streamed case required')
+        driver.env.update(OTTPLAY_MULTIVIEW_STREAM_INPUTS=seal['path'], OTTPLAY_MULTIVIEW_STREAM_CASE_DIR=str(case))
+        text = command('fixture-4', [str(executable), STREAM_TEST, '--ignored', '--exact',
+                       '--test-threads=1', '--color=never'], 110)
+        require_one_pass(text, STREAM_TEST)
+        bind_stream_control(case, seal, budget)
+        execute_stream_specs(driver, budget, command, 'audio', media.prepare_audio(case, analysis, tools), roots, tools)
+        execute_stream_specs(driver, budget, command, 'video', media.prepare_video(case, analysis, tools), roots, tools)
+        packet = media.finish(case, analysis)
+        require(type(packet) is dict and set(packet) == {'result', 'evidence'}
+                and type(packet['result']) is dict and packet['result'].get('pass') is True
+                and packet['result'].get('schema') == 'ottplay.multiview.stream-media.v1'
+                and packet['result'].get('helper_sha256') == STREAM_MEDIA_SHA256,
+                'Stream media analyzer did not qualify this case')
+        bind_stream_control(case, seal, budget)
+        require_complete_stream_evidence(packet, roots, budget)
+        result['streamed_media_evidence'] = adopt_stream_evidence(driver, budget, packet['evidence'], roots)
+        bind_stream_evidence_hashes(packet['result'], result['streamed_media_evidence'])
+        result['streamed_media'] = packet['result']
+        budget.tick()
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        try:
+            if primary is not None and media is not None:
+                try:
+                    report = media.failure_evidence(case, analysis)
+                    require(type(report) is dict and set(report) == {'schema', 'qualified', 'forensic_only',
+                            'incomplete', 'errors', 'omitted_files', 'evidence_bytes', 'evidence',
+                            'preserves_original_error', 'cleanup_must_run_unconditionally'}
+                            and report.get('schema') == 'ottplay.multiview.stream-forensic.v1'
+                            and report.get('qualified') is False and report.get('forensic_only') is True
+                            and type(report.get('incomplete')) is bool and type(report.get('errors')) is list
+                            and all(type(value) is str for value in report['errors'])
+                            and len(set(report['errors'])) == len(report['errors'])
+                            and set(report['errors']) <= {'ROOT_UNAVAILABLE', 'MISSING_REQUIRED', 'CUSTODY_OR_BOUND',
+                                                        'MALFORMED_STRUCTURE', 'EVIDENCE_BUDGET'}
+                            and report['incomplete'] is bool(report['errors'])
+                            and type(report['omitted_files']) is int and 0 <= report['omitted_files'] <= 600
+                            and (report['omitted_files'] == 0 or report['incomplete'])
+                            and type(report['evidence_bytes']) is int and 0 <= report['evidence_bytes'] <= 32 * 1024**2
+                            and report.get('preserves_original_error') is True
+                            and report.get('cleanup_must_run_unconditionally') is True,
+                            'Malformed stream forensic receipt')
+                    specs = report['evidence']
+                    result['streamed_forensic_evidence'] = adopt_stream_evidence(driver, budget, specs, roots, forensic=True)
+                    require(sum(row['bytes'] for row in result['streamed_forensic_evidence']) == report['evidence_bytes'],
+                            'Stream forensic byte inventory differs')
+                    result['streamed_forensic'] = {key: value for key, value in report.items() if key != 'evidence'}
+                    budget.json_evidence(driver.evidence / 'streamed-forensic.json', result['streamed_forensic'], cleanup=True)
+                except BaseException as forensic_error:
+                    result['streamed_forensic_error'] = str(forensic_error)
+        finally:
+            # Every Driver.run has already executed its unconditional process
+            # cleanup before it returns/raises. Forensics never owns that duty.
+            for key, value in old_env.items():
+                if value is None:
+                    driver.env.pop(key, None)
+                else:
+                    driver.env[key] = value
+
+
 def main(argv=None):
     started = time.monotonic()
     guard = load_guard()  # Import only; its WK main is never called.
@@ -320,10 +628,11 @@ def main(argv=None):
     # No rustc wrapper, external target directory, or user Cargo config overrides.
     for key in ('RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS'):
         driver.env.pop(key, None)
-    result = {'status': 'fail', 'qualification': 'three existing Unix fixtures plus zero-capacity HTTP/TLS activation',
+    result = {'status': 'fail', 'qualification': 'four isolated Unix fixtures, mandatory stream analyzer and zero-capacity activation',
               'sustained_media_e2e': False, 'production_admission': False,
               'generated_media_hashes_available': False, 'new_dependencies': False}
     success = False
+    work_error = None
     activation_home = activation_home_before = None
     activation_home_checked = False
 
@@ -341,6 +650,8 @@ def main(argv=None):
                 'Source checkout is dirty')
         paths = ('Cargo.toml', 'Cargo.lock', 'src-rs/core/Cargo.toml', 'src-rs/server/Cargo.toml',
                  'src-rs/server/tests/multiview_fixtures.rs', 'src-rs/server/tests/multiview_activation.rs',
+                 'src-rs/server/tests/support/streamed_session.rs', 'src-rs/server/tests/support/streamed_transport.rs',
+                 'src-rs/server/tests/support/streamed_archive.rs', 'scripts/ci-multiview-unix-media.py',
                  'src-rs/server/src/main.rs', 'scripts/ci-native-favorites.py',
                  'scripts/ci-multiview-unix.py', 'scripts/ci-apt-mirror.py')
         return {'commit': head, 'tree': tree, 'sha256': {p: budget.digest(root / p) for p in paths}}
@@ -447,9 +758,12 @@ def main(argv=None):
             [str(activation), '--test-threads=1', '--color=never'], 180)
         require_suite_pass(activation_text, ACTIVATION_TESTS, set())
         for index, (name, limit) in enumerate(TESTS):
-            text = command('fixture-' + str(index + 1), [str(executable), name, '--ignored', '--exact',
-                           '--test-threads=1', '--color=never'], limit)
-            require_one_pass(text, name)
+            if name == STREAM_TEST:
+                run_streamed_fixture(driver, budget, command, executable, tools, result)
+            else:
+                text = command('fixture-' + str(index + 1), [str(executable), name, '--ignored', '--exact',
+                               '--test-threads=1', '--color=never'], limit)
+                require_one_pass(text, name)
             budget.tick()
             for count, entry in enumerate((output / 'tmp').iterdir(), 1):
                 budget.tick()
@@ -487,6 +801,7 @@ def main(argv=None):
                       tests=[name for name, _ in TESTS], owned_process_cleanup_confirmed=True)
         success = True
     except BaseException as error:
+        work_error = error
         result['error'] = str(error)
         result['error_type'] = type(error).__name__
     finally:
@@ -504,7 +819,13 @@ def main(argv=None):
         result['elapsed_seconds'] = budget.clock() - budget.started
         result['commands'] = driver.commands
         result['hls_scope'] = 'Actual HLS playlist/custody/revocation; no TS GET/decode or sustained pixel/audio claim'
-    require(driver.terminal(result, success), 'Unix fixture qualification failed; inspect terminal.json')
+    try:
+        accepted = driver.terminal(result, success)
+    except BaseException as finalization_error:
+        if work_error is not None:
+            raise work_error from finalization_error
+        raise
+    require(accepted, 'Unix fixture qualification failed; inspect terminal.json')
 
 
 if __name__ == '__main__':
