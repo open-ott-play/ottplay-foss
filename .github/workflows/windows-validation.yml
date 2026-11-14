@@ -10,6 +10,8 @@ permissions:
   contents: read
 
 jobs:
+  dependency-media-sandbox:
+    uses: ./.github/workflows/dependency-media-sandbox.yml
   portable:
     uses: ./.github/workflows/beta-checks.yml
   native-windows:

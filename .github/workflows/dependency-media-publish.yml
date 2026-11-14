@@ -1,0 +1,75 @@
+name: Publish dependency media
+
+on:
+  workflow_run:
+    workflows: [Auto Approve PRs]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: dependency-media-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'open-ott-play/ottplay-foss' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_branch == 'renovate/npm-lockfile'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # workflow_run uses the default branch. Never check out or execute the PR here.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          path: trusted
+      - name: Admit the exact source and successful generator artifact
+        id: admission
+        env:
+          READ_TOKEN: ${{ github.token }}
+          TRUSTED_SOURCE: ${{ github.sha }}
+        run: >-
+          python3 trusted/scripts/dependency-media-followup.py prepare
+          --event "$GITHUB_EVENT_PATH"
+          --plan "$RUNNER_TEMP/dependency-media-plan.json"
+      - name: Download only the admitted immutable artifact
+        if: steps.admission.outputs.artifact_id != ''
+        env:
+          READ_TOKEN: ${{ github.token }}
+          TRUSTED_SOURCE: ${{ github.sha }}
+        run: >-
+          python3 trusted/scripts/dependency-media-followup.py download
+          --event "$GITHUB_EVENT_PATH"
+          --plan "$RUNNER_TEMP/dependency-media-plan.json"
+          --output "$RUNNER_TEMP/dependency-media-admitted.zip"
+      - name: Validate the delta and publish one ordinary CAS commit
+        if: steps.admission.outputs.artifact_id != ''
+        env:
+          READ_TOKEN: ${{ github.token }}
+          TRUSTED_SOURCE: ${{ github.sha }}
+          BOT_TOKEN: ${{ secrets.BOT_PAT }}
+        run: >-
+          python3 trusted/scripts/dependency-media-followup.py publish
+          --event "$GITHUB_EVENT_PATH"
+          --plan "$RUNNER_TEMP/dependency-media-plan.json"
+          --artifact "$RUNNER_TEMP/dependency-media-admitted.zip"
+          --intent "$RUNNER_TEMP/dependency-media-intent.json"
+          --output "$RUNNER_TEMP/dependency-media-publication.json"
+      - name: Retain publication custody and acknowledgement
+        if: always() && steps.admission.outputs.artifact_id != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-media-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/dependency-media-plan.json
+            ${{ runner.temp }}/dependency-media-intent.json
+            ${{ runner.temp }}/dependency-media-publication.json
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 14

@@ -1,0 +1,36 @@
+name: Dependency media sandbox validation
+
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox-test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Select changes to the isolated generator
+        id: scope
+        run: |
+          if git --no-pager diff --no-ext-diff --quiet HEAD^ HEAD -- \
+            scripts/dependency-media-followup.py \
+            .github/workflows/auto-approve.yml \
+            .github/workflows/dependency-media-publish.yml \
+            .github/workflows/dependency-media-sandbox.yml \
+            .github/workflow-tests/test_dependency_media_followup.py; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            status=$?
+            if [ "$status" -ne 1 ]; then exit "$status"; fi
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Exercise actual isolated generation, exec-tar export and cleanup
+        if: steps.scope.outputs.changed == 'true'
+        run: python3 scripts/dependency-media-followup.py sandbox-test

@@ -46,3 +46,43 @@ jobs:
     secrets:
       BOT_PAT: ${{ secrets.BOT_PAT }}
       APPROVAL_PAT: ${{ secrets.APPROVAL_PAT }}
+
+  generate-dependency-media:
+    name: Generate dependency media
+    permissions:
+      contents: read
+      pull-requests: read
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.repository == 'open-ott-play/ottplay-foss' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'renovate/npm-lockfile' &&
+      github.event.pull_request.user.id == 319626568 &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      # Run only the base's trusted coordinator on the host. PR scripts stay in Docker.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+      - name: Generate without repository credentials
+        id: generate
+        env:
+          READ_TOKEN: ${{ github.token }}
+          TRUSTED_SOURCE: ${{ github.event.pull_request.base.sha }}
+        run: >-
+          python3 trusted/scripts/dependency-media-followup.py generate
+          --event "$GITHUB_EVENT_PATH"
+          --output "$RUNNER_TEMP/dependency-media-output"
+      - name: Retain exact generated delta
+        if: steps.generate.outputs.eligible == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-media-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/dependency-media-output
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 3
