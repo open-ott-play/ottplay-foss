@@ -14,6 +14,7 @@ pub mod control_discovery;
 pub mod companion;
 pub mod db;
 pub mod m3u;
+pub mod multiview;
 pub mod native_xmltv;
 pub mod offline_media;
 mod proxy;

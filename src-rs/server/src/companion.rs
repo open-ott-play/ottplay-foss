@@ -169,7 +169,7 @@ impl BoundCompanion {
         println!("ottplay media service: {scheme}://{address}");
         let routes = self.service.routes();
         match self.tls {
-            Some(config) => crate::serve_tls(self.listener, routes, config).await,
+            Some(config) => crate::serve_tls(self.listener, routes, config, false).await,
             None => axum::serve(self.listener, routes)
                 .await
                 .context("Media service listener failed"),

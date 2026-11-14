@@ -40,3 +40,10 @@ unicode-normalization = "=0.1.25"
 # Strict typed DER parsing for the supplied TLS certificate key policy.
 x509-cert = { version = "0.2.5", default-features = false, features = ["std"] }
 pkcs1 = { version = "0.7.5", default-features = false }
+
+[dev-dependencies]
+# Owned in-process live multiview fixtures; no production router registration.
+tokio-util = { version = "0.7", features = ["rt"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
