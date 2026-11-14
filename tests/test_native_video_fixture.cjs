@@ -12,6 +12,7 @@ const {
 } = require("../scripts/classic-bundle.cjs");
 const {
     advanceNativePlayback,
+    admitNativeBoot,
     captureOwnedImage,
     cases,
     cleanupOwnedDataDirectory,
@@ -29,6 +30,190 @@ const {
 } = require("../scripts/check-windows-video-geometry.cjs");
 require("./test_native_hls_fixture.cjs");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+test("boot admission rejection stops before navigation without retries", async () => {
+    const calls = [];
+    const record = { engine: "html5" };
+    await assert.rejects(
+        admitNativeBoot(
+            { waitForURL: () => calls.push("navigation") },
+            "http://127.0.0.1:8443",
+            "abcdef1234",
+            record,
+            async () => {
+                calls.push("admit");
+                return { ok: false, status: 410 };
+            },
+            (phase) => calls.push(phase)
+        ),
+        /Native boot admission rejected \(HTTP 410\)/
+    );
+    assert.deepEqual(calls, ["admit"]);
+    assert.equal(record.bootAdmission, undefined);
+});
+
+test("boot admission precedes the original bounded first navigation", async () => {
+    const calls = [];
+    const record = { engine: "hls.js" };
+    await admitNativeBoot(
+        {
+            async waitForURL(url, options) {
+                calls.push("navigation");
+                assert.equal(
+                    url,
+                    "http://127.0.0.1:8443/index.html?nativecase=abcdef1234&nativeengine=hls"
+                );
+                assert.deepEqual(options, {
+                    timeout: 30000,
+                    waitUntil: "domcontentloaded",
+                });
+            },
+        },
+        "http://127.0.0.1:8443",
+        "abcdef1234",
+        record,
+        async (url) => {
+            assert.equal(
+                url,
+                "http://127.0.0.1:8443/__native_video_geometry/boot-admit?case=abcdef1234"
+            );
+            calls.push("admit");
+            return { ok: true, status: 200 };
+        },
+        (phase) => calls.push(phase)
+    );
+    assert.deepEqual(calls, [
+        "admit",
+        "bootAdmitted",
+        "navigation",
+        "documentReady",
+    ]);
+    assert.match(record.bootAdmission, /before first production script/);
+});
+
+test("expired boot admission cannot report success or revive the first document", () => {
+    let handler;
+    let nextTimer = 0;
+    const timers = new Map();
+    const source = fs.readFileSync(
+        path.join(__dirname, "helpers/device-browser-server.cjs"),
+        "utf8"
+    );
+    vm.runInNewContext(source, {
+        Buffer,
+        URL,
+        __dirname: path.join(__dirname, "helpers"),
+        clearTimeout: (timer) => timers.delete(timer),
+        console: { log() {} },
+        process: {
+            env: {
+                CI_BROWSER_WEB_ROOT: path.join(
+                    os.tmpdir(),
+                    "unused-native-root"
+                ),
+                OTTP_NATIVE_VIDEO_GEOMETRY: "1",
+            },
+        },
+        require(name) {
+            if (name === "node:fs")
+                return {
+                    existsSync: () => true,
+                    readFile: (_name, done) =>
+                        done(null, Buffer.from("<html><head></head></html>")),
+                };
+            if (name === "node:http")
+                return {
+                    createServer(callback) {
+                        handler = callback;
+                        return { listen() {} };
+                    },
+                };
+            if (name === "../../scripts/classic-bundle.cjs")
+                return { CLASSIC_PROVIDER_BUNDLES, CLASSIC_OPTIONAL_BUNDLES };
+            return require(name);
+        },
+        setTimeout(callback, delay) {
+            assert.equal(
+                delay,
+                60000,
+                "the admission deadline stays unchanged"
+            );
+            timers.set(++nextTimer, callback);
+            return nextTimer;
+        },
+    });
+    function request(url) {
+        const events = new Map();
+        const response = {
+            body: undefined,
+            destroyed: false,
+            on(name, callback) {
+                const listeners = events.get(name) || [];
+                listeners.push(callback);
+                events.set(name, listeners);
+            },
+            writeHead(status) {
+                this.statusCode = status;
+                return this;
+            },
+            end(body) {
+                this.body = body;
+                for (const name of ["finish", "close"])
+                    for (const callback of events.get(name) || []) callback();
+                return this;
+            },
+            close() {
+                this.destroyed = true;
+                for (const callback of events.get("close") || []) callback();
+            },
+        };
+        handler({ method: "GET", url }, response);
+        return response;
+    }
+    const expired = request("/index.html?nativecase=abcdef1234");
+    const other = request("/index.html?nativecase=fedcba9876");
+    assert.equal(expired.statusCode, undefined);
+    assert.equal(other.statusCode, undefined);
+    const expire = timers.values().next().value;
+    expire();
+    assert.equal(expired.statusCode, 504);
+    const admission = request(
+        "/__native_video_geometry/boot-admit?case=abcdef1234"
+    );
+    assert.equal(admission.statusCode, 410);
+    assert.deepEqual(JSON.parse(admission.body), {
+        error: "Native boot admission expired",
+    });
+    assert.equal(request("/index.html?nativecase=abcdef1234").statusCode, 410);
+    assert.equal(other.statusCode, undefined, "another case remains fenced");
+    assert.equal(
+        request("/__native_video_geometry/boot-admit?case=fedcba9876")
+            .statusCode,
+        200
+    );
+    assert.equal(other.statusCode, 200);
+    assert.equal(timers.size, 0);
+
+    // Admission can arrive before the first HTTP request, as during fast startup.
+    assert.equal(
+        request("/__native_video_geometry/boot-admit?case=123456abcd")
+            .statusCode,
+        200
+    );
+    assert.equal(request("/index.html?nativecase=123456abcd").statusCode, 200);
+    assert.equal(timers.size, 0);
+
+    const disconnected = request("/index.html?nativecase=abcdef5678");
+    assert.equal(timers.size, 1);
+    disconnected.close();
+    assert.equal(timers.size, 0, "client close retires its pending timer");
+    assert.equal(
+        request("/__native_video_geometry/boot-admit?case=abcdef5678")
+            .statusCode,
+        410
+    );
+    assert.equal(request("/index.html?nativecase=abcdef5678").statusCode, 410);
+});
 
 test("native startup URL binds the exact case and engine without a second navigation", () => {
     for (const [engine, query] of [

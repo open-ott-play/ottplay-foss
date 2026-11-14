@@ -853,6 +853,31 @@ async function pageStartupDiagnostic(
         if (timer) clearTimeout(timer);
     }
 }
+async function admitNativeBoot(
+    page,
+    origin,
+    id,
+    record,
+    request = fetch,
+    markPhase = () => {}
+) {
+    const bootAdmitted = await request(
+        origin + "/__native_video_geometry/boot-admit?case=" + id
+    );
+    if (!bootAdmitted.ok)
+        throw new Error(
+            "Native boot admission rejected (HTTP " + bootAdmitted.status + ")"
+        );
+    record.bootAdmission =
+        "CDP routes installed before first production script";
+    markPhase("bootAdmitted");
+    await page.waitForURL(nativeStartupUrl(origin, id, record.engine), {
+        timeout: 30000,
+        waitUntil: "domcontentloaded",
+    });
+    markPhase("documentReady");
+}
+
 async function exercise(binary, origin, item, index, report, debugPort) {
     const data = fs.mkdtempSync(path.join(os.tmpdir(), "ott-video-geometry-"));
     const id = crypto.createHash("md5").update(data).digest("hex").slice(0, 10);
@@ -897,7 +922,13 @@ async function exercise(binary, origin, item, index, report, debugPort) {
     let child, browser, page;
     const pageErrors = [];
     const ownedImages = [];
-    const record = { ...item, samples: [], status: "fail" };
+    const record = { ...item, samples: [], status: "fail", startupTimings: {} };
+    const startupStarted = performance.now();
+    const markStartup = (phase) => {
+        record.startupTimings[phase] = Math.round(
+            performance.now() - startupStarted
+        );
+    };
     report.cases.push(record);
     try {
         child = spawn(binary, [], {
@@ -918,6 +949,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
             record.spawnError = redactDiagnosticText(error.message, 300);
         });
         record.pid = child.pid;
+        markStartup("spawned");
         if (!child.pid)
             throw new Error("Could not spawn owned release executable");
         const version = await waitJson(
@@ -925,6 +957,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
             child
         );
         record.debugListener = verifyDebugListener(child.pid, debugPort);
+        markStartup("debugListenerReady");
         record.webview = {
             browser: version.Browser,
             protocol: version["Protocol-Version"],
@@ -932,19 +965,11 @@ async function exercise(binary, origin, item, index, report, debugPort) {
         browser = await chromium.connectOverCDP(
             "http://127.0.0.1:" + debugPort
         );
-        try {
-            const session = await browser.newBrowserCDPSession();
-            const info = await session.send("SystemInfo.getInfo");
-            record.gpu = {
-                devices: info.gpu.devices,
-                renderer: info.gpu.auxAttributes?.glRenderer,
-            };
-            await session.detach();
-        } catch (_) {
-            record.gpu = {
-                status: "unavailable; no physical-GPU coverage claimed",
-            };
-        }
+        markStartup("cdpAttached");
+        // Optional SystemInfo collection must not delay the held first document.
+        record.gpu = {
+            status: "Not collected; GPU diagnostics are not a startup prerequisite",
+        };
         const context = browser.contexts()[0];
         if (context) context.setDefaultTimeout(30000);
         if (!context) throw new Error("Missing owned WebView2 context");
@@ -984,19 +1009,8 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                     redactDiagnosticText(error?.stack || error?.message, 360)
                 );
         });
-        const bootAdmitted = await fetch(
-            origin + "/__native_video_geometry/boot-admit?case=" + id
-        );
-        if (!bootAdmitted.ok)
-            throw new Error(
-                "Could not admit the first production HTML response"
-            );
-        record.bootAdmission =
-            "CDP routes installed before first production script";
-        await page.waitForURL(pageUrl, {
-            timeout: 30000,
-            waitUntil: "domcontentloaded",
-        });
+        markStartup("networkFenced");
+        await admitNativeBoot(page, origin, id, record, fetch, markStartup);
         await page.waitForFunction(
             () => window.__ottDevice && typeof window.stbPlay === "function"
         );
@@ -1449,6 +1463,7 @@ async function main() {
     }
 }
 module.exports = {
+    admitNativeBoot,
     advanceNativePlayback,
     captureOwnedImage,
     cases,

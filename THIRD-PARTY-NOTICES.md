@@ -43,7 +43,7 @@ writing systems, additional characters and case-mapping behavior.
 ## Native runtime: Tauri and Capacitor
 
 Native builds use the exact npm-locked releases **jQuery 4.0.0**, **hls.js 1.7.4**
-and **Shaka Player 5.3.4**. This applies to Tauri, iOS, Android Full and Android
+and **Shaka Player 5.3.5**. This applies to Tauri, iOS, Android Full and Android
 Play. Their package license files are copied into `licenses/native/` in the native
 frontend by the asset preparer; `native-runtime.json` records the versions and
 file hashes. Verify those outputs against the release artifact, not the older web
@@ -51,14 +51,14 @@ vendor filenames.
 
 - **jQuery 4.0.0:** MIT; [official release license](https://github.com/jquery/jquery/blob/4.0.0/LICENSE.txt).
 - **hls.js 1.7.4:** Apache 2.0; [official release license](https://github.com/video-dev/hls.js/blob/v1.7.4/LICENSE).
-- **Shaka Player 5.3.4:** Apache 2.0 with the additional notices retained in its
-  [official release license](https://github.com/shaka-project/shaka-player/blob/v5.3.4/LICENSE).
+- **Shaka Player 5.3.5:** Apache 2.0 with the additional notices retained in its
+  [official release license](https://github.com/shaka-project/shaka-player/blob/v5.3.5/LICENSE).
   Its additional MIT notices and `third_party/SUMMARY.txt` are retained in
   `licenses/native/shaka-player-LICENSE.txt` and
   `licenses/native/shaka-third-party/SUMMARY.txt`; other upstream license/notice
   files under `third_party` retain their relative paths in that directory.
-- **Capacitor core, Android, iOS and CLI/template 8.5.2:** MIT;
-  [official release license](https://github.com/ionic-team/capacitor/blob/8.5.2/LICENSE).
+- **Capacitor core, Android, iOS and CLI/template 8.6.2:** MIT;
+  [official release license](https://github.com/ionic-team/capacitor/blob/8.6.2/LICENSE).
 - **Capacitor App 8.1.1:** MIT, with its separate Ionic copyright.
   [Complete license](licenses/android/Capacitor-App-8.1.1-LICENSE.txt), copied
   unchanged from the installed package and checked against its

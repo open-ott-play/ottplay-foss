@@ -21,7 +21,7 @@ version at runtime.
   Conforming native APIs are preserved. Proposals are not included merely
   because a new core-js release offers them.
 - The legacy web profile retains jQuery **1.11.1** and Shaka Player **3.3.19**.
-  Native shells use npm-locked jQuery **4.0.0** and Shaka Player **5.3.3**.
+  Native shells use npm-locked jQuery **4.0.0** and Shaka Player **5.3.5**.
   These are explicit packaging profiles. Neither uses a user-agent-triggered
   CDN substitution. Updating HLS does not establish that the other libraries'
   current native versions can run on the old web profile.
