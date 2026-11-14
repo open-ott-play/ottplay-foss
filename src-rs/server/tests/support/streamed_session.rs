@@ -11,7 +11,9 @@ mod pump;
 use archive_v2::{sha256, Archive};
 use ottplay_core::multiview::{
     decoder::{self, BoundContext, DecoderError, GrantedStream, PublicationAuthority},
-    encoder::{EncoderError, EncoderState},
+    encoder::{
+        EncoderError, EncoderFailureDetail, EncoderFailureLane, EncoderFailureSite, EncoderState,
+    },
     frames::FrameSpec,
     geometry::{CanvasSpec, ImportedRect, OverlapPolicy, ValidatedGeometry},
     persistent::{AudioPolicy, Config, Session, SlotState, Snapshot},
@@ -281,14 +283,8 @@ fn snapshot_json(snapshot: &Snapshot) -> Value {
 }
 // Only closed enum labels and the already logged numeric/enum snapshot enter
 // this fixture error. Never include subprocess stderr, tool paths or grant data.
-fn output_failure_message(
-    snapshot: &Snapshot,
-    cause: impl FnOnce() -> Option<EncoderError>,
-) -> Option<String> {
-    if snapshot.output_state != EncoderState::Failed {
-        return None;
-    }
-    let cause = match cause() {
+fn encoder_error_label(cause: Option<EncoderError>) -> &'static str {
+    match cause {
         Some(EncoderError::InvalidConfig) => "InvalidConfig",
         Some(EncoderError::Unsupported) => "Unsupported",
         Some(EncoderError::Busy) => "Busy",
@@ -302,9 +298,47 @@ fn output_failure_message(
         Some(EncoderError::ProcessFailed) => "ProcessFailed",
         Some(EncoderError::InvalidManifest) => "InvalidManifest",
         None => "Unavailable",
+    }
+}
+fn failure_detail_json(detail: Option<EncoderFailureDetail>) -> Value {
+    let (site, lane) = match detail {
+        Some(detail) => (
+            match detail.site {
+                EncoderFailureSite::SelectionMissing => "SelectionMissing",
+                EncoderFailureSite::SelectionFuture => "SelectionFuture",
+                EncoderFailureSite::SelectionOwner => "SelectionOwner",
+                EncoderFailureSite::SelectionAge => "SelectionAge",
+                EncoderFailureSite::SelectionRepeat => "SelectionRepeat",
+                EncoderFailureSite::PacerDebt => "PacerDebt",
+                EncoderFailureSite::WriteAbsolute => "WriteAbsolute",
+                EncoderFailureSite::WriteNoProgress => "WriteNoProgress",
+                EncoderFailureSite::MonitorProgress => "MonitorProgress",
+                EncoderFailureSite::MonitorHls => "MonitorHls",
+                EncoderFailureSite::Other => "Other",
+            },
+            match detail.lane {
+                EncoderFailureLane::Video => "Video",
+                EncoderFailureLane::Audio => "Audio",
+                EncoderFailureLane::Monitor => "Monitor",
+                EncoderFailureLane::Other => "Other",
+            },
+        ),
+        None => ("Unavailable", "Unavailable"),
     };
+    json!({"error":encoder_error_label(detail.map(|value| value.error)),"site":site,"lane":lane})
+}
+fn output_failure_message(
+    snapshot: &Snapshot,
+    cause: impl FnOnce() -> Option<EncoderFailureDetail>,
+) -> Option<String> {
+    if snapshot.output_state != EncoderState::Failed {
+        return None;
+    }
+    let detail = cause();
+    let cause = encoder_error_label(detail.map(|value| value.error));
     Some(format!(
-        "encoder output Failed: cause={cause}; snapshot={}",
+        "encoder output Failed: cause={cause}; detail={}; snapshot={}",
+        failure_detail_json(detail),
         snapshot_json(snapshot)
     ))
 }
@@ -366,7 +400,8 @@ impl Events {
         self.count += 1;
         // Preserve the exact observation before failing; the scenario boundary
         // retains this error in CONTROL and still executes its normal cleanup.
-        if let Some(failure) = output_failure_message(&snapshot, || session.output_failure()) {
+        if let Some(failure) = output_failure_message(&snapshot, || session.output_failure_detail())
+        {
             return Err(failure);
         }
         Ok(snapshot) // The exact logged value is the one used by every assertion.
@@ -944,6 +979,14 @@ fn run_case(
 mod output_failure_tests {
     use super::*;
 
+    fn detail(error: EncoderError) -> EncoderFailureDetail {
+        EncoderFailureDetail {
+            error,
+            site: EncoderFailureSite::Other,
+            lane: EncoderFailureLane::Other,
+        }
+    }
+
     fn snapshot(state: EncoderState) -> Snapshot {
         Snapshot {
             runtime: u64::MAX,
@@ -983,8 +1026,9 @@ mod output_failure_tests {
             (EncoderError::ProcessFailed, "ProcessFailed"),
             (EncoderError::InvalidManifest, "InvalidManifest"),
         ] {
-            let message = output_failure_message(&snapshot(EncoderState::Failed), || Some(cause))
-                .expect("Failed must fail immediately with a closed cause");
+            let message =
+                output_failure_message(&snapshot(EncoderState::Failed), || Some(detail(cause)))
+                    .expect("Failed must fail immediately with a closed cause");
             assert!(message.starts_with(&format!("encoder output Failed: cause={expected};")));
             assert!(
                 expected.len() <= 15 && expected.bytes().all(|byte| byte.is_ascii_alphabetic())
@@ -1023,7 +1067,7 @@ mod output_failure_tests {
                 let accessed = std::cell::Cell::new(false);
                 assert!(output_failure_message(&snapshot(state), || {
                     accessed.set(true);
-                    cause
+                    cause.map(detail)
                 })
                 .is_none());
                 assert!(
@@ -1064,5 +1108,85 @@ mod output_failure_tests {
             assert_eq!(calls.get(), 1);
             assert_eq!(actual.as_deref(), Some(expected.as_str()));
         }
+    }
+
+    #[test]
+    fn failure_detail_serialization_is_closed_and_explicitly_unavailable() {
+        for (site, site_label) in [
+            (EncoderFailureSite::SelectionMissing, "SelectionMissing"),
+            (EncoderFailureSite::SelectionFuture, "SelectionFuture"),
+            (EncoderFailureSite::SelectionOwner, "SelectionOwner"),
+            (EncoderFailureSite::SelectionAge, "SelectionAge"),
+            (EncoderFailureSite::SelectionRepeat, "SelectionRepeat"),
+            (EncoderFailureSite::PacerDebt, "PacerDebt"),
+            (EncoderFailureSite::WriteAbsolute, "WriteAbsolute"),
+            (EncoderFailureSite::WriteNoProgress, "WriteNoProgress"),
+            (EncoderFailureSite::MonitorProgress, "MonitorProgress"),
+            (EncoderFailureSite::MonitorHls, "MonitorHls"),
+            (EncoderFailureSite::Other, "Other"),
+        ] {
+            for (lane, lane_label) in [
+                (EncoderFailureLane::Video, "Video"),
+                (EncoderFailureLane::Audio, "Audio"),
+                (EncoderFailureLane::Monitor, "Monitor"),
+                (EncoderFailureLane::Other, "Other"),
+            ] {
+                let value = failure_detail_json(Some(EncoderFailureDetail {
+                    error: EncoderError::Stalled,
+                    site,
+                    lane,
+                }));
+                assert_eq!(
+                    value,
+                    json!({"error":"Stalled","site":site_label,"lane":lane_label})
+                );
+                assert_eq!(value.as_object().unwrap().len(), 3);
+                for label in [site_label, lane_label] {
+                    assert!(
+                        label.len() <= 16 && label.bytes().all(|byte| byte.is_ascii_alphabetic())
+                    );
+                }
+            }
+        }
+        assert_eq!(
+            failure_detail_json(None),
+            json!({"error":"Unavailable","site":"Unavailable","lane":"Unavailable"})
+        );
+    }
+
+    #[test]
+    fn early_output_failure_keeps_origin_detail_and_parseable_snapshot() {
+        let original = EncoderFailureDetail {
+            error: EncoderError::Stalled,
+            site: EncoderFailureSite::SelectionAge,
+            lane: EncoderFailureLane::Video,
+        };
+        let calls = std::cell::Cell::new(0);
+        let message = output_failure_message(&snapshot(EncoderState::Failed), || {
+            calls.set(calls.get() + 1);
+            Some(original)
+        })
+        .unwrap();
+        assert_eq!(calls.get(), 1);
+        let (prefix, counters) = message.split_once("; snapshot=").unwrap();
+        let (cause, origin) = prefix.split_once("; detail=").unwrap();
+        assert_eq!(cause, "encoder output Failed: cause=Stalled");
+        assert_eq!(
+            serde_json::from_str::<Value>(origin).unwrap(),
+            json!({"error":"Stalled","site":"SelectionAge","lane":"Video"})
+        );
+        assert_eq!(
+            serde_json::from_str::<Value>(counters).unwrap(),
+            snapshot_json(&snapshot(EncoderState::Failed))
+        );
+        let retained =
+            retain_failure_observation(Some("commit source: Stopped".to_owned()), || {
+                Err(message.clone())
+            })
+            .unwrap();
+        assert_eq!(
+            retained,
+            format!("commit source: Stopped; final output observation: {message}")
+        );
     }
 }

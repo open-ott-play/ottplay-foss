@@ -1031,6 +1031,9 @@ impl Session {
     pub fn output_failure(&self) -> Option<super::encoder::EncoderError> {
         self.encoder.failure()
     }
+    pub fn output_failure_detail(&self) -> Option<super::encoder::EncoderFailureDetail> {
+        self.encoder.failure_detail()
+    }
     pub fn snapshot(&self) -> Snapshot {
         let output = self.encoder.snapshot();
         let state = lock(&self.state);

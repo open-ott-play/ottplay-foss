@@ -174,3 +174,11 @@ cleanup fails qualification. The streamed fixture checks a finite selected-owner
 interval, including motion, timestamps, every-50-ms audio energy/phase and the
 return-audio tail. It does not establish full-film lifetime, private-v1/native-client
 or TV acceptance.
+
+Encoder diagnostics retain the first terminal error together with a closed failure
+site and originating lane. If one lane forwards a failure from another, its
+original site and lane remain intact. This records the first globally latched
+terminal failure, not necessarily the earliest detection by wall-clock time.
+Existing error getters retain their behavior; the detailed getters are read-only
+and do not change snapshots or the wire protocol. The streamed fixture records
+only these closed labels and its existing safe counters before cleanup.

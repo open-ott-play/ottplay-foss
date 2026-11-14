@@ -159,6 +159,54 @@ fn later_capture(a: &CaptureFrame, b: &CaptureFrame) -> bool {
     (a.captured_at, a.sequence) > (b.captured_at, b.sequence)
 }
 #[cfg(any(target_os = "linux", target_os = "macos"))]
+fn validate_capture_selection_detail(
+    frame: &Arc<CaptureFrame>,
+    generation: u64,
+    owner: &Arc<OnceLock<Instant>>,
+    fence: CaptureFence,
+    target: Instant,
+    age: Duration,
+    committed: &Option<Arc<CaptureFrame>>,
+    repeats: u8,
+) -> Result<u8, EncoderFailureDetail> {
+    if frame.captured_at > target {
+        return Err(EncoderFailureDetail::stalled(
+            EncoderFailureSite::SelectionFuture,
+            EncoderFailureLane::Video,
+        ));
+    }
+    if !owner_valid(frame, generation, owner, fence, target) {
+        return Err(EncoderFailureDetail::stalled(
+            EncoderFailureSite::SelectionOwner,
+            EncoderFailureLane::Video,
+        ));
+    }
+    if target.duration_since(frame.captured_at) > age {
+        return Err(EncoderFailureDetail::stalled(
+            EncoderFailureSite::SelectionAge,
+            EncoderFailureLane::Video,
+        ));
+    }
+    match committed {
+        Some(old) if frame.sequence < old.sequence => Err(EncoderError::InvalidConfig.into()),
+        Some(old) if frame.sequence == old.sequence => {
+            if !Arc::ptr_eq(frame, old) {
+                return Err(EncoderError::InvalidConfig.into());
+            }
+            repeats
+                .checked_add(1)
+                .filter(|count| *count <= 2)
+                .ok_or_else(|| {
+                    EncoderFailureDetail::stalled(
+                        EncoderFailureSite::SelectionRepeat,
+                        EncoderFailureLane::Video,
+                    )
+                })
+        }
+        _ => Ok(0),
+    }
+}
+#[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 fn validate_capture_selection(
     frame: &Arc<CaptureFrame>,
     generation: u64,
@@ -169,24 +217,10 @@ fn validate_capture_selection(
     committed: &Option<Arc<CaptureFrame>>,
     repeats: u8,
 ) -> Result<u8, EncoderError> {
-    if !frame_eligible(frame, generation, owner, fence, target)
-        || target.duration_since(frame.captured_at) > age
-    {
-        return Err(EncoderError::Stalled);
-    }
-    match committed {
-        Some(old) if frame.sequence < old.sequence => Err(EncoderError::InvalidConfig),
-        Some(old) if frame.sequence == old.sequence => {
-            if !Arc::ptr_eq(frame, old) {
-                return Err(EncoderError::InvalidConfig);
-            }
-            repeats
-                .checked_add(1)
-                .filter(|count| *count <= 2)
-                .ok_or(EncoderError::Stalled)
-        }
-        _ => Ok(0),
-    }
+    validate_capture_selection_detail(
+        frame, generation, owner, fence, target, age, committed, repeats,
+    )
+    .map_err(|detail| detail.error)
 }
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 struct TargetLease<'a> {
@@ -498,7 +532,7 @@ impl CaptureVideoFeed {
         Ok(state.generation == Some(generation) && state.fence.same_visual(fence))
     }
     #[cfg(any(target_os = "linux", target_os = "macos"))]
-    fn reserve_current(
+    fn reserve_current_detail(
         &self,
         generation: u64,
         index: u64,
@@ -506,10 +540,10 @@ impl CaptureVideoFeed {
         age: Duration,
         committed: &Option<Arc<CaptureFrame>>,
         repeats: u8,
-    ) -> Result<TargetLease<'_>, EncoderError> {
+    ) -> Result<TargetLease<'_>, EncoderFailureDetail> {
         let mut state = self.state.lock().map_err(|_| EncoderError::Io)?;
         if state.generation != Some(generation) {
-            return Err(EncoderError::InvalidConfig);
+            return Err(EncoderError::InvalidConfig.into());
         }
         let (owner, fence) = (state.invalidated_at.clone(), state.fence);
         let window = state.window.as_ref().ok_or(EncoderError::InvalidConfig)?;
@@ -519,14 +553,19 @@ impl CaptureVideoFeed {
             || window.next_index != index
             || capture_target(window.epoch, index, window.rate)? != target
         {
-            return Err(EncoderError::InvalidConfig);
+            return Err(EncoderError::InvalidConfig.into());
         }
         let frame = window.buckets[0]
             .as_ref()
             .or(committed.as_ref())
             .cloned()
-            .ok_or(EncoderError::Stalled)?;
-        let next_repeats = validate_capture_selection(
+            .ok_or_else(|| {
+                EncoderFailureDetail::stalled(
+                    EncoderFailureSite::SelectionMissing,
+                    EncoderFailureLane::Video,
+                )
+            })?;
+        let next_repeats = validate_capture_selection_detail(
             &frame, generation, &owner, fence, target, age, committed, repeats,
         )?;
         let id = state
@@ -551,6 +590,19 @@ impl CaptureVideoFeed {
             repeats: next_repeats,
             finished: false,
         })
+    }
+    #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+    fn reserve_current(
+        &self,
+        generation: u64,
+        index: u64,
+        target: Instant,
+        age: Duration,
+        committed: &Option<Arc<CaptureFrame>>,
+        repeats: u8,
+    ) -> Result<TargetLease<'_>, EncoderError> {
+        self.reserve_current_detail(generation, index, target, age, committed, repeats)
+            .map_err(|detail| detail.error)
     }
     #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
     fn take_at(
@@ -711,6 +763,52 @@ pub struct EncoderSnapshot {
     pub video_frames_written: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EncoderFailureSite {
+    SelectionMissing,
+    SelectionFuture,
+    SelectionOwner,
+    SelectionAge,
+    SelectionRepeat,
+    PacerDebt,
+    WriteAbsolute,
+    WriteNoProgress,
+    MonitorProgress,
+    MonitorHls,
+    Other,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EncoderFailureLane {
+    Video,
+    Audio,
+    Monitor,
+    Other,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EncoderFailureDetail {
+    pub error: EncoderError,
+    pub site: EncoderFailureSite,
+    pub lane: EncoderFailureLane,
+}
+impl From<EncoderError> for EncoderFailureDetail {
+    fn from(error: EncoderError) -> Self {
+        Self {
+            error,
+            site: EncoderFailureSite::Other,
+            lane: EncoderFailureLane::Other,
+        }
+    }
+}
+impl EncoderFailureDetail {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn stalled(site: EncoderFailureSite, lane: EncoderFailureLane) -> Self {
+        Self {
+            error: EncoderError::Stalled,
+            site,
+            lane,
+        }
+    }
+}
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod runtime {
     use super::*;
@@ -800,7 +898,7 @@ mod runtime {
         audio_done: bool,
         epoch: Option<Instant>,
         phase: CapturePhase,
-        failure: Option<EncoderError>,
+        failure: Option<EncoderFailureDetail>,
         lanes: [CaptureLane; 2],
         #[cfg(test)]
         steady_at: Option<Instant>,
@@ -862,7 +960,8 @@ mod runtime {
             self.finished = true;
             Ok(())
         }
-        fn fail(mut self, error: EncoderError) {
+        fn fail(mut self, error: impl Into<EncoderFailureDetail>) {
+            let error = error.into();
             let mut state = lock(&self.startup.state);
             state.phase = CapturePhase::Failed;
             state.failure.get_or_insert(error);
@@ -875,7 +974,15 @@ mod runtime {
             if !self.finished {
                 let mut state = lock(&self.startup.state);
                 state.phase = CapturePhase::Failed;
-                state.failure.get_or_insert(EncoderError::Cancelled);
+                state.failure.get_or_insert(EncoderFailureDetail {
+                    error: EncoderError::Cancelled,
+                    site: EncoderFailureSite::Other,
+                    lane: if self.lane == 0 {
+                        EncoderFailureLane::Video
+                    } else {
+                        EncoderFailureLane::Audio
+                    },
+                });
                 state.lanes[self.lane].in_flight = false;
             }
         }
@@ -975,24 +1082,30 @@ mod runtime {
             }
             Ok(())
         }
-        fn try_steady(&self, shared: &Shared, age_limit: Duration) -> Result<bool, EncoderError> {
+        fn try_steady(
+            &self,
+            shared: &Shared,
+            age_limit: Duration,
+        ) -> Result<bool, EncoderFailureDetail> {
             let mut state = lock(&self.state);
             match state.phase {
                 CapturePhase::Steady => return Ok(true),
                 CapturePhase::Failed => {
-                    return Err(state.failure.unwrap_or(EncoderError::Cancelled))
+                    return Err(state
+                        .failure
+                        .unwrap_or_else(|| EncoderError::Cancelled.into()))
                 }
                 CapturePhase::Initializing => {}
             }
             if shared.stop.load(Ordering::Acquire) {
-                return Err(EncoderError::Cancelled);
+                return Err(EncoderError::Cancelled.into());
             }
             if lock(&shared.snapshot).state != EncoderState::Playing {
                 return Ok(false);
             }
             let now = Instant::now();
             if now > self.deadline {
-                return Err(EncoderError::StartupTimeout);
+                return Err(EncoderError::StartupTimeout.into());
             }
             if state
                 .lanes
@@ -1011,7 +1124,7 @@ mod runtime {
             if media_target(epoch, index, self.fps)? != target
                 || window_age_limit(self.fps)? != age_limit
             {
-                return Err(EncoderError::InvalidConfig);
+                return Err(EncoderError::InvalidConfig.into());
             }
             let Some(_captured_at) =
                 self.feed
@@ -1033,21 +1146,23 @@ mod runtime {
             lane: usize,
             index: u64,
             target: Instant,
-        ) -> Result<CaptureWrite<'_>, EncoderError> {
+        ) -> Result<CaptureWrite<'_>, EncoderFailureDetail> {
             let mut state = lock(&self.state);
             if state.phase == CapturePhase::Failed {
-                return Err(state.failure.unwrap_or(EncoderError::Cancelled));
+                return Err(state
+                    .failure
+                    .unwrap_or_else(|| EncoderError::Cancelled.into()));
             }
             if state.lanes[lane].in_flight
                 || state.lanes[lane].next_target != Some(target)
                 || state.lanes[lane].next_index != Some(index)
             {
-                return Err(EncoderError::InvalidConfig);
+                return Err(EncoderError::InvalidConfig.into());
             }
             if state.phase == CapturePhase::Initializing
                 && !self.feed.empty_sources(self.generation)?
             {
-                return Err(EncoderError::InvalidConfig);
+                return Err(EncoderError::InvalidConfig.into());
             }
             state.lanes[lane].in_flight = true;
             Ok(CaptureWrite {
@@ -1059,10 +1174,12 @@ mod runtime {
                 finished: false,
             })
         }
-        fn phase(&self) -> Result<CapturePhase, EncoderError> {
+        fn phase(&self) -> Result<CapturePhase, EncoderFailureDetail> {
             let state = lock(&self.state);
             if state.phase == CapturePhase::Failed {
-                Err(state.failure.unwrap_or(EncoderError::Cancelled))
+                Err(state
+                    .failure
+                    .unwrap_or_else(|| EncoderError::Cancelled.into()))
             } else {
                 Ok(state.phase)
             }
@@ -1086,7 +1203,7 @@ mod runtime {
         started: Instant,
         touched: Mutex<Instant>,
         snapshot: Mutex<EncoderSnapshot>,
-        error: Mutex<Option<EncoderError>>,
+        error: Mutex<Option<EncoderFailureDetail>>,
         audio_samples_written: AtomicU64,
         video_frames_written: AtomicU64,
         capture_startup: Option<Arc<CaptureStartup>>,
@@ -1094,7 +1211,8 @@ mod runtime {
     fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
         mutex.lock().unwrap_or_else(|poison| poison.into_inner())
     }
-    fn fail(shared: &Shared, error: EncoderError) {
+    fn fail(shared: &Shared, error: impl Into<EncoderFailureDetail>) {
+        let error = error.into();
         let mut first = lock(&shared.error);
         if first.is_none() {
             *first = Some(error);
@@ -1272,15 +1390,15 @@ mod runtime {
             shared: &Shared,
             startup: &'a CaptureStartup,
             lane: usize,
-        ) -> Result<CaptureWrite<'a>, EncoderError> {
+        ) -> Result<CaptureWrite<'a>, EncoderFailureDetail> {
             loop {
                 startup.try_steady(shared, age_limit)?;
                 if shared.stop.load(Ordering::Acquire) {
-                    return Err(EncoderError::Cancelled);
+                    return Err(EncoderError::Cancelled.into());
                 }
                 let now = Instant::now();
                 if !startup.constructor_complete.load(Ordering::Acquire) && now > startup.deadline {
-                    return Err(EncoderError::StartupTimeout);
+                    return Err(EncoderError::StartupTimeout.into());
                 }
                 let phase = startup.phase()?;
                 if now < target {
@@ -1288,7 +1406,14 @@ mod runtime {
                     continue;
                 }
                 if phase == CapturePhase::Steady && now.duration_since(target) > debt {
-                    return Err(EncoderError::Stalled);
+                    return Err(EncoderFailureDetail::stalled(
+                        EncoderFailureSite::PacerDebt,
+                        if lane == 0 {
+                            EncoderFailureLane::Video
+                        } else {
+                            EncoderFailureLane::Audio
+                        },
+                    ));
                 }
                 if !self.permit_at(now)? {
                     thread::sleep(Duration::from_millis(2));
@@ -1298,79 +1423,122 @@ mod runtime {
                 if reservation.phase == CapturePhase::Steady
                     && Instant::now().duration_since(target) > debt
                 {
-                    reservation.fail(EncoderError::Stalled);
-                    return Err(EncoderError::Stalled);
+                    let detail = EncoderFailureDetail::stalled(
+                        EncoderFailureSite::PacerDebt,
+                        if lane == 0 {
+                            EncoderFailureLane::Video
+                        } else {
+                            EncoderFailureLane::Audio
+                        },
+                    );
+                    reservation.fail(detail);
+                    return Err(detail);
                 }
                 return Ok(reservation);
             }
         }
     }
-    fn write_capture_complete(
+    fn write_capture_complete_detail(
         writer: &mut impl Write,
         bytes: &[u8],
         shared: &Shared,
         stall: Duration,
         absolute: Instant,
         mut authorized: impl FnMut() -> Result<bool, EncoderError>,
-    ) -> Result<(), EncoderError> {
+        lane: EncoderFailureLane,
+    ) -> Result<(), EncoderFailureDetail> {
         let mut offset = 0;
         let mut advanced = Instant::now();
         while offset < bytes.len() {
             if shared.stop.load(Ordering::Acquire) {
-                return Err(EncoderError::Cancelled);
+                return Err(EncoderError::Cancelled.into());
             }
-            if Instant::now() > absolute || advanced.elapsed() >= stall {
-                return Err(EncoderError::Stalled);
+            if Instant::now() > absolute {
+                return Err(EncoderFailureDetail::stalled(
+                    EncoderFailureSite::WriteAbsolute,
+                    lane,
+                ));
+            }
+            if advanced.elapsed() >= stall {
+                return Err(EncoderFailureDetail::stalled(
+                    EncoderFailureSite::WriteNoProgress,
+                    lane,
+                ));
             }
             if !authorized()? {
-                return Err(EncoderError::Cancelled);
+                return Err(EncoderError::Cancelled.into());
             }
             match writer.write(&bytes[offset..]) {
-                Ok(0) => return Err(EncoderError::ProcessFailed),
+                Ok(0) => return Err(EncoderError::ProcessFailed.into()),
                 Ok(count) if count <= bytes.len() - offset => {
                     offset += count;
                     advanced = Instant::now();
                 }
-                Ok(_) => return Err(EncoderError::Io),
+                Ok(_) => return Err(EncoderError::Io.into()),
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
                     thread::sleep(Duration::from_millis(2))
                 }
                 Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
-                Err(_) => return Err(EncoderError::Io),
+                Err(_) => return Err(EncoderError::Io.into()),
             }
         }
         // Completion cannot acknowledge an expired/revoked partial frame.
         if Instant::now() > absolute {
-            return Err(EncoderError::Stalled);
+            return Err(EncoderFailureDetail::stalled(
+                EncoderFailureSite::WriteAbsolute,
+                lane,
+            ));
         }
         if !authorized()? {
-            return Err(EncoderError::Cancelled);
+            return Err(EncoderError::Cancelled.into());
         }
         Ok(())
     }
-    fn write_black_complete(
+    fn write_black_complete_detail(
         writer: &mut impl Write,
         bytes: usize,
         shared: &Shared,
         stall: Duration,
         absolute: Instant,
         mut authorized: impl FnMut() -> Result<bool, EncoderError>,
-    ) -> Result<(), EncoderError> {
+        lane: EncoderFailureLane,
+    ) -> Result<(), EncoderFailureDetail> {
         let zeros = [0u8; 4096];
         let mut remaining = bytes;
         while remaining != 0 {
             let count = remaining.min(zeros.len());
-            write_capture_complete(
+            write_capture_complete_detail(
                 writer,
                 &zeros[..count],
                 shared,
                 stall,
                 absolute,
                 &mut authorized,
+                lane,
             )?;
             remaining -= count;
         }
         Ok(())
+    }
+    #[cfg(test)]
+    fn write_capture_complete(
+        writer: &mut impl Write,
+        bytes: &[u8],
+        shared: &Shared,
+        stall: Duration,
+        absolute: Instant,
+        authorized: impl FnMut() -> Result<bool, EncoderError>,
+    ) -> Result<(), EncoderError> {
+        write_capture_complete_detail(
+            writer,
+            bytes,
+            shared,
+            stall,
+            absolute,
+            authorized,
+            EncoderFailureLane::Other,
+        )
+        .map_err(|detail| detail.error)
     }
     #[cfg(test)]
     fn select_capture(
@@ -1406,20 +1574,21 @@ mod runtime {
         let debt = capture_debt(canvas, stall);
         let mut committed = None;
         let mut repeats = 0;
-        let result = (|| -> Result<(), EncoderError> {
+        let result = (|| -> Result<(), EncoderFailureDetail> {
             let age_limit = capture_age_limit(canvas)?;
             let startup = shared
                 .capture_startup
                 .as_ref()
                 .ok_or(EncoderError::InvalidConfig)?;
             for _ in 0..startup.video_units {
-                write_black_complete(
+                write_black_complete_detail(
                     &mut writer,
                     canvas.width as usize * canvas.height as usize * 3,
                     &shared,
                     stall,
                     startup.deadline,
                     || feed.empty_sources(generation),
+                    EncoderFailureLane::Video,
                 )?;
                 shared.video_frames_written.fetch_add(1, Ordering::Relaxed);
             }
@@ -1432,15 +1601,15 @@ mod runtime {
                 let reservation = pacer
                     .wait_capture_start(index, target, debt, age_limit, &shared, startup, 0)?;
                 let lease = if reservation.phase == CapturePhase::Steady {
-                    match feed
-                        .reserve_current(generation, index, target, age_limit, &committed, repeats)
-                    {
+                    match feed.reserve_current_detail(
+                        generation, index, target, age_limit, &committed, repeats,
+                    ) {
                         Ok(lease) => {
                             if lease.frame.len()
                                 != canvas.width as usize * canvas.height as usize * 3
                             {
                                 reservation.fail(EncoderError::InvalidConfig);
-                                return Err(EncoderError::InvalidConfig);
+                                return Err(EncoderError::InvalidConfig.into());
                             }
                             Some(lease)
                         }
@@ -1463,24 +1632,35 @@ mod runtime {
                     Some(CapturePixels::Rgb(bytes))
                         if bytes.len() == canvas.width as usize * canvas.height as usize * 3 =>
                     {
-                        write_capture_complete(&mut writer, bytes, &shared, stall, absolute, || {
-                            Ok(true)
-                        })
+                        write_capture_complete_detail(
+                            &mut writer,
+                            bytes,
+                            &shared,
+                            stall,
+                            absolute,
+                            || Ok(true),
+                            EncoderFailureLane::Video,
+                        )
                     }
-                    Some(CapturePixels::Black(bytes)) => {
-                        write_black_complete(&mut writer, *bytes, &shared, stall, absolute, || {
-                            Ok(true)
-                        })
-                    }
-                    None => write_black_complete(
+                    Some(CapturePixels::Black(bytes)) => write_black_complete_detail(
+                        &mut writer,
+                        *bytes,
+                        &shared,
+                        stall,
+                        absolute,
+                        || Ok(true),
+                        EncoderFailureLane::Video,
+                    ),
+                    None => write_black_complete_detail(
                         &mut writer,
                         canvas.width as usize * canvas.height as usize * 3,
                         &shared,
                         stall,
                         absolute,
                         || feed.empty_sources(generation),
+                        EncoderFailureLane::Video,
                     ),
-                    _ => Err(EncoderError::InvalidConfig),
+                    _ => Err(EncoderError::InvalidConfig.into()),
                 };
                 if let Err(error) = written {
                     reservation.fail(error);
@@ -1492,11 +1672,11 @@ mod runtime {
                         Ok(committed_next) if committed_next == next => {}
                         Ok(_) => {
                             reservation.fail(EncoderError::InvalidConfig);
-                            return Err(EncoderError::InvalidConfig);
+                            return Err(EncoderError::InvalidConfig.into());
                         }
                         Err(error) => {
                             reservation.fail(error);
-                            return Err(error);
+                            return Err(error.into());
                         }
                     }
                 }
@@ -1520,7 +1700,7 @@ mod runtime {
         shared: Arc<Shared>,
     ) {
         let debt = capture_debt(canvas, stall);
-        let result = (|| -> Result<(), EncoderError> {
+        let result = (|| -> Result<(), EncoderFailureDetail> {
             let startup = shared
                 .capture_startup
                 .as_ref()
@@ -1528,13 +1708,14 @@ mod runtime {
             let generation = lock(&shared.snapshot).generation;
             let silent = [0u8; 3840];
             for _ in 0..startup.audio_units {
-                write_capture_complete(
+                write_capture_complete_detail(
                     &mut writer,
                     &silent,
                     &shared,
                     stall,
                     startup.deadline,
                     || startup.feed.empty_sources(generation),
+                    EncoderFailureLane::Audio,
                 )?;
                 shared
                     .audio_samples_written
@@ -1554,7 +1735,7 @@ mod runtime {
                     let samples = feed.at(target);
                     if samples.len() != 1920 {
                         reservation.fail(EncoderError::InvalidConfig);
-                        return Err(EncoderError::InvalidConfig);
+                        return Err(EncoderError::InvalidConfig.into());
                     }
                     for (target, sample) in bytes.chunks_exact_mut(2).zip(samples) {
                         target.copy_from_slice(&sample.to_le_bytes());
@@ -1568,14 +1749,21 @@ mod runtime {
                         .checked_add(debt)
                         .ok_or(EncoderError::InvalidConfig)?
                 };
-                let written =
-                    write_capture_complete(&mut writer, &bytes, &shared, stall, absolute, || {
+                let written = write_capture_complete_detail(
+                    &mut writer,
+                    &bytes,
+                    &shared,
+                    stall,
+                    absolute,
+                    || {
                         if initializing {
                             startup.feed.empty_sources(generation)
                         } else {
                             Ok(true)
                         }
-                    });
+                    },
+                    EncoderFailureLane::Audio,
+                );
                 if let Err(error) = written {
                     reservation.fail(error);
                     return Err(error);
@@ -2006,11 +2194,23 @@ mod runtime {
                 break;
             }
             if !starting && advanced.elapsed() >= config.stall_timeout {
-                fail(&shared, EncoderError::Stalled);
+                fail(
+                    &shared,
+                    EncoderFailureDetail::stalled(
+                        EncoderFailureSite::MonitorProgress,
+                        EncoderFailureLane::Monitor,
+                    ),
+                );
                 break;
             }
             if !starting && hls_advanced.elapsed() >= hls_stall_timeout {
-                fail(&shared, EncoderError::Stalled);
+                fail(
+                    &shared,
+                    EncoderFailureDetail::stalled(
+                        EncoderFailureSite::MonitorHls,
+                        EncoderFailureLane::Monitor,
+                    ),
+                );
                 break;
             }
             thread::sleep(Duration::from_millis(20));
@@ -2406,7 +2606,9 @@ mod runtime {
                         return Ok(encoder);
                     }
                     EncoderState::Failed => {
-                        return Err(lock(&shared.error).unwrap_or(EncoderError::ProcessFailed))
+                        return Err(lock(&shared.error)
+                            .map(|detail| detail.error)
+                            .unwrap_or(EncoderError::ProcessFailed))
                     }
                     _ if shared.stop.load(Ordering::Acquire) => {
                         return Err(EncoderError::Cancelled)
@@ -2417,6 +2619,9 @@ mod runtime {
         }
         /// The first closed encoder failure, without changing output state.
         pub fn failure(&self) -> Option<EncoderError> {
+            self.failure_detail().map(|detail| detail.error)
+        }
+        pub fn failure_detail(&self) -> Option<EncoderFailureDetail> {
             *lock(&self.shared.error)
         }
         pub fn snapshot(&self) -> EncoderSnapshot {
@@ -2592,6 +2797,270 @@ mod runtime {
                 fps: 10,
             }
         }
+        #[test]
+        fn actual_capture_selection_failures_report_exact_priority_site_and_lane() {
+            let target = Instant::now();
+            let feed = CaptureVideoFeed::new(Arc::from(vec![0; 12]), fence(0), target);
+            feed.bind(1).unwrap();
+            feed.arm_window(1, target, 10, 0).unwrap().unwrap();
+            let owner = feed.state.lock().unwrap().invalidated_at.clone();
+            let base = feed.state.lock().unwrap().window.as_ref().unwrap().buckets[0]
+                .as_ref()
+                .unwrap()
+                .clone();
+            feed.state.lock().unwrap().window.as_mut().unwrap().buckets[0] = None;
+            let missing = feed
+                .reserve_current_detail(1, 0, target, Duration::from_millis(200), &None, 0)
+                .err()
+                .unwrap();
+            assert_eq!(
+                missing,
+                EncoderFailureDetail::stalled(
+                    EncoderFailureSite::SelectionMissing,
+                    EncoderFailureLane::Video
+                )
+            );
+            let frame = |at, token| {
+                Arc::new(CaptureFrame {
+                    generation: 1,
+                    sequence: base.sequence,
+                    fence: fence(0),
+                    invalidated_at: token,
+                    captured_at: at,
+                    pixels: CapturePixels::Black(12),
+                })
+            };
+            for (candidate, committed, repeats, expected) in [
+                (
+                    frame(target + Duration::from_nanos(1), Arc::new(OnceLock::new())),
+                    None,
+                    0,
+                    EncoderFailureSite::SelectionFuture,
+                ),
+                (
+                    frame(target, Arc::new(OnceLock::new())),
+                    None,
+                    0,
+                    EncoderFailureSite::SelectionOwner,
+                ),
+                (
+                    frame(target - Duration::from_millis(201), owner.clone()),
+                    None,
+                    0,
+                    EncoderFailureSite::SelectionAge,
+                ),
+                (
+                    base.clone(),
+                    Some(base.clone()),
+                    2,
+                    EncoderFailureSite::SelectionRepeat,
+                ),
+            ] {
+                feed.state.lock().unwrap().window.as_mut().unwrap().buckets[0] = Some(candidate);
+                let detail = feed
+                    .reserve_current_detail(
+                        1,
+                        0,
+                        target,
+                        Duration::from_millis(200),
+                        &committed,
+                        repeats,
+                    )
+                    .err()
+                    .unwrap();
+                assert_eq!(
+                    detail,
+                    EncoderFailureDetail::stalled(expected, EncoderFailureLane::Video)
+                );
+                assert!(feed
+                    .state
+                    .lock()
+                    .unwrap()
+                    .window
+                    .as_ref()
+                    .unwrap()
+                    .lease
+                    .is_none());
+            }
+            // Equal age is allowed; equal sequence from a different Arc is not.
+            let equal = frame(target - Duration::from_millis(200), owner.clone());
+            assert_eq!(
+                validate_capture_selection_detail(
+                    &equal,
+                    1,
+                    &owner,
+                    fence(0),
+                    target,
+                    Duration::from_millis(200),
+                    &None,
+                    0
+                ),
+                Ok(0)
+            );
+            let forged = frame(target, owner.clone());
+            assert_eq!(
+                validate_capture_selection_detail(
+                    &forged,
+                    1,
+                    &owner,
+                    fence(0),
+                    target,
+                    Duration::from_millis(200),
+                    &Some(base),
+                    0
+                )
+                .unwrap_err()
+                .error,
+                EncoderError::InvalidConfig
+            );
+        }
+
+        #[test]
+        fn startup_peer_and_public_getters_preserve_complete_first_failure() {
+            let now = Instant::now();
+            let feed = Arc::new(CaptureVideoFeed::new(Arc::from(vec![0; 12]), fence(0), now));
+            feed.bind(1).unwrap();
+            let startup = CaptureStartup::new(10, now + Duration::from_secs(2), feed, 1);
+            lock(&startup.state).epoch = Some(now);
+            startup.publish_next(0, 0, now).unwrap();
+            startup.publish_next(1, 0, now).unwrap();
+            let origin = EncoderFailureDetail::stalled(
+                EncoderFailureSite::SelectionAge,
+                EncoderFailureLane::Video,
+            );
+            startup.reserve(0, 0, now).unwrap().fail(origin);
+            let shared = shared_at(now);
+            // The audio peer observes and publishes exactly the original Video
+            // detail, not a fresh Audio/Other attribution of the same error.
+            assert_eq!(startup.phase().unwrap_err(), origin);
+            assert_eq!(
+                startup
+                    .try_steady(&shared, Duration::from_millis(200))
+                    .unwrap_err(),
+                origin
+            );
+            let peer = startup.reserve(1, 0, now).err().unwrap();
+            assert_eq!(peer, origin);
+            fail(&shared, peer);
+            fail(
+                &shared,
+                EncoderFailureDetail::stalled(
+                    EncoderFailureSite::WriteNoProgress,
+                    EncoderFailureLane::Audio,
+                ),
+            );
+            fail(
+                &shared,
+                EncoderFailureDetail::stalled(
+                    EncoderFailureSite::MonitorProgress,
+                    EncoderFailureLane::Monitor,
+                ),
+            );
+            let encoder = Encoder {
+                shared: shared.clone(),
+                directory: PathBuf::new(),
+                monitor: None,
+                video: None,
+                audio: None,
+                permit: None,
+                cleaned: true,
+            };
+            let snapshot = *lock(&shared.snapshot);
+            let stop = shared.stop.load(Ordering::Acquire);
+            let audio = shared.audio_samples_written.load(Ordering::Relaxed);
+            let video = shared.video_frames_written.load(Ordering::Relaxed);
+            for _ in 0..3 {
+                assert_eq!(encoder.failure(), Some(EncoderError::Stalled));
+                assert_eq!(encoder.failure_detail(), Some(origin));
+            }
+            assert_eq!(lock(&shared.snapshot).state, snapshot.state);
+            assert_eq!(lock(&shared.snapshot).frames, snapshot.frames);
+            assert_eq!(shared.stop.load(Ordering::Acquire), stop);
+            assert_eq!(shared.audio_samples_written.load(Ordering::Relaxed), audio);
+            assert_eq!(shared.video_frames_written.load(Ordering::Relaxed), video);
+            let other = shared_at(now);
+            fail(&other, EncoderError::Io);
+            fail(&other, origin);
+            assert_eq!(*lock(&other.error), Some(EncoderError::Io.into()));
+        }
+
+        #[test]
+        fn actual_capture_write_and_pacer_report_origin_without_changing_priority() {
+            let now = Instant::now();
+            let shared = shared_at(now);
+            let mut sink = Vec::new();
+            let absolute = write_capture_complete_detail(
+                &mut sink,
+                &[1],
+                &shared,
+                Duration::ZERO,
+                now - Duration::from_nanos(1),
+                || Ok(true),
+                EncoderFailureLane::Video,
+            )
+            .unwrap_err();
+            assert_eq!(
+                absolute,
+                EncoderFailureDetail::stalled(
+                    EncoderFailureSite::WriteAbsolute,
+                    EncoderFailureLane::Video
+                )
+            );
+            let no_progress = write_capture_complete_detail(
+                &mut sink,
+                &[1],
+                &shared,
+                Duration::ZERO,
+                now + Duration::from_secs(2),
+                || Ok(true),
+                EncoderFailureLane::Audio,
+            )
+            .unwrap_err();
+            assert_eq!(
+                no_progress,
+                EncoderFailureDetail::stalled(
+                    EncoderFailureSite::WriteNoProgress,
+                    EncoderFailureLane::Audio
+                )
+            );
+            assert!(sink.is_empty());
+            assert!(
+                lock(&shared.error).is_none(),
+                "helpers never move the terminal latch earlier"
+            );
+            let target = now - Duration::from_millis(201);
+            let feed = Arc::new(CaptureVideoFeed::new(
+                Arc::from(vec![0; 12]),
+                fence(0),
+                target,
+            ));
+            feed.bind(1).unwrap();
+            let warm = isolated_capture_shared(target, feed, true);
+            let startup = warm.capture_startup.as_ref().unwrap();
+            startup.publish_next(0, 1, target).unwrap();
+            let mut pacer = CapturePacer::new(target - startup.quantum, 10);
+            let debt = pacer
+                .wait_capture_start(
+                    1,
+                    target,
+                    Duration::from_millis(200),
+                    Duration::from_millis(200),
+                    &warm,
+                    startup,
+                    0,
+                )
+                .err()
+                .unwrap();
+            assert_eq!(
+                debt,
+                EncoderFailureDetail::stalled(
+                    EncoderFailureSite::PacerDebt,
+                    EncoderFailureLane::Video
+                )
+            );
+            assert!(lock(&warm.error).is_none());
+        }
+
         #[test]
         fn captured_rgb_survives_nonvisual_epochs_without_retagging_or_owner_change() {
             let epoch = Instant::now();
@@ -3276,7 +3745,10 @@ mod runtime {
                 Duration::from_secs(1),
                 shared.clone(),
             );
-            assert_eq!(*lock(&shared.error), Some(EncoderError::Stalled));
+            assert_eq!(
+                lock(&shared.error).map(|detail| detail.error),
+                Some(EncoderError::Stalled)
+            );
             assert_eq!(shared.video_frames_written.load(Ordering::Relaxed), 1);
             assert_eq!(*lock(&accepted), vec![0; 12]);
         }
@@ -4004,7 +4476,10 @@ mod runtime {
             assert!(gate >= published_ready);
             match state.phase {
                 CapturePhase::Steady => assert!(state.failure.is_none()),
-                CapturePhase::Failed => assert_eq!(state.failure, Some(EncoderError::Cancelled)),
+                CapturePhase::Failed => assert_eq!(
+                    state.failure.map(|detail| detail.error),
+                    Some(EncoderError::Cancelled)
+                ),
                 CapturePhase::Initializing => {
                     panic!("Live readiness cannot return to initialization")
                 }
@@ -4101,9 +4576,14 @@ mod runtime {
             startup.publish_next(1, 50, target).unwrap();
             let reservation = startup.reserve(0, 1, target).unwrap();
             drop(reservation);
-            assert_eq!(startup.phase(), Err(EncoderError::Cancelled));
             assert_eq!(
-                startup.try_steady(&shared, Duration::from_secs(2)),
+                startup.phase().map_err(|detail| detail.error),
+                Err(EncoderError::Cancelled)
+            );
+            assert_eq!(
+                startup
+                    .try_steady(&shared, Duration::from_secs(2))
+                    .map_err(|detail| detail.error),
                 Err(EncoderError::Cancelled)
             );
         }
@@ -4359,6 +4839,9 @@ impl Encoder {
         Err(EncoderError::Unsupported)
     }
     pub fn failure(&self) -> Option<EncoderError> {
+        None
+    }
+    pub fn failure_detail(&self) -> Option<EncoderFailureDetail> {
         None
     }
     pub fn snapshot(&self) -> EncoderSnapshot {
