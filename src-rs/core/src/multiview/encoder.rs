@@ -81,6 +81,14 @@ impl BlackSeed {
         })
     }
 }
+#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
+#[derive(Clone, Copy)]
+struct PublicationAttempt {
+    captured_at: Instant,
+    window_index: Option<u64>,
+    eligible_mask: u8,
+    outcome: EncoderPublicationOutcome,
+}
 struct TargetWindow {
     #[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
     generation: u64,
@@ -103,6 +111,7 @@ struct CaptureState {
     window: Option<TargetWindow>,
     black_seed: Option<BlackSeed>,
     next_lease: u64,
+    last_publication: Option<PublicationAttempt>,
 }
 /// Inactive source-free latest capture, or exactly three armed target buckets.
 /// A selected current bucket stays frozen through its complete partial write.
@@ -157,6 +166,24 @@ fn frame_eligible(
 }
 fn later_capture(a: &CaptureFrame, b: &CaptureFrame) -> bool {
     (a.captured_at, a.sequence) > (b.captured_at, b.sequence)
+}
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn capture_offset_ns(captured: Instant, target: Instant) -> i64 {
+    if let Some(delta) = captured.checked_duration_since(target) {
+        saturate_offset_ns(delta.as_nanos(), true)
+    } else {
+        saturate_offset_ns(target.duration_since(captured).as_nanos(), false)
+    }
+}
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn saturate_offset_ns(magnitude: u128, future: bool) -> i64 {
+    if future {
+        magnitude.min(i64::MAX as u128) as i64
+    } else if magnitude > i64::MAX as u128 {
+        i64::MIN
+    } else {
+        -(magnitude as i64)
+    }
 }
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn validate_capture_selection_detail(
@@ -274,6 +301,7 @@ impl CaptureVideoFeed {
                 window: None,
                 black_seed: None,
                 next_lease: 0,
+                last_publication: None,
             }),
         }
     }
@@ -342,6 +370,13 @@ impl CaptureVideoFeed {
             return Err(EncoderError::InvalidConfig);
         }
         let mut state = self.state.lock().map_err(|_| EncoderError::Io)?;
+        let mut attempt = PublicationAttempt {
+            captured_at,
+            window_index: state.window.as_ref().map(|window| window.next_index),
+            eligible_mask: 0,
+            outcome: EncoderPublicationOutcome::Rejected,
+        };
+        state.last_publication = Some(attempt);
         if state.window.as_ref().is_some_and(|window| window.failed) {
             return Ok(false);
         }
@@ -372,7 +407,13 @@ impl CaptureVideoFeed {
                 let target = capture_target(window.epoch, index, window.rate)?;
                 *slot = !(offset == 0 && window.lease.is_some()) && captured_at <= target;
             }
+            attempt.eligible_mask = eligible.iter().enumerate().fold(0, |mask, (index, value)| {
+                mask | if *value { 1u8 << index } else { 0 }
+            });
+            state.last_publication = Some(attempt);
             if !eligible.iter().any(|value| *value) {
+                attempt.outcome = EncoderPublicationOutcome::NoEligible;
+                state.last_publication = Some(attempt);
                 return Ok(false);
             }
         } else if state.active {
@@ -406,9 +447,17 @@ impl CaptureVideoFeed {
                     accepted = true;
                 }
             }
+            attempt.outcome = if accepted {
+                EncoderPublicationOutcome::Accepted
+            } else {
+                EncoderPublicationOutcome::NotNewer
+            };
+            state.last_publication = Some(attempt);
             Ok(accepted)
         } else {
             state.pending = Some(frame);
+            attempt.outcome = EncoderPublicationOutcome::Accepted;
+            state.last_publication = Some(attempt);
             Ok(true)
         }
     }
@@ -565,9 +614,47 @@ impl CaptureVideoFeed {
                     EncoderFailureLane::Video,
                 )
             })?;
-        let next_repeats = validate_capture_selection_detail(
+        let next_repeats = match validate_capture_selection_detail(
             &frame, generation, &owner, fence, target, age, committed, repeats,
-        )?;
+        ) {
+            Ok(next_repeats) => next_repeats,
+            Err(mut detail) => {
+                if detail.site == EncoderFailureSite::SelectionAge {
+                    detail.selection_age = Some(EncoderSelectionAge {
+                        window_index: window.next_index,
+                        candidate_age_ns: target
+                            .duration_since(frame.captured_at)
+                            .as_nanos()
+                            .min(u64::MAX as u128) as u64,
+                        limit_ns: age.as_nanos().min(u64::MAX as u128) as u64,
+                        candidate_sequence: frame.sequence,
+                        committed_sequence: committed.as_ref().map(|old| old.sequence),
+                        repeats,
+                        bucket_sequences: std::array::from_fn(|index| {
+                            window.buckets[index].as_ref().map(|frame| frame.sequence)
+                        }),
+                        bucket_capture_to_target_ns: std::array::from_fn(|index| {
+                            window.buckets[index]
+                                .as_ref()
+                                .map(|frame| capture_offset_ns(frame.captured_at, target))
+                        }),
+                        last_capture_to_target_ns: capture_offset_ns(state.last_capture, target),
+                        last_publication: state.last_publication.map(|attempt| {
+                            EncoderPublicationAttempt {
+                                window_index: attempt.window_index,
+                                eligible_mask: attempt.eligible_mask,
+                                outcome: attempt.outcome,
+                                capture_to_target_ns: capture_offset_ns(
+                                    attempt.captured_at,
+                                    target,
+                                ),
+                            }
+                        }),
+                    });
+                }
+                return Err(detail);
+            }
+        };
         let id = state
             .next_lease
             .checked_add(1)
@@ -785,10 +872,44 @@ pub enum EncoderFailureLane {
     Other,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EncoderPublicationOutcome {
+    Accepted,
+    NoEligible,
+    NotNewer,
+    Rejected,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Last attempt observed after feed-lock admission, excluding the unchanged
+/// pre-lock length check and State pre-feed visual rejection. No attempt is None.
+pub struct EncoderPublicationAttempt {
+    /// The window index and eligible mask observed by this attempt, not by
+    /// the subsequent failing selection. Bit0 is that attempt's current bin.
+    pub window_index: Option<u64>,
+    pub eligible_mask: u8,
+    pub outcome: EncoderPublicationOutcome,
+    /// Attempt capture minus the failing selection target, clamped to i64 ns.
+    pub capture_to_target_ns: i64,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EncoderSelectionAge {
+    pub window_index: u64,
+    pub candidate_age_ns: u64,
+    pub limit_ns: u64,
+    pub candidate_sequence: u64,
+    pub committed_sequence: Option<u64>,
+    pub repeats: u8,
+    pub bucket_sequences: [Option<u64>; 3],
+    /// All offsets use the SAME failing target. Negative means older.
+    pub bucket_capture_to_target_ns: [Option<i64>; 3],
+    pub last_capture_to_target_ns: i64,
+    pub last_publication: Option<EncoderPublicationAttempt>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EncoderFailureDetail {
     pub error: EncoderError,
     pub site: EncoderFailureSite,
     pub lane: EncoderFailureLane,
+    pub selection_age: Option<EncoderSelectionAge>,
 }
 impl From<EncoderError> for EncoderFailureDetail {
     fn from(error: EncoderError) -> Self {
@@ -796,6 +917,7 @@ impl From<EncoderError> for EncoderFailureDetail {
             error,
             site: EncoderFailureSite::Other,
             lane: EncoderFailureLane::Other,
+            selection_age: None,
         }
     }
 }
@@ -806,6 +928,7 @@ impl EncoderFailureDetail {
             error: EncoderError::Stalled,
             site,
             lane,
+            selection_age: None,
         }
     }
 }
@@ -977,6 +1100,7 @@ mod runtime {
                 state.failure.get_or_insert(EncoderFailureDetail {
                     error: EncoderError::Cancelled,
                     site: EncoderFailureSite::Other,
+                    selection_age: None,
                     lane: if self.lane == 0 {
                         EncoderFailureLane::Video
                     } else {
@@ -2797,6 +2921,163 @@ mod runtime {
                 fps: 10,
             }
         }
+        // A real armed/leased/full-ACK schedule. This proves diagnostic values,
+        // not an attribution of any observed Mac performance failure.
+        fn numeric_age_fixture() -> (CaptureVideoFeed, Option<Arc<CaptureFrame>>, u8, Instant) {
+            let epoch = Instant::now();
+            let feed = CaptureVideoFeed::new(
+                Arc::from(vec![0; 12]),
+                fence(0),
+                epoch - Duration::from_millis(60),
+            );
+            feed.bind(1).unwrap();
+            feed.arm_window(1, epoch, 10, 1).unwrap().unwrap();
+            let mut committed = None;
+            let mut repeats = 0;
+            let first = feed
+                .reserve_current_detail(
+                    1,
+                    1,
+                    epoch + Duration::from_millis(100),
+                    Duration::from_millis(200),
+                    &committed,
+                    repeats,
+                )
+                .unwrap();
+            assert!(feed
+                .publish(
+                    Arc::from(vec![1; 12]),
+                    fence(0),
+                    epoch + Duration::from_millis(95)
+                )
+                .unwrap());
+            feed.commit_full(first, &mut committed, &mut repeats)
+                .unwrap();
+            let second = feed
+                .reserve_current_detail(
+                    1,
+                    2,
+                    epoch + Duration::from_millis(200),
+                    Duration::from_millis(200),
+                    &committed,
+                    repeats,
+                )
+                .unwrap();
+            feed.commit_full(second, &mut committed, &mut repeats)
+                .unwrap();
+            (feed, committed, repeats, epoch + Duration::from_millis(300))
+        }
+        #[test]
+        fn selection_age_numeric_snapshot_preserves_buckets_and_last_attempt_outcomes() {
+            let (feed, committed, repeats, target) = numeric_age_fixture();
+            let failure = || {
+                feed.reserve_current_detail(
+                    1,
+                    3,
+                    target,
+                    Duration::from_millis(200),
+                    &committed,
+                    repeats,
+                )
+                .err()
+                .unwrap()
+            };
+            let detail = failure();
+            let age = detail.selection_age.unwrap();
+            assert_eq!(detail.site, EncoderFailureSite::SelectionAge);
+            assert_eq!(age.window_index, 3);
+            assert_eq!(age.candidate_age_ns, 205_000_000);
+            assert_eq!(age.limit_ns, 200_000_000);
+            assert_eq!(age.candidate_sequence, 1);
+            assert_eq!(age.committed_sequence, Some(1));
+            assert_eq!(age.repeats, 0);
+            assert_eq!(age.bucket_sequences, [Some(1), None, None]);
+            assert_eq!(
+                age.bucket_capture_to_target_ns,
+                [Some(-205_000_000), None, None]
+            );
+            assert_eq!(age.last_capture_to_target_ns, -205_000_000);
+            assert_eq!(
+                age.last_publication,
+                Some(EncoderPublicationAttempt {
+                    window_index: Some(1),
+                    eligible_mask: 0b110,
+                    outcome: EncoderPublicationOutcome::Accepted,
+                    capture_to_target_ns: -205_000_000,
+                })
+            );
+            // Future of all three targets: no frame/sequence/last capture moves,
+            // but the single observed attempt remains distinguishable from None.
+            assert!(!feed
+                .publish(
+                    Arc::from(vec![2; 12]),
+                    fence(0),
+                    target + Duration::from_millis(201)
+                )
+                .unwrap());
+            let future = failure().selection_age.unwrap();
+            assert_eq!(future.candidate_sequence, age.candidate_sequence);
+            assert_eq!(future.bucket_sequences, age.bucket_sequences);
+            assert_eq!(
+                future.last_capture_to_target_ns,
+                age.last_capture_to_target_ns
+            );
+            assert_eq!(
+                future.last_publication,
+                Some(EncoderPublicationAttempt {
+                    window_index: Some(3),
+                    eligible_mask: 0,
+                    outcome: EncoderPublicationOutcome::NoEligible,
+                    capture_to_target_ns: 201_000_000,
+                })
+            );
+            let future_fence = CaptureFence {
+                control_epoch: 1,
+                ..fence(0)
+            };
+            assert_eq!(
+                feed.publish(Arc::from(vec![2; 12]), future_fence, target),
+                Err(EncoderError::InvalidConfig)
+            );
+            let rejected = failure().selection_age.unwrap();
+            assert_eq!(
+                rejected.last_publication.unwrap().outcome,
+                EncoderPublicationOutcome::Rejected
+            );
+            assert_eq!(rejected.last_publication.unwrap().capture_to_target_ns, 0);
+            assert_eq!(rejected.candidate_sequence, 1);
+            // The original pre-lock length rejection adds no newly acquired lock
+            // and cannot replace the last feed-observed rejected attempt.
+            assert_eq!(
+                feed.publish(Arc::from(vec![9; 1]), fence(0), target),
+                Err(EncoderError::InvalidConfig)
+            );
+            assert_eq!(failure().selection_age.unwrap(), rejected);
+            let state = feed.state.lock().unwrap();
+            assert_eq!(state.sequence, 1);
+            assert!(state.window.as_ref().unwrap().lease.is_none());
+            assert!(!state.window.as_ref().unwrap().failed);
+        }
+        #[test]
+        fn selection_age_relative_offsets_have_exact_polarity_and_signed_saturation() {
+            let now = Instant::now();
+            assert_eq!(capture_offset_ns(now, now), 0);
+            assert_eq!(capture_offset_ns(now + Duration::from_nanos(1), now), 1);
+            assert_eq!(capture_offset_ns(now, now + Duration::from_nanos(1)), -1);
+            let max = i64::MAX as u128;
+            assert_eq!(saturate_offset_ns(max, true), i64::MAX);
+            assert_eq!(saturate_offset_ns(max + 1, true), i64::MAX);
+            assert_eq!(saturate_offset_ns(u128::MAX, true), i64::MAX);
+            assert_eq!(saturate_offset_ns(max, false), -i64::MAX);
+            assert_eq!(saturate_offset_ns(max + 1, false), i64::MIN);
+            assert_eq!(saturate_offset_ns(u128::MAX, false), i64::MIN);
+            let feed = CaptureVideoFeed::new(Arc::from(vec![0; 12]), fence(0), now);
+            assert!(feed.state.lock().unwrap().last_publication.is_none());
+            assert!(EncoderFailureDetail::from(EncoderError::Io)
+                .selection_age
+                .is_none());
+        }
+
         #[test]
         fn actual_capture_selection_failures_report_exact_priority_site_and_lane() {
             let target = Instant::now();
@@ -2868,9 +3149,12 @@ mod runtime {
                     )
                     .err()
                     .unwrap();
+                assert_eq!(detail.error, EncoderError::Stalled);
+                assert_eq!(detail.site, expected);
+                assert_eq!(detail.lane, EncoderFailureLane::Video);
                 assert_eq!(
-                    detail,
-                    EncoderFailureDetail::stalled(expected, EncoderFailureLane::Video)
+                    detail.selection_age.is_some(),
+                    expected == EncoderFailureSite::SelectionAge
                 );
                 assert!(feed
                     .state
@@ -2924,10 +3208,19 @@ mod runtime {
             lock(&startup.state).epoch = Some(now);
             startup.publish_next(0, 0, now).unwrap();
             startup.publish_next(1, 0, now).unwrap();
-            let origin = EncoderFailureDetail::stalled(
-                EncoderFailureSite::SelectionAge,
-                EncoderFailureLane::Video,
-            );
+            let (age_feed, age_committed, age_repeats, age_target) = numeric_age_fixture();
+            let origin = age_feed
+                .reserve_current_detail(
+                    1,
+                    3,
+                    age_target,
+                    Duration::from_millis(200),
+                    &age_committed,
+                    age_repeats,
+                )
+                .err()
+                .unwrap();
+            assert!(origin.selection_age.is_some());
             startup.reserve(0, 0, now).unwrap().fail(origin);
             let shared = shared_at(now);
             // The audio peer observes and publishes exactly the original Video

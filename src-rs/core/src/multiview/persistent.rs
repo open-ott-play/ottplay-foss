@@ -519,12 +519,10 @@ impl Session {
                         compose_stop.store(true, Ordering::Release);
                         break;
                     }
+                    let pixels: Arc<[u8]> = pixels.into();
                     {
                         let state = lock(&compose_state);
-                        if state
-                            .publish_capture(pixels.into(), fence, captured_at)
-                            .is_err()
-                        {
+                        if state.publish_capture(pixels, fence, captured_at).is_err() {
                             compose_stop.store(true, Ordering::Release);
                         }
                     }

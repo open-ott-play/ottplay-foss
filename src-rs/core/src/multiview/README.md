@@ -182,3 +182,13 @@ terminal failure, not necessarily the earliest detection by wall-clock time.
 Existing error getters retain their behavior; the detailed getters are read-only
 and do not change snapshots or the wire protocol. The streamed fixture records
 only these closed labels and its existing safe counters before cleanup.
+
+For a selection-age failure, bounded numeric evidence records the selected
+capture, retained buckets, committed sequence and most recent feed publication
+attempt relative to the failing target. These are observations, not permission
+to reuse an expired frame. The publication attempt covers only calls reaching
+the feed mutex; it does not measure compositor work or calls rejected earlier
+by the state barrier. The last-capture field may also be a visual-invalidation boundary, not a
+publication attempt. Absolute clock instants and source data are not exposed.
+RGB ownership conversion completes before the session control mutex is acquired;
+the visual fence is still checked while publishing under that mutex.

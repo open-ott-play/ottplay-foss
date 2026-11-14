@@ -12,7 +12,8 @@ use archive_v2::{sha256, Archive};
 use ottplay_core::multiview::{
     decoder::{self, BoundContext, DecoderError, GrantedStream, PublicationAuthority},
     encoder::{
-        EncoderError, EncoderFailureDetail, EncoderFailureLane, EncoderFailureSite, EncoderState,
+        EncoderError, EncoderFailureDetail, EncoderFailureLane, EncoderFailureSite,
+        EncoderPublicationOutcome, EncoderSelectionAge, EncoderState,
     },
     frames::FrameSpec,
     geometry::{CanvasSpec, ImportedRect, OverlapPolicy, ValidatedGeometry},
@@ -300,6 +301,31 @@ fn encoder_error_label(cause: Option<EncoderError>) -> &'static str {
         None => "Unavailable",
     }
 }
+// Offsets are capture minus the same failing target, in nanoseconds: positive
+// means future. Last publication covers only calls reaching the feed mutex,
+// excluding State prefilters and invalid-length returns before that mutex.
+// Its eligibility mask describes that attempt's window, not the failing window.
+fn selection_age_json(selection: EncoderSelectionAge) -> Value {
+    let last_publication = selection.last_publication.map(|attempt| {
+        let outcome = match attempt.outcome {
+            EncoderPublicationOutcome::Accepted => "Accepted",
+            EncoderPublicationOutcome::NoEligible => "NoEligible",
+            EncoderPublicationOutcome::NotNewer => "NotNewer",
+            EncoderPublicationOutcome::Rejected => "Rejected",
+        };
+        json!({"window_index":attempt.window_index,
+            "capture_to_target_ns":attempt.capture_to_target_ns,
+            "eligible_mask":attempt.eligible_mask,"outcome":outcome})
+    });
+    json!({"window_index":selection.window_index,
+        "candidate_age_ns":selection.candidate_age_ns,"limit_ns":selection.limit_ns,
+        "candidate_sequence":selection.candidate_sequence,
+        "committed_sequence":selection.committed_sequence,"repeats":selection.repeats,
+        "bucket_sequences":selection.bucket_sequences,
+        "bucket_capture_to_target_ns":selection.bucket_capture_to_target_ns,
+        "last_capture_to_target_ns":selection.last_capture_to_target_ns,
+        "last_publication":last_publication})
+}
 fn failure_detail_json(detail: Option<EncoderFailureDetail>) -> Value {
     let (site, lane) = match detail {
         Some(detail) => (
@@ -325,7 +351,11 @@ fn failure_detail_json(detail: Option<EncoderFailureDetail>) -> Value {
         ),
         None => ("Unavailable", "Unavailable"),
     };
-    json!({"error":encoder_error_label(detail.map(|value| value.error)),"site":site,"lane":lane})
+    let mut value = json!({"error":encoder_error_label(detail.map(|value| value.error)),"site":site,"lane":lane});
+    if let Some(selection) = detail.and_then(|value| value.selection_age) {
+        value["selection_age"] = selection_age_json(selection);
+    }
+    value
 }
 fn output_failure_message(
     snapshot: &Snapshot,
@@ -984,6 +1014,29 @@ mod output_failure_tests {
             error,
             site: EncoderFailureSite::Other,
             lane: EncoderFailureLane::Other,
+            selection_age: None,
+        }
+    }
+
+    fn selection_age() -> EncoderSelectionAge {
+        EncoderSelectionAge {
+            window_index: 0,
+            candidate_age_ns: 201,
+            limit_ns: 200,
+            candidate_sequence: 0,
+            committed_sequence: Some(0),
+            repeats: 0,
+            bucket_sequences: [Some(0), None, Some(2)],
+            bucket_capture_to_target_ns: [Some(-201), None, Some(1)],
+            last_capture_to_target_ns: 0,
+            last_publication: Some(
+                ottplay_core::multiview::encoder::EncoderPublicationAttempt {
+                    window_index: Some(0),
+                    capture_to_target_ns: 0,
+                    eligible_mask: 0,
+                    outcome: EncoderPublicationOutcome::NoEligible,
+                },
+            ),
         }
     }
 
@@ -1135,6 +1188,7 @@ mod output_failure_tests {
                     error: EncoderError::Stalled,
                     site,
                     lane,
+                    selection_age: None,
                 }));
                 assert_eq!(
                     value,
@@ -1160,6 +1214,7 @@ mod output_failure_tests {
             error: EncoderError::Stalled,
             site: EncoderFailureSite::SelectionAge,
             lane: EncoderFailureLane::Video,
+            selection_age: None,
         };
         let calls = std::cell::Cell::new(0);
         let message = output_failure_message(&snapshot(EncoderState::Failed), || {
@@ -1188,5 +1243,133 @@ mod output_failure_tests {
             retained,
             format!("commit source: Stopped; final output observation: {message}")
         );
+    }
+
+    #[test]
+    fn selection_age_numbers_preserve_signed_offsets_nulls_and_zero() {
+        let original = EncoderFailureDetail {
+            error: EncoderError::Stalled,
+            site: EncoderFailureSite::SelectionAge,
+            lane: EncoderFailureLane::Video,
+            selection_age: Some(selection_age()),
+        };
+        let value = failure_detail_json(Some(original));
+        assert_eq!(value.as_object().unwrap().len(), 4);
+        assert_eq!(value["error"], "Stalled");
+        assert_eq!(value["site"], "SelectionAge");
+        assert_eq!(value["lane"], "Video");
+        assert_eq!(
+            value["selection_age"],
+            json!({
+                "window_index":0,"candidate_age_ns":201,"limit_ns":200,
+                "candidate_sequence":0,"committed_sequence":0,"repeats":0,
+                "bucket_sequences":[0,null,2],
+                "bucket_capture_to_target_ns":[-201,null,1],
+                "last_capture_to_target_ns":0,
+                "last_publication":{"window_index":0,"capture_to_target_ns":0,
+                    "eligible_mask":0,"outcome":"NoEligible"}
+            })
+        );
+        let absent = selection_age_json(EncoderSelectionAge {
+            committed_sequence: None,
+            bucket_sequences: [None; 3],
+            bucket_capture_to_target_ns: [None; 3],
+            last_publication: None,
+            ..selection_age()
+        });
+        assert!(absent["committed_sequence"].is_null());
+        assert_eq!(absent["bucket_sequences"], json!([null, null, null]));
+        assert_eq!(
+            absent["bucket_capture_to_target_ns"],
+            json!([null, null, null])
+        );
+        assert!(absent["last_publication"].is_null());
+        assert_eq!(absent["candidate_sequence"].as_u64(), Some(0));
+        assert!(failure_detail_json(Some(detail(EncoderError::Stalled)))
+            .get("selection_age")
+            .is_none());
+    }
+
+    #[test]
+    fn selection_age_extremes_and_closed_outcomes_survive_early_error() {
+        for (outcome, expected, mask) in [
+            (EncoderPublicationOutcome::Accepted, "Accepted", 7),
+            (EncoderPublicationOutcome::NoEligible, "NoEligible", 0),
+            (EncoderPublicationOutcome::NotNewer, "NotNewer", 6),
+            (EncoderPublicationOutcome::Rejected, "Rejected", 0),
+        ] {
+            let selection = EncoderSelectionAge {
+                window_index: u64::MAX,
+                candidate_age_ns: u64::MAX,
+                limit_ns: u64::MAX,
+                candidate_sequence: u64::MAX,
+                committed_sequence: Some(u64::MAX),
+                bucket_sequences: [Some(u64::MAX), None, Some(0)],
+                bucket_capture_to_target_ns: [Some(i64::MIN), None, Some(i64::MAX)],
+                last_capture_to_target_ns: i64::MIN,
+                last_publication: Some(
+                    ottplay_core::multiview::encoder::EncoderPublicationAttempt {
+                        window_index: None,
+                        capture_to_target_ns: i64::MAX,
+                        eligible_mask: mask,
+                        outcome,
+                    },
+                ),
+                ..selection_age()
+            };
+            let calls = std::cell::Cell::new(0);
+            let message = output_failure_message(&snapshot(EncoderState::Failed), || {
+                calls.set(calls.get() + 1);
+                Some(EncoderFailureDetail {
+                    error: EncoderError::Stalled,
+                    site: EncoderFailureSite::SelectionAge,
+                    lane: EncoderFailureLane::Video,
+                    selection_age: Some(selection),
+                })
+            })
+            .unwrap();
+            assert_eq!(calls.get(), 1);
+            let (prefix, counters) = message.split_once("; snapshot=").unwrap();
+            let (cause, encoded) = prefix.split_once("; detail=").unwrap();
+            assert_eq!(cause, "encoder output Failed: cause=Stalled");
+            let value: Value = serde_json::from_str(encoded).unwrap();
+            let numbers = &value["selection_age"];
+            assert_eq!(numbers["window_index"].as_u64(), Some(u64::MAX));
+            assert_eq!(numbers["candidate_age_ns"].as_u64(), Some(u64::MAX));
+            assert_eq!(numbers["limit_ns"].as_u64(), Some(u64::MAX));
+            assert_eq!(numbers["candidate_sequence"].as_u64(), Some(u64::MAX));
+            assert_eq!(numbers["committed_sequence"].as_u64(), Some(u64::MAX));
+            assert_eq!(
+                numbers["bucket_capture_to_target_ns"][0].as_i64(),
+                Some(i64::MIN)
+            );
+            assert!(numbers["bucket_capture_to_target_ns"][1].is_null());
+            assert_eq!(
+                numbers["bucket_capture_to_target_ns"][2].as_i64(),
+                Some(i64::MAX)
+            );
+            assert_eq!(
+                numbers["last_capture_to_target_ns"].as_i64(),
+                Some(i64::MIN)
+            );
+            let publication = &numbers["last_publication"];
+            assert!(publication["window_index"].is_null());
+            assert_eq!(publication["capture_to_target_ns"].as_i64(), Some(i64::MAX));
+            assert_eq!(publication["eligible_mask"], mask);
+            assert_eq!(publication["outcome"], expected);
+            assert_eq!(
+                serde_json::from_str::<Value>(counters).unwrap(),
+                snapshot_json(&snapshot(EncoderState::Failed))
+            );
+            let retained =
+                retain_failure_observation(Some("commit source: Stopped".into()), || {
+                    Err(message.clone())
+                })
+                .unwrap();
+            assert_eq!(
+                retained,
+                format!("commit source: Stopped; final output observation: {message}")
+            );
+        }
     }
 }
