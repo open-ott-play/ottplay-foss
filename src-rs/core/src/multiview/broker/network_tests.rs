@@ -358,6 +358,165 @@ async fn cancelled_vportal_creation_reconciles_returned_lease_before_reporting()
     fixture.await.unwrap();
 }
 
+async fn prepared_vportal_stop_fixture() -> (
+    CheckedTransport,
+    super::super::resolvers::PreparedSource,
+    TcpListener,
+) {
+    let (listener, base) = fixture().await;
+    let transport = CheckedTransport::new(
+        NetworkPolicy::fixture(&[&base]),
+        Limits {
+            concurrent: 1,
+            timeout: Duration::from_secs(2),
+            ..Limits::default()
+        },
+    )
+    .unwrap();
+    let source = ServerSource::vportal(
+        &format!("{base}/nas/api"),
+        "fixture-key",
+        serde_json::json!({"id":"7"}),
+    )
+    .unwrap();
+    let cancel = CancellationToken::new();
+    let provider = async {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        assert!(read_request(&mut socket)
+            .await
+            .starts_with("POST /nas/api "));
+        respond(
+            &mut socket,
+            "200 OK",
+            "Content-Type: application/json\r\n",
+            &serde_json::json!({
+                "url": format!("{base}/media"),
+                "stop": format!("{base}/nas/stream/id.secret/media.stop"),
+            })
+            .to_string(),
+        )
+        .await;
+    };
+    let (prepared, ()) = tokio::time::timeout(Duration::from_secs(3), async {
+        tokio::join!(source.resolve(&transport, &cancel), provider)
+    })
+    .await
+    .unwrap();
+    (transport, prepared.unwrap(), listener)
+}
+
+#[tokio::test]
+async fn mandatory_stop_waits_for_late_request_admission_and_is_sent_once() {
+    let (transport, prepared, listener) = prepared_vportal_stop_fixture().await;
+    // Model a cancelled blocking DNS worker retaining the actual request permit.
+    let held = transport.permits.clone().try_acquire_owned().unwrap();
+    let finish = prepared.finish();
+    tokio::pin!(finish);
+    assert!(
+        tokio::time::timeout(Duration::from_millis(400), finish.as_mut())
+            .await
+            .is_err()
+    );
+    assert_eq!(transport.sources.available_permits(), 0);
+    assert_eq!(transport.permits.available_permits(), 0);
+    assert!(
+        tokio::time::timeout(Duration::from_millis(50), listener.accept())
+            .await
+            .is_err()
+    );
+    drop(held);
+
+    let provider = async {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        assert!(read_request(&mut socket)
+            .await
+            .starts_with("GET /nas/stream/id.secret/media.stop "));
+        assert_eq!(transport.sources.available_permits(), 0);
+        respond(&mut socket, "200 OK", "", "stopped").await;
+        assert!(
+            tokio::time::timeout(Duration::from_millis(100), listener.accept())
+                .await
+                .is_err()
+        );
+    };
+    let (result, ()) = tokio::time::timeout(Duration::from_secs(3), async {
+        tokio::join!(finish.as_mut(), provider)
+    })
+    .await
+    .unwrap();
+    assert_eq!(result, Ok(()));
+    assert_eq!(transport.sources.available_permits(), 1);
+    assert_eq!(transport.permits.available_permits(), 1);
+}
+
+#[tokio::test]
+async fn mandatory_stop_permanent_busy_uses_existing_deadline_without_io() {
+    let (transport, prepared, listener) = prepared_vportal_stop_fixture().await;
+    let held = transport.permits.clone().try_acquire_owned().unwrap();
+    let started = tokio::time::Instant::now();
+    let result = tokio::time::timeout(Duration::from_secs(12), prepared.finish())
+        .await
+        .expect("cleanup must retain its ten-second outer deadline");
+    assert_eq!(result, Err(Error::CleanupUnconfirmed));
+    assert!(started.elapsed() >= Duration::from_secs(10));
+    assert_eq!(transport.permits.available_permits(), 0);
+    assert_eq!(transport.sources.available_permits(), 1);
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), listener.accept())
+            .await
+            .is_err()
+    );
+    drop(held);
+    assert_eq!(transport.permits.available_permits(), 1);
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), listener.accept())
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn mandatory_stop_unconfirmed_response_is_never_repeated() {
+    for rejected in [false, true] {
+        let (transport, prepared, listener) = prepared_vportal_stop_fixture().await;
+        let provider = async {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            assert!(read_request(&mut socket)
+                .await
+                .starts_with("GET /nas/stream/id.secret/media.stop "));
+            assert_eq!(transport.sources.available_permits(), 0);
+            if rejected {
+                respond(&mut socket, "500 Error", "", "").await;
+            } else {
+                // The command reached the provider, but its response is incomplete.
+                socket
+                    .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\n\r\nx")
+                    .await
+                    .unwrap();
+            }
+            drop(socket);
+            assert!(
+                tokio::time::timeout(Duration::from_millis(100), listener.accept())
+                    .await
+                    .is_err()
+            );
+        };
+        let (result, ()) = tokio::time::timeout(Duration::from_secs(3), async {
+            tokio::join!(prepared.finish(), provider)
+        })
+        .await
+        .unwrap();
+        assert_eq!(result, Err(Error::CleanupUnconfirmed));
+        assert_eq!(transport.sources.available_permits(), 1);
+        assert_eq!(transport.permits.available_permits(), 1);
+        assert!(
+            tokio::time::timeout(Duration::from_millis(100), listener.accept())
+                .await
+                .is_err()
+        );
+    }
+}
+
 #[tokio::test]
 async fn plex_resolves_only_enrolled_machine_and_exact_part_with_private_headers() {
     let (listener, base) = fixture().await;

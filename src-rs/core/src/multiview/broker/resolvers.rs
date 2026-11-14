@@ -474,15 +474,15 @@ impl SessionLease {
             }
             // A cancelled playback token must not cancel its mandatory stop.
             let cleanup = async {
-                let started = tokio::time::Instant::now();
                 loop {
                     match transport
                         .get_no_redirect(stop.as_str(), &CancellationToken::new())
                         .await
                     {
-                        // Busy happens before any upstream IO. Give cancelled
-                        // sibling reads a bounded chance to release admission.
-                        Err(Error::Busy) if started.elapsed() < Duration::from_millis(250) => {
+                        // Busy happens before any upstream IO. A cancelled DNS
+                        // worker can still hold admission: use the existing
+                        // outer cleanup deadline while waiting for its release.
+                        Err(Error::Busy) => {
                             tokio::time::sleep(Duration::from_millis(25)).await
                         }
                         result => return result.map(|_| ()).map_err(|_| Error::CleanupUnconfirmed),
