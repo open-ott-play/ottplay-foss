@@ -527,4 +527,15 @@ tests/test_runtime_diagnostics_native.py
 
 ### Local Windows readiness before push
 
+Root npm lockfile updates also invalidate the committed media provenance, even
+when the changed dependency is not a media player. After `npm ci --ignore-scripts`,
+run `node scripts/check-committed-media.cjs` before any build or test preparation.
+The required Frontend Tests job runs this read-only audit at the same boundary;
+it fails instead of allowing `prepare:media` or Vite to hide stale committed files.
+To repair a dependency update, run `npm run build:media` and `npm run check:media`,
+review and commit the generated assets, manifest, licenses and both HTML bootstrap
+URLs, and update dependency versions in `THIRD-PARTY-NOTICES.md`. Then run the
+targeted readiness gate below. This does not enable repository scripts in the
+privileged Renovate runner or replace native CI.
+
 Before pushing Windows qualification or related fixture/workflow changes, use Node 22, Python 3.12 with the existing hash-locked `.github/requirements-workflow-contracts.txt` dependencies, the locked npm dependencies and the installed Playwright Chromium browser. Run `PYTHON=/path/to/python3.12 npm run check:windows-readiness -- --report-dir /absolute/fresh/report-directory` after committing. This targeted gate checks the known portable failure paths, builds only the JavaScript frontend, then runs three delayed-WebCrypto PIN cases and the direct-media headless fixture. It does not compile native code, install or launch an installed player, or replace Windows/native CI. Push only when `result.json` has `status: passed`, the exact commit in `head`, `dirty: false`, `sourceUnchanged: true`, `browserMode: full`, and three passing PIN profiles. The explicit command is required even when the publisher disables Git hooks. For unrelated changes only, `--skip-browser` produces an explicitly portable-only receipt; it cannot qualify this Windows batch.

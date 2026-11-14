@@ -2209,10 +2209,35 @@ test("healthy HLS playback clears stalled feedback without growing or pinning th
         window.setPlayerMode(1);
         const media = document.querySelector("#video");
         window.__healthyFeedbackUpdates = 0;
-        media.addEventListener(
-            "timeupdate",
-            () => window.__healthyFeedbackUpdates++
-        );
+        window.__healthySawSeek = false;
+        window.__healthySeekedTime = null;
+        window.__healthyQualifiedProgress = 0;
+        let lastProgressTime = media.currentTime;
+        media.addEventListener("seeking", () => {
+            window.__healthySawSeek = true;
+            window.__healthySeekedTime = null;
+            window.__healthyQualifiedProgress = 0;
+            lastProgressTime = media.currentTime;
+        });
+        media.addEventListener("seeked", () => {
+            window.__healthySeekedTime = media.currentTime;
+            window.__healthyQualifiedProgress = 0;
+            lastProgressTime = media.currentTime;
+        });
+        media.addEventListener("timeupdate", () => {
+            window.__healthyFeedbackUpdates++;
+            const currentTime = media.currentTime;
+            if (
+                !media.seeking &&
+                currentTime > lastProgressTime &&
+                (!window.__healthySawSeek ||
+                    (window.__healthySeekedTime !== null &&
+                        currentTime > window.__healthySeekedTime))
+            )
+                window.__healthyQualifiedProgress++;
+            else if (!media.seeking) window.__healthyQualifiedProgress = 0;
+            lastProgressTime = currentTime;
+        });
         window.stbPlay(location.origin + "/feedback-media/index.m3u8");
     });
     await page.waitForFunction(() => {
@@ -2225,6 +2250,15 @@ test("healthy HLS playback clears stalled feedback without growing or pinning th
             !window.__ottPlaybackFeedback.visible()
         );
     });
+    // A decoded frame/timeupdate may precede HLS's initial keyframe seeked
+    // event. Seeking intentionally clears the controller's progress evidence,
+    // so wait for an advancing timeupdate after the latest seek before injecting
+    // a healthy-transport stall. Otherwise this test races into the unconfirmed
+    // seek window and correctly observes immediate Buffering feedback.
+    await page.waitForFunction(() => {
+        const required = window.__healthySawSeek ? 1 : 2;
+        return window.__healthyQualifiedProgress >= required;
+    });
     const footer = page.locator("#info1");
     const label = page.locator("#video_res");
     await page.evaluate(() => {
@@ -2236,7 +2270,12 @@ test("healthy HLS playback clears stalled feedback without growing or pinning th
     const before = await page.locator("#video").evaluate((media) => ({
         frames: media.getVideoPlaybackQuality().totalVideoFrames,
         updates: window.__healthyFeedbackUpdates,
+        sought: window.__healthySawSeek,
+        qualifiedProgress: window.__healthyQualifiedProgress,
     }));
+    expect(before.qualifiedProgress).toBeGreaterThanOrEqual(
+        before.sought ? 1 : 2
+    );
     const pending = await page.evaluate(() => {
         const media = document.querySelector("#video");
         const label = document.querySelector("#video_res");

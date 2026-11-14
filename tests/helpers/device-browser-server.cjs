@@ -33,6 +33,7 @@ const nativeAdmissions = new Set();
 const pendingNativeMedia = new Map();
 const nativeBootAdmissions = new Set();
 const pendingNativeBoot = new Map();
+const expiredNativeBoot = new Set();
 function aspectMedia() {
     if (!aspectFixture) {
         aspectFixture =
@@ -169,6 +170,14 @@ http.createServer((request, response) => {
         pathname === "/__native_video_geometry/boot-admit" &&
         validNativeCase
     ) {
+        if (expiredNativeBoot.has(nativeCase)) {
+            response
+                .writeHead(410, { "Content-Type": "application/json" })
+                .end(
+                    JSON.stringify({ error: "Native boot admission expired" })
+                );
+            return;
+        }
         nativeBootAdmissions.add(nativeCase);
         const pending = pendingNativeBoot.get(nativeCase) || new Set();
         for (const send of pending) send();
@@ -518,6 +527,14 @@ http.createServer((request, response) => {
         if (
             nativeGeometry &&
             relative === "index.html" &&
+            expiredNativeBoot.has(bootCase)
+        ) {
+            response.writeHead(410).end();
+            return;
+        }
+        if (
+            nativeGeometry &&
+            relative === "index.html" &&
             !nativeBootAdmissions.has(bootCase)
         ) {
             // Install CDP fencing before normal startup creates AJAX requests.
@@ -526,12 +543,15 @@ http.createServer((request, response) => {
             pendingNativeBoot.set(bootCase, pending);
             pending.add(sendPage);
             bootTimer = setTimeout(() => {
+                expiredNativeBoot.add(bootCase);
                 pending.delete(sendPage);
                 response.writeHead(504).end();
             }, 60000);
             response.on("close", () => {
                 clearTimeout(bootTimer);
                 pending.delete(sendPage);
+                if (!nativeBootAdmissions.has(bootCase))
+                    expiredNativeBoot.add(bootCase);
             });
         } else sendPage();
     });
