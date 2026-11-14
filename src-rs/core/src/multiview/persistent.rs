@@ -227,6 +227,14 @@ impl State {
 fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     value.lock().unwrap_or_else(|poison| poison.into_inner())
 }
+// Worker destruction can wait for a reader holding publication authority.
+// Never retain this collection lock while stopping, joining or dropping one.
+fn take_worker<T>(workers: &Mutex<Vec<Option<T>>>, slot: usize) -> Option<T> {
+    lock(workers)[slot].take()
+}
+fn take_workers<T>(workers: &Mutex<Vec<Option<T>>>) -> Vec<T> {
+    lock(workers).iter_mut().filter_map(Option::take).collect()
+}
 
 fn capture_stream_binding(
     state: &State,
@@ -439,10 +447,8 @@ impl Session {
             }
             // Encoder failure/lease expiry also reaps all input children, without
             // requiring a subsequent client command to discover the failure.
-            for worker in lock(&compose_decoders).iter_mut() {
-                if let Some(mut worker) = worker.take() {
-                    worker.stop();
-                }
+            for mut worker in take_workers(&compose_decoders) {
+                worker.stop();
             }
         });
         let encoder_pid = encoder.snapshot().pid;
@@ -702,7 +708,7 @@ impl Session {
             }
         }
         // No transient tenth decoder: stop/reap only the replaced slot first.
-        if let Some(mut old) = lock(&self.decoders)[usize::from(slot)].take() {
+        if let Some(mut old) = take_worker(&self.decoders, usize::from(slot)) {
             old.stop();
         }
         let (generation, video, audio) = {
@@ -754,7 +760,7 @@ impl Session {
                     if let Some(mut worker) = pending.take() {
                         worker.stop();
                     }
-                    if let Some(mut worker) = lock(&self.decoders)[usize::from(slot)].take() {
+                    if let Some(mut worker) = take_worker(&self.decoders, usize::from(slot)) {
                         worker.stop();
                     }
                     let _ = video.mark_failed(generation);
@@ -790,7 +796,7 @@ impl Session {
                 return Err(Error::StaleRevision);
             }
         }
-        if let Some(mut old) = lock(&self.decoders)[usize::from(slot)].take() {
+        if let Some(mut old) = take_worker(&self.decoders, usize::from(slot)) {
             old.stop();
         }
         let mut state = lock(&self.state);
@@ -966,10 +972,8 @@ impl Session {
         if let Some(thread) = self.compositor.take() {
             let _ = thread.join();
         }
-        for worker in lock(&self.decoders).iter_mut() {
-            if let Some(mut worker) = worker.take() {
-                worker.stop();
-            }
+        for mut worker in take_workers(&self.decoders) {
+            worker.stop();
         }
         result?;
         Ok(ShutdownReceipt {
@@ -988,6 +992,142 @@ impl Drop for Session {
 mod tests {
     use super::super::geometry::{ImportedRect, OverlapPolicy};
     use super::*;
+
+    // A stop can wait for a reader entering Registry publication, while an
+    // attach already holding Registry needs the worker collection. try_lock
+    // observes both edges without ever creating a hanging test thread.
+    struct CleanupProbe {
+        workers: std::sync::Weak<Mutex<Vec<Option<CleanupProbe>>>>,
+        registry: Arc<Mutex<()>>,
+        observations: Arc<Mutex<Vec<(bool, bool)>>>,
+        alive: Arc<std::sync::atomic::AtomicUsize>,
+    }
+    impl CleanupProbe {
+        fn new(
+            workers: &Arc<Mutex<Vec<Option<Self>>>>,
+            registry: &Arc<Mutex<()>>,
+            observations: &Arc<Mutex<Vec<(bool, bool)>>>,
+            alive: &Arc<std::sync::atomic::AtomicUsize>,
+        ) -> Self {
+            alive.fetch_add(1, Ordering::Relaxed);
+            Self {
+                workers: Arc::downgrade(workers),
+                registry: registry.clone(),
+                observations: observations.clone(),
+                alive: alive.clone(),
+            }
+        }
+        fn stop(&mut self) {
+            let workers_free = self.workers.upgrade().unwrap().try_lock().is_ok();
+            let registry_free = self.registry.try_lock().is_ok();
+            lock(&self.observations).push((workers_free, registry_free));
+        }
+    }
+    impl Drop for CleanupProbe {
+        fn drop(&mut self) {
+            // Decoder Drop can also stop/join: its collection must be unlocked.
+            let workers_free = self
+                .workers
+                .upgrade()
+                .is_none_or(|workers| workers.try_lock().is_ok());
+            lock(&self.observations).push((workers_free, true));
+            self.alive.fetch_sub(1, Ordering::Relaxed);
+        }
+    }
+    #[test]
+    fn cleanup_probe_drop_allows_collection_to_retire_first() {
+        let workers = Arc::new(Mutex::new((0..9).map(|_| None).collect()));
+        let registry = Arc::new(Mutex::new(()));
+        let observations = Arc::new(Mutex::new(Vec::new()));
+        let alive = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let probe = CleanupProbe::new(&workers, &registry, &observations, &alive);
+        drop(workers);
+        drop(probe);
+        assert_eq!(alive.load(Ordering::Relaxed), 0);
+        assert_eq!(*lock(&observations), vec![(true, true)]);
+    }
+    #[test]
+    fn cleanup_moves_handles_before_stop_or_drop_breaking_registry_lock_cycle() {
+        let workers = Arc::new(Mutex::new((0..9).map(|_| None).collect()));
+        let registry = Arc::new(Mutex::new(()));
+        let observations = Arc::new(Mutex::new(Vec::new()));
+        let alive = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let probe = || CleanupProbe::new(&workers, &registry, &observations, &alive);
+        lock(&workers)[0] = Some(probe());
+        let registry_attach = lock(&registry);
+        let mut held_workers = lock(&workers);
+        let mut old_style = held_workers[0].take().unwrap();
+        old_style.stop();
+        // Release fake authority even if a subsequent assertion fails.
+        drop(held_workers);
+        drop(registry_attach);
+        drop(old_style);
+        let old_observation = lock(&observations)[0];
+        assert_eq!(old_observation, (false, false));
+        lock(&observations).clear();
+
+        lock(&workers)[0] = Some(probe());
+        lock(&workers)[8] = Some(probe());
+        let registry_attach = lock(&registry);
+        let mut one = take_worker(&workers, 0).unwrap();
+        let mut rest = take_workers(&workers);
+        one.stop();
+        for worker in &mut rest {
+            worker.stop();
+        }
+        let stop_observations = lock(&observations).clone();
+        drop(registry_attach);
+        drop(one);
+        drop(rest);
+        assert_eq!(stop_observations, vec![(true, false), (true, false)]);
+        assert!(lock(&observations).iter().all(|(free, _)| *free));
+        assert_eq!(lock(&workers).len(), 9);
+        assert!(lock(&workers).iter().all(Option::is_none));
+        assert_eq!(alive.load(Ordering::Relaxed), 0);
+    }
+    #[test]
+    fn close_fence_rejects_late_attach_and_drains_earlier_attach() {
+        let workers = Arc::new(Mutex::new((0..9).map(|_| None).collect::<Vec<_>>()));
+        let registry = Arc::new(Mutex::new(()));
+        let observations = Arc::new(Mutex::new(Vec::new()));
+        let alive = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let stop = AtomicBool::new(false);
+        let attach = |worker| {
+            let mut guard = lock(&workers);
+            // Same ordering as both production attach callbacks: close fence
+            // is checked while the collection lock is held, not before it.
+            if stop.load(Ordering::Acquire) {
+                return Err(worker);
+            }
+            assert!(guard[0].is_none());
+            guard[0] = Some(worker);
+            Ok(())
+        };
+        assert!(attach(CleanupProbe::new(
+            &workers,
+            &registry,
+            &observations,
+            &alive
+        ))
+        .is_ok());
+        stop.store(true, Ordering::Release);
+        let retired = take_workers(&workers);
+        let rejected = attach(CleanupProbe::new(
+            &workers,
+            &registry,
+            &observations,
+            &alive,
+        ));
+        assert_eq!(retired.len(), 1);
+        assert!(rejected.is_err());
+        drop(rejected);
+        drop(retired);
+        assert!(stop.load(Ordering::Acquire));
+        assert_eq!(lock(&workers).len(), 9);
+        assert!(lock(&workers).iter().all(Option::is_none));
+        assert!(lock(&observations).iter().all(|(free, _)| *free));
+        assert_eq!(alive.load(Ordering::Relaxed), 0);
+    }
 
     #[test]
     fn presentation_tick_advances_before_muted_or_absent_owner_return() {
