@@ -43,6 +43,67 @@ function scenarioTargets(name, scenario) {
     }
     return result;
 }
+function installPlaybackObservation() {
+    window.__mixedObserved = [];
+    window.__mixedPlaying = null;
+    document.addEventListener(
+        "playing",
+        (event) => {
+            if (!(event.target instanceof HTMLMediaElement)) return;
+            const provider = window.__ottActiveProviderDriver?.id;
+            window.__mixedObserved.push({
+                provider,
+                url: event.target.currentSrc,
+            });
+            const owner = window.__ottCoreBackendPeek?.()?.current?.();
+            if (owner?.diagnosticMedia?.()?.media !== event.target) return;
+            window.__mixedPlaying = {
+                generation: window.__ottClassicPlayback.snapshot().generation,
+                media: event.target,
+                ownerId: owner.id,
+                provider,
+                url: event.target.currentSrc,
+            };
+        },
+        true
+    );
+}
+function currentMixedPlaybackReady() {
+    const owner = window.__ottCoreBackendPeek?.()?.current?.(),
+        media = owner?.diagnosticMedia?.()?.media,
+        receipt = window.__mixedPlaying;
+    return !!(
+        owner?.active?.() &&
+        media instanceof HTMLMediaElement &&
+        media.readyState >= 2 &&
+        !media.paused &&
+        !media.ended &&
+        media.currentTime > 0 &&
+        media.getVideoPlaybackQuality().totalVideoFrames > 0 &&
+        receipt &&
+        receipt.media === media &&
+        receipt.ownerId === owner.id &&
+        receipt.provider === window.__ottActiveProviderDriver?.id &&
+        receipt.generation ===
+            window.__ottClassicPlayback.snapshot().generation &&
+        receipt.url === media.currentSrc
+    );
+}
+function selectUnresolvedFavorite(id) {
+    const at = window.listArray.indexOf(id),
+        play = window.stbPlay;
+    if (at < 0) throw Error("unresolved row dropped");
+    if (typeof play !== "function") throw Error("production playback missing");
+    window.__mixedObserved = [];
+    window.__mixedPlayCalls = 0;
+    // Observe every launch attempt while preserving its receiver, arguments and result.
+    window.stbPlay = function () {
+        window.__mixedPlayCalls++;
+        return play.apply(this, arguments);
+    };
+    window.selIndex = at;
+    window.listKeyHandlerFn(window.keys.ENTER);
+}
 async function install(context, baseURL, name, scenario) {
     const origin = new URL(baseURL).origin,
         targets = fixture.hosts[name].targets,
@@ -185,6 +246,7 @@ async function install(context, baseURL, name, scenario) {
         return route.continue();
     });
     await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(installPlaybackObservation);
     await context.addInitScript(
         ({ origin, targets, name }) => {
             const m3us = Array.from({ length: 15 }, () => ({
@@ -305,23 +367,18 @@ async function install(context, baseURL, name, scenario) {
                 this.muted = true;
                 return play.call(this);
             };
-            window.__mixedObserved = [];
-            document.addEventListener(
-                "playing",
-                (event) => {
-                    if (event.target instanceof HTMLMediaElement)
-                        window.__mixedObserved.push({
-                            provider: window.__ottActiveProviderDriver?.id,
-                            url: event.target.currentSrc,
-                        });
-                },
-                true
-            );
         },
         { name, origin, targets: configured }
     );
 }
-module.exports = { fixture, install, scenarioTargets };
+module.exports = {
+    currentMixedPlaybackReady,
+    fixture,
+    install,
+    installPlaybackObservation,
+    scenarioTargets,
+    selectUnresolvedFavorite,
+};
 async function ensure(page) {
     await page.waitForFunction(
         () => typeof window.__ottEnsureGlobalFavorites === "function"
