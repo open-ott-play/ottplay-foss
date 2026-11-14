@@ -1401,6 +1401,174 @@ fn profile_policy_or_config_edit_revokes_pending_active_and_composite_output() {
 }
 
 #[test]
+fn atomic_revocation_retires_every_live_phase_before_output_authority() {
+    for phase in [Phase::Preparing, Phase::Attaching, Phase::Active] {
+        for session_authority in [true, false] {
+            let (registry, _) = fixture();
+            let issued = binding();
+            let reservation = reserve(&registry, &issued);
+            let mut current = issued.clone();
+            if matches!(phase, Phase::Attaching | Phase::Active) {
+                let mut next = issued.clone();
+                next.backend_slot_revision += 1;
+                registry
+                    .prepare_attachment(&player(), &issued, &next, &reservation)
+                    .unwrap();
+                if phase == Phase::Active {
+                    reservation
+                        .publication_authority()
+                        .attach(&reservation.decoder_context(), &mut || Ok(()))
+                        .unwrap();
+                    current = next;
+                    publishes(&reservation).unwrap();
+                }
+            }
+            registry
+                .with_session_authority(&player(), "session", &mut || Ok(()))
+                .unwrap();
+            registry
+                .with_binding_authority(&player(), &current, &mut || Ok(()))
+                .unwrap();
+            {
+                let state = registry.lock().unwrap();
+                let lease = &state.leases[reservation.id()];
+                assert_eq!(lease.phase, phase);
+                assert!(selected_current(&state, &lease.owner, &lease.selection));
+                assert!(lease.prepare_deadline > Instant::now());
+                assert!(!state.sessions["session"].output_blocked);
+            }
+
+            // Exercise the public cancellation handle alone. Do not call a
+            // retirement/decoder/status helper before the output guard: those
+            // could sweep first and mask which entrypoint admitted old bytes.
+            reservation.revoked().store(true, Ordering::Release);
+            let mut delivered = false;
+            let mut deliver = || {
+                delivered = true;
+                Ok(())
+            };
+            let result = if session_authority {
+                registry.with_session_authority(&player(), "session", &mut deliver)
+            } else {
+                registry.with_binding_authority(&player(), &current, &mut deliver)
+            };
+            assert_eq!(result, Err(RegistryError::Revoked));
+            assert!(!delivered, "revoked input must not authorize output bytes");
+            let receipt = registry.retirements(&player(), "session").unwrap();
+            assert_eq!(receipt.len(), 1);
+            assert_eq!(receipt[0].reservation_id, reservation.id());
+            assert!(receipt[0].cancellation_requested);
+            assert!(!receipt[0].output_revoked && !receipt[0].reaped);
+            assert_eq!(
+                registry.lock().unwrap().leases[reservation.id()].phase,
+                Phase::Retiring
+            );
+            assert_eq!(
+                registry.validate_reservation(&player(), &issued, &reservation),
+                Err(RegistryError::Revoked)
+            );
+            assert_eq!(
+                registry
+                    .slot_source_refs(&player(), &current, current.backend_slot_revision)
+                    .unwrap(),
+                None
+            );
+            assert_eq!(
+                publishes(&reservation),
+                Err(DecoderError::PublicationDenied)
+            );
+        }
+    }
+}
+
+#[test]
+fn atomic_revocation_keeps_slot_custody_until_both_retirement_proofs() {
+    for first_proof in [
+        RetirementProof::WorkerReaped,
+        RetirementProof::OutputRevoked,
+    ] {
+        let (registry, _) = fixture();
+        let (reservation, current) = attached(&registry);
+        let grant = registry
+            .mint(&player(), &request(&registry, &current))
+            .unwrap();
+        reservation.revoked().store(true, Ordering::Release);
+        let receipts = registry.retirements(&player(), "session").unwrap();
+        assert_eq!(receipts.len(), 1);
+        assert!(receipts[0].cancellation_requested);
+        assert!(!receipts[0].output_revoked && !receipts[0].reaped);
+        let foreign = Principal {
+            subject: "other-owner".into(),
+            ..player()
+        };
+        assert_eq!(
+            registry.acknowledge_retirement(&foreign, reservation.id(), first_proof),
+            Err(RegistryError::Forbidden)
+        );
+        assert!(matches!(
+            registry.redeem(&player(), &current, &grant.input_grant),
+            Err(RegistryError::Busy)
+        ));
+        let receipt = registry
+            .acknowledge_retirement(&player(), reservation.id(), first_proof)
+            .unwrap();
+        assert_eq!(receipt.reaped, first_proof == RetirementProof::WorkerReaped);
+        assert_eq!(
+            receipt.output_revoked,
+            first_proof == RetirementProof::OutputRevoked
+        );
+        assert!(registry
+            .lock()
+            .unwrap()
+            .leases
+            .contains_key(reservation.id()));
+        assert!(matches!(
+            registry.redeem(&player(), &current, &grant.input_grant),
+            Err(RegistryError::Busy)
+        ));
+        assert!(registry
+            .lock()
+            .unwrap()
+            .grants
+            .contains_key(&grant.input_grant));
+        assert_eq!(
+            registry.rearm_output(&player(), &current),
+            Err(RegistryError::Busy)
+        );
+        let second_proof = match first_proof {
+            RetirementProof::WorkerReaped => RetirementProof::OutputRevoked,
+            RetirementProof::OutputRevoked => RetirementProof::WorkerReaped,
+        };
+        let receipt = registry
+            .acknowledge_retirement(&player(), reservation.id(), second_proof)
+            .unwrap();
+        assert!(receipt.output_revoked && receipt.reaped);
+        assert!(!registry
+            .lock()
+            .unwrap()
+            .leases
+            .contains_key(reservation.id()));
+        assert_eq!(
+            registry.with_session_authority(&player(), "session", &mut || panic!(
+                "cleanup alone must not rearm an old output generation"
+            )),
+            Err(RegistryError::Revoked)
+        );
+        let replacement = registry
+            .redeem(&player(), &current, &grant.input_grant)
+            .unwrap();
+        assert_ne!(replacement.id(), reservation.id());
+        assert!(!replacement.revoked().load(Ordering::Acquire));
+        assert!(reservation.revoked().load(Ordering::Acquire));
+        assert_eq!(publishes(&reservation), Err(DecoderError::Revoked));
+        registry.rearm_output(&player(), &current).unwrap();
+        registry
+            .with_session_authority(&player(), "session", &mut || Ok(()))
+            .unwrap();
+    }
+}
+
+#[test]
 fn cancellation_is_not_output_revocation_or_worker_reaping() {
     let (registry, _) = fixture();
     let (reservation, next) = attached(&registry);

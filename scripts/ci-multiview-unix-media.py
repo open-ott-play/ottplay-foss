@@ -15,7 +15,7 @@ from contextlib import contextmanager
 
 RATE = 16000
 FPS = 10
-WIDTH, HEIGHT, SECONDS = 96, 64, 80
+WIDTH, HEIGHT, SECONDS = 96, 64, 90
 WINDOW = 800  # 50 ms, including an overlapping exact-end window.
 COLORS = ((180, 35, 35), (30, 160, 40), (35, 55, 185), (170, 145, 25),
           (145, 35, 160), (25, 150, 160), (180, 90, 30), (85, 40, 165),
@@ -482,7 +482,7 @@ def _case(case):
     intervals = control['selected_intervals']
     require(len(intervals) == 3, 'Expected A/B/A selection intervals')
     for value, label, seconds, slot in zip(intervals, ('A_initial', 'B_selected', 'A_return'),
-                                          (2, 65, 4), (0, 1, 0)):
+                                          (2, 75, 4), (0, 1, 0)):
         require(value['phase'] == label and value['slot'] == slot
                 and value['planned_seconds'] == seconds and value['actual_host_millis'] >= seconds * 1000,
                 'Selected host interval differs')
@@ -689,6 +689,34 @@ def _video_plan(start, span):
     return plan
 
 
+def _timing_report(intervals, audio_b):
+    """Report distinct clocks; these diagnostics never change acceptance."""
+    phases = []
+    for interval in intervals:
+        begin = interval['audio_samples_written_begin']
+        end = interval['audio_samples_written_end']
+        host_ms = interval['actual_host_millis']
+        require(type(begin) is int and type(end) is int and 0 <= begin <= end
+                and type(host_ms) is int and host_ms > 0, 'Invalid timing ledger')
+        logical = (end - begin) / 96000
+        host = host_ms / 1000
+        phases.append({'phase': interval['phase'], 'host_seconds': host,
+                       'logical_audio_seconds': logical, 'logical_per_host_ratio': logical / host,
+                       'logical_begin_seconds': begin / 96000, 'logical_end_seconds': end / 96000})
+    selected = next(value for value in phases if value['phase'] == 'B_selected')
+    first = audio_b.get('first_pure_bin')
+    capture = audio_b.get('capture_seconds')
+    return {'phases': phases, 'absolute_prefix_first_pure_seconds': first,
+            'absolute_prefix_capture_seconds': capture,
+            'first_pure_minus_logical_B_begin_seconds':
+                first - selected['logical_begin_seconds'] if first is not None else None,
+            'closed_prefix_end_minus_logical_B_end_seconds':
+                capture - selected['logical_end_seconds'] if capture is not None else None,
+            'comparison_scope': 'PCM prefix offsets and host sample ledger are not sample-aligned; '
+                                'absolute first-pure onset is not switch settling time.',
+            'report_only_no_acceptance_adjustment': True}
+
+
 def _finish(case, work):
     case, control, proof, _, _, _ = _case(case)
     work = _work(work)
@@ -732,6 +760,7 @@ def _finish(case, work):
     result = {'schema': 'ottplay.multiview.stream-media.v1', 'pass': bool(passed),
               'scope': 'Finite core Session; synthetic trusted FD transport and closed HLS',
               'host_selected_intervals': control['selected_intervals'],
+              'timing_domains': _timing_report(control['selected_intervals'], audio_b),
               'decoded_B_selected_seconds': audio_b.get('selected_seconds', 0.),
               'archive_segments': proof['segment_count'], 'archive_video_frames': len(times),
               'archive_span_seconds': span, 'selected_video_start': audio_b.get('first_pure_bin'),
@@ -793,7 +822,7 @@ def _finish(case, work):
 
 
 def self_test():
-    """Small pure arrays only; never prepares80s inputs or starts any tool."""
+    """Small pure arrays only; never prepares long inputs or starts any tool."""
     def tone(source, seconds=5, shift=0):
         hz = 330 + 110 * (source - 1)
         return [round(2000 * math.sin(2 * math.pi * hz * (i + shift) / RATE))

@@ -14,7 +14,7 @@ import time
 
 sys.dont_write_bytecode = True
 GUARD_SHA256 = '6f623bb7234b3619ff859dec0afe9c1ad938f29d606f0836b69434312867e020'
-STREAM_MEDIA_SHA256 = '1932be1c85bd52d0bd2e468a9dd04355f1735e4593f95ba3cdc03a41bb76d35f'
+STREAM_MEDIA_SHA256 = '444efc203c60b31baa9896ab96d7aa0568a09f5b6591524f1b9c8fff4e9e7e64'
 STREAM_TEST = 'streamed_session_two_owner_continuity'
 MKFIFO = Path('/usr/bin/mkfifo')
 TESTS = (
@@ -330,7 +330,7 @@ def seal_stream_inputs(path, parent, budget, *, make_readonly=True):
     require(type(value) is dict and set(value) == {'schema', 'seconds', 'fps', 'width', 'height', 'inputs'}
             and value['schema'] == 'ottplay.multiview.stream-inputs.v1'
             and all(type(value[key]) is int and value[key] == expected for key, expected in
-                    (('seconds', 80), ('fps', 10), ('width', 96), ('height', 64)))
+                    (('seconds', 90), ('fps', 10), ('width', 96), ('height', 64)))
             and type(value['inputs']) is list and len(value['inputs']) == 2,
             'Sealed stream input schema differs')
     for source, row in enumerate(value['inputs'], 1):

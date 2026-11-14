@@ -1,9 +1,13 @@
 # Private multiview source broker
 
-This module is an experimental server component. It is not registered by the
-server's main router, does not install anything on a player, and advertises no
-production input capacity. Checked source fetching does not qualify a live media
-decoder. Existing public controller commands are unchanged.
+This module is an experimental server component. The private routes are disabled
+by default. Explicit `--multiview-config` activation loads the protected operator
+configuration and mounts the private router only on its selected, validated
+listener. Other listeners and an unconfigured server return 404 for the private
+namespace. Activation does not install anything on a player or enable production
+media admission: the ordinary service advertises zero input capacity and creates
+no media backend or source service. Checked source fetching does not qualify a
+live media decoder. Existing public controller commands are unchanged.
 
 ## Server configuration and pairing
 
@@ -17,9 +21,11 @@ The native installation needs a dedicated credential provisioned by the operator
 `server_id`, exact `origin`, audience `ottplay-multiview-v1`, `installation_id`, and
 `control_bearer`. The controller's existing bearer is not a compositor credential.
 Keep the provisioning record private. Native credentials cannot enroll sources.
-Default listener policy is loopback; a future LAN listener requires explicitly
-approved HTTPS, exact origins, and paired credentials. Constructing the protected
-router alone never starts a listener.
+Default listener policy is loopback. An explicitly configured private LAN
+listener requires HTTPS, an exact origin, and paired credentials. The configured
+IP, port, and TLS mode must match exactly one planned and bound listener; request
+Host and forwarding headers do not select it. Constructing the protected router
+alone never starts a listener.
 
 Private LAN upstream access requires the source's exact origin and explicit IP
 allowance. DNS answers, redirects, HLS playlists, keys, maps, and segments all pass
@@ -79,8 +85,10 @@ field allowlist and concrete before/after examples.
 
 `Broker::new_fixture` is available only in test builds and injects an actual Session,
 SourceService and stream factory behind the same private-v1 handlers. It starts no
-listener. The ordinary constructor and production server retain zero capacity and
-unregistered routes. The fixture admits one compositor with at most a 60-second
+listener. The ordinary constructor retains zero capacity; the production binary
+mounts its private shell only with the explicit operator configuration described
+above. That shell has no fixture media backend. The fixture admits one compositor
+with at most a 60-second
 hard lifetime. Its signed output path stays stable while bounded, checked reads
 refresh the actual encoder playlist and segments.
 

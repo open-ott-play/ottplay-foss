@@ -103,7 +103,7 @@ CAPTURED_FILTER_ROWS = ''' .. sine              |->A       Generate sine wave au
 class FakeMedia:
     """Seven-function frozen analyzer API; commands remain synthetic Driver data."""
 
-    helper_sha256 = "1932be1c85bd52d0bd2e468a9dd04355f1735e4593f95ba3cdc03a41bb76d35f"
+    helper_sha256 = "444efc203c60b31baa9896ab96d7aa0568a09f5b6591524f1b9c8fff4e9e7e64"
 
     def __init__(self, attempt):
         self.attempt = attempt
@@ -151,7 +151,7 @@ class FakeMedia:
                          "sha256": hashlib.sha256(raw).hexdigest()})
         self.input_manifest = self.inputs_root / "INPUTS.json"
         self.input_manifest.write_text(json.dumps({
-            "schema": "ottplay.multiview.stream-inputs.v1", "seconds": 80,
+            "schema": "ottplay.multiview.stream-inputs.v1", "seconds": 90,
             "fps": 10, "width": 96, "height": 64, "inputs": rows,
         }) + "\n")
         return self.input_manifest
@@ -516,6 +516,17 @@ class Attempt:
 
 
 class StreamedContracts(unittest.TestCase):
+    def test_original_deadlines_preserve_exact_absolute_fractional_clock(self):
+        for started in (1234.56789, 298.56789, 522538.56789):
+            with self.subTest(started=started):
+                self.assertNotEqual((started + 1800) - started, 1800)
+                with mock.patch.object(ci.time, "monotonic", return_value=started), Attempt() as attempt:
+                    attempt.run()
+                    self.assertEqual(attempt.driver.budget.started, started)
+                    self.assertEqual(attempt.driver.budget.deadline, started + 1800)
+                    self.assertEqual(attempt.driver.budget.work_deadline, started + 1680)
+                    self.assertEqual(attempt.terminal()["status"], "pass")
+
     def test_changed_or_oversized_media_source_is_refused_before_import(self):
         with tempfile.TemporaryDirectory(prefix="stream-source-guard-offline-") as raw:
             root = Path(raw).resolve()
@@ -556,8 +567,8 @@ class StreamedContracts(unittest.TestCase):
             self.assertLess(names.index("fixture-4"), names.index("stream-video-probe"))
             self.assertEqual(result["ordinary_activation_tests"], sorted(ACTIVATION_NAMES))
             self.assertEqual(len(result["streamed_input_evidence"]), 3)
-            self.assertEqual(attempt.driver.budget.deadline - attempt.driver.budget.started, 1800)
-            self.assertEqual(attempt.driver.budget.work_deadline - attempt.driver.budget.started, 1680)
+            self.assertEqual(attempt.driver.budget.deadline, attempt.driver.budget.started + 1800)
+            self.assertEqual(attempt.driver.budget.work_deadline, attempt.driver.budget.started + 1680)
             self.assertTrue(result["streamed_media_evidence"])
             for row in result["streamed_media_evidence"]:
                 self.assertFalse(row["relative_name"].endswith(".rgb"))
@@ -710,7 +721,8 @@ class StreamedContracts(unittest.TestCase):
                     self.failed(attempt, reason)
 
     def test_sealed_input_and_control_binding_refuse_tampering(self):
-        for fault in ("manifest-geometry", "manifest-id", "payload", "control-hash", "control-inputs"):
+        for fault in ("manifest-geometry", "manifest-duration-old", "manifest-duration-long",
+                      "manifest-id", "payload", "control-hash", "control-inputs"):
             with self.subTest(fault=fault), Attempt() as attempt:
                 if fault.startswith("control-"):
                     original = attempt.response
@@ -734,6 +746,8 @@ class StreamedContracts(unittest.TestCase):
                         value = json.loads(path.read_text())
                         if fault == "manifest-geometry":
                             value["width"] = 97
+                        elif fault in ("manifest-duration-old", "manifest-duration-long"):
+                            value["seconds"] = 80 if fault == "manifest-duration-old" else 91
                         elif fault == "manifest-id":
                             value["inputs"][0]["id"] = 2
                         else:
@@ -742,6 +756,8 @@ class StreamedContracts(unittest.TestCase):
                         return path
                     patch = mock.patch.object(attempt.media, "seal_inputs", side_effect=seal)
                     reason = {"manifest-geometry": "Sealed stream input schema differs",
+                              "manifest-duration-old": "Sealed stream input schema differs",
+                              "manifest-duration-long": "Sealed stream input schema differs",
                               "manifest-id": "Sealed stream input row differs",
                               "payload": "Sealed stream input payload differs"}[fault]
                 with patch:

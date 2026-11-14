@@ -244,11 +244,11 @@ impl ServerSource {
                 // before checking cancellation, malformed URL, or error state.
                 let failed = value.get("type").and_then(Value::as_str) == Some("error")
                     || selected.is_none();
-                let hints = session_hints(
-                    &endpoint,
-                    &value,
-                    if failed { None } else { selected.as_ref() },
-                )?;
+                let hints = match session_hints(&endpoint, &value, selected.as_ref())? {
+                    Some(hints) => Some(hints),
+                    None if failed => session_hints(&endpoint, &value, None)?,
+                    None => None,
+                };
                 let lease = hints.map(|(stop, heartbeat)| {
                     SessionLease::start(
                         transport.clone(),
@@ -395,13 +395,14 @@ impl PreparedSource {
             queue.push_back((resource, 1usize));
         }
         while let Some((resource, depth)) = queue.pop_front() {
-            if result.len() >= 128 || depth > 4 {
-                return Err(Error::TooLarge);
-            }
             if resource.kind == ResourceKind::Playlist
                 && !playlists.insert(resource.url.as_str().to_owned())
             {
-                return Err(Error::InvalidManifest);
+                // Shared playlists and cycles have already queued their children.
+                continue;
+            }
+            if result.len() >= 128 || depth > 4 {
+                return Err(Error::TooLarge);
             }
             let fetched = self.fetch_hls_resource(&resource).await?;
             total = total
@@ -640,16 +641,20 @@ fn session_hints(
     };
     let stop = stop
         .as_str()
-        .and_then(|v| session_url(endpoint, v))
+        .and_then(|v| session_url(endpoint, v, SessionOperation::Stop))
         .ok_or(Error::CleanupUnconfirmed)?;
     // An invalid optional heartbeat must not discard a valid mandatory stop.
     let heartbeat = hints
         .get("heartbeat")
         .and_then(Value::as_str)
-        .and_then(|v| session_url(endpoint, v));
+        .and_then(|v| session_url(endpoint, v, SessionOperation::Heartbeat));
     Ok(Some((stop, heartbeat)))
 }
-fn session_url(endpoint: &Url, raw: &str) -> Option<Url> {
+enum SessionOperation {
+    Stop,
+    Heartbeat,
+}
+fn session_url(endpoint: &Url, raw: &str, operation: SessionOperation) -> Option<Url> {
     if !endpoint.path().eq_ignore_ascii_case("/nas/api") || endpoint.query().is_some() {
         return None;
     }
@@ -666,14 +671,51 @@ fn session_url(endpoint: &Url, raw: &str) -> Option<Url> {
             && s.bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b))
     };
-    let extension = file.strip_prefix("media.")?;
-    if !component(id)
-        || !component(secret)
-        || extension.is_empty()
-        || extension.len() > 8
-        || !extension.bytes().all(|b| b.is_ascii_alphanumeric())
-    {
+    let expected = match operation {
+        SessionOperation::Stop => "media.stop",
+        SessionOperation::Heartbeat => "media.ping",
+    };
+    if !component(id) || !component(secret) || file != expected {
         return None;
     }
     Some(url)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lifecycle_hints_require_the_expected_operation_without_losing_valid_stop() {
+        let endpoint = network::address("https://provider.invalid/nas/api").unwrap();
+        let stop = "https://provider.invalid/nas/stream/id.secret/media.stop";
+        let ping = "https://provider.invalid/nas/stream/id.secret/media.ping";
+        for heartbeat in [
+            ping,
+            stop,
+            "https://provider.invalid/nas/stream/id.secret/media.m3u8",
+        ] {
+            let value = serde_json::json!({"stop": stop, "heartbeat": heartbeat});
+            let (actual_stop, actual_heartbeat) =
+                session_hints(&endpoint, &value, None).unwrap().unwrap();
+            assert_eq!(actual_stop.as_str(), stop);
+            assert_eq!(
+                actual_heartbeat.as_ref().map(Url::as_str),
+                (heartbeat == ping).then_some(ping)
+            );
+        }
+        for invalid in [
+            ping,
+            "https://provider.invalid/nas/stream/id.secret/media.m3u8",
+            "https://provider.invalid/nas/stream/id.secret/media.mp4",
+            "https://provider.invalid/nas/stream/id.secret/media.stop?token=x",
+            "https://other.invalid/nas/stream/id.secret/media.stop",
+            "https://provider.invalid/nas/stream/id.secret/media.stop/extra",
+        ] {
+            assert_eq!(
+                session_hints(&endpoint, &serde_json::json!({"stop": invalid}), None),
+                Err(Error::CleanupUnconfirmed)
+            );
+        }
+    }
 }

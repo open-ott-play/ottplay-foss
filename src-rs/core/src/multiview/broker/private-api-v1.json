@@ -14,7 +14,7 @@
     },
     "provisioning": "Operator provisions a separate credential out of band. Never reuse control-server bearer or trust discovery as enrollment. Origin is exact verified HTTPS for LAN. server_epoch is learned only after authenticated capabilities; a changed epoch invalidates sessions.",
     "server_record": "Server owns subject, installation_id, credential revision, expiry, exact permissions and allowed sources. Native cannot supply those authority fields. Native credentials have multiview-control only; source enrollment requires separate sources-manage operator.",
-    "bind": "Default loopback. LAN bind requires explicit trusted HTTPS origin/TLS and paired credentials. No listener activation in this patch.",
+    "bind": "Disabled by default. --multiview-config loads protected operator configuration and mounts the zero-capacity private service only on the selected validated listener. Default loopback; explicit private LAN bind requires trusted HTTPS origin/TLS and paired credentials. This opt-in activates private routes, not production media admission.",
     "output_admission": "Session output_profile_id must be a currently admitted profile and geometry.canvas must match exactly. Profile governs max inputs/geometry modes. Examples are synthetic, not operational capability."
   },
   "transport": {

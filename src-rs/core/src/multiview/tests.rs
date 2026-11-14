@@ -238,12 +238,17 @@ fn generated_geometry_stays_even_inside_output_without_overlap() {
             (Layout::MainWithPerimeter { main_slot: 8 }, 9),
         ] {
             let plan = build(layout, &inputs(count), out, None, &Limits::default()).unwrap();
-            assert!(plan
-                .filter_graph
-                .contains("setsar=1,setpts=PTS-STARTPTS,fps="));
-            assert!(plan
-                .filter_graph
-                .contains("force_original_aspect_ratio=decrease:force_divisible_by=2"));
+            plan.validate().unwrap();
+            assert!(!plan.filter_graph.contains("reset_sar"));
+            assert!(!plan.filter_graph.contains("force_original_aspect_ratio"));
+            let branches = plan.filter_graph.split(';').collect::<Vec<_>>();
+            for (index, rect) in plan.rects.iter().enumerate() {
+                assert_eq!(branches[index], format!(
+                    "[{index}:v:0]scale=w='min({},max(2,round({}*dar/2)*2))':h='min({},max(2,round({}/dar/2)*2))',setsar=1,pad=w={}:h={}:x=(ow-iw)/2:y=(oh-ih)/2:color=black,setpts=PTS-STARTPTS,fps={}[s{index}]",
+                    rect.width, rect.height, rect.height, rect.width,
+                    rect.width, rect.height, out.fps,
+                ));
+            }
             assert!(!plan.filter_graph.contains("scale=w=0:"));
             assert!(!plan.filter_graph.contains(":h=0:"));
             for (index, rect) in plan.rects.iter().enumerate() {
@@ -291,5 +296,74 @@ fn workers_can_verify_generated_graph_and_geometry_receipts() {
     assert_eq!(plan.validate(), Err(PlanError::InvalidPlan));
     let mut plan = original();
     plan.rects[0].x = 2;
+    assert_eq!(plan.validate(), Err(PlanError::InvalidPlan));
+}
+
+#[test]
+fn dar_fit_rounds_to_nearest_even_and_stays_inside_each_tile() {
+    // Independent positive-rational oracle for nearest-even-pixel fitting.
+    // These numeric checks plus the exact graph assertion above specify the
+    // expression contract; executing FFmpeg on anamorphic media is separate.
+    fn rational_fit(w: u32, h: u32, n: u64, d: u64) -> (u32, u32) {
+        fn nearest_two(n: u128, d: u128) -> u32 {
+            u32::try_from(2 * ((n + d) / (2 * d))).unwrap().max(2)
+        }
+        (
+            w.min(nearest_two(u128::from(h) * u128::from(n), u128::from(d))),
+            h.min(nearest_two(u128::from(w) * u128::from(d), u128::from(n))),
+        )
+    }
+    for (coded_w, coded_h, sar_n, sar_d, expected) in [
+        (1920, 1080, 1, 1, (240, 136)),
+        (720, 576, 16, 15, (240, 180)),
+        (720, 576, 64, 45, (240, 136)),
+        (1440, 1080, 4, 3, (240, 136)),
+        (1080, 1440, 3, 4, (102, 180)),
+        (240, 135, 1, 1, (240, 136)),
+        (1, 1, 1_000_000, 1, (240, 2)),
+        (1, 1, 1, 1_000_000, (2, 180)),
+    ] {
+        let n = coded_w * sar_n;
+        let d = coded_h * sar_d;
+        assert_eq!(rational_fit(240, 180, n, d), expected);
+        for (w, h) in [(240, 180), (638, 358), (2, 2), (16, 8)] {
+            let dar = n as f64 / d as f64;
+            let evaluated = (
+                f64::from(w).min((f64::from(h) * dar / 2.0).round().max(1.0) * 2.0) as u32,
+                f64::from(h).min((f64::from(w) / dar / 2.0).round().max(1.0) * 2.0) as u32,
+            );
+            assert_eq!(evaluated, rational_fit(w, h, n, d));
+            assert!(evaluated.0 >= 2 && evaluated.0 <= w);
+            assert!(evaluated.1 >= 2 && evaluated.1 <= h);
+            assert_eq!((evaluated.0 | evaluated.1) % 2, 0);
+        }
+    }
+}
+
+#[test]
+fn dar_graph_keeps_coded_decode_budget_and_seal() {
+    let rows = (0..4)
+        .map(|slot| InputSpec {
+            slot,
+            width: 1440,
+            height: 1080,
+            fps: 15,
+        })
+        .collect::<Vec<_>>();
+    let budget = 4 * 1440 * 1080 * 15;
+    let mut limits = Limits {
+        max_input_pixel_rate: budget,
+        ..Limits::default()
+    };
+    let mut plan = build(Layout::Grid4, &rows, output(), Some(2), &limits).unwrap();
+    assert_eq!(plan.input_slots, vec![0, 1, 2, 3]);
+    assert_eq!(plan.audio_owner_input, Some(2));
+    plan.validate().unwrap();
+    limits.max_input_pixel_rate = budget - 1;
+    assert_eq!(
+        error(Layout::Grid4, &rows, output(), Some(2), &limits),
+        PlanError::InputBudgetExceeded
+    );
+    plan.filter_graph = plan.filter_graph.replace("*dar/2", "*a/2");
     assert_eq!(plan.validate(), Err(PlanError::InvalidPlan));
 }

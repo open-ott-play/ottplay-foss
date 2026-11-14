@@ -275,7 +275,7 @@ pub fn build(
     let rectangles = rectangles(layout, count, output);
     let mut filters = Vec::with_capacity(count * 2 + 2);
     for (index, rect) in rectangles.iter().enumerate() {
-        filters.push(format!("[{index}:v:0]scale=w={}:h={}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=w={}:h={}:x=(ow-iw)/2:y=(oh-ih)/2:color=black,setsar=1,setpts=PTS-STARTPTS,fps={}[s{index}]", rect.width, rect.height, rect.width, rect.height, output.fps));
+        filters.push(format!("[{index}:v:0]scale=w='min({},max(2,round({}*dar/2)*2))':h='min({},max(2,round({}/dar/2)*2))',setsar=1,pad=w={}:h={}:x=(ow-iw)/2:y=(oh-ih)/2:color=black,setpts=PTS-STARTPTS,fps={}[s{index}]", rect.width, rect.height, rect.height, rect.width, rect.width, rect.height, output.fps));
     }
     match layout {
         Layout::Grid4 | Layout::Grid9 => {

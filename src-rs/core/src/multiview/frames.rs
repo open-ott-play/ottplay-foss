@@ -14,6 +14,7 @@ pub struct FrameSpec {
 pub enum FrameError {
     InvalidSpec,
     InvalidLength,
+    InvalidContent,
     StaleGeneration,
     InvalidGeneration,
     StaleSequence,
@@ -38,11 +39,47 @@ pub enum FrameStatus {
     Failed,
 }
 
+/// Unpadded square-pixel image bounds inside the fixed RGB allocation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrameContentRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+impl FrameContentRect {
+    pub fn full(spec: FrameSpec) -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            width: spec.width,
+            height: spec.height,
+        }
+    }
+    pub fn validate(self, spec: FrameSpec) -> Result<(), FrameError> {
+        if self.width == 0
+            || self.height == 0
+            || !self
+                .x
+                .checked_add(self.width)
+                .is_some_and(|end| end <= spec.width)
+            || !self
+                .y
+                .checked_add(self.height)
+                .is_some_and(|end| end <= spec.height)
+        {
+            return Err(FrameError::InvalidContent);
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct Frame {
     pub generation: u64,
     pub sequence: u64,
     pub spec: FrameSpec,
+    pub content: FrameContentRect,
     pub pixels: Arc<[u8]>,
     pub received_at: Instant,
 }
@@ -112,6 +149,23 @@ impl LatestFrame {
         pixels: Vec<u8>,
         received_at: Instant,
     ) -> Result<(), FrameError> {
+        self.publish_content(
+            generation,
+            sequence,
+            pixels,
+            received_at,
+            FrameContentRect::full(self.spec),
+        )
+    }
+    pub fn publish_content(
+        &self,
+        generation: u64,
+        sequence: u64,
+        pixels: Vec<u8>,
+        received_at: Instant,
+        content: FrameContentRect,
+    ) -> Result<(), FrameError> {
+        content.validate(self.spec)?;
         if pixels.len() != byte_len(self.spec)? {
             return Err(FrameError::InvalidLength);
         }
@@ -136,6 +190,7 @@ impl LatestFrame {
             generation,
             sequence,
             spec: self.spec,
+            content,
             pixels: pixels.into(),
             received_at,
         }));
@@ -197,6 +252,7 @@ pub fn compose_into(
         }
         seen[usize::from(*slot)] = true;
         if let FrameView::Ready(frame) = view {
+            frame.content.validate(frame.spec)?;
             if frame.pixels.len() != byte_len(frame.spec)? {
                 return Err(FrameError::InvalidLength);
             }
@@ -219,18 +275,19 @@ pub fn compose_into(
         else {
             continue;
         };
-        let (width, height) = if u64::from(frame.spec.width) * u64::from(rect.height)
-            >= u64::from(frame.spec.height) * u64::from(rect.width)
+        let (width, height) = if u64::from(frame.content.width) * u64::from(rect.height)
+            >= u64::from(frame.content.height) * u64::from(rect.width)
         {
             (
                 rect.width,
-                (u64::from(frame.spec.height) * u64::from(rect.width) / u64::from(frame.spec.width))
-                    .max(1) as u32,
+                (u64::from(frame.content.height) * u64::from(rect.width)
+                    / u64::from(frame.content.width))
+                .max(1) as u32,
             )
         } else {
             (
-                (u64::from(frame.spec.width) * u64::from(rect.height)
-                    / u64::from(frame.spec.height))
+                (u64::from(frame.content.width) * u64::from(rect.height)
+                    / u64::from(frame.content.height))
                 .max(1) as u32,
                 rect.height,
             )
@@ -238,10 +295,13 @@ pub fn compose_into(
         let x0 = rect.x + (rect.width - width) / 2;
         let y0 = rect.y + (rect.height - height) / 2;
         for y in 0..height {
-            let sy = u64::from(y) * u64::from(frame.spec.height) / u64::from(height);
+            let sy = u64::from(y) * u64::from(frame.content.height) / u64::from(height);
             for x in 0..width {
-                let sx = u64::from(x) * u64::from(frame.spec.width) / u64::from(width);
-                let source = (sy as usize * frame.spec.width as usize + sx as usize) * 3;
+                let sx = u64::from(x) * u64::from(frame.content.width) / u64::from(width);
+                let source = ((frame.content.y as usize + sy as usize) * frame.spec.width as usize
+                    + frame.content.x as usize
+                    + sx as usize)
+                    * 3;
                 let target = (y0 + y) as usize * stride + (x0 + x) as usize * 3;
                 canvas[target..target + 3].copy_from_slice(&frame.pixels[source..source + 3]);
             }
@@ -254,6 +314,163 @@ pub fn compose_into(
 mod tests {
     use super::super::geometry::{CanvasSpec, ImportedRect, OverlapPolicy};
     use super::*;
+    #[test]
+    fn content_validation_is_atomic_and_publish_remains_full_buffer_compatible() {
+        let m = LatestFrame::new(
+            FrameSpec {
+                width: 4,
+                height: 4,
+            },
+            1,
+        )
+        .unwrap();
+        let now = Instant::now();
+        for content in [
+            FrameContentRect {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 2,
+            },
+            FrameContentRect {
+                x: 3,
+                y: 0,
+                width: 2,
+                height: 2,
+            },
+            FrameContentRect {
+                x: u32::MAX,
+                y: 0,
+                width: 2,
+                height: 2,
+            },
+            FrameContentRect {
+                x: 0,
+                y: 3,
+                width: 2,
+                height: 2,
+            },
+        ] {
+            assert_eq!(
+                m.publish_content(1, 1, vec![1; 48], now, content),
+                Err(FrameError::InvalidContent)
+            );
+            assert_eq!(m.sequence(), 0);
+        }
+        let c = FrameContentRect {
+            x: 1,
+            y: 1,
+            width: 2,
+            height: 2,
+        };
+        assert_eq!(
+            m.publish_content(0, 1, vec![1; 48], now, c),
+            Err(FrameError::StaleGeneration)
+        );
+        m.publish(1, 1, vec![1; 48], now).unwrap();
+        let FrameView::Ready(frame) = m.snapshot(now, Duration::from_secs(1)) else {
+            panic!()
+        };
+        assert_eq!(frame.content, FrameContentRect::full(frame.spec));
+    }
+    #[test]
+    fn composition_uses_unpadded_content_with_original_stride_and_odd_offsets() {
+        for (buffer, content) in [
+            (
+                FrameSpec {
+                    width: 320,
+                    height: 180,
+                },
+                FrameContentRect {
+                    x: 40,
+                    y: 0,
+                    width: 240,
+                    height: 180,
+                },
+            ),
+            (
+                FrameSpec {
+                    width: 180,
+                    height: 320,
+                },
+                FrameContentRect {
+                    x: 0,
+                    y: 40,
+                    width: 180,
+                    height: 240,
+                },
+            ),
+            (
+                FrameSpec {
+                    width: 320,
+                    height: 180,
+                },
+                FrameContentRect {
+                    x: 1,
+                    y: 0,
+                    width: 318,
+                    height: 180,
+                },
+            ),
+        ] {
+            let m = LatestFrame::new(buffer, 1).unwrap();
+            let mut pixels = vec![255; byte_len(buffer).unwrap()];
+            for y in content.y..content.y + content.height {
+                for x in content.x..content.x + content.width {
+                    let p = ((y * buffer.width + x) * 3) as usize;
+                    pixels[p..p + 3].copy_from_slice(&[1, 77, 3]);
+                }
+            }
+            let now = Instant::now();
+            m.publish_content(1, 1, pixels, now, content).unwrap();
+            let geometry = ValidatedGeometry::new(
+                CanvasSpec {
+                    width: content.width,
+                    height: content.height,
+                    fps: 10,
+                },
+                0,
+                &[ImportedRect {
+                    slot_id: 0,
+                    x: 0,
+                    y: 0,
+                    width: content.width,
+                    height: content.height,
+                    z: 0,
+                }],
+                OverlapPolicy::Disjoint,
+            )
+            .unwrap();
+            let mut canvas = Vec::new();
+            compose_into(
+                &geometry,
+                &[(0, m.snapshot(now, Duration::from_secs(1)))],
+                &mut canvas,
+            )
+            .unwrap();
+            assert!(canvas.chunks_exact(3).all(|rgb| rgb == [1, 77, 3]));
+            let FrameView::Ready(mut malformed) = m.snapshot(now, Duration::from_secs(1)) else {
+                panic!()
+            };
+            // A public Frame can be constructed outside the mailbox; compositor
+            // must validate it independently before indexing its pixel allocation.
+            malformed = Arc::new(Frame {
+                generation: 1,
+                sequence: 1,
+                spec: buffer,
+                content: FrameContentRect {
+                    x: u32::MAX,
+                    ..content
+                },
+                pixels: malformed.pixels.clone(),
+                received_at: now,
+            });
+            assert_eq!(
+                compose_into(&geometry, &[(0, FrameView::Ready(malformed))], &mut canvas),
+                Err(FrameError::InvalidContent)
+            );
+        }
+    }
     fn mailbox() -> LatestFrame {
         LatestFrame::new(
             FrameSpec {

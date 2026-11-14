@@ -421,6 +421,7 @@ fn sweep(s: &mut State, now: Instant) {
                 && (matches!(lease.phase, Phase::Preparing | Phase::Attaching)
                     && now >= lease.prepare_deadline
                     || !selected_current(s, &lease.owner, &lease.selection)
+                    || lease.revoked.load(Ordering::Acquire)
                     || s.sessions
                         .get(&lease.context.session_id)
                         .is_none_or(|session| session.revoked || now >= session.expires))

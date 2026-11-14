@@ -781,3 +781,241 @@ async fn lifecycle_redirect_never_follows_or_claims_confirmed_cleanup() {
     ));
     fixture.await.unwrap();
 }
+
+async fn vportal_reply_then_finish(
+    reply: impl FnOnce(&str) -> serde_json::Value,
+    expected_stop: Option<&str>,
+) -> Result<(), Error> {
+    let (listener, base) = fixture().await;
+    let body = reply(&base).to_string();
+    let source = ServerSource::vportal(
+        &format!("{base}/nas/api"),
+        "fixture-key",
+        serde_json::json!({"id":"7"}),
+    )
+    .unwrap();
+    let transport = fixture_transport(&[&base]);
+    let cancel = CancellationToken::new();
+    let provider = async {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        assert!(read_request(&mut socket)
+            .await
+            .starts_with("POST /nas/api "));
+        respond(
+            &mut socket,
+            "200 OK",
+            "Content-Type: application/json\r\n",
+            &body,
+        )
+        .await;
+        drop(socket);
+        if let Some(path) = expected_stop {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            assert!(read_request(&mut socket)
+                .await
+                .starts_with(&format!("GET {path} ")));
+            respond(&mut socket, "200 OK", "", "stopped").await;
+        }
+        assert!(
+            tokio::time::timeout(Duration::from_millis(100), listener.accept())
+                .await
+                .is_err()
+        );
+    };
+    let finish = async { source.resolve(&transport, &cancel).await?.finish().await };
+    let (result, ()) = tokio::time::timeout(Duration::from_secs(4), async {
+        tokio::join!(finish, provider)
+    })
+    .await
+    .unwrap();
+    result
+}
+
+#[tokio::test]
+async fn provider_error_prefers_matching_session_stop_over_top_level_failure() {
+    for variant in [false, true] {
+        for absolute_key in [false, true] {
+            let result = vportal_reply_then_finish(|base| {
+                let mut value = serde_json::json!({
+                    "type":"error",
+                    "stop":format!("{base}/nas/stream/fallback.secret/media.stop"),
+                });
+                if variant {
+                    value["variants"] = serde_json::json!({"main":"/selected.m3u8"});
+                } else {
+                    value["url"] = serde_json::json!("/selected.m3u8");
+                }
+                let key = if absolute_key { format!("{base}/selected.m3u8") } else { "/selected.m3u8".into() };
+                let mut sessions = serde_json::Map::new();
+                sessions.insert(key, serde_json::json!({"stop":format!("{base}/nas/stream/selected.secret/media.stop")}));
+                value["sessions"] = serde_json::Value::Object(sessions);
+                value
+            }, Some("/nas/stream/selected.secret/media.stop")).await;
+            assert_eq!(result, Err(Error::InvalidResponse));
+        }
+    }
+}
+
+#[tokio::test]
+async fn unmatched_variant_uses_top_level_cleanup_only_for_provider_failure() {
+    for failed in [false, true] {
+        let result = vportal_reply_then_finish(|base| {
+            serde_json::json!({
+                "type":if failed { "error" } else { "ok" },
+                "variants":{"main":"/selected.m3u8"},
+                "stop":format!("{base}/nas/stream/fallback.secret/media.stop"),
+                "sessions":{"/other.m3u8":{"stop":format!("{base}/nas/stream/other.secret/media.stop")}},
+            })
+        }, failed.then_some("/nas/stream/fallback.secret/media.stop")).await;
+        assert_eq!(
+            result,
+            if failed {
+                Err(Error::InvalidResponse)
+            } else {
+                Ok(())
+            }
+        );
+    }
+}
+
+#[tokio::test]
+async fn invalid_selected_stop_never_fetches_media_or_falls_back_to_another_lease() {
+    for failed in [false, true] {
+        for operation in ["m3u8", "mp4", "ping"] {
+            let result = vportal_reply_then_finish(|base| {
+                serde_json::json!({
+                    "type":if failed { "error" } else { "ok" },
+                    "url":"/selected.m3u8",
+                    "stop":format!("{base}/nas/stream/fallback.secret/media.stop"),
+                    "sessions":{"/selected.m3u8":{"stop":format!("{base}/nas/stream/selected.secret/media.{operation}")}},
+                })
+            }, None).await;
+            assert_eq!(result, Err(Error::CleanupUnconfirmed));
+        }
+    }
+}
+
+async fn finite_hls_fixture(
+    responses: Vec<(String, String)>,
+) -> Result<super::super::resolvers::HlsSnapshot, Error> {
+    let (listener, base) = fixture().await;
+    let transport = fixture_transport(&[&base]);
+    let prepared = ServerSource::http(&format!("{base}/root.m3u8"), None)
+        .unwrap()
+        .resolve(&transport, &CancellationToken::new())
+        .await
+        .unwrap();
+    let expected_requests = responses.len();
+    let (finished, mut completed) = tokio::sync::oneshot::channel();
+    let provider = async {
+        let mut served = 0;
+        for (path, body) in responses {
+            let accepted = tokio::select! {
+                biased;
+                accepted = listener.accept() => Some(accepted.unwrap()),
+                _ = &mut completed => None,
+            };
+            let Some((mut socket, _)) = accepted else {
+                break;
+            };
+            assert!(read_request(&mut socket)
+                .await
+                .starts_with(&format!("GET {path} ")));
+            let content_type = if path.ends_with(".m3u8") {
+                "Content-Type: application/vnd.apple.mpegurl\r\n"
+            } else {
+                "Content-Type: application/octet-stream\r\n"
+            };
+            respond(&mut socket, "200 OK", content_type, &body).await;
+            served += 1;
+        }
+        assert!(
+            tokio::time::timeout(Duration::from_millis(100), listener.accept())
+                .await
+                .is_err()
+        );
+        served
+    };
+    let fetch = async {
+        let result = prepared.fetch_hls_snapshot().await;
+        prepared.finish().await.unwrap();
+        let _ = finished.send(());
+        result
+    };
+    let (result, served) = tokio::time::timeout(Duration::from_secs(15), async {
+        tokio::join!(fetch, provider)
+    })
+    .await
+    .unwrap();
+    assert_eq!(served, expected_requests);
+    result
+}
+
+#[tokio::test]
+async fn hls_snapshot_fetches_shared_playlist_and_its_children_once() {
+    let responses = vec![
+        ("/root.m3u8".into(), "#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"a\",NAME=\"English\",URI=\"shared.m3u8\"\n#EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO=\"a\"\nshared.m3u8\n".into()),
+        ("/shared.m3u8".into(), "#EXTM3U\n#EXTINF:1,\nsegment.bin\n#EXT-X-ENDLIST\n".into()),
+        ("/segment.bin".into(), "owned fixture segment".into()),
+    ];
+    let expected_bytes: usize = responses
+        .iter()
+        .map(|(_, body): &(String, String)| body.len())
+        .sum();
+    let snapshot = finite_hls_fixture(responses).await.unwrap();
+    assert_eq!(snapshot.resources.len(), 3);
+    assert_eq!(snapshot.total_bytes, expected_bytes);
+}
+
+#[tokio::test]
+async fn hls_snapshot_skips_cycles_but_preserves_new_playlist_depth_limit() {
+    for cycle in [false, true] {
+        let mut responses = vec![(
+            "/root.m3u8".into(),
+            "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\np1.m3u8\n".into(),
+        )];
+        for depth in 1..=4 {
+            let next = if cycle && depth == 4 {
+                "root.m3u8".into()
+            } else {
+                format!("p{}.m3u8", depth + 1)
+            };
+            responses.push((
+                format!("/p{depth}.m3u8"),
+                format!("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\n{next}\n"),
+            ));
+        }
+        let result = finite_hls_fixture(responses).await;
+        if cycle {
+            assert_eq!(result.unwrap().resources.len(), 5);
+        } else {
+            assert!(matches!(result, Err(Error::TooLarge)));
+        }
+    }
+}
+
+#[tokio::test]
+async fn hls_snapshot_revisit_does_not_spend_the_unique_resource_budget() {
+    for repeated in [false, true] {
+        let mut root = "#EXTM3U\n".to_owned();
+        for index in 0..128 {
+            let selected = if repeated && index == 127 { 0 } else { index };
+            root.push_str(&format!(
+                "#EXT-X-STREAM-INF:BANDWIDTH=1\np{selected}.m3u8\n"
+            ));
+        }
+        let mut responses = vec![("/root.m3u8".into(), root)];
+        for index in 0..127 {
+            responses.push((
+                format!("/p{index}.m3u8"),
+                "#EXTM3U\n#EXT-X-ENDLIST\n".into(),
+            ));
+        }
+        let result = finite_hls_fixture(responses).await;
+        if repeated {
+            assert_eq!(result.unwrap().resources.len(), 128);
+        } else {
+            assert!(matches!(result, Err(Error::TooLarge)));
+        }
+    }
+}

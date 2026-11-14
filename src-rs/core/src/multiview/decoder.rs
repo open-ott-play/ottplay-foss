@@ -2,7 +2,7 @@
 //!
 //! Each source advances its video and audio together; selecting another audio
 //! queue does not start a new decoder or reset the output encoder's sample clock.
-use super::frames::{FrameSpec, LatestFrame};
+use super::frames::{FrameContentRect, FrameSpec, LatestFrame};
 use std::{
     collections::VecDeque,
     fs::File,
@@ -1460,6 +1460,8 @@ mod timed_io {
 struct AudioState {
     generation: u64,
     has_audio: bool,
+    // Untimed clean EOF preserves the remaining FIFO and known trailing silence.
+    untimed_eof: bool,
     samples: VecDeque<i16>,
     stats: AudioQueueStats,
     timed: Option<TimedAudio>,
@@ -1485,6 +1487,7 @@ impl AudioQueue {
             state: Mutex::new(AudioState {
                 generation,
                 has_audio: false,
+                untimed_eof: false,
                 samples: VecDeque::with_capacity(AUDIO_LIMIT),
                 stats: AudioQueueStats::default(),
                 timed: None,
@@ -1499,6 +1502,7 @@ impl AudioQueue {
         }
         state.generation = next;
         state.has_audio = false;
+        state.untimed_eof = false;
         state.samples.clear();
         state.stats = AudioQueueStats::default();
         state.timed = None;
@@ -1513,7 +1517,11 @@ impl AudioQueue {
             return output;
         };
         if state.generation == generation && state.has_audio {
-            let missing = output.len().saturating_sub(state.samples.len()) as u64;
+            let missing = if state.untimed_eof {
+                0
+            } else {
+                output.len().saturating_sub(state.samples.len()) as u64
+            };
             state.stats.underflow_missing_samples = state
                 .stats
                 .underflow_missing_samples
@@ -1571,6 +1579,7 @@ impl AudioQueue {
         if let Ok(mut state) = self.state.lock() {
             if state.generation == generation {
                 state.has_audio = false;
+                state.untimed_eof = false;
                 state.samples.clear();
                 if let Some(t) = &mut state.timed {
                     t.pending_first = None;
@@ -1586,6 +1595,7 @@ impl AudioQueue {
             return Err(DecoderError::StaleGeneration);
         }
         state.has_audio = true;
+        state.untimed_eof = false;
         Ok(())
     }
 
@@ -1598,17 +1608,41 @@ impl AudioQueue {
         }
     }
 
+    // The file monitor must retain its authority fence after child success
+    // until every known EOF sample is consumed. A momentarily empty live FIFO
+    // is not completion. Replacement/unavailability already invalidates custody.
+    fn untimed_drain_complete(&self, generation: u64) -> Result<bool, DecoderError> {
+        let state = self.state.lock().map_err(|_| DecoderError::Io)?;
+        Ok(state.generation != generation
+            || !state.has_audio
+            || (state.untimed_eof && state.samples.is_empty()))
+    }
+
     fn try_push(&self, generation: u64, bytes: &[u8]) -> Result<(), DecoderError> {
+        self.try_push_final(generation, bytes, false)
+    }
+
+    // The final aligned tail and EOF become visible in the same queue lock.
+    // A failed/backpressured push changes neither the FIFO nor the EOF state.
+    fn try_push_final(
+        &self,
+        generation: u64,
+        bytes: &[u8],
+        final_chunk: bool,
+    ) -> Result<(), DecoderError> {
         let count = bytes.len() / 2;
-        if bytes.len() % 2 != 0 || count > AUDIO_BLOCK {
+        if bytes.len() % 2 != 0 || count > AUDIO_BLOCK || (final_chunk && bytes.len() % 4 != 0) {
             return Err(DecoderError::InvalidInput);
         }
         let mut state = self.state.lock().map_err(|_| DecoderError::Io)?;
         if state.generation != generation {
             return Err(DecoderError::StaleGeneration);
         }
-        if !state.has_audio {
+        if !state.has_audio || state.untimed_eof {
             return Err(DecoderError::PublicationDenied);
+        }
+        if final_chunk && state.timed.is_some() {
+            return Err(DecoderError::InvalidInput);
         }
         let missing_room = count.saturating_sub(AUDIO_LIMIT - state.samples.len());
         if missing_room > 0 && state.stats.selected {
@@ -1628,6 +1662,7 @@ impl AudioQueue {
                 .samples
                 .push_back(i16::from_le_bytes([pair[0], pair[1]]));
         }
+        state.untimed_eof = final_chunk;
         Ok(())
     }
 }
@@ -1637,6 +1672,7 @@ fn publish_audio(
     queue: &AudioQueue,
     generation: u64,
     bytes: &[u8],
+    final_chunk: bool,
     cancelled: &AtomicBool,
     began: Instant,
 ) -> Result<(), DecoderError> {
@@ -1646,7 +1682,13 @@ fn publish_audio(
             return Err(DecoderError::PublicationDenied);
         }
         wait_active(binding, cancelled, began)?;
-        let mut operation = || queue.try_push(generation, bytes);
+        let mut operation = || {
+            if final_chunk {
+                queue.try_push_final(generation, bytes, true)
+            } else {
+                queue.try_push(generation, bytes)
+            }
+        };
         match publish_bound(binding, &mut operation) {
             Err(DecoderError::Backpressure) => {
                 let since = full_since.get_or_insert_with(Instant::now);
@@ -1676,12 +1718,49 @@ impl Drop for Process {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SampleAspectRatio {
+    pub numerator: u32,
+    pub denominator: u32,
+}
+impl SampleAspectRatio {
+    pub const SQUARE: Self = Self {
+        numerator: 1,
+        denominator: 1,
+    };
+    fn parse(value: Option<&str>) -> Result<Self, DecoderError> {
+        let Some(value) = value else {
+            return Ok(Self::SQUARE);
+        };
+        if value == "N/A" || value == "0:1" {
+            return Ok(Self::SQUARE);
+        }
+        let (n, d) = value.split_once(':').ok_or(DecoderError::ProbeFailed)?;
+        let (n, d) = (
+            n.parse::<u32>().map_err(|_| DecoderError::ProbeFailed)?,
+            d.parse::<u32>().map_err(|_| DecoderError::ProbeFailed)?,
+        );
+        if n == 0 || d == 0 {
+            return Err(DecoderError::InvalidInput);
+        }
+        let (mut a, mut b) = (n, d);
+        while b != 0 {
+            (a, b) = (b, a % b);
+        }
+        Ok(Self {
+            numerator: n / a,
+            denominator: d / a,
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MediaInfo {
     pub width: u32,
     pub height: u32,
     pub fps: f64,
     pub has_audio: bool,
+    pub sample_aspect_ratio: SampleAspectRatio,
 }
 impl MediaInfo {
     /// Conservative whole decoded pixels/second; invalid public values saturate.
@@ -1698,6 +1777,75 @@ impl MediaInfo {
         }
     }
 }
+// Probe-bound display geometry; dynamic SAR/resolution changes and rotation
+// are not qualified here. Coded geometry still governs input resource admission.
+fn content_rect(info: MediaInfo, buffer: FrameSpec) -> Result<FrameContentRect, DecoderError> {
+    let sar = info.sample_aspect_ratio;
+    if info.width == 0
+        || info.height == 0
+        || sar.numerator == 0
+        || sar.denominator == 0
+        || buffer.width < 2
+        || buffer.height < 2
+        || buffer.width % 2 != 0
+        || buffer.height % 2 != 0
+    {
+        return Err(DecoderError::InvalidInput);
+    }
+    let n = u128::from(info.width)
+        .checked_mul(u128::from(sar.numerator))
+        .ok_or(DecoderError::InvalidInput)?;
+    let d = u128::from(info.height)
+        .checked_mul(u128::from(sar.denominator))
+        .ok_or(DecoderError::InvalidInput)?;
+    let (w, h) = if n
+        .checked_mul(u128::from(buffer.height))
+        .ok_or(DecoderError::InvalidInput)?
+        >= d.checked_mul(u128::from(buffer.width))
+            .ok_or(DecoderError::InvalidInput)?
+    {
+        (
+            u128::from(buffer.width),
+            u128::from(buffer.width)
+                .checked_mul(d)
+                .ok_or(DecoderError::InvalidInput)?
+                / n,
+        )
+    } else {
+        (
+            u128::from(buffer.height)
+                .checked_mul(n)
+                .ok_or(DecoderError::InvalidInput)?
+                / d,
+            u128::from(buffer.height),
+        )
+    };
+    let (w, h) = (
+        u32::try_from(w).map_err(|_| DecoderError::InvalidInput)? & !1,
+        u32::try_from(h).map_err(|_| DecoderError::InvalidInput)? & !1,
+    );
+    if w < 2 || h < 2 {
+        return Err(DecoderError::InvalidInput);
+    }
+    let content = FrameContentRect {
+        x: (buffer.width - w) / 2,
+        y: (buffer.height - h) / 2,
+        width: w,
+        height: h,
+    };
+    content
+        .validate(buffer)
+        .map_err(|_| DecoderError::InvalidInput)?;
+    Ok(content)
+}
+fn content_filter(buffer: FrameSpec, content: FrameContentRect, fps: u32) -> String {
+    // RGB before pad prevents chroma-subsampling from rounding odd x/y offsets.
+    format!(
+        "scale={}:{},setsar=1,format=rgb24,pad={}:{}:{}:{}:color=black,fps={}",
+        content.width, content.height, buffer.width, buffer.height, content.x, content.y, fps
+    )
+}
+
 fn rate(value: &str) -> Result<f64, DecoderError> {
     let (n, d) = value.split_once('/').ok_or(DecoderError::ProbeFailed)?;
     let n = n.parse::<u64>().map_err(|_| DecoderError::ProbeFailed)?;
@@ -1715,7 +1863,8 @@ fn metadata(bytes: &[u8]) -> Result<MediaInfo, DecoderError> {
     let text = std::str::from_utf8(bytes).map_err(|_| DecoderError::ProbeFailed)?;
     let (mut in_stream, mut streams, mut video, mut audio) = (false, 0, false, false);
     let mut selected = None;
-    let (mut kind, mut width, mut height, mut avg, mut nominal) = ("", None, None, None, None);
+    let (mut kind, mut width, mut height, mut avg, mut nominal, mut sar) =
+        ("", None, None, None, None, None);
     for line in text.lines() {
         match line {
             "[STREAM]" => {
@@ -1724,7 +1873,7 @@ fn metadata(bytes: &[u8]) -> Result<MediaInfo, DecoderError> {
                 }
                 in_stream = true;
                 streams += 1;
-                (kind, width, height, avg, nominal) = ("", None, None, None, None);
+                (kind, width, height, avg, nominal, sar) = ("", None, None, None, None, None);
             }
             "[/STREAM]" => {
                 if !in_stream {
@@ -1743,6 +1892,7 @@ fn metadata(bytes: &[u8]) -> Result<MediaInfo, DecoderError> {
                         height: h,
                         fps,
                         has_audio: false,
+                        sample_aspect_ratio: SampleAspectRatio::parse(sar)?,
                     });
                     video = true;
                 }
@@ -1769,6 +1919,11 @@ fn metadata(bytes: &[u8]) -> Result<MediaInfo, DecoderError> {
                         }
                         "avg_frame_rate" => avg = Some(value),
                         "r_frame_rate" => nominal = Some(value),
+                        "sample_aspect_ratio" => {
+                            if sar.replace(value).is_some() {
+                                return Err(DecoderError::ProbeFailed);
+                            }
+                        }
                         _ => {}
                     }
                 }
@@ -1882,14 +2037,78 @@ fn stream_fd_tool(
     Ok(path)
 }
 
-// Stream-only feature discovery shares the whole probe deadline, keeps no full
-// help text, and does not widen the 64 KiB actual-media metadata cap.
+// Help is streamed and discarded under a separate finite discovery budget.
+// This does not widen PROBE_LIMIT, the 64 KiB actual-media metadata limit.
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
+const STREAM_HELP_LIMIT: usize = 4 * 1024 * 1024;
+#[cfg(test)]
+fn scan_stream_stats_help(reader: impl Read) -> Result<(bool, bool), DecoderError> {
+    scan_stream_stats_help_until(reader, &|| Ok(()))
+}
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
+fn scan_stream_stats_help_until(
+    mut reader: impl Read,
+    check: &dyn Fn() -> Result<(), DecoderError>,
+) -> Result<(bool, bool), DecoderError> {
+    let mut count = 0usize;
+    let mut tail = Vec::with_capacity(4224);
+    let (mut stats, mut format) = (false, false);
+    let mut bytes = [0u8; 4096];
+    loop {
+        check()?;
+        // Read at most one byte beyond the cap so even a hostile producer has
+        // a finite byte budget. No full help output is retained.
+        let allowance = bytes.len().min(STREAM_HELP_LIMIT - count + 1);
+        let n = match reader.read(&mut bytes[..allowance]) {
+            Ok(n) => n,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(2));
+                continue;
+            }
+            Err(_) => return Err(DecoderError::Io),
+        };
+        if n == 0 {
+            return Ok((stats, format));
+        }
+        count += n;
+        if count > STREAM_HELP_LIMIT {
+            return Err(DecoderError::Unsupported);
+        }
+        tail.extend_from_slice(&bytes[..n]);
+        stats |= tail
+            .windows(b"-stats_mux_pre[".len())
+            .any(|w| w == b"-stats_mux_pre[");
+        format |= tail
+            .windows(b"-stats_mux_pre_fmt[".len())
+            .any(|w| w == b"-stats_mux_pre_fmt[");
+        if tail.len() > 128 {
+            tail.drain(..tail.len() - 128);
+        }
+    }
+}
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
+fn stream_stats_supported(fields: (bool, bool), successful_exit: bool) -> Result<(), DecoderError> {
+    if successful_exit && fields == (true, true) {
+        Ok(())
+    } else {
+        Err(DecoderError::Unsupported)
+    }
+}
+
+// Stream-only discovery shares the whole probe deadline. A reader error or
+// limit wakes the parent immediately; finding both flags is not early success:
+// the bounded remainder must drain and the tool must exit successfully.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn require_stream_stats(
     path: &Path,
     deadline: Instant,
     check: &dyn Fn() -> Result<(), DecoderError>,
 ) -> Result<(), DecoderError> {
     check()?;
+    if Instant::now() >= deadline {
+        return Err(DecoderError::ProbeTimeout);
+    }
     let child = Command::new(path)
         .args(["-hide_banner", "-h", "full"])
         .stdin(Stdio::null())
@@ -1898,71 +2117,78 @@ fn require_stream_stats(
         .spawn()
         .map_err(|_| DecoderError::Unsupported)?;
     let mut process = Process(Some(child));
-    let mut stdout = process
+    let stdout = process
         .0
         .as_mut()
         .unwrap()
         .stdout
         .take()
         .ok_or(DecoderError::Io)?;
+    use std::os::fd::AsFd;
+    timed_io::nonblocking(stdout.as_fd())?;
+    let stop = Arc::new(AtomicBool::new(false));
+    let reader_stop = stop.clone();
+    let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     let reader = thread::Builder::new()
         .name("multiview-stats-features".into())
-        .spawn(move || -> Result<(bool, bool), DecoderError> {
-            let mut count = 0usize;
-            let mut tail = Vec::with_capacity(4224);
-            let (mut stats, mut format) = (false, false);
-            let mut bytes = [0u8; 4096];
-            loop {
-                let n = stdout.read(&mut bytes).map_err(|_| DecoderError::Io)?;
-                if n == 0 {
-                    break;
+        .spawn(move || {
+            let check_reader = || {
+                if reader_stop.load(Ordering::Acquire) {
+                    return Err(DecoderError::PublicationDenied);
                 }
-                count += n;
-                if count > 1_048_576 {
-                    return Err(DecoderError::Unsupported);
+                if Instant::now() >= deadline {
+                    return Err(DecoderError::ProbeTimeout);
                 }
-                tail.extend_from_slice(&bytes[..n]);
-                stats |= tail
-                    .windows(b"-stats_mux_pre[".len())
-                    .any(|w| w == b"-stats_mux_pre[");
-                format |= tail
-                    .windows(b"-stats_mux_pre_fmt[".len())
-                    .any(|w| w == b"-stats_mux_pre_fmt[");
-                if tail.len() > 128 {
-                    tail.drain(..tail.len() - 128);
-                }
-            }
-            Ok((stats, format))
+                Ok(())
+            };
+            let _ = sender.send(scan_stream_stats_help_until(stdout, &check_reader));
         })
         .map_err(|_| DecoderError::Io)?;
+    let mut fields = None;
+    let mut exit = None;
     let outcome = loop {
-        if let Err(e) = check() {
-            break Err(e);
+        if let Err(error) = check() {
+            break Err(error);
         }
         if Instant::now() >= deadline {
             break Err(DecoderError::ProbeTimeout);
         }
-        match process.0.as_mut().unwrap().try_wait() {
-            Ok(Some(s)) => {
-                break if s.success() {
-                    Ok(())
-                } else {
-                    Err(DecoderError::Unsupported)
-                }
+        if fields.is_none() {
+            match receiver.try_recv() {
+                Ok(Ok(found)) => fields = Some(found),
+                Ok(Err(error)) => break Err(error),
+                Err(std::sync::mpsc::TryRecvError::Empty) => {}
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => break Err(DecoderError::Io),
             }
-            Ok(None) => {}
-            Err(_) => break Err(DecoderError::Io),
+        }
+        if exit.is_none() {
+            match process.0.as_mut().unwrap().try_wait() {
+                Ok(Some(status)) if !status.success() => break Err(DecoderError::Unsupported),
+                Ok(Some(_)) => exit = Some(true),
+                Ok(None) => {}
+                Err(_) => break Err(DecoderError::Io),
+            }
+        }
+        if let (Some(found), Some(success)) = (fields, exit) {
+            break stream_stats_supported(found, success);
         }
         thread::sleep(Duration::from_millis(5));
     };
+    // Kill/wait before joining: cap, read failure, cancellation and deadline
+    // cannot leave a writer blocked on the pipe or a child unreaped.
+    stop.store(true, Ordering::Release);
     process.stop();
-    let fields = reader.join().map_err(|_| DecoderError::Io)??;
-    outcome?;
-    if fields == (true, true) {
-        Ok(())
-    } else {
-        Err(DecoderError::Unsupported)
-    }
+    reader.join().map_err(|_| DecoderError::Io)?;
+    outcome
+}
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn require_stream_stats(
+    _path: &Path,
+    _deadline: Instant,
+    check: &dyn Fn() -> Result<(), DecoderError>,
+) -> Result<(), DecoderError> {
+    check()?;
+    Err(DecoderError::Unsupported)
 }
 
 fn require_fd(path: &Path) -> Result<(), DecoderError> {
@@ -2002,7 +2228,7 @@ pub fn probe_source(
                     "-analyzeduration",
                     "1000000",
                     "-show_entries",
-                    "stream=codec_type,width,height,avg_frame_rate,r_frame_rate",
+                    "stream=codec_type,width,height,avg_frame_rate,r_frame_rate,sample_aspect_ratio",
                     "-of",
                     "default=noprint_wrappers=0:nokey=0",
                     "-fd",
@@ -2064,7 +2290,7 @@ pub fn probe_stream(
                 "-analyzeduration",
                 "1000000",
                 "-show_entries",
-                "stream=codec_type,width,height,avg_frame_rate,r_frame_rate",
+                "stream=codec_type,width,height,avg_frame_rate,r_frame_rate,sample_aspect_ratio",
                 "-of",
                 "default=noprint_wrappers=0:nokey=0",
                 "-fd",
@@ -2123,6 +2349,24 @@ fn checked_frame_bytes(config: &DecoderConfig) -> Result<usize, DecoderError> {
 enum InputFormat {
     FileContainers,
     MpegTs,
+}
+
+// Unlike fixed RGB frames, a finite stereo PCM stream may end in a short
+// aligned block. A partial sample or stereo frame is malformed, never padded.
+fn pcm_block(reader: &mut impl Read, bytes: &mut [u8]) -> std::io::Result<usize> {
+    let mut filled = 0;
+    while filled < bytes.len() {
+        match reader.read(&mut bytes[filled..]) {
+            Ok(0) => break,
+            Ok(n) => filled += n,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        }
+    }
+    if filled % 4 != 0 {
+        return Err(std::io::ErrorKind::InvalidData.into());
+    }
+    Ok(filled)
 }
 
 /// Return true for a complete block, false for clean EOF; reject partial blocks.
@@ -2302,7 +2546,7 @@ impl Decoder {
             );
         }
         let frame_bytes = checked_frame_bytes(config)?;
-        let spec = &config.frame_spec;
+        let content = content_rect(information, config.frame_spec)?;
         if video.generation() != generation {
             return Err(DecoderError::StaleGeneration);
         }
@@ -2344,10 +2588,14 @@ impl Decoder {
                 "1048576",
             ]);
         }
-        command.args(["-fd", "0", "-i", "fd:"])
+        command
+            .args(["-fd", "0", "-i", "fd:"])
             .args(["-map", "0:v:0", "-an", "-vf"])
-            .arg(format!("scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={}:{}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={}", spec.width,spec.height,spec.width,spec.height,config.fps))
-            .args(["-threads", "1", "-c:v", "rawvideo", "-pix_fmt", "rgb24", "-f", "rawvideo", "pipe:1"]);
+            .arg(content_filter(config.frame_spec, content, config.fps))
+            .args([
+                "-threads", "1", "-c:v", "rawvideo", "-pix_fmt", "rgb24", "-f", "rawvideo",
+                "pipe:1",
+            ]);
         if information.has_audio {
             command.args([
                 "-map",
@@ -2434,11 +2682,12 @@ impl Decoder {
                             }
                             let mut operation = || {
                                 video_reader
-                                    .publish(
+                                    .publish_content(
                                         generation,
                                         sequence,
                                         std::mem::take(&mut bytes),
                                         Instant::now(),
+                                        content,
                                     )
                                     .map_err(|_| DecoderError::StaleGeneration)
                             };
@@ -2474,31 +2723,42 @@ impl Decoder {
                 .spawn(move || {
                     let mut bytes = [0u8; AUDIO_BLOCK * 2];
                     while !cancelled.load(Ordering::Acquire) {
-                        match block(&mut stderr, &mut bytes) {
-                            Ok(true) => {
-                                if publish_audio(
-                                    binding.as_deref(),
-                                    &queue,
-                                    generation,
-                                    &bytes,
-                                    &cancelled,
-                                    began,
-                                )
-                                .is_err()
-                                {
-                                    if !cancelled.load(Ordering::Acquire) {
-                                        fail_owned(
-                                            &process,
-                                            &cancelled,
-                                            &video_audio,
-                                            &queue,
-                                            generation,
-                                        );
-                                    }
-                                    break;
+                        let count = match pcm_block(&mut stderr, &mut bytes) {
+                            Ok(count) => count,
+                            Err(_) => {
+                                if !cancelled.load(Ordering::Acquire) {
+                                    fail_owned(
+                                        &process,
+                                        &cancelled,
+                                        &video_audio,
+                                        &queue,
+                                        generation,
+                                    );
                                 }
+                                return;
                             }
-                            _ => break,
+                        };
+                        let final_chunk = count < bytes.len();
+                        if publish_audio(
+                            binding.as_deref(),
+                            &queue,
+                            generation,
+                            &bytes[..count],
+                            final_chunk,
+                            &cancelled,
+                            began,
+                        )
+                        .is_err()
+                        {
+                            if !cancelled.load(Ordering::Acquire) {
+                                fail_owned(&process, &cancelled, &video_audio, &queue, generation);
+                            }
+                            return;
+                        }
+                        if final_chunk {
+                            // A successful child exit is checked separately by
+                            // the monitor. Do not stop/clear its queued PCM here.
+                            return;
                         }
                     }
                     queue.mark_unavailable(generation);
@@ -2534,7 +2794,16 @@ impl Decoder {
                         .and_then(|mut process| process.0.as_mut().map(|child| child.try_wait()));
                     match status {
                         Some(Ok(None)) => {}
-                        Some(Ok(Some(status))) if status.success() => break,
+                        Some(Ok(Some(status))) if status.success() => {
+                            match queue.untimed_drain_complete(generation) {
+                                Ok(true) => break,
+                                Ok(false) => {}
+                                Err(_) => {
+                                    fail_owned(&process, &cancelled, &video, &queue, generation);
+                                    break;
+                                }
+                            }
+                        }
                         _ => {
                             if !cancelled.load(Ordering::Acquire) {
                                 fail_owned(&process, &cancelled, &video, &queue, generation);
@@ -2596,12 +2865,55 @@ impl Decoder {
             .map(File::try_clone)
             .transpose()
             .map_err(|_| DecoderError::Io)?;
-        let spec = config.frame_spec;
+        let content = content_rect(information, config.frame_spec)?;
         let mut cmd = Command::new(ffmpeg);
-        cmd.args(["-nostdin","-hide_banner","-loglevel","quiet","-nostats","-filter_threads","1","-filter_complex_threads","1","-protocol_whitelist","fd","-format_whitelist","mpegts","-threads","1","-max_pixels","2073600","-f","mpegts","-analyzeduration","1000000","-probesize","1048576","-fd","0","-i","fd:","-map","0:v:0","-an","-vf"])
-            .arg(format!("scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={}:{}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={}",spec.width,spec.height,spec.width,spec.height,config.fps))
-            .args(["-threads","1","-c:v","rawvideo","-pix_fmt","rgb24","-f","rawvideo","-stats_mux_pre"])
-            .arg(&pipes.video_path).args(["-stats_mux_pre_fmt","V {n} {pts} {tb} {size}","pipe:1"]);
+        cmd.args([
+            "-nostdin",
+            "-hide_banner",
+            "-loglevel",
+            "quiet",
+            "-nostats",
+            "-filter_threads",
+            "1",
+            "-filter_complex_threads",
+            "1",
+            "-protocol_whitelist",
+            "fd",
+            "-format_whitelist",
+            "mpegts",
+            "-threads",
+            "1",
+            "-max_pixels",
+            "2073600",
+            "-f",
+            "mpegts",
+            "-analyzeduration",
+            "1000000",
+            "-probesize",
+            "1048576",
+            "-fd",
+            "0",
+            "-i",
+            "fd:",
+            "-map",
+            "0:v:0",
+            "-an",
+            "-vf",
+        ])
+        .arg(content_filter(config.frame_spec, content, config.fps))
+        .args([
+            "-threads",
+            "1",
+            "-c:v",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-f",
+            "rawvideo",
+            "-stats_mux_pre",
+        ])
+        .arg(&pipes.video_path)
+        .args(["-stats_mux_pre_fmt", "V {n} {pts} {tb} {size}", "pipe:1"]);
         if information.has_audio {
             cmd.args([
                 "-map",
@@ -2721,11 +3033,12 @@ impl Decoder {
                             sequence = sequence.checked_add(1).ok_or(DecoderError::InvalidInput)?;
                             let mut operation = || {
                                 video
-                                    .publish(
+                                    .publish_content(
                                         generation,
                                         sequence,
                                         std::mem::take(&mut bytes),
                                         Instant::now(),
+                                        content,
                                     )
                                     .map_err(|_| DecoderError::StaleGeneration)
                             };
@@ -2977,6 +3290,428 @@ impl Drop for Decoder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn sar_info(width: u32, height: u32, sar: Option<&str>) -> MediaInfo {
+        let sar = sar
+            .map(|value| format!("sample_aspect_ratio={value}\n"))
+            .unwrap_or_default();
+        metadata(format!("[STREAM]\ncodec_type=video\nwidth={width}\nheight={height}\navg_frame_rate=10/1\nr_frame_rate=10/1\n{sar}[/STREAM]\n").as_bytes()).unwrap()
+    }
+    #[test]
+    fn duplicate_sar_cannot_hide_invalid_or_conflicting_metadata() {
+        for values in [
+            "sample_aspect_ratio=1:0\nsample_aspect_ratio=1:1\n",
+            "sample_aspect_ratio=4:3\nsample_aspect_ratio=1:1\n",
+        ] {
+            let text = format!("[STREAM]\ncodec_type=video\nwidth=320\nheight=240\navg_frame_rate=10/1\nr_frame_rate=10/1\n{values}[/STREAM]\n");
+            assert_eq!(metadata(text.as_bytes()), Err(DecoderError::ProbeFailed));
+        }
+    }
+    #[test]
+    fn untimed_monitor_terminal_state_requires_known_eof_and_fully_drained_fifo() {
+        let queue = AudioQueue::new(1);
+        queue.available(1).unwrap();
+        // Before the reader proves EOF, an empty or temporarily drained FIFO
+        // must retain the monitor and its direct Binding revocation checks.
+        assert_eq!(queue.untimed_drain_complete(1), Ok(false));
+        queue.try_push(1, &pcm(4, 960)).unwrap();
+        queue.take(1, AUDIO_BLOCK);
+        assert_eq!(queue.untimed_drain_complete(1), Ok(false));
+        queue.try_push_final(1, &pcm(7, 144), true).unwrap();
+        assert_eq!(queue.untimed_drain_complete(1), Ok(false));
+        let tail = queue.take(1, AUDIO_BLOCK);
+        assert_eq!(&tail[..288], &[7; 288]);
+        assert_eq!(queue.untimed_drain_complete(1), Ok(true));
+        let stats = queue.stats(1);
+        assert_eq!(queue.take(1, AUDIO_BLOCK), vec![0; AUDIO_BLOCK]);
+        assert_eq!(queue.stats(1), stats);
+    }
+    #[test]
+    fn untimed_monitor_terminal_state_retires_replaced_or_unavailable_generation() {
+        let queue = AudioQueue::new(1);
+        queue.available(1).unwrap();
+        queue.try_push_final(1, &pcm(6, 144), true).unwrap();
+        assert_eq!(queue.untimed_drain_complete(1), Ok(false));
+        queue.reset(1, 2).unwrap();
+        queue.available(2).unwrap();
+        queue.try_push(2, &pcm(9, 144)).unwrap();
+        let before = queue.stats(2);
+        assert_eq!(queue.untimed_drain_complete(1), Ok(true));
+        assert_eq!(queue.untimed_drain_complete(2), Ok(false));
+        assert_eq!(queue.stats(2), before);
+        queue.mark_unavailable(2);
+        assert_eq!(queue.untimed_drain_complete(2), Ok(true));
+        assert_eq!(queue.stats(2).buffered_samples, 0);
+        let empty = AudioQueue::new(3);
+        assert_eq!(empty.untimed_drain_complete(3), Ok(true));
+        empty.available(3).unwrap();
+        assert_eq!(empty.untimed_drain_complete(3), Ok(false));
+        empty.try_push_final(3, &[], true).unwrap();
+        assert_eq!(empty.untimed_drain_complete(3), Ok(true));
+    }
+
+    #[test]
+    fn untimed_eof_tail_backpressure_is_atomic_and_drain_is_exact() {
+        let queue = AudioQueue::new(1);
+        queue.available(1).unwrap();
+        queue.set_selected(1, true).unwrap();
+        for value in 1..=8 {
+            queue.try_push(1, &pcm(value, 960)).unwrap();
+        }
+        let before = queue.stats(1);
+        assert_eq!(
+            queue.try_push_final(1, &pcm(99, 144), true),
+            Err(DecoderError::Backpressure)
+        );
+        assert_eq!(queue.stats(1), before);
+        assert!(!queue.state.lock().unwrap().untimed_eof);
+        assert_eq!(queue.take(1, AUDIO_BLOCK), vec![1; AUDIO_BLOCK]);
+        queue.try_push_final(1, &pcm(99, 144), true).unwrap();
+        assert!(queue.state.lock().unwrap().untimed_eof);
+        assert!(queue.stats(1).buffered_samples <= AUDIO_LIMIT);
+        for value in 2..=8 {
+            assert_eq!(queue.take(1, AUDIO_BLOCK), vec![value; AUDIO_BLOCK]);
+        }
+        let tail = queue.take(1, AUDIO_BLOCK);
+        assert_eq!(&tail[..288], &[99; 288]);
+        assert!(tail[288..].iter().all(|sample| *sample == 0));
+        assert_eq!(queue.take(1, AUDIO_BLOCK), vec![0; AUDIO_BLOCK]);
+        let after = queue.stats(1);
+        assert_eq!(after.buffered_samples, 0);
+        assert_eq!(after.selected_underflow_samples, 0);
+        assert_eq!(after.underflow_missing_samples, 0);
+        assert_eq!(after.dropped_old_samples, 0);
+        assert_eq!(
+            queue.try_push(1, &pcm(3, 1)),
+            Err(DecoderError::PublicationDenied)
+        );
+    }
+    #[test]
+    fn untimed_empty_eof_stale_generation_and_immediate_clear_are_distinct() {
+        let queue = AudioQueue::new(1);
+        queue.available(1).unwrap();
+        queue.set_selected(1, true).unwrap();
+        queue.take(1, AUDIO_BLOCK);
+        assert_eq!(
+            queue.stats(1).selected_underflow_samples,
+            AUDIO_BLOCK as u64
+        );
+        queue.try_push_final(1, &[], true).unwrap();
+        let before = queue.stats(1);
+        queue.take(1, AUDIO_BLOCK);
+        assert_eq!(queue.stats(1), before);
+        queue.reset(1, 2).unwrap();
+        queue.available(2).unwrap();
+        queue.try_push(2, &pcm(5, 144)).unwrap();
+        let before = queue.stats(2);
+        assert_eq!(
+            queue.try_push_final(1, &[], true),
+            Err(DecoderError::StaleGeneration)
+        );
+        assert_eq!(queue.stats(2), before);
+        assert!(!queue.state.lock().unwrap().untimed_eof);
+        queue.try_push_final(2, &[], true).unwrap();
+        queue.mark_unavailable(2);
+        assert!(!queue.has_audio(2));
+        assert_eq!(queue.stats(2).buffered_samples, 0);
+        assert_eq!(queue.take(2, AUDIO_BLOCK), vec![0; AUDIO_BLOCK]);
+        queue.reset(2, 3).unwrap();
+        assert!(!queue.state.lock().unwrap().untimed_eof);
+    }
+    #[test]
+    fn untimed_eof_reset_drops_tail_and_final_mode_cannot_touch_timed_queue() {
+        let queue = AudioQueue::new(1);
+        queue.available(1).unwrap();
+        queue.try_push_final(1, &pcm(6, 144), true).unwrap();
+        queue.reset(1, 2).unwrap();
+        assert_eq!(queue.stats(2).buffered_samples, 0);
+        assert!(!queue.state.lock().unwrap().untimed_eof);
+        assert_eq!(queue.take(2, AUDIO_BLOCK), vec![0; AUDIO_BLOCK]);
+        let (timed, clock, _) = queue_clock(rational(0, 1));
+        let before = timed.stats(1);
+        assert_eq!(
+            timed.try_push_final(1, &[], true),
+            Err(DecoderError::InvalidInput)
+        );
+        assert_eq!(timed.stats(1), before);
+        assert!(!timed.state.lock().unwrap().untimed_eof);
+        assert!(!clock.fault.load(Ordering::Acquire));
+    }
+    #[test]
+    fn pcm_reader_preserves_aligned_short_tail_and_rejects_malformed_tail() {
+        for length in [0, 4, 576, 3840] {
+            let input = vec![7; length];
+            let mut reader = help_reader(input.clone(), 17);
+            let mut output = [0; AUDIO_BLOCK * 2];
+            let count = pcm_block(&mut reader, &mut output).unwrap();
+            assert_eq!(count, length);
+            assert_eq!(&output[..count], input.as_slice());
+        }
+        for length in [1, 2, 3, 3839] {
+            let mut reader = help_reader(vec![7; length], 17);
+            assert_eq!(
+                pcm_block(&mut reader, &mut [0; AUDIO_BLOCK * 2])
+                    .unwrap_err()
+                    .kind(),
+                std::io::ErrorKind::InvalidData
+            );
+        }
+        let mut reader = help_reader(vec![7; 100], 17);
+        reader.fail_at = Some(17);
+        assert!(pcm_block(&mut reader, &mut [0; AUDIO_BLOCK * 2]).is_err());
+        struct InterruptedOnce {
+            first: bool,
+            bytes: std::io::Cursor<Vec<u8>>,
+        }
+        impl Read for InterruptedOnce {
+            fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
+                if self.first {
+                    self.first = false;
+                    return Err(std::io::ErrorKind::Interrupted.into());
+                }
+                self.bytes.read(output)
+            }
+        }
+        let mut reader = InterruptedOnce {
+            first: true,
+            bytes: std::io::Cursor::new(pcm(8, 144)),
+        };
+        let mut output = [0; AUDIO_BLOCK * 2];
+        assert_eq!(pcm_block(&mut reader, &mut output).unwrap(), 576);
+        assert_eq!(&output[..576], pcm(8, 144).as_slice());
+    }
+    #[test]
+    fn untimed_final_push_rejects_malformed_tail_without_queue_mutation() {
+        let queue = AudioQueue::new(1);
+        queue.available(1).unwrap();
+        queue.try_push(1, &pcm(8, 144)).unwrap();
+        let before = queue.stats(1);
+        for tail in [&[0u8][..], &[0, 0][..], &[0, 0, 0][..]] {
+            assert_eq!(
+                queue.try_push_final(1, tail, true),
+                Err(DecoderError::InvalidInput)
+            );
+            assert_eq!(queue.stats(1), before);
+            assert!(!queue.state.lock().unwrap().untimed_eof);
+        }
+        // The reader's malformed/error path invokes fail_owned, whose existing
+        // mark_unavailable immediately removes even previously buffered samples.
+        queue.mark_unavailable(1);
+        assert!(!queue.has_audio(1));
+        assert_eq!(queue.stats(1).buffered_samples, 0);
+    }
+
+    #[test]
+    fn probe_sar_normalizes_display_content_without_changing_input_budget() {
+        let buffer = FrameSpec {
+            width: 320,
+            height: 180,
+        };
+        let wide = sar_info(1440, 1080, Some("4:3"));
+        assert_eq!(wide.pixel_rate(), 1440 * 1080 * 10);
+        assert_eq!(
+            content_rect(wide, buffer).unwrap(),
+            FrameContentRect {
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180
+            }
+        );
+        assert_eq!(
+            content_rect(sar_info(720, 576, Some("16:15")), buffer).unwrap(),
+            FrameContentRect {
+                x: 40,
+                y: 0,
+                width: 240,
+                height: 180
+            }
+        );
+        assert_eq!(
+            content_rect(sar_info(320, 240, Some("1:1")), buffer).unwrap(),
+            FrameContentRect {
+                x: 40,
+                y: 0,
+                width: 240,
+                height: 180
+            }
+        );
+        assert_eq!(
+            content_rect(sar_info(318, 180, Some("1:1")), buffer).unwrap(),
+            FrameContentRect {
+                x: 1,
+                y: 0,
+                width: 318,
+                height: 180
+            }
+        );
+        assert_eq!(
+            SampleAspectRatio::parse(Some("8:6")).unwrap(),
+            SampleAspectRatio {
+                numerator: 4,
+                denominator: 3
+            }
+        );
+    }
+    #[test]
+    fn unknown_sar_defaults_but_invalid_ratios_and_subpixel_content_fail() {
+        for value in [None, Some("N/A"), Some("0:1")] {
+            assert_eq!(
+                sar_info(320, 240, value).sample_aspect_ratio,
+                SampleAspectRatio::SQUARE
+            );
+        }
+        for value in ["1:0", "0:2", "4/3", "-1:1", "4294967296:1", ""] {
+            assert!(SampleAspectRatio::parse(Some(value)).is_err());
+        }
+        let mut impossible = sar_info(320, 240, None);
+        impossible.sample_aspect_ratio = SampleAspectRatio {
+            numerator: u32::MAX,
+            denominator: 1,
+        };
+        assert_eq!(
+            content_rect(
+                impossible,
+                FrameSpec {
+                    width: 320,
+                    height: 180
+                }
+            ),
+            Err(DecoderError::InvalidInput)
+        );
+    }
+    #[test]
+    fn content_filter_has_explicit_rgb_padding_before_odd_offset() {
+        let buffer = FrameSpec {
+            width: 320,
+            height: 180,
+        };
+        let content = content_rect(sar_info(318, 180, None), buffer).unwrap();
+        assert_eq!(
+            content_filter(buffer, content, 10),
+            "scale=318:180,setsar=1,format=rgb24,pad=320:180:1:0:color=black,fps=10"
+        );
+    }
+    struct ControlledHelp {
+        bytes: std::io::Cursor<Vec<u8>>,
+        chunk: usize,
+        fail_at: Option<u64>,
+    }
+    impl Read for ControlledHelp {
+        fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
+            if self.fail_at.is_some_and(|at| self.bytes.position() >= at) {
+                return Err(std::io::Error::other("controlled read failure"));
+            }
+            let limit = output.len().min(self.chunk);
+            self.bytes.read(&mut output[..limit])
+        }
+    }
+    fn help_reader(bytes: Vec<u8>, chunk: usize) -> ControlledHelp {
+        ControlledHelp {
+            bytes: std::io::Cursor::new(bytes),
+            chunk,
+            fail_at: None,
+        }
+    }
+    #[test]
+    fn stats_help_streams_beyond_one_mib_and_across_read_boundaries() {
+        let mut bytes = vec![b'x'; 1_100_000];
+        bytes.extend_from_slice(
+            b"\n-stats_mux_pre[:stream] path\n-stats_mux_pre_fmt[:stream] format\n",
+        );
+        bytes.resize(1_213_717, b' ');
+        assert_eq!(
+            scan_stream_stats_help(help_reader(bytes, 17)),
+            Ok((true, true))
+        );
+    }
+    #[test]
+    fn stats_help_requires_both_flags_and_successful_exit() {
+        assert_eq!(
+            scan_stream_stats_help(help_reader(b"-stats_mux_pre[:stream]".to_vec(), 1)),
+            Ok((true, false))
+        );
+        assert_eq!(
+            stream_stats_supported((true, false), true),
+            Err(DecoderError::Unsupported)
+        );
+        assert_eq!(
+            stream_stats_supported((true, true), false),
+            Err(DecoderError::Unsupported)
+        );
+        assert_eq!(stream_stats_supported((true, true), true), Ok(()));
+    }
+    #[test]
+    fn stats_help_read_failure_after_flags_is_not_success() {
+        let mut reader = help_reader(b"-stats_mux_pre[ -stats_mux_pre_fmt[ trailing".to_vec(), 40);
+        reader.fail_at = Some(40);
+        assert_eq!(scan_stream_stats_help(reader), Err(DecoderError::Io));
+    }
+    struct RetryingHelp {
+        attempts: usize,
+        payload: std::io::Cursor<Vec<u8>>,
+    }
+    impl Read for RetryingHelp {
+        fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
+            self.attempts += 1;
+            match self.attempts {
+                1 => Err(std::io::ErrorKind::Interrupted.into()),
+                2 => Err(std::io::ErrorKind::WouldBlock.into()),
+                _ => self.payload.read(output),
+            }
+        }
+    }
+    #[test]
+    fn stats_help_retries_interrupted_and_nonblocking_reads() {
+        let mut reader = RetryingHelp {
+            attempts: 0,
+            payload: std::io::Cursor::new(b"-stats_mux_pre[ -stats_mux_pre_fmt[".to_vec()),
+        };
+        assert_eq!(scan_stream_stats_help(&mut reader), Ok((true, true)));
+        assert!(reader.attempts >= 4);
+    }
+    #[test]
+    fn stats_help_pending_read_observes_cancellation_and_deadline() {
+        struct Pending;
+        impl Read for Pending {
+            fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::ErrorKind::WouldBlock.into())
+            }
+        }
+        for failure in [DecoderError::PublicationDenied, DecoderError::ProbeTimeout] {
+            let checks = std::cell::Cell::new(0);
+            let check = || {
+                let n = checks.get() + 1;
+                checks.set(n);
+                if n >= 3 {
+                    Err(failure)
+                } else {
+                    Ok(())
+                }
+            };
+            assert_eq!(scan_stream_stats_help_until(Pending, &check), Err(failure));
+            assert_eq!(checks.get(), 3);
+        }
+    }
+    #[test]
+    fn stats_help_exact_limit_with_complete_flags_is_accepted() {
+        let mut bytes = b"-stats_mux_pre[ -stats_mux_pre_fmt[".to_vec();
+        bytes.resize(STREAM_HELP_LIMIT, b'x');
+        let mut reader = help_reader(bytes, 4096);
+        assert_eq!(scan_stream_stats_help(&mut reader), Ok((true, true)));
+        assert_eq!(reader.bytes.position(), STREAM_HELP_LIMIT as u64);
+    }
+    #[test]
+    fn stats_help_limit_is_finite_even_after_both_flags() {
+        let mut bytes = b"-stats_mux_pre[ -stats_mux_pre_fmt[".to_vec();
+        bytes.resize(STREAM_HELP_LIMIT + 128, b'x');
+        let mut reader = help_reader(bytes, 4096);
+        assert_eq!(
+            scan_stream_stats_help(&mut reader),
+            Err(DecoderError::Unsupported)
+        );
+        assert_eq!(reader.bytes.position(), (STREAM_HELP_LIMIT + 1) as u64);
+    }
 
     fn rational(n: i128, d: i128) -> RationalTime {
         RationalTime::new(n, d).unwrap()
@@ -3981,6 +4716,7 @@ mod tests {
                 height: 180,
                 fps: 10.0,
                 has_audio: false,
+                sample_aspect_ratio: SampleAspectRatio::SQUARE,
             },
             identity: source.identity.clone(),
             ffmpeg: config.ffmpeg.clone(),
@@ -4481,7 +5217,8 @@ mod tests {
                 width: 2,
                 height: 2,
                 fps: 0.1,
-                has_audio: false
+                has_audio: false,
+                sample_aspect_ratio: SampleAspectRatio::SQUARE,
             }
             .pixel_rate(),
             1
@@ -4491,7 +5228,8 @@ mod tests {
                 width: 2,
                 height: 2,
                 fps: f64::NAN,
-                has_audio: false
+                has_audio: false,
+                sample_aspect_ratio: SampleAspectRatio::SQUARE,
             }
             .pixel_rate(),
             u64::MAX

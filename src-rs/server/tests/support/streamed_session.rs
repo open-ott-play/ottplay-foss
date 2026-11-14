@@ -30,6 +30,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+const INPUT_SECONDS: u64 = 90;
+const B_HOLD_SECONDS: u64 = 75;
 const INPUT_LIMIT: u64 = 16 * 1024 * 1024;
 const MANIFEST_LIMIT: u64 = 64 * 1024;
 const EVENT_LIMIT: usize = 8 * 1024 * 1024;
@@ -146,7 +148,7 @@ fn load_inputs(path: &Path) -> Result<OwnedInputs, String> {
         serde_json::from_slice(&bytes).map_err(|e| error("input manifest", e))?;
     require(
         manifest.schema == "ottplay.multiview.stream-inputs.v1"
-            && manifest.seconds == 80
+            && manifest.seconds == INPUT_SECONDS
             && manifest.fps == 10
             && manifest.width == 96
             && manifest.height == 64,
@@ -594,7 +596,7 @@ fn scenario(
         let prepared = prepared.map_err(|e| error("actual source probe", e))?;
         let mut options = pump::Options::for_duration(Duration::from_secs(95))
             .map_err(|e| error("decode options", e))?;
-        options.max_bytes_per_second = Some(source.payload.len() / 80);
+        options.max_bytes_per_second = Some(source.payload.len() / INPUT_SECONDS as usize);
         let (reader, producer) = pump::pair_with_options(source.payload.clone(), options)
             .map_err(|e| error("decode producer", e))?;
         producers.add(format!("decode{slot}"), producer);
@@ -634,7 +636,7 @@ fn scenario(
     let pids = [stable.slots[0].decoder_pid, stable.slots[1].decoder_pid];
     for (label, slot, seconds) in [
         ("A_initial", 0u8, 2u64),
-        ("B_selected", 1, 65),
+        ("B_selected", 1, B_HOLD_SECONDS),
         ("A_return", 0, 4),
     ] {
         if label != "A_initial" {
@@ -863,7 +865,7 @@ fn run_case(
     let source_receipts: Vec<_> = inputs.sources.iter().map(|source| json!({"id":source.id,"path":source.path,"bytes":source.payload.len(),"sha256":source.sha256})).collect();
     let report = json!({"scope":"actual ottplay_core Session with synthetic trusted FD grants and paced UnixStream producers; not production/native admission",
         "pass":pass,"scenario_error":scenario_error,"sample_count":control.count,"event_count":events.count,
-        "planned_B_host_hold_seconds":65,"selected_intervals":control.intervals,"B_selected_begin":control.b_begin,"B_selected_end":control.b_end,
+        "planned_B_host_hold_seconds":B_HOLD_SECONDS,"selected_intervals":control.intervals,"B_selected_begin":control.b_begin,"B_selected_end":control.b_end,
         "A_return_begin":control.a_return_begin,"A_return_end":control.a_return_end,"A_end_live_playlist_sha256":control.a_cut,
         "B_end_live_playlist_sha256":control.b_cut,"input_manifest_sha256":inputs.manifest_sha256,"inputs":source_receipts,
         "metadata_fifo_guard":{"before":metadata_before,"during":control.metadata_during,"after":metadata_after,"clean":metadata_clean},
