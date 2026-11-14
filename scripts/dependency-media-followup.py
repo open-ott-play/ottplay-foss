@@ -578,7 +578,7 @@ def container_command(name, source):
         "--tmpfs",
         "/tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777",
         "--tmpfs",
-        "/work:rw,nosuid,nodev,size=1536m,mode=1777",
+        "/work:rw,exec,nosuid,nodev,size=1536m,mode=1777",
         "--mount",
         "type=bind,src=" + str(source) + ",dst=/source,readonly",
         "--workdir",

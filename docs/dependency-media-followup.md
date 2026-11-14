@@ -22,7 +22,12 @@ tmpfs and no host cache, home directory, Docker socket, secrets or credentials.
 The container runs as an unprivileged user with a read-only root, dropped
 capabilities, no-new-privileges and explicit memory/process/CPU limits. Its network
 is disconnected and checked before running the media generator and audit. Source
-files are a dedicated read-only mount. Three direct `/bin/tar` calls inside the
+files are a dedicated read-only mount. Only the bounded `/work` tmpfs explicitly
+allows `exec`, because Rollup loads a native shared library from `node_modules`
+and needs executable memory mappings, rather than only reading JavaScript.
+The `/tmp` tmpfs retains `noexec`; both mounts retain `nosuid,nodev`, consistent
+with Docker's documented [tmpfs mount options](https://docs.docker.com/engine/storage/tmpfs/#options-for---tmpfs).
+Three direct `/bin/tar` calls inside the
 offline container export the exact 13 output files and their directory ancestors
 with individual and aggregate byte limits. The streams remain untrusted: this
 does not claim a quiescent filesystem, and a failed TAR operation fails the job.

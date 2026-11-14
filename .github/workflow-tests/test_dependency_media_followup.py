@@ -494,6 +494,34 @@ class DependencyMediaFollowupTests(unittest.TestCase):
         self.assertEqual(command[command.index("--env") + 1], "HOME=/tmp")
         self.assertNotIn("--privileged", command)
         self.assertNotIn("docker.sock", " ".join(command))
+        self.assertEqual(
+            [command[index + 1] for index, argument in enumerate(command) if argument == "--tmpfs"],
+            [
+                "/tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777",
+                "/work:rw,exec,nosuid,nodev,size=1536m,mode=1777",
+            ],
+            "Only the private work tmpfs may execute Rollup's native shared library",
+        )
+
+    def test_tmpfs_contract_rejects_missing_conflicting_or_wider_exec(self):
+        command = m.container_command("ottplay-media-" + "1" * 32, Path("/dedicated/source"))
+        work = "/work:rw,exec,nosuid,nodev,size=1536m,mode=1777"
+        temporary = "/tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777"
+        for old, new in (
+            (work, work.replace(",exec", "")),
+            (work, work.replace(",exec", ",exec,noexec")),
+            (temporary, temporary.replace(",noexec", ",exec")),
+            (temporary, temporary.replace(",noexec", ",noexec,exec")),
+            (work, work.replace("/work:", "/source:")),
+            (work, work.replace(",nosuid,nodev", "")),
+        ):
+            changed = [new if argument == old else argument for argument in command]
+            with (
+                self.subTest(mount=new),
+                mock.patch.object(m, "container_command", return_value=changed),
+                self.assertRaises(AssertionError),
+            ):
+                self.test_container_plan_has_no_secret_host_or_socket_mount()
 
     def docker(self, data, fail_creation=False, wrong_owner=False):
         calls = []
