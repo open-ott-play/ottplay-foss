@@ -58,10 +58,25 @@ advance before publication is a recorded stale no-op; already-current outputs
 also produce no commit. The generated follow-up is outside the dependency-only
 profile, so it cannot create a publication loop.
 
+The repository's `gitIgnoredAuthors` contains only the follow-up bot's exact
+GitHub commit email, `319626568+californiantiramisu@users.noreply.github.com`.
+Renovate therefore does not treat this bot's generated commit as a manual branch
+edit that stops subsequent updates or rebases. The central Renovate author and
+signing policy stay unchanged; other authors are not exempted by this setting.
+As documented by [Renovate](https://docs.renovatebot.com/configuration-options/#gitignoredauthors),
+ignored-author changes may be overwritten when Renovate rebuilds its branch.
+Generated assets must therefore remain reproducible: after a dependency-only
+update or rebase, the isolated generator and publisher regenerate them for the
+new exact source. A run for an older head is a stale no-op. If the branch still
+contains generated changes, it remains outside the producer's dependency-only
+admission profile; it does not receive another follow-up. The committed-media
+audit and ordinary PR checks still decide readiness for every resulting head.
+No wildcard or shared `noreply@github.com` exemption is used.
+
 The test module uses the existing hash-locked workflow-test dependencies and is
 discovered by the required `.github/workflow-tests` suite. A workflow-call-only
 sandbox validator is called unconditionally by the existing required Windows
-validation workflow. Inside that validator, ordinary non-Renovate PR changes to
+validation workflow. Inside that validator, PR changes to
 the coordinator, related workflows or its tests run one real isolated
 generation/exec-tar/cleanup exercise on hosted Ubuntu, without publisher
 credentials. The PR merge diff selects those changes; diff errors fail rather

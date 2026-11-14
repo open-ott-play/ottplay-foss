@@ -1,6 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["local>victron-venus/venus-os-ci-toolkit:renovate-fleet"],
+  "gitIgnoredAuthors": [
+    "319626568+californiantiramisu@users.noreply.github.com"
+  ],
   "enabledManagers": [
     "cargo",
     "custom.jsonata",

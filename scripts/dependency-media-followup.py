@@ -455,13 +455,66 @@ def update_notices(data, base_versions):
     return text.encode()
 
 
-def bounded_command(args, timeout, limit=1024 * 1024):
+CONTAINER_OPERATIONS = frozenset(
+    (
+        "pull",
+        "create",
+        "install",
+        "offline",
+        "offline-check",
+        "build",
+        "export-js",
+        "export-index.html",
+        "export-src-tauri",
+        "cleanup-inspect",
+        "cleanup",
+    )
+)
+
+
+def stderr_tail(value):
+    """Redact before truncating, so a tail cannot expose half of a credential."""
+    text = bytes(value).decode("utf-8", errors="replace")
+
+    def public_url(match):
+        try:
+            url = urllib.parse.urlsplit(match[0])
+            host = url.hostname
+            require(host is not None, "URL host")
+            if ":" in host:
+                host = "[" + host + "]"
+            if url.port is not None:
+                host += ":" + str(url.port)
+            return urllib.parse.urlunsplit((url.scheme, host, url.path, "", ""))
+        except ValueError:
+            return "[redacted-url]"
+
+    text = re.sub(r"https?://[^\s\"'<>]+", public_url, text, flags=re.IGNORECASE)
+    text = re.sub(r"(?im)((?:proxy-)?authorization\s*:)\s*[^\r\n]+", r"\1 [redacted]", text)
+    text = re.sub(r"(?i)\b(?:bearer|basic)\s+[\w.+/=-]+", "[redacted-auth]", text)
+    text = re.sub(
+        r"(?i)(\b[\w-]*(?:token|password|passwd|secret|api[_-]?key)\b[\"']?\s*[=:]\s*)"
+        r"(?:\"[^\"\r\n]*\"|'[^'\r\n]*'|[^\s\"',;]+)",
+        r"\1[redacted]",
+        text,
+    )
+    text = re.sub(r"\b(?:gh[pousr]_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+)\b", "[redacted-token]", text)
+    return text[-2048:]
+
+
+def bounded_command(args, timeout, limit=1024 * 1024, *, operation):
     """No shell, inherited credentials, unbounded stdout or surviving child group."""
+    require(operation in CONTAINER_OPERATIONS, "Unknown container operation")
+    print(
+        "Container operation " + json.dumps({"operation": operation, "status": "started"}), file=sys.stderr, flush=True
+    )
     env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"}
-    child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, start_new_session=True)
+    child = None
     chunks = {"out": bytearray(), "err": bytearray()}
     deadline = time.monotonic() + timeout
+    failure = None
     try:
+        child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, start_new_session=True)
         with selectors.DefaultSelector() as poll:
             poll.register(child.stdout, selectors.EVENT_READ, "out")
             poll.register(child.stderr, selectors.EVENT_READ, "err")
@@ -475,13 +528,26 @@ def bounded_command(args, timeout, limit=1024 * 1024):
                         chunks[key.data].extend(part)
                         require(len(chunks[key.data]) <= limit, "Container output bound")
         require(child.wait(timeout=max(0.1, deadline - time.monotonic())) == 0, "Container operation failed")
-        return bytes(chunks["out"])
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
+        failure = error
     finally:
-        if child.poll() is None:
-            os.killpg(child.pid, signal.SIGKILL)
-        child.wait(timeout=10)
-        child.stdout.close()
-        child.stderr.close()
+        if child is not None:
+            if child.poll() is None:
+                os.killpg(child.pid, signal.SIGKILL)
+            child.wait(timeout=10)
+            child.stdout.close()
+            child.stderr.close()
+    if failure is not None:
+        # Never include argv, the inherited environment, or raw terminal/workflow commands.
+        reason = str(failure) if isinstance(failure, ValueError) else type(failure).__name__
+        detail = {
+            "operation": operation,
+            "reason": reason,
+            "exitCode": child.returncode if child else None,
+            "stderrTail": stderr_tail(chunks["err"]),
+        }
+        raise ValueError("Container operation failed: " + json.dumps(detail, ensure_ascii=True)) from None
+    return bytes(chunks["out"])
 
 
 def container_command(name, source):
@@ -557,14 +623,14 @@ def container_tree(archive, group):
 
 
 def remove_owned_container(name, run):
-    value = parse(run(["docker", "inspect", "--format", "{{json .}}", name], 15))
+    value = parse(run(["docker", "inspect", "--format", "{{json .}}", name], 15, operation="cleanup-inspect"))
     require(
         value["Name"] == "/" + name
         and value["Config"]["Image"] == IMAGE
         and value["Config"]["Labels"].get("ottplay.media-followup-owner") == name,
         "Container ownership mismatch; refusing cleanup",
     )
-    run(["docker", "rm", "--force", name], 20)
+    run(["docker", "rm", "--force", name], 20, operation="cleanup")
 
 
 def generate_container(data, temp_root, run=bounded_command):
@@ -581,10 +647,10 @@ def generate_container(data, temp_root, run=bounded_command):
         name = "ottplay-media-" + os.urandom(16).hex()
         creation_attempted = False
         try:
-            run(["docker", "pull", IMAGE], 120)
+            run(["docker", "pull", IMAGE], 120, operation="pull")
             # Reconcile by random identity even if the CLI loses the creation ACK.
             creation_attempted = True
-            run(container_command(name, source), 30)
+            run(container_command(name, source), 30, operation="create")
             run(
                 [
                     "docker",
@@ -599,10 +665,17 @@ def generate_container(data, temp_root, run=bounded_command):
                     ),
                 ],
                 300,
+                operation="install",
             )
             # No network remains when any repository generator/dependency code is executed.
-            run(["docker", "network", "disconnect", "bridge", name], 15)
-            networks = parse(run(["docker", "inspect", "--format", "{{json .NetworkSettings.Networks}}", name], 15))
+            run(["docker", "network", "disconnect", "bridge", name], 15, operation="offline")
+            networks = parse(
+                run(
+                    ["docker", "inspect", "--format", "{{json .NetworkSettings.Networks}}", name],
+                    15,
+                    operation="offline-check",
+                )
+            )
             require(networks == {}, "Generation container still has network access")
             run(
                 [
@@ -619,6 +692,7 @@ def generate_container(data, temp_root, run=bounded_command):
                     ),
                 ],
                 420,
+                operation="build",
             )
             # docker cp does not support tmpfs. The immutable image's tar emits
             # untrusted bytes while offline; no claim of filesystem quiescence.
@@ -629,6 +703,7 @@ def generate_container(data, temp_root, run=bounded_command):
                     ["docker", "exec", name, "/bin/tar", "-C", "/work", "-cf", "-", group],
                     15,
                     min(TOTAL_LIMIT + 65536, aggregate_limit - captured),
+                    operation="export-" + group,
                 )
                 captured += len(archive)
                 require(captured <= aggregate_limit, "Aggregate container TAR byte bound")

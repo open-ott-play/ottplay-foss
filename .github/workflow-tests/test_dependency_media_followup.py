@@ -1,9 +1,12 @@
 import base64
+import contextlib
 import copy
 import http.server
 import importlib.util
 import io
+import os
 import stat
+import sys
 import tarfile
 import tempfile
 import threading
@@ -269,6 +272,127 @@ class FakeApi:
 
 
 class DependencyMediaFollowupTests(unittest.TestCase):
+    def test_actual_child_failure_has_safe_bounded_operation_exit_and_stderr(self):
+        stderr = (
+            "x" * 6000 + "\n::error::not a workflow command\x1b[31m\r\x00\u2028"
+            " https://fixture-user:fixture-password@registry.npmjs.org/pkg?token=fixture-query#fixture-fragment"
+            "\nAuthorization: Bearer fixture-header\nBOT_TOKEN=fixture-token "
+            'ghp_fakecredential password="fixture-quoted" \ninstall failure'
+        )
+        code = "import sys; sys.stderr.write(" + repr(stderr) + "); sys.exit(7)"
+        with contextlib.redirect_stderr(io.StringIO()) as markers, self.assertRaises(ValueError) as error:
+            m.bounded_command([sys.executable, "-c", code], 5, operation="install")
+        message = str(error.exception)
+        detail = m.parse(message.split(": ", 1)[1].encode())
+        self.assertEqual(detail["operation"], "install")
+        self.assertEqual(detail["exitCode"], 7)
+        self.assertLessEqual(len(detail["stderrTail"]), 2048)
+        self.assertIn("install failure", detail["stderrTail"])
+        self.assertIn("https://registry.npmjs.org/pkg", detail["stderrTail"])
+        for secret in (
+            "fixture-user",
+            "fixture-password",
+            "fixture-query",
+            "fixture-fragment",
+            "fixture-header",
+            "fixture-token",
+            "ghp_fakecredential",
+            "fixture-quoted",
+        ):
+            self.assertNotIn(secret, message)
+        self.assertTrue(message.isascii())
+        self.assertFalse(any(ord(char) < 32 for char in message))
+        self.assertEqual(len(message.splitlines()), 1)
+        self.assertEqual(
+            markers.getvalue().splitlines(), ['Container operation {"operation": "install", "status": "started"}']
+        )
+
+    def test_actual_child_does_not_inherit_host_secrets_or_docker_settings(self):
+        host = {
+            key: "host-only-fake-secret"
+            for key in ("BOT_TOKEN", "GH_TOKEN", "AWS_SECRET_ACCESS_KEY", "DOCKER_HOST", "HTTP_PROXY")
+        }
+        with (
+            mock.patch.dict(os.environ, host),
+            contextlib.redirect_stderr(io.StringIO()),
+            mock.patch.object(m.subprocess, "Popen", wraps=m.subprocess.Popen) as popen,
+        ):
+            output = m.bounded_command(
+                [sys.executable, "-c", "import json,os; print(json.dumps(dict(os.environ)))"],
+                5,
+                operation="build",
+            )
+        environment = m.parse(output)
+        self.assertEqual(popen.call_args.kwargs["env"], {"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"})
+        self.assertTrue(set(environment).isdisjoint(host))
+        self.assertEqual(environment["PATH"], "/usr/local/bin:/usr/bin:/bin")
+        self.assertEqual(environment["LANG"], "C.UTF-8")
+        self.assertNotIn(b"host-only-fake-secret", output)
+
+    def test_actual_child_output_bound_and_deadline_still_kill_and_reap(self):
+        for code, timeout, reason in (
+            ("import os,time; os.write(2,b'x'*4096); time.sleep(30)", 5, "Container output bound"),
+            ("import time; time.sleep(30)", 0.1, "Container operation deadline"),
+        ):
+            children = []
+            popen = m.subprocess.Popen
+
+            def record(*args, popen=popen, children=children, **kwargs):
+                child = popen(*args, **kwargs)
+                children.append(child)
+                return child
+
+            with (
+                self.subTest(reason=reason),
+                mock.patch.object(m.subprocess, "Popen", side_effect=record),
+                contextlib.redirect_stderr(io.StringIO()),
+                self.assertRaises(ValueError) as error,
+            ):
+                m.bounded_command([sys.executable, "-c", code], timeout, 1024, operation="export-js")
+            detail = m.parse(str(error.exception).split(": ", 1)[1].encode())
+            self.assertEqual(detail["reason"], reason)
+            self.assertEqual(detail["operation"], "export-js")
+            self.assertEqual(detail["exitCode"], -m.signal.SIGKILL)
+            self.assertEqual(len(children), 1)
+            self.assertEqual(children[0].poll(), -m.signal.SIGKILL)
+            self.assertTrue(children[0].stdout.closed and children[0].stderr.closed)
+
+    def test_unknown_operation_never_launches_child(self):
+        with mock.patch.object(m.subprocess, "Popen") as popen, self.assertRaises(ValueError):
+            m.bounded_command([sys.executable], 5, operation="\n::error::unknown")
+        popen.assert_not_called()
+
+    def test_install_failure_preserves_diagnostics_and_owned_container_cleanup(self):
+        data = fixture()
+        calls, run = self.docker(data)
+        operations = []
+
+        def fail_install(args, timeout, limit=None, *, operation):
+            operations.append(operation)
+            if operation == "install":
+                return m.bounded_command(
+                    [sys.executable, "-c", "import sys; sys.stderr.write('install fixture'); sys.exit(9)"],
+                    5,
+                    operation=operation,
+                )
+            return run(args, timeout, limit, operation=operation)
+
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.object(m.shutil, "disk_usage", return_value=type("Disk", (), {"free": 8 * 1024**3})()),
+            mock.patch.object(m, "container_tree") as parse_tree,
+            contextlib.redirect_stderr(io.StringIO()),
+            self.assertRaises(ValueError) as error,
+        ):
+            m.generate_container(data, directory, fail_install)
+        detail = m.parse(str(error.exception).split(": ", 1)[1].encode())
+        self.assertEqual(
+            (detail["operation"], detail["exitCode"], detail["stderrTail"]), ("install", 9, "install fixture")
+        )
+        self.assertEqual(operations, ["pull", "create", "install", "cleanup-inspect", "cleanup"])
+        self.assertEqual(calls[-1][1], "rm")
+        parse_tree.assert_not_called()
+
     def test_exact_source_and_thirteen_outputs(self):
         api = FakeApi()
         context, data, _ = m.admission(api, 10, HEAD)
@@ -376,7 +500,8 @@ class DependencyMediaFollowupTests(unittest.TestCase):
         owner = None
         output = generated(data)
 
-        def run(args, _timeout, _limit=None):
+        def run(args, _timeout, _limit=None, *, operation):
+            assert operation in m.CONTAINER_OPERATIONS
             nonlocal owner
             calls.append(args)
             if args[:2] == ["docker", "run"]:
@@ -448,8 +573,8 @@ class DependencyMediaFollowupTests(unittest.TestCase):
                 data = fixture()
                 calls, run = self.docker(data)
 
-                def fail(args, timeout, limit=None, *, run=run, failure=failure):
-                    result = run(args, timeout, limit)
+                def fail(args, timeout, limit=None, *, operation, run=run, failure=failure):
+                    result = run(args, timeout, limit, operation=operation)
                     if (failure == "tar" and args[1] == "exec" and args[3] == "/bin/tar") or (
                         failure == "cleanup" and args[1] == "rm"
                     ):
@@ -472,8 +597,8 @@ class DependencyMediaFollowupTests(unittest.TestCase):
         data = fixture()
         calls, run = self.docker(data)
 
-        def oversized(args, timeout, limit=None):
-            result = run(args, timeout, limit)
+        def oversized(args, timeout, limit=None, *, operation):
+            result = run(args, timeout, limit, operation=operation)
             return b"x" * 66000 if args[1] == "exec" and args[3] == "/bin/tar" else result
 
         with (
@@ -739,6 +864,15 @@ class DependencyMediaFollowupTests(unittest.TestCase):
         for value in (b'{"x":1,"x":2}', b'{"x":NaN}', b'{"x":1e999}'):
             with self.assertRaises(ValueError):
                 m.parse(value)
+
+    def test_renovate_ignores_only_the_designated_followup_commit_author(self):
+        config = m.parse((ROOT / "renovate.json").read_bytes())
+        self.assertEqual(
+            config.get("gitIgnoredAuthors"),
+            ["319626568+californiantiramisu@users.noreply.github.com"],
+        )
+        self.assertEqual(config["gitIgnoredAuthors"][0], f"{m.BOT_ID}+{m.BOT_LOGIN}@users.noreply.github.com")
+        self.assertNotIn("gitAuthor", config, "Do not replace the central signed Renovate identity")
 
     def test_workflows_keep_secret_boundary_and_required_sandbox_reachability(self):
         def workflow(name):

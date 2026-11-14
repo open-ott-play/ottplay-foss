@@ -2,8 +2,8 @@ name: Publish dependency media
 
 on:
   workflow_run:
-    workflows: [Auto Approve PRs]
-    types: [completed]
+    workflows: [ Auto Approve PRs ]
+    types: [ completed ]
 
 permissions:
   contents: read
