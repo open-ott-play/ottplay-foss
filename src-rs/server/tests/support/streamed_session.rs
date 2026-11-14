@@ -309,6 +309,18 @@ fn output_failure_message(
     ))
 }
 
+// Observe an already failed scenario before collector/Session cleanup can erase
+// the causal output state. A diagnostic failure must never replace the original.
+fn retain_failure_observation(
+    original: Option<String>,
+    observe: impl FnOnce() -> Result<(), String>,
+) -> Option<String> {
+    original.map(|first| match observe() {
+        Ok(()) => first,
+        Err(observation) => format!("{first}; final output observation: {observation}"),
+    })
+}
+
 struct Events {
     file: File,
     started: Instant,
@@ -861,11 +873,14 @@ fn run_case(
             &mut control,
         )
     }));
-    let scenario_error = match outcome {
-        Ok(Ok(())) => None,
-        Ok(Err(failure)) => Some(failure),
-        Err(_) => Some("fixture scenario panicked".to_owned()),
-    };
+    let scenario_error = retain_failure_observation(
+        match outcome {
+            Ok(Ok(())) => None,
+            Ok(Err(failure)) => Some(failure),
+            Err(_) => Some("fixture scenario panicked".to_owned()),
+        },
+        || events.note("failure", &session).map(|_| ()),
+    );
     let archive_result = collector.finish();
     let shutdown = session.shutdown();
     let (owned, output_removed, shutdown_error) = match shutdown {
@@ -1016,6 +1031,38 @@ mod output_failure_tests {
                     "nonfailed output must not query the failure accessor"
                 );
             }
+        }
+    }
+    #[test]
+    fn successful_scenario_never_requests_failure_observation() {
+        assert_eq!(
+            retain_failure_observation(None, || panic!("success must not query output failure")),
+            None
+        );
+    }
+
+    #[test]
+    fn early_failure_keeps_original_error_and_observes_exactly_once() {
+        for observation in [
+            Ok(()),
+            Err("encoder output Failed: cause=Stalled".to_owned()),
+        ] {
+            let calls = std::cell::Cell::new(0);
+            let expected = match &observation {
+                Ok(()) => "actual source probe: Cancelled".to_owned(),
+                Err(detail) => {
+                    format!("actual source probe: Cancelled; final output observation: {detail}")
+                }
+            };
+            let actual = retain_failure_observation(
+                Some("actual source probe: Cancelled".to_owned()),
+                || {
+                    calls.set(calls.get() + 1);
+                    observation
+                },
+            );
+            assert_eq!(calls.get(), 1);
+            assert_eq!(actual.as_deref(), Some(expected.as_str()));
         }
     }
 }
