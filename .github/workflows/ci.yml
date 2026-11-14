@@ -539,6 +539,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Audit committed media before test preparation
+        run: node scripts/check-committed-media.cjs
       - run: npm run check:test-inventory
       - run: npm test
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0

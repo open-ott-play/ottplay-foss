@@ -184,29 +184,35 @@ const releasePolicy = JSON.parse(
     fs.readFileSync(path.join(root, ".release-policy.json"))
 );
 assert(releasePolicy.validation_workflows.includes("windows-validation.yml"));
-const workflow = yaml.parse(
-    fs.readFileSync(
-        path.join(root, ".github/workflows/windows-validation.yml"),
-        "utf8"
-    )
-);
-const frontend = workflow.jobs["frontend-tests"];
-assert.equal(frontend.if, undefined, "The early audit is not path-filtered");
-assert.equal(frontend["continue-on-error"], undefined);
-const auditIndex = frontend.steps.findIndex(
-    (step) => step.run === "node scripts/check-committed-media.cjs"
-);
-assert(auditIndex >= 0, "Required frontend job must audit committed media");
-assert.equal(frontend.steps[auditIndex].if, undefined);
-assert.equal(frontend.steps[auditIndex]["continue-on-error"], undefined);
-assert.deepEqual(
-    frontend.steps.slice(0, auditIndex).flatMap((step) => step.run || []),
-    ["npm ci --ignore-scripts"],
-    "Audit before any test/build can repair the source tree"
-);
-assert(
-    frontend.steps.findIndex((step) => step.run === "npm test") > auditIndex
-);
+for (const workflowFile of ["ci.yml", "windows-validation.yml"]) {
+    const workflow = yaml.parse(
+        fs.readFileSync(
+            path.join(root, ".github/workflows", workflowFile),
+            "utf8"
+        )
+    );
+    const frontend = workflow.jobs["frontend-tests"];
+    assert.equal(
+        frontend.if,
+        undefined,
+        "The early audit is not path-filtered"
+    );
+    assert.equal(frontend["continue-on-error"], undefined);
+    const auditIndex = frontend.steps.findIndex(
+        (step) => step.run === "node scripts/check-committed-media.cjs"
+    );
+    assert(auditIndex >= 0, "Required frontend job must audit committed media");
+    assert.equal(frontend.steps[auditIndex].if, undefined);
+    assert.equal(frontend.steps[auditIndex]["continue-on-error"], undefined);
+    assert.deepEqual(
+        frontend.steps.slice(0, auditIndex).flatMap((step) => step.run || []),
+        ["npm ci --ignore-scripts"],
+        "Audit before any test/build can repair the source tree"
+    );
+    assert(
+        frontend.steps.findIndex((step) => step.run === "npm test") > auditIndex
+    );
+}
 
 function runMediaAudit(audit) {
     const errors = [];
