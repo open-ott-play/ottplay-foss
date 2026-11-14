@@ -208,7 +208,7 @@ fn freeze_frames(
 
 struct State {
     geometry: ValidatedGeometry,
-    // Reject a composed tick captured before any control mutation.
+    // Reject a composed tick captured before a visual mutation.
     control_epoch: u64,
     focus_revision: u64,
     audio_revision: u64,
@@ -249,6 +249,19 @@ impl State {
             visible_mask: (1u16 << self.geometry.rects().len()) - 1,
             source_revisions,
         }
+    }
+    fn publish_capture(
+        &self,
+        pixels: Arc<[u8]>,
+        captured_fence: CaptureFence,
+        captured_at: Instant,
+    ) -> Result<bool, Error> {
+        if !self.capture_fence().accepts_capture(captured_fence) {
+            return Ok(false);
+        }
+        self.capture_video
+            .publish(pixels, captured_fence, captured_at)
+            .map_err(|_| Error::OutputFailed)
     }
     // State remains locked through capture-fence publication. Visual/source
     // changes fence old reuse; focus/audio-only epochs remain video-compatible.
@@ -481,8 +494,8 @@ impl Session {
         let decoders = Arc::new(Mutex::new(
             (0..9).map(|_| None).collect::<Vec<Option<Decoder>>>(),
         ));
-        let (compose_state, compose_stop, compose_decoders, compose_video) =
-            (state.clone(), stop.clone(), decoders.clone(), video.clone());
+        let (compose_state, compose_stop, compose_decoders) =
+            (state.clone(), stop.clone(), decoders.clone());
         let stale_after = config.stale_after;
         let compositor_thread = thread::Builder::new()
             .name("multiview-compositor".into())
@@ -508,10 +521,9 @@ impl Session {
                     }
                     {
                         let state = lock(&compose_state);
-                        if state.capture_fence() == fence
-                            && compose_video
-                                .publish(pixels.into(), fence, captured_at)
-                                .is_err()
+                        if state
+                            .publish_capture(pixels.into(), fence, captured_at)
+                            .is_err()
                         {
                             compose_stop.store(true, Ordering::Release);
                         }
@@ -1314,12 +1326,16 @@ mod tests {
         assert_eq!(nonvisual.control_epoch, old.control_epoch + 1);
         assert_eq!(nonvisual.visual_revision, old.visual_revision);
         assert_eq!(nonvisual.source_revisions, old.source_revisions);
-        // A stale composition must not publish even though the encoder may
-        // continue an already selected visually compatible immutable frame.
+        // The actual production prepublication barrier admits a captured
+        // snapshot across nonvisual controls, preserving its original metadata.
         assert!(state
-            .capture_video
-            .publish(pixels.clone(), old, Instant::now())
-            .is_err());
+            .publish_capture(pixels.clone(), old, Instant::now())
+            .unwrap());
+        state.focus = 1;
+        state.advance_control().unwrap();
+        assert!(state
+            .publish_capture(pixels.clone(), old, Instant::now())
+            .unwrap());
         assert!(state
             .capture_video
             .publish(pixels.clone(), nonvisual, Instant::now())
@@ -1334,6 +1350,16 @@ mod tests {
         state.advance_control().unwrap();
         let visual = state.capture_fence();
         assert_eq!(visual.visual_revision, 8);
+        assert!(!state
+            .publish_capture(pixels.clone(), nonvisual, Instant::now())
+            .unwrap());
+        let future = CaptureFence {
+            control_epoch: visual.control_epoch + 1,
+            ..visual
+        };
+        assert!(!state
+            .publish_capture(pixels.clone(), future, Instant::now())
+            .unwrap());
         assert!(state
             .capture_video
             .publish(pixels.clone(), nonvisual, Instant::now())

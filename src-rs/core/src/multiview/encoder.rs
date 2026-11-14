@@ -48,6 +48,11 @@ impl CaptureFrame {
     }
 }
 impl CaptureFence {
+    /// A composed capture survives nonvisual controls, never a visual change
+    /// or a control epoch which this feed has not observed yet.
+    pub(crate) fn accepts_capture(self, captured: Self) -> bool {
+        captured.control_epoch <= self.control_epoch && self.same_visual(captured)
+    }
     fn same_visual(self, other: Self) -> bool {
         self.visual_revision == other.visual_revision
             && self.stopped_mask == other.stopped_mask
@@ -306,7 +311,7 @@ impl CaptureVideoFeed {
         if state.window.as_ref().is_some_and(|window| window.failed) {
             return Ok(false);
         }
-        if state.fence != fence || captured_at < state.last_capture {
+        if !state.fence.accepts_capture(fence) || captured_at < state.last_capture {
             return Err(EncoderError::InvalidConfig);
         }
         if !state.active
@@ -2587,6 +2592,80 @@ mod runtime {
                 fps: 10,
             }
         }
+        #[test]
+        fn captured_rgb_survives_nonvisual_epochs_without_retagging_or_owner_change() {
+            let epoch = Instant::now();
+            let original = fence(0);
+            let feed = CaptureVideoFeed::new(Arc::from(vec![0; 12]), original, epoch);
+            feed.bind(1).unwrap();
+            feed.arm_window(1, epoch, 10, 1).unwrap().unwrap();
+            let owner = feed.state.lock().unwrap().invalidated_at.clone();
+            // Audio-only, then focus-only: separate already-captured snapshots
+            // cross the actual feed publication barrier after each epoch change.
+            for (control, capture_ms, changed_ms, pixel) in [(1, 10, 20, 1), (2, 30, 40, 2)] {
+                let current = CaptureFence {
+                    control_epoch: control,
+                    ..original
+                };
+                feed.invalidate(current, epoch + Duration::from_millis(changed_ms))
+                    .unwrap();
+                let captured_at = epoch + Duration::from_millis(capture_ms);
+                assert!(feed
+                    .publish(Arc::from(vec![pixel; 12]), original, captured_at)
+                    .unwrap());
+                let state = feed.state.lock().unwrap();
+                let frame = state.window.as_ref().unwrap().buckets[0].as_ref().unwrap();
+                assert_eq!(frame.fence, original);
+                assert_eq!(frame.captured_at, captured_at);
+                assert_eq!(first_pixel(frame), pixel);
+                assert!(Arc::ptr_eq(&frame.invalidated_at, &owner));
+                assert!(owner.get().is_none());
+            }
+            let current = CaptureFence {
+                control_epoch: 2,
+                ..original
+            };
+            let mut invalid = vec![
+                CaptureFence {
+                    visual_revision: original.visual_revision + 1,
+                    ..original
+                },
+                CaptureFence {
+                    stopped_mask: original.stopped_mask ^ 1,
+                    ..original
+                },
+                CaptureFence {
+                    visible_mask: original.visible_mask ^ 1,
+                    ..original
+                },
+                CaptureFence {
+                    control_epoch: 3,
+                    ..original
+                },
+            ];
+            for index in 0..9 {
+                let mut captured = original;
+                captured.source_revisions[index] += 1;
+                invalid.push(captured);
+            }
+            for captured in invalid {
+                assert!(!current.accepts_capture(captured));
+                assert_eq!(
+                    feed.publish(
+                        Arc::from(vec![3; 12]),
+                        captured,
+                        epoch + Duration::from_millis(50)
+                    ),
+                    Err(EncoderError::InvalidConfig)
+                );
+            }
+            let state = feed.state.lock().unwrap();
+            let retained = state.window.as_ref().unwrap().buckets[0].as_ref().unwrap();
+            assert_eq!(retained.fence, original);
+            assert_eq!(retained.captured_at, epoch + Duration::from_millis(30));
+            assert!(Arc::ptr_eq(&retained.invalidated_at, &owner));
+        }
+
         #[test]
         fn capture_gap_three_targets_succeed_within_unchanged_age_and_physical_debt() {
             let origin = Instant::now();

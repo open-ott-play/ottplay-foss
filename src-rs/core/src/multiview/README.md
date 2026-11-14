@@ -124,7 +124,9 @@ including naturally sparse 1–4 FPS output. A committed image can be reused for
 most two ticks. Physical writes and pacer debt retain the stricter minimum of two
 video periods, 200 ms and the configured stall limit; excess pressure terminates
 that output. Each image retains its first visual-invalidation boundary even across
-several rapid source changes.
+several rapid source changes. Nonvisual focus/audio changes preserve
+an otherwise valid in-flight image with its original capture timestamp and visual
+owner. Visual changes still invalidate it at their recorded boundary.
 Static pictures are valid content and are not identified as scheduler repetitions
 by pixel equality. This is a capture-time contract, not reconstruction of unknown
 input PTS or file audio/video offsets.
