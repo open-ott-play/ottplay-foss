@@ -131,6 +131,26 @@ class DownloadTests(unittest.TestCase):
 
 
 class BuilderTests(unittest.TestCase):
+    def test_reviewed_security_revision_accepts_only_authenticated_host_plugins(self):
+        # These identities are bound to Ubuntu's signed 0.7 package indexes.
+        expected = {
+            "aarch64": "cf9793404b3ead8ab7ac85730a02faed4b971719cf8901bfbe925081b2ead485",
+            "x86_64": "5459418a1ff25e78089377bf2f826fca731f2c254be83d9118fcf68b04c814fa",
+        }
+        previous = {
+            "aarch64": "f9c490eac865f4294b4f59f5b819f527e927439ca3e7ebfb2ad82b4f7fdde4a5",
+            "x86_64": "ba79059775cedb90a13084086d1d4fd9440b2a0b832ad41a0c9108c8df2c35ec",
+        }
+        for machine, digest in expected.items():
+            with self.subTest(machine=machine):
+                host = ({"ID": "ubuntu", "VERSION_ID": "24.04"}, machine)
+                BUILDER.validate_host(CONFIG, *host, "1.24.2-1ubuntu0.7", digest)
+                for version in ("1.24.2-1ubuntu0.6", "1.24.2-1ubuntu0.8"):
+                    with self.assertRaises(ValueError):
+                        BUILDER.validate_host(CONFIG, *host, version, digest)
+                with self.assertRaises(ValueError):
+                    BUILDER.validate_host(CONFIG, *host, "1.24.2-1ubuntu0.7", previous[machine])
+
     def test_known_architectures_require_exact_host_bytes(self):
         for machine, entry in CONFIG["architectures"].items():
             with self.subTest(machine=machine):

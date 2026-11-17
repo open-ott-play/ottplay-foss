@@ -13,7 +13,7 @@ use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
 use std::path::{Component, Path, PathBuf};
 
 const PRIVATE_ROOT: &str = "/usr/lib/ottplay-foss/compat/noble";
-const SOURCE_VERSION: &str = "1.24.2-1ubuntu0.6";
+const SOURCE_VERSION: &str = "1.24.2-1ubuntu0.7";
 const MAX_PLUGIN_BYTES: u64 = 8 * 1024 * 1024;
 
 #[derive(Debug, Deserialize)]
@@ -45,8 +45,8 @@ fn host_plugin(architecture: &str) -> Option<&'static str> {
 
 fn known_original(architecture: &str) -> Option<&'static str> {
     match architecture {
-        "aarch64" => Some("f9c490eac865f4294b4f59f5b819f527e927439ca3e7ebfb2ad82b4f7fdde4a5"),
-        "x86_64" => Some("ba79059775cedb90a13084086d1d4fd9440b2a0b832ad41a0c9108c8df2c35ec"),
+        "aarch64" => Some("cf9793404b3ead8ab7ac85730a02faed4b971719cf8901bfbe925081b2ead485"),
+        "x86_64" => Some("5459418a1ff25e78089377bf2f826fca731f2c254be83d9118fcf68b04c814fa"),
         _ => None,
     }
 }
@@ -346,6 +346,29 @@ mod tests {
     }
 
     #[test]
+    fn previous_security_revision_and_plugin_are_not_silently_retained() {
+        for (architecture, previous) in [
+            (
+                "aarch64",
+                "f9c490eac865f4294b4f59f5b819f527e927439ca3e7ebfb2ad82b4f7fdde4a5",
+            ),
+            (
+                "x86_64",
+                "ba79059775cedb90a13084086d1d4fd9440b2a0b832ad41a0c9108c8df2c35ec",
+            ),
+        ] {
+            let mut value = manifest();
+            value.architecture = architecture.into();
+            value.source_package_version = "1.24.2-1ubuntu0.6".into();
+            value.original_plugin_sha256 = previous.into();
+            let replacement = value.replacement_plugin_sha256.clone();
+            assert!(qualify(&value, architecture, previous, &replacement).is_err());
+            value.source_package_version = SOURCE_VERSION.into();
+            assert!(qualify(&value, architecture, previous, &replacement).is_err());
+        }
+    }
+
+    #[test]
     fn exact_known_host_and_replacement_are_required() {
         let mut value = manifest();
         assert!(qualify(
@@ -394,7 +417,7 @@ mod tests {
                 "schema" => value.schema = 2,
                 "id" => value.os_id = "debian".into(),
                 "version" => value.os_version = "26.04".into(),
-                "source" => value.source_package_version = "1.24.2-1ubuntu0.7".into(),
+                "source" => value.source_package_version = "1.24.2-1ubuntu0.8".into(),
                 _ => value.replacement_plugin_sha256 = "../bad".into(),
             }
             assert!(qualify(

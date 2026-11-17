@@ -1,7 +1,7 @@
 # App-private Noble playback compatibility build
 
 This recipe builds only `libgstplayback.so` from Ubuntu's
-`gst-plugins-base1.0` source version `1.24.2-1ubuntu0.6`, preserving all 16
+`gst-plugins-base1.0` source version `1.24.2-1ubuntu0.7`, preserving all 20
 distribution patches. It then applies GStreamer's
 [stream-synchronizer flush fix](https://github.com/GStreamer/gstreamer/commit/03febb5048d0612157fad0ddadeaaeed924aadf0).
 `upstream.patch` preserves the original change; `backport.patch` adjusts only
@@ -76,13 +76,13 @@ Retire the compatibility replacement when the supported host package
 includes the upstream fix. Do not weaken the exact host-byte check to retain
 an old override on newer, unknown, or customized systems.
 
-### Noble security input review (2026-11-10)
+### Earlier Noble security input review (2026-11-10; superseded)
 
 The `1ubuntu0.6` update retains the earlier 15 distribution patches and adds
 `CVE-2026-111183.patch` in audio channel-position handling. Both AMD64 and ARM64
 package hashes and original playback-plugin hashes were reviewed against
 `noble-security` Packages indexes authenticated by Ubuntu archive key
-`F6ECB3762474EDA9D21B7022871920D1991BC93C`. `sources.json` records the signed
+`F6ECB3762474EDA9D21B7022871920D1991BC93C`. At that revision, `sources.json` recorded the signed
 InRelease digest, compressed by-hash package/source index URLs and digests,
 and exact package identities for both architectures. The source archives are
 authenticated by the same signed Sources index; no separate trust in a DSC
@@ -92,3 +92,26 @@ The compatibility backport and its before/after stream-synchronizer hashes
 remain unchanged. The builder derives the Debian archive name from the
 reviewed host-package revision and rejects a missing or ambiguous archive.
 Older or newer host revisions still fail closed, as do modified plugin bytes.
+
+### Noble security input review (2026-11-16)
+
+The current `1ubuntu0.7` inputs follow
+[Ubuntu USN-9094-1](https://ubuntu.com/security/notices/USN-9094-1).
+Both AMD64 and ARM64 package/plugin identities and the source archives were
+verified through fresh signed `noble-security` InRelease files and their
+compressed by-hash Packages/Sources indexes, using the same Ubuntu archive
+signing fingerprint recorded above. Both original plugin digests changed;
+the builder and runtime selector require the newly reviewed bytes together.
+
+All 16 earlier distribution patches remain byte-for-byte intact. Four added
+patch files cover RTSP authentication parsing, audio/video metadata validation
+and its overlap-check follow-up, and MicroDVD subtitle null handling. None
+changes `gststreamsynchronizer.c`; the compatibility backport, exact before/
+after target hashes, upstream patch, regression source and license notices
+remain unchanged.
+
+This input review does not claim a native 0.7 rebuild or playback result.
+The new source revision still requires both Ubuntu architecture CI builds,
+the existing regression/ELF/ABI/hardening/package checks, and the separate
+native playback acceptance. Older 0.6, future unreviewed revisions such as
+0.8, and altered host plugin bytes remain outside the qualified runtime.
