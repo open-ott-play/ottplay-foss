@@ -1582,6 +1582,19 @@ impl Session {
     pub fn output_failure(&self) -> Option<super::encoder::EncoderError> {
         self.output_failure_detail().map(|detail| detail.error)
     }
+    /// Read one current source owner's diagnostic before replacement/retirement.
+    /// Deliberately separate from snapshot(): do not add state -> workers lock order.
+    pub fn source_failure_detail(
+        &self,
+        slot: u8,
+        expected_source_revision: u64,
+    ) -> Option<super::decoder::DecoderFailureDetail> {
+        let workers = lock(&self.decoders);
+        workers
+            .get(usize::from(slot))?
+            .as_ref()?
+            .failure_detail(expected_source_revision)
+    }
     pub fn output_failure_detail(&self) -> Option<super::encoder::EncoderFailureDetail> {
         if self.stop.load(Ordering::Acquire) && self.retired_snapshot.state == EncoderState::Failed
         {

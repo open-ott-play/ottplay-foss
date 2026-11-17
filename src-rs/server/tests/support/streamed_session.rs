@@ -408,6 +408,29 @@ fn retain_failure_observation(
     })
 }
 
+fn source_failure_details(
+    snapshot: &Snapshot,
+    mut read: impl FnMut(u8, u64) -> Option<decoder::DecoderFailureDetail>,
+) -> Vec<Value> {
+    snapshot
+        .slots
+        .iter()
+        .filter(|slot| slot.state == SlotState::Failed)
+        .map(|slot| {
+            let detail = read(slot.slot_id, slot.source_revision);
+            let diagnostic = detail.map(|value| {
+                json!({
+                    "generation":value.generation(), "phase":value.phase_code(),
+                    "reason":value.reason_code(), "error":value.error_code(),
+                })
+            });
+            json!({"slot_id":slot.slot_id, "source_revision":slot.source_revision,
+            "selected":snapshot.audio_slot == Some(slot.slot_id),
+            "available":detail.is_some(), "diagnostic":diagnostic})
+        })
+        .collect()
+}
+
 struct Events {
     file: File,
     started: Instant,
@@ -435,7 +458,8 @@ impl Events {
         let read_us = begin.elapsed().as_micros();
         let row = json!({"phase":phase,"driver_elapsed_ms":self.started.elapsed().as_millis(),
             "snapshot_call_us":read_us,"previous_event_write_us":self.previous_write_us,
-            "audio_policy":format!("{:?}",snapshot.audio_policy),"snapshot":snapshot_json(&snapshot)});
+            "audio_policy":format!("{:?}",snapshot.audio_policy),"snapshot":snapshot_json(&snapshot),
+            "source_failures":source_failure_details(&snapshot, |slot, revision| session.source_failure_detail(slot, revision))});
         let mut bytes = serde_json::to_vec(&row).map_err(|e| error("event encoding", e))?;
         bytes.push(b'\n');
         require(
@@ -969,6 +993,13 @@ fn run_case(
         },
         || events.note("failure", &session).map(|_| ()),
     );
+    // Failure-only observation before retirement can remove the owned source.
+    // It supplements evidence, never substitutes a different assertion or result.
+    let source_failure_observation = scenario_error.as_ref().map(|_| {
+        let snapshot = session.snapshot();
+        json!({"snapshot":snapshot_json(&snapshot),
+            "source_failures":source_failure_details(&snapshot, |slot, revision| session.source_failure_detail(slot, revision))})
+    });
     let archive_result = collector.finish();
     let shutdown = session.shutdown();
     let (owned, output_removed, shutdown_error) = match shutdown {
@@ -1003,7 +1034,7 @@ fn run_case(
         .map_err(|e| error("event sync", e))?;
     let source_receipts: Vec<_> = inputs.sources.iter().map(|source| json!({"id":source.id,"path":source.path,"bytes":source.payload.len(),"sha256":source.sha256})).collect();
     let report = json!({"scope":"actual ottplay_core Session with synthetic trusted FD grants and paced UnixStream producers; not production/native admission",
-        "pass":pass,"scenario_error":scenario_error,"sample_count":control.count,"event_count":events.count,
+        "pass":pass,"scenario_error":scenario_error,"source_failure_observation":source_failure_observation,"sample_count":control.count,"event_count":events.count,
         "planned_B_host_hold_seconds":B_HOLD_SECONDS,"selected_intervals":control.intervals,"B_selected_begin":control.b_begin,"B_selected_end":control.b_end,
         "A_return_begin":control.a_return_begin,"A_return_end":control.a_return_end,"A_end_live_playlist_sha256":control.a_cut,
         "B_end_live_playlist_sha256":control.b_cut,"input_manifest_sha256":inputs.manifest_sha256,"inputs":source_receipts,
@@ -1031,6 +1062,40 @@ fn run_case(
 #[cfg(test)]
 mod output_failure_tests {
     use super::*;
+
+    #[test]
+    fn source_diagnostic_lookup_is_failure_only_and_generation_bound() {
+        let mut observed = snapshot(EncoderState::Playing);
+        observed.audio_slot = Some(1);
+        for (slot_id, state) in [(0, SlotState::Playing), (1, SlotState::Failed)] {
+            observed
+                .slots
+                .push(ottplay_core::multiview::persistent::SlotSnapshot {
+                    slot_id,
+                    source_revision: 7,
+                    decoder_pid: Some(31),
+                    frames: 9,
+                    state,
+                    audio: decoder::AudioQueueStats::default(),
+                });
+        }
+        let mut calls = Vec::new();
+        let rows = source_failure_details(&observed, |slot, revision| {
+            calls.push((slot, revision));
+            None
+        });
+        assert_eq!(calls, vec![(1, 7)]);
+        assert_eq!(
+            rows,
+            vec![json!({"slot_id":1,"source_revision":7,
+            "selected":true,"available":false,"diagnostic":null})]
+        );
+        observed.slots[1].state = SlotState::Playing;
+        assert!(
+            source_failure_details(&observed, |_, _| panic!("healthy source diagnostic read"))
+                .is_empty()
+        );
+    }
 
     fn detail(error: EncoderError) -> EncoderFailureDetail {
         EncoderFailureDetail {
@@ -1273,7 +1338,8 @@ mod output_failure_tests {
                     "last_progress_ago_ns":20})
                 );
                 let message =
-                    output_failure_message(&snapshot(EncoderState::Failed), || Some(original)).unwrap();
+                    output_failure_message(&snapshot(EncoderState::Failed), || Some(original))
+                        .unwrap();
                 let (_, rest) = message.split_once("; detail=").unwrap();
                 let (encoded, _) = rest.split_once("; snapshot=").unwrap();
                 assert_eq!(serde_json::from_str::<Value>(encoded).unwrap(), value);
