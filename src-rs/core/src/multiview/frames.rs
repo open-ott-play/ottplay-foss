@@ -169,32 +169,43 @@ impl LatestFrame {
         if pixels.len() != byte_len(self.spec)? {
             return Err(FrameError::InvalidLength);
         }
+        self.publish_prepared(|| {
+            Arc::new(Frame {
+                generation,
+                sequence,
+                spec: self.spec,
+                content,
+                pixels: pixels.into(),
+                received_at,
+            })
+        })
+    }
+    // Pixel conversion/allocation must not keep a compositor snapshot waiting
+    // for the mailbox. Recheck every mutable publication guard after preparation.
+    fn publish_prepared(&self, prepare: impl FnOnce() -> Arc<Frame>) -> Result<(), FrameError> {
+        let frame = prepare();
         let mut state = self.state();
-        if generation != state.generation {
+        if frame.generation != state.generation {
             return Err(FrameError::StaleGeneration);
         }
         if state.terminal.is_some() {
             return Err(FrameError::Terminal);
         }
-        if sequence <= state.sequence {
+        if frame.sequence <= state.sequence {
             return Err(FrameError::StaleSequence);
         }
         if state
             .latest
             .as_ref()
-            .is_some_and(|frame| received_at < frame.received_at)
+            .is_some_and(|previous| frame.received_at < previous.received_at)
         {
             return Err(FrameError::InvalidTimestamp);
         }
-        state.latest = Some(Arc::new(Frame {
-            generation,
-            sequence,
-            spec: self.spec,
-            content,
-            pixels: pixels.into(),
-            received_at,
-        }));
-        state.sequence = sequence;
+        state.sequence = frame.sequence;
+        let retired = state.latest.replace(frame);
+        drop(state);
+        // The final pixel owner may release a full frame allocation here.
+        drop(retired);
         Ok(())
     }
     fn terminate(&self, generation: u64, status: FrameStatus) -> Result<(), FrameError> {
@@ -314,6 +325,116 @@ pub fn compose_into(
 mod tests {
     use super::super::geometry::{CanvasSpec, ImportedRect, OverlapPolicy};
     use super::*;
+    #[test]
+    fn blocked_frame_preparation_leaves_snapshot_and_generation_advance_available() {
+        let spec = FrameSpec {
+            width: 2,
+            height: 2,
+        };
+        let mailbox = Arc::new(LatestFrame::new(spec, 1).unwrap());
+        let now = Instant::now();
+        mailbox.publish(1, 1, vec![1; 12], now).unwrap();
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let publishing = mailbox.clone();
+        let worker = std::thread::spawn(move || {
+            publishing.publish_prepared(|| {
+                entered_tx.send(()).unwrap();
+                // Only a deadlock watchdog: ordering is established by channels.
+                release_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+                Arc::new(Frame {
+                    generation: 1,
+                    sequence: 2,
+                    spec,
+                    content: FrameContentRect::full(spec),
+                    pixels: vec![2; 12].into(),
+                    received_at: now,
+                })
+            })
+        });
+        let entered = entered_rx.recv_timeout(Duration::from_secs(5));
+        let available = entered.is_ok() && mailbox.state.try_lock().is_ok();
+        // Do not block this test on the old implementation's held mutex, and
+        // always release/join the publisher before reporting a failed assertion.
+        let snapshot = available.then(|| mailbox.snapshot(now, Duration::from_secs(1)));
+        let advanced = available.then(|| mailbox.advance(1, 2));
+        let released = release_tx.send(());
+        let result = worker.join();
+        assert!(entered.is_ok());
+        assert!(released.is_ok());
+        assert!(available, "frame preparation held the mailbox mutex");
+        assert!(matches!(snapshot, Some(FrameView::Ready(frame)) if frame.sequence == 1));
+        assert_eq!(advanced, Some(Ok(())));
+        assert_eq!(result.unwrap(), Err(FrameError::StaleGeneration));
+        assert_eq!(mailbox.generation(), 2);
+        assert_eq!(mailbox.sequence(), 0);
+        assert!(matches!(
+            mailbox.snapshot(now, Duration::from_secs(1)),
+            FrameView::Slate(FrameStatus::Starting)
+        ));
+    }
+    #[test]
+    fn prepared_publication_preserves_validation_and_snapshot_pixel_ownership() {
+        let spec = FrameSpec {
+            width: 2,
+            height: 2,
+        };
+        let mailbox = LatestFrame::new(spec, 1).unwrap();
+        let now = Instant::now();
+        mailbox.publish(1, 2, vec![1; 12], now).unwrap();
+        let FrameView::Ready(previous) = mailbox.snapshot(now, Duration::from_secs(1)) else {
+            panic!("initial frame is missing")
+        };
+        let retired = Arc::downgrade(&previous);
+        assert_eq!(
+            mailbox.publish_content(
+                0,
+                0,
+                Vec::new(),
+                now,
+                FrameContentRect {
+                    width: 0,
+                    ..FrameContentRect::full(spec)
+                },
+            ),
+            Err(FrameError::InvalidContent)
+        );
+        assert_eq!(
+            mailbox.publish(0, 0, Vec::new(), now),
+            Err(FrameError::InvalidLength)
+        );
+        assert_eq!(
+            mailbox.publish(0, 3, vec![2; 12], now),
+            Err(FrameError::StaleGeneration)
+        );
+        assert_eq!(
+            mailbox.publish(1, 2, vec![2; 12], now),
+            Err(FrameError::StaleSequence)
+        );
+        assert_eq!(
+            mailbox.publish(1, 3, vec![2; 12], now - Duration::from_millis(1)),
+            Err(FrameError::InvalidTimestamp)
+        );
+        let FrameView::Ready(unchanged) = mailbox.snapshot(now, Duration::from_secs(1)) else {
+            panic!("rejected publication changed the frame")
+        };
+        assert!(Arc::ptr_eq(&unchanged, &previous));
+        drop(unchanged);
+        mailbox.publish(1, 3, vec![2; 12], now).unwrap();
+        assert_eq!(&*previous.pixels, &[1; 12]);
+        drop(previous);
+        assert!(retired.upgrade().is_none());
+        let FrameView::Ready(current) = mailbox.snapshot(now, Duration::from_secs(1)) else {
+            panic!("replacement frame is missing")
+        };
+        assert_eq!(current.sequence, 3);
+        assert_eq!(&*current.pixels, &[2; 12]);
+        mailbox.mark_ended(1).unwrap();
+        assert_eq!(
+            mailbox.publish(1, 4, vec![3; 12], now),
+            Err(FrameError::Terminal)
+        );
+    }
     #[test]
     fn content_validation_is_atomic_and_publish_remains_full_buffer_compatible() {
         let m = LatestFrame::new(
