@@ -125,8 +125,10 @@ pub struct Rect {
     pub height: u32,
 }
 
-fn even(value: u32) -> u32 {
-    value & !1
+// Partition in chroma pairs. Adjacent tiles share their edge and the last
+// edge is exactly the canvas extent, including dimensions not divisible by 3.
+fn edge(extent: u32, index: u32, count: u32) -> u32 {
+    2 * ((extent / 2) * index / count)
 }
 
 fn rectangles(layout: Layout, count: usize, output: OutputSpec) -> Vec<Rect> {
@@ -134,47 +136,49 @@ fn rectangles(layout: Layout, count: usize, output: OutputSpec) -> Vec<Rect> {
     match layout {
         Layout::Grid4 | Layout::Grid9 => {
             let side = if count == 4 { 2 } else { 3 };
-            let width = even(output.width / side);
-            let height = even(output.height / side);
             for slot in 0..count as u32 {
+                let column = slot % side;
+                let row = slot / side;
+                let x = edge(output.width, column, side);
+                let y = edge(output.height, row, side);
                 result.push(Rect {
                     slot: slot as u8,
-                    x: slot % side * width,
-                    y: slot / side * height,
-                    width,
-                    height,
+                    x,
+                    y,
+                    width: edge(output.width, column + 1, side) - x,
+                    height: edge(output.height, row + 1, side) - y,
                 });
             }
         }
         Layout::MainWithPerimeter { main_slot } => {
             let columns = if count == 4 { 3 } else { 5 };
             let rows = if count == 4 { 3 } else { 4 };
-            let width = even(output.width / columns);
-            let height = even(output.height / rows);
-            let main_width = width * (columns - 1);
+            let main_width = edge(output.width, columns - 1, columns);
             let main_height = if count == 4 {
-                height * rows
+                output.height
             } else {
-                height * (rows - 1)
+                edge(output.height, rows - 1, rows)
             };
             let mut small = Vec::with_capacity(count - 1);
             for row in 0..rows {
+                let y = edge(output.height, row, rows);
                 small.push(Rect {
                     slot: 0,
                     x: main_width,
-                    y: row * height,
-                    width,
-                    height,
+                    y,
+                    width: output.width - main_width,
+                    height: edge(output.height, row + 1, rows) - y,
                 });
             }
             if count == 9 {
                 for column in 0..columns - 1 {
+                    let x = edge(output.width, column, columns);
                     small.push(Rect {
                         slot: 0,
-                        x: column * width,
+                        x,
                         y: main_height,
-                        width,
-                        height,
+                        width: edge(output.width, column + 1, columns) - x,
+                        height: output.height - main_height,
                     });
                 }
             }
@@ -275,7 +279,13 @@ pub fn build(
     let rectangles = rectangles(layout, count, output);
     let mut filters = Vec::with_capacity(count * 2 + 2);
     for (index, rect) in rectangles.iter().enumerate() {
-        filters.push(format!("[{index}:v:0]scale=w='min({},max(2,round({}*dar/2)*2))':h='min({},max(2,round({}/dar/2)*2))',setsar=1,pad=w={}:h={}:x=(ow-iw)/2:y=(oh-ih)/2:color=black,setpts=PTS-STARTPTS,fps={}[s{index}]", rect.width, rect.height, rect.height, rect.width, rect.width, rect.height, output.fps));
+        // Crop in the coded input before resizing, so extreme sample aspect
+        // ratios cannot allocate an intermediate frame larger than the input.
+        let (w, h) = (rect.width, rect.height);
+        filters.push(format!(
+            "[{index}:v:0]crop=w='min(iw,max(1,round(ih*{w}/{h}/if(gt(sar,0),sar,1))))':h='min(ih,max(1,round(iw*{h}/{w}*if(gt(sar,0),sar,1))))':exact=1,scale={w}:{h},setsar=1,setpts=PTS-STARTPTS,fps={}[s{index}]",
+            output.fps
+        ));
     }
     match layout {
         Layout::Grid4 | Layout::Grid9 => {
@@ -288,10 +298,7 @@ pub fn build(
             filters.push(format!(
                 "{labels}xstack=inputs={count}:layout={positions}:fill=black:shortest=1[stack]"
             ));
-            filters.push(format!(
-                "[stack]pad={}:{}:0:0:color=black,format=yuv420p[vout]",
-                output.width, output.height
-            ));
+            filters.push("[stack]format=yuv420p[vout]".to_owned());
         }
         Layout::MainWithPerimeter { main_slot } => {
             filters.push(format!(

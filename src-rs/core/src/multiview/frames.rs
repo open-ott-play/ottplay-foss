@@ -244,9 +244,23 @@ impl LatestFrame {
     }
 }
 
+/// Center the largest rectangle of the requested aspect inside these validated pixel bounds.
+fn centered_aspect(bounds: FrameContentRect, width: u32, height: u32) -> FrameContentRect {
+    // Canvas and content dimensions are both bounded to 1920 × 1080.
+    let w = bounds.width.min((bounds.height * width / height).max(1));
+    let h = bounds.height.min((bounds.width * height / width).max(1));
+    FrameContentRect {
+        x: bounds.x + (bounds.width - w) / 2,
+        y: bounds.y + (bounds.height - h) / 2,
+        width: w,
+        height: h,
+    }
+}
+
 /// Paint imported pixel rectangles in z order. Missing/stalled slots are opaque
-/// black slates, including an inset over a moving PiP base. Sources are aspect-fit
-/// with nearest sampling; no layout decisions or decoder restarts occur here.
+/// black slates, including an inset over a moving PiP base. Multi-window pictures
+/// fill their tiles using a centered crop of the unpadded image. A single
+/// picture retains its full frame.
 pub fn compose_into(
     geometry: &ValidatedGeometry,
     frames: &[(u8, FrameView)],
@@ -286,34 +300,29 @@ pub fn compose_into(
         else {
             continue;
         };
-        let (width, height) = if u64::from(frame.content.width) * u64::from(rect.height)
-            >= u64::from(frame.content.height) * u64::from(rect.width)
-        {
+        let tile = FrameContentRect {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+        };
+        let (src, dst) = if geometry.rects().len() == 1 {
             (
-                rect.width,
-                (u64::from(frame.content.height) * u64::from(rect.width)
-                    / u64::from(frame.content.width))
-                .max(1) as u32,
+                frame.content,
+                centered_aspect(tile, frame.content.width, frame.content.height),
             )
         } else {
             (
-                (u64::from(frame.content.width) * u64::from(rect.height)
-                    / u64::from(frame.content.height))
-                .max(1) as u32,
-                rect.height,
+                centered_aspect(frame.content, rect.width, rect.height),
+                tile,
             )
         };
-        let x0 = rect.x + (rect.width - width) / 2;
-        let y0 = rect.y + (rect.height - height) / 2;
-        for y in 0..height {
-            let sy = u64::from(y) * u64::from(frame.content.height) / u64::from(height);
-            for x in 0..width {
-                let sx = u64::from(x) * u64::from(frame.content.width) / u64::from(width);
-                let source = ((frame.content.y as usize + sy as usize) * frame.spec.width as usize
-                    + frame.content.x as usize
-                    + sx as usize)
-                    * 3;
-                let target = (y0 + y) as usize * stride + (x0 + x) as usize * 3;
+        for y in 0..dst.height {
+            let sy = src.y + y * src.height / dst.height;
+            for x in 0..dst.width {
+                let sx = src.x + x * src.width / dst.width;
+                let source = (sy as usize * frame.spec.width as usize + sx as usize) * 3;
+                let target = (dst.y + y) as usize * stride + (dst.x + x) as usize * 3;
                 canvas[target..target + 3].copy_from_slice(&frame.pixels[source..source + 3]);
             }
         }
@@ -770,6 +779,92 @@ mod tests {
         assert_eq!(main.generation(), 1);
         assert_eq!(main.sequence(), 1);
     }
+    #[test]
+    fn adjacent_tiles_fill_every_pixel_from_the_center_of_visible_content() {
+        let scene = ValidatedGeometry::new(
+            CanvasSpec {
+                width: 8,
+                height: 4,
+                fps: 10,
+            },
+            1,
+            &[
+                ImportedRect {
+                    slot_id: 0,
+                    x: 0,
+                    y: 0,
+                    width: 4,
+                    height: 4,
+                    z: 0,
+                },
+                ImportedRect {
+                    slot_id: 1,
+                    x: 4,
+                    y: 0,
+                    width: 4,
+                    height: 4,
+                    z: 1,
+                },
+            ],
+            OverlapPolicy::Disjoint,
+        )
+        .unwrap();
+        let now = Instant::now();
+        let wide = LatestFrame::new(
+            FrameSpec {
+                width: 10,
+                height: 4,
+            },
+            1,
+        )
+        .unwrap();
+        let tall = LatestFrame::new(
+            FrameSpec {
+                width: 4,
+                height: 8,
+            },
+            1,
+        )
+        .unwrap();
+        let wide_pixels = (0..40u8).flat_map(|i| [i % 10, 0, 0]).collect();
+        let tall_pixels = (0..32u8).flat_map(|i| [0, i / 4, 0]).collect();
+        wide.publish_content(
+            1,
+            1,
+            wide_pixels,
+            now,
+            FrameContentRect {
+                x: 1,
+                y: 0,
+                width: 8,
+                height: 4,
+            },
+        )
+        .unwrap();
+        tall.publish(1, 1, tall_pixels, now).unwrap();
+        let mut canvas = Vec::new();
+        compose_into(
+            &scene,
+            &[
+                (0, wide.snapshot(now, Duration::from_secs(1))),
+                (1, tall.snapshot(now, Duration::from_secs(1))),
+            ],
+            &mut canvas,
+        )
+        .unwrap();
+        for y in 0..4 {
+            for x in 0..8 {
+                let pixel = (y * 8 + x) * 3;
+                let expected = if x < 4 {
+                    [3 + x as u8, 0, 0]
+                } else {
+                    [0, 2 + y as u8, 0]
+                };
+                assert_eq!(canvas[pixel..pixel + 3], expected, "at ({x}, {y})");
+            }
+        }
+    }
+
     #[test]
     fn compose_validates_inputs_and_letterboxes_without_changing_geometry() {
         let scene = ValidatedGeometry::new(
