@@ -9,6 +9,9 @@ import sys
 
 
 AZURE = re.compile(r"(?<![\w@./:-])(https?://)azure\.archive\.ubuntu\.com(?=[/\s]|$)")
+EC2 = re.compile(
+    r"(?<!\S)https?://[a-z]{2}(?:-[a-z]+)+-\d+\.ec2\.archive\.ubuntu\.com/ubuntu(?=/?(?:\s|$))"
+)
 PORTS = re.compile(r"(?<!\S)http://ports\.ubuntu\.com/ubuntu-ports(?=/?(?:\s|$))")
 
 
@@ -18,6 +21,7 @@ def rewrite(text):
     for line in text.splitlines(keepends=True):
         active, marker, comment = line.partition("#")
         active = AZURE.sub(r"\1archive.ubuntu.com", active)
+        active = EC2.sub("https://archive.ubuntu.com/ubuntu", active)
         active = PORTS.sub("https://ports.ubuntu.com/ubuntu-ports", active)
         lines.append(active + marker + comment)
     return "".join(lines)

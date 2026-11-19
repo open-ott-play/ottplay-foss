@@ -31,6 +31,25 @@ deb https://ppa.launchpadcontent.net/example/ppa/ubuntu noble main
         self.assertEqual(mirror.rewrite(original), expected)
         self.assertEqual(mirror.rewrite(expected), expected)
 
+    def test_ec2_archive_preserves_resolute_package_policy(self):
+        original = """# http://us-east-2.ec2.archive.ubuntu.com/ubuntu
+Types: deb
+URIs: http://us-east-2.ec2.archive.ubuntu.com/ubuntu/ https://eu-west-1.ec2.archive.ubuntu.com/ubuntu
+Suites: resolute resolute-updates
+Components: main universe
+Architectures: amd64 amd64v3
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+deb https://us-east-2.ec2.archive.ubuntu.com.evil/ubuntu resolute main
+deb https://user@us-east-2.ec2.archive.ubuntu.com/ubuntu resolute main
+deb https://us-east-2.ec2.archive.ubuntu.com/ubuntu/nested resolute main
+"""
+        expected = original.replace(
+            "URIs: http://us-east-2.ec2.archive.ubuntu.com/ubuntu/ https://eu-west-1.ec2.archive.ubuntu.com/ubuntu",
+            "URIs: https://archive.ubuntu.com/ubuntu/ https://archive.ubuntu.com/ubuntu",
+        )
+        self.assertEqual(mirror.rewrite(original), expected)
+        self.assertEqual(mirror.rewrite(expected), expected)
+
     def test_ports_sources_preserve_everything_except_transport(self):
         original = """# http://ports.ubuntu.com/ubuntu-ports stays in this comment
 deb [arch=arm64 signed-by=/usr/share/keyrings/ubuntu.gpg] http://ports.ubuntu.com/ubuntu-ports noble main # http://ports.ubuntu.com/ubuntu-ports
