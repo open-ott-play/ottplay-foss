@@ -79,10 +79,14 @@ def fetch(item, destination, cache=None):
         with (cache / item["name"]).open("rb") as stream:
             data = stream.read(item["size"] + 1)
     else:
+        # Ubuntu's archive rejects the generic Python urllib user agent.
+        request = urllib.request.Request(item["url"], headers={
+            "User-Agent": "OTTPlay-FOSS/1 (+https://github.com/open-ott-play/ottplay-foss)",
+        })
         # Retry only transient network failures; never relax origin or integrity checks.
         for attempt in range(3):
             try:
-                with urllib.request.urlopen(item["url"], timeout=60) as response:
+                with urllib.request.urlopen(request, timeout=60) as response:
                     require(response.url.startswith("https://ports.ubuntu.com/ubuntu-ports/"),
                             "Source download redirected outside the pinned origin")
                     # One extra byte rejects oversized responses without unbounded memory.

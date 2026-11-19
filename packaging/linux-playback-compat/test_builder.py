@@ -41,7 +41,12 @@ class DownloadTests(unittest.TestCase):
         with patch.object(BUILDER.urllib.request, "urlopen", return_value=response) as request, \
                 patch.object(BUILDER.time, "sleep") as sleep:
             BUILDER.fetch(self.item, self.destination)
-        request.assert_called_once_with(self.item["url"], timeout=60)
+        request.assert_called_once()
+        outgoing = request.call_args.args[0]
+        self.assertEqual(outgoing.full_url, self.item["url"])
+        self.assertEqual(outgoing.get_header("User-agent"),
+                         "OTTPlay-FOSS/1 (+https://github.com/open-ott-play/ottplay-foss)")
+        self.assertEqual(request.call_args.kwargs, {"timeout": 60})
         response.read.assert_called_once_with(5)
         self.assertTrue(response.closed)
         sleep.assert_not_called()
@@ -58,7 +63,7 @@ class DownloadTests(unittest.TestCase):
                     patch.object(BUILDER.urllib.request, "urlopen", side_effect=[failure, self.response()]) as request, \
                     patch.object(BUILDER.time, "sleep") as sleep:
                 BUILDER.fetch(self.item, self.destination)
-                self.assertEqual(request.call_args_list, [call(self.item["url"], timeout=60)] * 2)
+                self.assertEqual(request.call_args_list, [call(request.call_args.args[0], timeout=60)] * 2)
                 sleep.assert_called_once_with(1)
                 self.assertEqual(self.destination.read_bytes(), b"good")
 
@@ -89,7 +94,7 @@ class DownloadTests(unittest.TestCase):
                     urllib.error.URLError("DNS failure"),
                     urllib.error.HTTPError("https://example.invalid/redirect", 503, "temporary", {}, io.BytesIO())]
         failures.extend(urllib.error.HTTPError(self.item["url"], code, "terminal", {}, io.BytesIO())
-                        for code in (401, 404, 429, 501))
+                        for code in (401, 403, 404, 429, 501))
         for failure in failures:
             with self.subTest(failure=failure), \
                     patch.object(BUILDER.urllib.request, "urlopen", side_effect=failure) as request, \
