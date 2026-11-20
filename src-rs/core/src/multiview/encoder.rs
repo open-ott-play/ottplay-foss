@@ -1920,6 +1920,178 @@ mod runtime {
             elapsed.saturating_mul(2).clamp(floor, stall)
         })
     }
+    /// Canvas rates a capture session may fall back to, highest first. The
+    /// negotiated canvas is the ceiling: production already caps it at 15 fps
+    /// and geometry at 30, so a rung is only ever chosen below what was asked
+    /// for and the published rate never rises mid-session.
+    const CAPTURE_RATE_FALLBACKS: [u32; 6] = [15, 12, 10, 8, 6, 5];
+    /// A rung must leave at least half of its period idle after the measured
+    /// write. Without that headroom the compositor, the muxer and the archive
+    /// poller compete with the writer and the session drifts behind wall-clock
+    /// exactly as it did before the rate was chosen.
+    const CAPTURE_RATE_HEADROOM: u32 = 2;
+    /// Full-size black frames written to a throwaway encoder before the session
+    /// rate is fixed. The first frame pays for pipe and encoder start-up, so it
+    /// is bounded but never measured.
+    const CAPTURE_RATE_PROBE_FRAMES: usize = 8;
+    fn capture_rate_period(rate: u32) -> Duration {
+        Duration::from_nanos(1_000_000_000 / u64::from(rate.max(1)))
+    }
+    /// The rates a session negotiated at `top` may use, highest first.
+    fn capture_rate_rungs(top: u32) -> Vec<u32> {
+        let mut rungs = vec![top];
+        rungs.extend(
+            CAPTURE_RATE_FALLBACKS
+                .into_iter()
+                .filter(|rate| *rate < top),
+        );
+        rungs.retain(|rate| *rate > 0);
+        rungs
+    }
+    /// Highest rung whose period still leaves `CAPTURE_RATE_HEADROOM` times the
+    /// measured write idle. A host that misses every rung keeps the lowest one:
+    /// the session still has to start, and the monitor still names a real stall.
+    fn capture_rate_for(sustained: Duration, top: u32) -> u32 {
+        let rungs = capture_rate_rungs(top);
+        rungs
+            .iter()
+            .copied()
+            .find(|rate| {
+                sustained.saturating_mul(CAPTURE_RATE_HEADROOM) <= capture_rate_period(*rate)
+            })
+            .or_else(|| rungs.last().copied())
+            .unwrap_or(top)
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    struct ProbeChild(Option<std::process::Child>);
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    impl Drop for ProbeChild {
+        fn drop(&mut self) {
+            if let Some(mut child) = self.0.take() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+        }
+    }
+    /// Write the first full frames a session would write into a throwaway
+    /// encoder that keeps no output and return the slowest measured write after
+    /// the first. The probe writes to `-f null`, never to the session directory,
+    /// so no segment, playlist or sequence exists before the epoch is set.
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn probe_capture_write_cost(
+        ffmpeg: &std::path::Path,
+        canvas: CanvasSpec,
+        stop: &AtomicBool,
+    ) -> Option<Duration> {
+        let hopeless = capture_rate_period(
+            capture_rate_rungs(canvas.fps)
+                .last()
+                .copied()
+                .unwrap_or(canvas.fps),
+        )
+        .saturating_mul(CAPTURE_RATE_HEADROOM);
+        let mut command = Command::new(ffmpeg);
+        command
+            .args([
+                "-nostdin",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "rawvideo",
+                "-pixel_format",
+                "rgb24",
+                "-video_size",
+            ])
+            .arg(format!("{}x{}", canvas.width, canvas.height))
+            .args(["-framerate"])
+            .arg(canvas.fps.to_string())
+            .args([
+                "-probesize",
+                "32",
+                "-analyzeduration",
+                "0",
+                "-i",
+                "pipe:0",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "zerolatency",
+                "-threads",
+                "1",
+                "-pix_fmt",
+                "yuv420p",
+                "-f",
+                "null",
+                "-",
+            ])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        let mut child = ProbeChild(Some(command.spawn().ok()?));
+        let stdin = child.0.as_mut()?.stdin.as_mut()?;
+        nonblocking(stdin.as_fd()).ok()?;
+        let frame = vec![0u8; canvas.width as usize * canvas.height as usize * 3];
+        let mut sustained = Duration::ZERO;
+        for index in 0..CAPTURE_RATE_PROBE_FRAMES {
+            let began = Instant::now();
+            let mut written = 0;
+            while written < frame.len() {
+                if stop.load(Ordering::Acquire) {
+                    return None;
+                }
+                match stdin.write(&frame[written..]) {
+                    Ok(0) => return None,
+                    Ok(count) => written += count,
+                    Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                        if began.elapsed() >= hopeless {
+                            return Some(hopeless);
+                        }
+                        wait_capture_writable(stdin);
+                    }
+                    Err(_) => return None,
+                }
+            }
+            let elapsed = began.elapsed();
+            if index > 0 {
+                sustained = sustained.max(elapsed);
+                if elapsed >= hopeless {
+                    break;
+                }
+            }
+        }
+        Some(sustained)
+    }
+    /// Fix the canvas rate for this session before any steady frame exists, so
+    /// the epoch, the write budgets, the age limits, the GOP and ffmpeg's
+    /// `-framerate` are all built on one rate. A probe that cannot run leaves
+    /// the negotiated rate untouched: choosing a rate is an optimisation, never
+    /// a new failure mode.
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn calibrate_capture_canvas(
+        canvas: CanvasSpec,
+        ffmpeg: &std::path::Path,
+        stop: &AtomicBool,
+    ) -> CanvasSpec {
+        if canvas.width == 0 || canvas.height == 0 || capture_rate_rungs(canvas.fps).len() < 2 {
+            return canvas;
+        }
+        let Some(sustained) = probe_capture_write_cost(ffmpeg, canvas, stop) else {
+            return canvas;
+        };
+        let chosen = capture_rate_for(sustained, canvas.fps);
+        emit_startup_record(&format!(
+            "multiview_capture_rate requested={} chosen={chosen} sustained_us={}",
+            canvas.fps,
+            sustained.as_micros()
+        ));
+        CanvasSpec {
+            fps: chosen,
+            ..canvas
+        }
+    }
     struct CapturePacer {
         epoch: Instant,
         rate: u32,
@@ -2939,6 +3111,40 @@ mod runtime {
         }
         Ok(Some(playlist))
     }
+    /// The monitor's own liveness. Either the encoder's consumed-frame count or
+    /// a completed writer unit is evidence that the chain still moves: a writer
+    /// only completes a unit once the pipe accepted the bytes, and a pipe only
+    /// drains while the encoder reads. A starved monitor thread or a descheduled
+    /// encoder must therefore not be reported as a stuck muxer, while a muxer
+    /// that stops reading blocks the writer and does stop this counter.
+    struct MonitorLiveness {
+        frames: u64,
+        completed: u64,
+        advanced: Instant,
+    }
+    impl MonitorLiveness {
+        fn new(at: Instant) -> Self {
+            Self {
+                frames: 0,
+                completed: 0,
+                advanced: at,
+            }
+        }
+        /// Video frames and audio samples share one completed count because
+        /// both pipes drain only through the same encoder process.
+        fn observe(&mut self, frames: u64, completed: u64, now: Instant) -> bool {
+            let moved = frames > self.frames || completed > self.completed;
+            self.frames = self.frames.max(frames);
+            self.completed = self.completed.max(completed);
+            if moved {
+                self.advanced = now;
+            }
+            moved
+        }
+        fn elapsed(&self, now: Instant) -> Duration {
+            now.saturating_duration_since(self.advanced)
+        }
+    }
     fn monitor(
         mut child: ChildGuard,
         _keeper: File,
@@ -2947,8 +3153,7 @@ mod runtime {
         config: EncoderConfig,
         shared: Arc<Shared>,
     ) {
-        let mut last = 0;
-        let mut advanced = shared.started;
+        let mut liveness = MonitorLiveness::new(shared.started);
         let mut pending = Vec::new();
         let mut hls_sequence = None;
         let mut hls_advanced = shared.started;
@@ -2975,10 +3180,9 @@ mod runtime {
             }
             match progress(&mut progress_reader, &mut pending) {
                 Ok(frames) => {
-                    if frames > last {
-                        last = frames;
-                        advanced = Instant::now();
-                    }
+                    let completed = shared.video_frames_written.load(Ordering::Relaxed)
+                        + shared.audio_samples_written.load(Ordering::Relaxed);
+                    liveness.observe(frames, completed, Instant::now());
                     let mut snapshot = lock(&shared.snapshot);
                     snapshot.frames = snapshot.frames.max(frames);
                     snapshot.monotonic_millis = elapsed_millis(shared.started);
@@ -3032,7 +3236,7 @@ mod runtime {
                 fail(&shared, EncoderError::StartupTimeout);
                 break;
             }
-            if !starting && advanced.elapsed() >= config.stall_timeout {
+            if !starting && liveness.elapsed(Instant::now()) >= config.stall_timeout {
                 fail(
                     &shared,
                     EncoderFailureDetail::stalled(
@@ -3309,6 +3513,12 @@ mod runtime {
                 feed.bind(generation)?;
             }
             let capture_mode = matches!(&video, VideoInput::Capture(_));
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            let canvas = if capture_mode {
+                calibrate_capture_canvas(canvas, &ffmpeg, &stop)
+            } else {
+                canvas
+            };
             let nonce = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_err(|_| EncoderError::Io)?
@@ -5445,6 +5655,53 @@ mod runtime {
                 Duration::from_nanos(66_666_666)
             );
             assert!(media_target(epoch, u64::MAX, 1).is_err());
+        }
+        #[test]
+        fn monitor_liveness_counts_completed_writes_not_only_encoder_progress() {
+            let start = Instant::now();
+            let mut liveness = MonitorLiveness::new(start);
+            // Only the writer moves: the encoder is behind, not stopped.
+            assert!(liveness.observe(0, 1, start + Duration::from_millis(300)));
+            assert_eq!(
+                liveness.elapsed(start + Duration::from_millis(300)),
+                Duration::ZERO
+            );
+            // Only the encoder moves: the writer is momentarily blocked.
+            assert!(liveness.observe(1, 1, start + Duration::from_millis(400)));
+            // Neither moves: the window keeps running from the last progress.
+            assert!(!liveness.observe(1, 1, start + Duration::from_millis(900)));
+            assert_eq!(
+                liveness.elapsed(start + Duration::from_secs(1)),
+                Duration::from_millis(600)
+            );
+            // Counters never go backwards, so a duplicate is not progress.
+            assert!(!liveness.observe(0, 0, start + Duration::from_secs(1)));
+            assert!(liveness.observe(2, 3, start + Duration::from_secs(1)));
+        }
+        #[test]
+        fn capture_rate_rungs_stay_at_or_below_the_negotiated_rate() {
+            assert_eq!(capture_rate_rungs(15), vec![15, 12, 10, 8, 6, 5]);
+            assert_eq!(capture_rate_rungs(10), vec![10, 8, 6, 5]);
+            assert_eq!(capture_rate_rungs(6), vec![6, 5]);
+            assert_eq!(capture_rate_rungs(5), vec![5]);
+            assert_eq!(capture_rate_rungs(24), vec![24, 15, 12, 10, 8, 6, 5]);
+        }
+        #[test]
+        fn capture_rate_follows_the_measured_write_and_stops_at_the_lowest_rung() {
+            // A write that leaves the whole period idle keeps the canvas rate.
+            assert_eq!(capture_rate_for(Duration::from_millis(10), 15), 15);
+            // 80 ms of budget no longer fits 15 fps but fits 12.
+            assert_eq!(capture_rate_for(Duration::from_millis(40), 15), 12);
+            // 100 ms exactly fills one 10 fps period and half of its headroom.
+            assert_eq!(capture_rate_for(Duration::from_millis(50), 15), 10);
+            assert_eq!(capture_rate_for(Duration::from_millis(60), 15), 8);
+            // Nothing sustains 5 fps either: the lowest rung is still chosen and
+            // the output monitor, not the pacer, names the failure.
+            assert_eq!(capture_rate_for(Duration::from_millis(100), 15), 5);
+            assert_eq!(capture_rate_for(Duration::from_secs(5), 15), 5);
+            // A 10 fps session never climbs to a rung it did not negotiate.
+            assert_eq!(capture_rate_for(Duration::from_millis(40), 10), 10);
+            assert_eq!(capture_rate_for(Duration::from_millis(70), 10), 6);
         }
         #[test]
         fn write_budget_follows_the_measured_write_without_covering_the_stall_window() {
