@@ -116,7 +116,7 @@
   ],
   "sourceSha256": {
     "README.md": "febbf9b324266b927674f933fae31b3c60a005e88f9eaccc33351fdd817b4af6",
-    "docs/audio-video-check.md": "62bd56d6b55842826c140051d634d96dc3c06208c251aa8e187f7649ea9e0775",
+    "docs/audio-video-check.md": "4f410e4179da37cabaceca0237c36d63fb5aa1f467629ddb7a45b419910ef67f",
     "docs/browser-compatibility.md": "09d121f6a314873c46b716e2af0cf0df1d5b95f3ae094210e511df53b727cda6",
     "docs/guide-binding-accessibility.md": "085cd59604f2dfcd25b2da8e5e0ef833eb0f07a906d8469f2d72a8706d3572e0",
     "docs/implementation-report.md": "345a23ce22e00aa84cf8ffea3c2c54678f6f9ac98a3660b14868763d847a108d",
