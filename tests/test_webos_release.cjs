@@ -79,7 +79,7 @@ assert.deepEqual(
     new Set(assets),
     new Set([
         "ottplay-foss-dist.tar.gz",
-        "checksums.txt",
+        "ottplay-foss-dist.tar.gz.sha256",
         "ottplay-foss-modea.tar.gz",
         "ottplay-foss-modea.sha256",
         "build/packages/ottplay-foss-webos.ipk",

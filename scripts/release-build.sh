@@ -14,7 +14,7 @@ cp build/packages/ottplay-foss-modea.tar.gz build/packages/ottplay-foss-modea.sh
 # The legacy filename contains exactly the same audited server web root.
 cp release-output/ottplay-foss-modea.tar.gz release-output/ottplay-foss-dist.tar.gz
 sed 's/  ottplay-foss-modea\.tar\.gz$/  ottplay-foss-dist.tar.gz/' \
-  release-output/ottplay-foss-modea.sha256 > release-output/checksums.txt
+  release-output/ottplay-foss-modea.sha256 > release-output/ottplay-foss-dist.tar.gz.sha256
 
 # A local base build does not allocate a release identity or publish a feed.
 # Keep development packages apart from any previously retained release assets.
