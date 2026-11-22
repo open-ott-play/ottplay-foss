@@ -26,18 +26,7 @@ func download(address, output string) error {
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
 		return errors.New("download requires an HTTPS URL without credentials")
 	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   60 * time.Second,
-		CheckRedirect: func(request *http.Request, via []*http.Request) error {
-			if request.URL.Scheme != "https" || request.URL.User != nil || len(via) >= 10 {
-				return errors.New("redirect must retain HTTPS and stay within ten hops")
-			}
-			return nil
-		},
-	}
+	client := newDownloadClient()
 	// One deadline covers every attempt, redirect, response body and retry wait.
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -55,6 +44,23 @@ func download(address, output string) error {
 		return writeErr
 	}
 	return closeErr
+}
+
+func newDownloadClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	return &http.Client{
+		Transport:     transport,
+		Timeout:       60 * time.Second,
+		CheckRedirect: checkDownloadRedirect,
+	}
+}
+
+func checkDownloadRedirect(request *http.Request, via []*http.Request) error {
+	if request.URL.Scheme != "https" || request.URL.User != nil || len(via) >= 10 {
+		return errors.New("redirect must retain HTTPS and stay within ten hops")
+	}
+	return nil
 }
 
 // fetchArchive retries only completed transient HTTP responses. Transport and
@@ -75,8 +81,10 @@ func fetchArchive(ctx context.Context, client *http.Client, address string, wait
 		if response.StatusCode == http.StatusOK {
 			return readArchive(ctx, response)
 		}
-		response.Body.Close()
 		statusError := fmt.Errorf("download returned HTTP %d", response.StatusCode)
+		if err := response.Body.Close(); err != nil {
+			return nil, errors.Join(statusError, fmt.Errorf("close response body: %w", err))
+		}
 		switch response.StatusCode {
 		case http.StatusTooManyRequests, http.StatusInternalServerError,
 			http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
@@ -98,8 +106,13 @@ func fetchArchive(ctx context.Context, client *http.Client, address string, wait
 }
 
 // readArchive closes the successful response and checks its size and deadline.
-func readArchive(ctx context.Context, response *http.Response) ([]byte, error) {
-	defer response.Body.Close()
+func readArchive(ctx context.Context, response *http.Response) (archive []byte, resultErr error) {
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			archive = nil
+			resultErr = errors.Join(resultErr, fmt.Errorf("close response body: %w", err))
+		}
+	}()
 	if response.ContentLength > maxArchive {
 		return nil, errors.New("archive exceeds size limit")
 	}

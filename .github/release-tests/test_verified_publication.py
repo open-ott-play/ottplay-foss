@@ -5,6 +5,7 @@
 # fmt: off
 """Offline contracts for stable assets, registry publication and image identity."""
 
+import base64
 import io
 import json
 import os
@@ -22,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import publish_verified as publisher
 import verified_images
 from release_control import ReleaseError
-from test_release_control import SHA, FakeGitHub, policy, policy_snapshot, rc
+from test_release_control import SHA, FakeGitHub, manifest as rc_manifest, policy, policy_snapshot, rc
 
 # pylint: enable=wrong-import-position
 
@@ -91,6 +92,48 @@ class StableAssetVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ReleaseError, "mode must be release"):
             self.verify(gh)
 
+    def test_legacy_stable_must_match_authenticated_parent_before_download(self):
+        """A legacy stable must match its authenticated RC parent before payload reads."""
+        gh = self.github()
+        manifest = rc_manifest()
+        manifest.update(
+            channel="stable",
+            tag="v1.2.3",
+            derived_from_rc={
+                "tag": "v1.2.3-rc.1",
+                "manifest_sha256": "b" * 64,
+                "source_sha": SHA,
+                "run_id": 16,
+            },
+        )
+        raw = rc.json_bytes(manifest)
+        release = {"id": 10, "draft": False, "prerelease": False}
+        ref = {"object": {"type": "commit", "sha": SHA}}
+        assets = [
+            {"id": 20, "name": "package.tar.gz"},
+            {"id": 21, "name": rc.MANIFEST},
+        ]
+        with (
+            mock.patch.object(
+                publisher, "_read_stable_release",
+                return_value=(release, ref, assets, raw, {"tag": "v1.2.3"}),
+            ),
+            mock.patch.object(publisher, "_read_versioned_stable_release", return_value=None),
+            mock.patch.object(publisher, "validate_manifest", return_value=manifest),
+            mock.patch.object(publisher, "verify_evidence"),
+            mock.patch.object(
+                publisher, "download_asset",
+            ) as download,
+            mock.patch("release_versioned.verified_rc", return_value=({}, {
+                **manifest["derived_from_rc"], "manifest_sha256": "c" * 64,
+            })),
+            self.assertRaisesRegex(ReleaseError, "Final package RC provenance mismatch"),
+        ):
+            with tempfile.TemporaryDirectory() as temp:
+                publisher.verified_assets(gh, "v1.2.3", Path(temp))
+        download.assert_not_called()
+        self.assertEqual(gh.writes, [])
+
     def test_legacy_manifest_without_source_policy_is_rejected(self):
         """Legacy manifest without source policy is rejected."""
         gh = self.github()
@@ -120,6 +163,23 @@ class RegistryPublicationTests(unittest.TestCase):
             "repository": "owner/repo",
             "container_assets": {"image.oci.tar": "ghcr.io/owner/image"},
         }
+        # Publication now preflights registry logins before verification.
+        self.docker = tempfile.TemporaryDirectory()
+        self.addCleanup(self.docker.cleanup)
+        self.write_docker_config(
+            Path(self.docker.name),
+            {"auths": {"ghcr.io": {"auth": "b3duZXI6c2VjcmV0"}}},
+        )
+        environment = mock.patch.dict(
+            os.environ, {"DOCKER_CONFIG": self.docker.name}
+        )
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    @staticmethod
+    def write_docker_config(directory, data):
+        """Write one docker client configuration for credential preflight tests."""
+        (directory / "config.json").write_text(json.dumps(data))
 
     @staticmethod
     def assets(_gh, _tag, directory):
@@ -607,6 +667,108 @@ class VerifiedImageOutputTests(unittest.TestCase):
         self.resolution.assert_not_called()
         self.assertFalse(self.output.exists())
 
+
+
+class RegistryCredentialTests(unittest.TestCase):
+    """Pass docker login credentials to skopeo, which ignores docker credsStore."""
+
+    def docker_environment(self, directory, data):
+        """Point the docker client configuration at a disposable directory."""
+        directory = Path(directory)
+        (directory / "config.json").write_text(json.dumps(data))
+        return mock.patch.dict(os.environ, {"DOCKER_CONFIG": str(directory)})
+
+    def test_creds_store_login_is_materialized_for_skopeo(self):
+        """A helper-backed docker login becomes a private skopeo auth file."""
+        calls = []
+
+        def helper(command, **kwargs):
+            calls.append((command, kwargs.get("input")))
+            return subprocess.CompletedProcess(
+                command, 0, '{"Username":"alvit","Secret":"hunter2"}', ""
+            )
+
+        with (
+            tempfile.TemporaryDirectory() as config_dir,
+            self.docker_environment(config_dir, {"credsStore": "osxkeychain"}),
+            mock.patch.object(publisher.subprocess, "run", side_effect=helper),
+        ):
+            os.environ.pop("REGISTRY_AUTH_FILE", None)
+            with publisher.registry_credentials(
+                ["docker.io/alvit/ottplay-foss"]
+            ):
+                generated = Path(os.environ["DOCKER_CONFIG"])
+                config = json.loads((generated / "config.json").read_text())
+                entry = config["auths"][publisher.DOCKER_HUB_SERVER]["auth"]
+                self.assertEqual(
+                    base64.b64decode(entry).decode(), "alvit:hunter2"
+                )
+                self.assertEqual(
+                    (generated / "config.json").stat().st_mode & 0o777, 0o600
+                )
+            self.assertFalse(generated.exists())
+            self.assertEqual(os.environ["DOCKER_CONFIG"], config_dir)
+        self.assertEqual(
+            calls, [(["docker-credential-osxkeychain", "get"],
+                     publisher.DOCKER_HUB_SERVER)]
+        )
+        self.assertNotIn("hunter2", " ".join(calls[0][0]))
+
+    def test_plain_docker_login_config_is_left_to_skopeo(self):
+        """Credentials already in the client config need no rewrite."""
+        with (
+            tempfile.TemporaryDirectory() as config_dir,
+            self.docker_environment(
+                config_dir,
+                {"auths": {"ghcr.io": {"auth": "b3duZXI6c2VjcmV0"}}},
+            ),
+            mock.patch.object(publisher.subprocess, "run") as run,
+        ):
+            os.environ.pop("REGISTRY_AUTH_FILE", None)
+            with publisher.registry_credentials(["ghcr.io/owner/image"]):
+                self.assertEqual(os.environ["DOCKER_CONFIG"], config_dir)
+        run.assert_not_called()
+
+    def test_missing_login_fails_before_downloading_payloads(self):
+        """An absent registry login is reported before verified payload bytes."""
+        with (
+            tempfile.TemporaryDirectory() as temp,
+            tempfile.TemporaryDirectory() as config_dir,
+        ):
+            root = Path(temp)
+            (root / ".release-policy.json").write_text(
+                json.dumps(
+                    {
+                        "repository": "owner/repo",
+                        "container_assets": {
+                            "image.oci.tar": "ghcr.io/owner/image"
+                        },
+                    }
+                )
+            )
+            os.environ.pop("REGISTRY_AUTH_FILE", None)
+            with (
+                self.docker_environment(config_dir, {"auths": {}}),
+                mock.patch.object(publisher, "ROOT", root),
+                mock.patch.object(publisher, "verified_assets") as assets,
+                mock.patch.object(publisher.subprocess, "run") as run,
+                mock.patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "publish_verified.py",
+                        "containers",
+                        "--tag",
+                        "v1.2.3",
+                        "--execute",
+                    ],
+                ),
+                mock.patch("sys.stderr", new_callable=io.StringIO) as errors,
+            ):
+                self.assertEqual(publisher.main(), 1)
+            assets.assert_not_called()
+            run.assert_not_called()
+            self.assertIn("docker login", errors.getvalue())
 
 
 class CompactPublicationTests(unittest.TestCase):

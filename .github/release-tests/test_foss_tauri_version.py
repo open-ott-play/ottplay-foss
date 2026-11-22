@@ -156,6 +156,7 @@ class FossTauriVersionTests(unittest.TestCase):
         }
         fixture_files = {
             ".gitattributes",
+            "scripts/async_process.py",
             "scripts/release_control.py",
             "scripts/version_plan.py",
             "scripts/version_receipt.py",

@@ -24,11 +24,26 @@ The optional `change_scope` policy provides exact `documentation_paths`, exact
 `required_paths` for documentation used as a build input, and
 `always_validate_workflows` for independently required checks. Documentation paths
 cannot exempt source, tests, fixtures, build configuration or dependencies.
-Documentation-only skipping applies to PR and merge-queue validation. Main-branch
-pushes, manual dispatch, scheduled runs and release qualification retain the full
-release path, even with `change_scope` enabled. This preserves security and contract
-checks and avoids leaving an in-flight release without a replacement when the
-default branch advances. The configured nightly policy is unchanged.
+Documentation-only PRs may skip expensive validation after explicit opt-in.
+Main-branch release pushes, manual dispatch and scheduled runs keep full
+preparation and qualification. A newer automatic run supersedes unfinished
+candidates, so it must remain eligible to replace them and run the required
+security checks. Release-note files parsed by contracts remain required inputs.
+The configured nightly policy is unchanged.
+
+## Live release execution
+
+Release steps pass the official `job.check_run_id` context as
+`RELEASE_EXECUTION_CHECK_RUN_ID`. If aggregate run metadata is delayed, the
+publisher first checks the exact attempt, then may match this identifier to the
+unique attempt job's exact GitHub `check_run_url`. The job must still be executing
+on the current runner with a current-attempt executing step. Display names and
+matrix labels do not identify the job. The shared five-minute deadline and all
+prerequisite gates remain required; terminal or conflicting metadata fails.
+Older workflows and hosts without this context keep the strict aggregate-status
+path. Adopt both the reviewed generated workflow and publisher together.
+Ambiguous-create confirmation uses a fresh bounded job read, never a saved status.
+Completed historical RCs still require successful terminal validation.
 
 ## Local checks
 
@@ -41,55 +56,14 @@ python3 scripts/release.py status
 ```
 
 Callable validation workflows:
-- `.github/workflows/ci.yml`
-- `.github/workflows/native-parity.yml`
+- `.github/workflows/windows-validation.yml`
 - `.github/workflows/codeql.yml`
 - `.github/workflows/dependency-review.yml`
-- `.github/workflows/container-validation.yml`
 
-The validation paths have different coverage:
-
-- PRs and merge queues run the five workflows above after `scope` and
-  `workflow-contracts`. Nightlies, RCs and final builds select the same default
-  set through `release-quality-gate.yml`.
-- Beta releases select `beta-checks.yml` instead of those five workflows. After
-  `scope` and `workflow-contracts`, its existing job runs `npm ci`, the declared
-  test inventory check, lint, typecheck and `test:unified`, in that order. The
-  inventory check fails before the remaining steps if test declarations are
-  incomplete; it does not execute the declared tests or replace full CI.
-- Both gates also require release tooling contracts after `scope`, including
-  the Python contracts, download retry regression and committed version check.
-  The release build depends on successful preparation and the validation gate,
-  so an inventory failure prevents platform builds without adding another job.
-
-Beta lint, typecheck and `test:unified` overlap with full CI (`npm test` includes
-`test:unified` through `test:port`). They do not cover the full frontend, Python,
-Rust, native, remote integration or browser suites. In particular, a beta built
-from a parent commit cannot validate changes to `ci.yml` in a later PR; matching
-command names are not evidence for another source or workflow revision.
-
-Release packaging applies the frozen version plan before compilation and checks
-the resulting versioned artifacts. Release browser checks consume that build's
-artifact ID and channel, with extended coverage for RC/stable; CI browser checks
-consume the CI artifact. These artifact checks remain required even when source
-checks overlap. A beta cannot be promoted to stable; it needs a fully validated RC.
+Beta releases explicitly select `beta-checks.yml` through `release-quality-gate.yml`. PRs, merge queues, nightlies, RCs and final builds keep the complete default validation set. All platform packages and artifact checks remain required. A beta cannot be promoted to stable; it needs a fully validated RC.
 
 The [release strategy](../RELEASING.md) defines versioning, channels, acceptance,
 ownership, hotfixes and rollback. This document is the operational runbook.
-
-The standalone macOS ARM64 server has a separate
-[build, acceptance and preparation path](macos-server-release.md). Its executable
-is not replaced by updating the web archive or the Tauri application.
-
-The ARM64 macOS application and server packages are cross-built on the hosted
-Intel `macos-15-intel` runner with the explicit `aarch64-apple-darwin` target.
-The logical package identity remains `macos-latest` so existing receipt and asset
-names stay stable. A hosted-only preflight checks the Intel host, installed Rust
-target and ARM64 macOS SDK compilation; the app and server must contain thin
-ARM64 Mach-O executables. Bundle signature checks and ZIP roundtrip verification
-remain required. These checks establish build inputs and file format, not ARM64
-runtime acceptance. Native ARM macOS checks and the full browser matrix remain
-separate and unchanged.
 
 ## Nightly, beta and RC
 
@@ -141,11 +115,19 @@ and source in every receipt; publication requires the current verified run ident
 The installer scopes build, signing and collection artifact names to that attempt.
 ID-selected candidate downloads require a separate consumer check of receipt
 producer identity and payload digest; the name-scoping helper does not verify them.
-Before publication starts, use **Re-run all jobs** only if the allocator and
-release policy permit reuse of that reservation. Recreate every required input
-in the same attempt; older packages must not fill missing current builds. After
-publication starts, or its result is partial or uncertain, inspect existing tags,
-releases and assets before a policy-authorized new run. Never reset the ledger or
+**Re-run failed jobs** can retain successful checks and packages from an older
+attempt, so it is insufficient when publication requires fresh inputs from the
+current attempt. Before publication starts, read back the release ledger and
+existing tags and releases. If the reservation is still eligible, its build
+number is above the publication floor, and the candidate tag is absent, use
+**Re-run all jobs** on the same run only when the allocator and release policy
+permit it. Recreate every required input in the same attempt; older packages
+must not fill missing current builds.
+
+Once the publication floor has consumed the build number, use a policy-authorized
+new workflow run and reservation. If publication started or its external result
+is partial or uncertain, inspect existing tags, releases and assets first; an
+immutable tag may also require a new base version. Never reset the ledger or
 overwrite published assets. See [publication-phase retry rules](VERSIONING.md#package-identity-across-reruns).
 Update shared fuzz workflow pins with the producer and collector rollout. Local
 offline receipts cannot qualify live publication.
@@ -156,8 +138,12 @@ newer automatic replacement run at current HEAD are verified. This does not clai
 that the replacement passed or published. No tag, release or promotion evidence
 is created for that skipped publication, and its reserved number is not reused.
 Missing replacement evidence or API failures remain errors. Manual releases keep
-their existing checks. A race after the final check can still fail publication;
-inspect the error and dispatch a fresh run at current HEAD, never reset the ledger.
+their existing checks. Automatic publication validates the captured default-branch
+source before consuming the reservation, then checks the default branch and source
+again after uploads, immediately before publishing the draft. A detected late
+change leaves the draft unpublished and the consumed reservation intact. The last
+check and GitHub PATCH are not atomic; inspect any error and dispatch a fresh run
+at current HEAD, never reset the ledger.
 
 ## Stable promotion
 
@@ -188,14 +174,24 @@ and its immutable Actions evidence available and unexpired. Old schema-1 stable
 and final-build paths remain supported. See [compact distribution](release-distribution.md)
 for the narrow scripts/tests/docs migration and its workflow-preservation limits.
 
-Assets are uploaded to the draft's known release ID, using one bounded request
-per file. Publication does not repeat a tag lookup for each upload: a draft may
-not appear in the published-release-by-tag API. Each response must confirm a
-created asset with the expected name and size; the final verification still
-downloads and checks every payload before making the release public. A timeout,
-incomplete response or upload conflict stops publication without retrying or
-overwriting the asset. Preserve the draft and its evidence for inspection;
-do not reset the version allocation ledger to reuse the failed build number.
+Assets are uploaded to the draft's known release ID. Publication does not
+repeat a tag lookup for each upload: a draft may not appear in the
+published-release-by-tag API. After a non-201 response, timeout or malformed
+response, the publisher reads the complete asset inventory for that exact release
+ID. An exact name, size and digest match confirms the upload; if the API omits its
+digest, the publisher downloads and hashes that exact asset. The final verification
+still downloads and checks every payload before making the release public.
+
+Only an explicit HTTP 500, 502, 503 or 504 followed by a successful complete
+inventory showing the exact asset name absent allows one retry. A timeout, lost
+or malformed HTTP response, or any other status never authorizes a retry, but an
+exact matching inventory may still confirm that upload. Conflicting assets,
+malformed or unavailable inventory, or an asset still absent after the permitted
+retry stop publication. No retry overwrites or deletes an asset. The bounded
+error records the attempt, HTTP outcome when available, and reconciliation state
+without response bodies or credentials. Preserve the draft and its evidence for
+inspection; do not reset the version allocation ledger to reuse the failed build
+number.
 
 Release-asset downloads use the expected size and SHA-256 from the validated
 inventory before opening a new destination. Every chunk is checked before it is
@@ -225,8 +221,9 @@ of three times their total expected inventory size, with at most three GET
 attempts per asset within one shared transfer deadline. Failed prefixes remain
 charged to that allowance; each retry clears only its own staging file and
 resets the per-file hash. Every accepted file must still
-match its expected size and SHA-256. Authentication failures, transfer timeouts,
-and cancellations are not retried, and publication writes are never replayed.
+match its expected size and SHA-256. Authentication failures, download timeouts
+and cancellations are not retried. Publication writes other than the bounded
+upload exception above are never replayed.
 Operator-supplied budgets and other download paths keep their existing caps:
 a retry stops if the remaining budget cannot fit the complete expected asset.
 A consumer backport must update `release_control.py`, `release_closed.py`,
@@ -346,20 +343,6 @@ policy-authorized new run. Never reset the ledger or overwrite published assets.
 See [publication-phase retry rules](VERSIONING.md#package-identity-across-reruns).
 Duplicate payload names remain errors, even when their bytes match.
 
-This includes a partial container retry: if AMD64 runs again in attempt 2 while
-ARM64 retains its successful attempt-1 artifact, the archive job must not combine
-them. Do not change artifact names or receipt checks to accept that mixture.
-Use a policy-permitted full retry before publication, or a new fully checked
-candidate after correcting the underlying failure.
-
-The native container job prepares Ubuntu's official archive transport before
-installing OCI inspection tools. APT update and install each have a five-minute
-process deadline, a bounded termination grace period, network timeouts and two
-retries. An incomplete package-index update fails the step. Dependency setup is
-separate from the exact-image EPG test, so its timeout cannot be reported as an
-EPG performance verdict. None of these limits changes image, source, architecture
-or performance acceptance.
-
 Name selection does not add receipt verification. This mode leaves vendored
 runtimes unchanged. Before qualifying releases, confirm that the consumer's
 publisher verifies source, repository, run and attempt; older receipt/publisher
@@ -454,88 +437,42 @@ Update the declared set whenever producer jobs or matrices change. Receipt-set
 completeness does not prove every package format inside a producer group; retain
 declared artifact metadata checks and release asset verification.
 
-## Maintaining documentation scope safely
+## Reviewed test-only automatic pushes
 
-The CI Toolkit correction is recorded at
-[`56863cf0beed5ab97c4f27d7adb5aedb83c758d5`](https://github.com/victron-venus/venus-os-ci-toolkit/commit/56863cf0beed5ab97c4f27d7adb5aedb83c758d5).
-This project has a channel-specific `release-quality-gate.yml` wrapper, so the
-generic `--change-scope-only` migration deliberately rejects its graph. Maintain
-this adapter explicitly: preserve the prepared release channel and keep
-`FORCE_FULL: 'true'` in both the outer release pipeline and the inner release
-validation classifier. Do not reinstall the entire release engine to update
-only documentation routing.
+`change_scope.automatic_release_test_paths` opts a versioned repository into a
+small, exact allowlist of test-source files. Ordinary default-branch pushes are
+eligible only when their complete immutable `before..after` diff contains regular
+`100644` additions/modifications entirely within that list. Event file lists and
+last-commit-only diffs do not authorize admission.
 
-Run the durable contract after reviewing scope changes:
+Preparation still authenticates the current execution, source policy and base
+version. It then reuses the existing scheduled-publication proof for the exact
+`before` source: durable plan, published tag/source, manifest, complete asset
+metadata, successful producer run and CI/Release gates, and retained Actions
+evidence. The default-branch head must still equal the current run's `after`
+before and after proof. Publisher and concurrency guards are unchanged.
 
-```sh
-python3 -m unittest discover -s .github/workflow-tests -p test_release_scope.py
-```
+Only this proved predecessor permits `test-only-already-published`, before any
+new version reservation, package build or publication. A
+`release-push-admission-<run>-<attempt>` artifact retains bounded revision, raw
+diff digest, matched test paths and published tag evidence. It is not a test
+result and does not replace PR checks.
 
-The existing `toolkit_revision` fields record historical release-engine
-provenance. The always-run contract rejects an older generator's documentation
-skip; ordinary-documentation skipping applies only to PR and merge-group CI.
+Missing, pending, failed, expired, changed or unavailable publication evidence
+retains the original full release route. So do unknown/mixed paths, documentation,
+CI/dependencies/production, deletions, mode changes, renames, forced pushes and
+unavailable Git history. Consecutive test-only pushes may run the full route when
+the exact preceding test-only commit was not published; admission never assumes
+an older production delivery is sufficient. Manual releases, schedules, RC/stable
+acceptance and release-quality checks retain their existing behavior.
 
-### Documentation validation
-
-Documentation-only pull requests still run the existing README, translation,
-manual navigation, source-digest and local-link checks in the CI configuration
-contracts job. The job calls `tests/test_readme_docs.cjs` unchanged and installs
-only TypeScript, using the exact version, registry URL and integrity hash from
-`package-lock.json`. It does not install the frontend or native build toolchains.
-Missing documents and stale translated manuals fail this gate. Full source and
-release validation remain unchanged.
-
-### Windows runtime qualification profile
-
-The release policy explicitly selects `windows-validation.yml`: shared portable lint, type and core/media/provider/UI tests plus the full Windows native workflow. Windows runs the actual core/server Rust suites (including server binary-module tests), installer/window controls and the 24-case, 288-sample native video oracle. Unrelated macOS/Linux playback and Android/Apple runtime jobs are outside this profile; CodeQL, dependency review and RC fuzzing remain required.
-
-Release browser evidence uses `browser-platform-scope: windows`: beta selects the required Windows target, and RC/stable select all 11 Windows browser targets from the validated 35-target inventory. Receipts explicitly say `windows-only`, `fullPlatformQualified: false`, and list the 24 unselected RC/stable targets. This is Windows-only runtime qualification, not all-platform runtime qualification. All platform package builds, signatures, inventory, source/attempt provenance, hashes and promotion guards remain unchanged. The native runner is not a claim of physical Windows hardware validation.
-
-The shared Chromium provider, remote-navigation, channel-list and local-media suites run automatically on Windows in a separate job. `CI` remains available through Actions → CI → Run workflow for the original all-platform validation. The inventory distinguishes automatic workflow reachability from manual-only reachability; neither is a runtime PASS. The scope-aware inventory records 439 automatically reachable files and 27 manual-only files in this profile. The compiled Android/iOS XMLTV, EPG-cache and lifecycle variants are explicitly required through `manualRequiredVariants` and the existing Native Shells manual dispatch (default all-platform scope); they are not automatic Windows qualification. The EPG-cache source guard remains automatically reachable. Required automatic browser/legacy variants and orphan-test failures remain enforced. Structural reachability is not evidence of execution.
-
-Manual-only test files:
-
-```text
-tests/glib-variant-regression/tests/variant_str_iter.rs
-tests/test_android_activity.cjs
-tests/test_android_app_update_recovery.py
-tests/test_android_epg_editions.py
-tests/test_android_home_setup.cjs
-tests/test_android_local_media_availability.py
-tests/test_android_network_policy.py
-tests/test_android_queue.py
-tests/test_android_screenshot.py
-tests/test_android_tv_webview.cjs
-tests/test_android_update_tls.py
-tests/test_ios_access_auth.py
-tests/test_ios_access_media.py
-tests/test_ios_command_queue.py
-tests/test_ios_demo_media.py
-tests/test_ios_proxy.py
-tests/test_ios_public_http.py
-tests/test_mobile_local_paths.py
-tests/test_mobile_metadata_standby.py
-tests/test_native_dash_state.py
-tests/test_native_favorites_provider_compression.cjs
-tests/test_native_media_lifecycle.py
-tests/test_native_screenshot_transport_swift.py
-tests/test_native_swop_swift.py
-tests/test_native_xmltv_records.py
-tests/test_normalization_webkit.cjs
-tests/test_runtime_diagnostics_native.py
-```
-
-### Local Windows readiness before push
-
-Root npm lockfile updates also invalidate the committed media provenance, even
-when the changed dependency is not a media player. After `npm ci --ignore-scripts`,
-run `node scripts/check-committed-media.cjs` before any build or test preparation.
-The required Frontend Tests job runs this read-only audit at the same boundary;
-it fails instead of allowing `prepare:media` or Vite to hide stale committed files.
-To repair a dependency update, run `npm run build:media` and `npm run check:media`,
-review and commit the generated assets, manifest, licenses and both HTML bootstrap
-URLs, and update dependency versions in `THIRD-PARTY-NOTICES.md`. Then run the
-targeted readiness gate below. This does not enable repository scripts in the
-privileged Renovate runner or replace native CI.
-
-Before pushing Windows qualification or related fixture/workflow changes, use Node 22, Python 3.12 with the existing hash-locked `.github/requirements-workflow-contracts.txt` dependencies, the locked npm dependencies and the installed Playwright Chromium browser. Run `PYTHON=/path/to/python3.12 npm run check:windows-readiness -- --report-dir /absolute/fresh/report-directory` after committing. This targeted gate checks the known portable failure paths, builds only the JavaScript frontend, then runs three delayed-WebCrypto PIN cases and the direct-media headless fixture. It does not compile native code, install or launch an installed player, or replace Windows/native CI. Push only when `result.json` has `status: passed`, the exact commit in `head`, `dirty: false`, `sourceUnchanged: true`, `browserMode: full`, and three passing PIN profiles. The explicit command is required even when the publisher disables Git hooks. For unrelated changes only, `--skip-browser` produces an explicitly portable-only receipt; it cannot qualify this Windows batch.
+Adopt the explicit policy, runtime, workflow receipt and tests from one approved
+canonical toolkit revision. The full renderer supports the policy. For an
+existing supported consumer, `scripts/install_release.py PATH
+--release-push-admission-only` migrates only the two reviewed prepare/reuse
+functions, their helper and the receipt step. It rejects unknown function or
+workflow topology, preserves other publication functions/jobs, and supports
+`--check`. Fuzz, attempt, receipt and inventory migrations preserve this admission. The
+documentation-scope migration rejects unsupported release-quality topology
+without writes. These migrations do not install admission. Review and pin the actual
+upstream revision before consumer adoption; no floating or invented pin is valid.
