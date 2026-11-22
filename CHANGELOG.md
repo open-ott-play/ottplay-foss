@@ -170,6 +170,10 @@
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
+- Name the web distribution checksum `ottplay-foss-dist.tar.gz.sha256` instead of
+  the generic `checksums.txt`, so the file states the archive it verifies. The
+  digest and its format are unchanged; a local rebuild removes the retired name.
+
 ## [1.1.72] - 2026-11-17
 
 ### Changes
