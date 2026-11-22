@@ -79,7 +79,7 @@ assert.deepEqual(
     new Set(assets),
     new Set([
         "ottplay-foss-dist.tar.gz",
-        "checksums.txt",
+        "ottplay-foss-dist.tar.gz.sha256",
         "ottplay-foss-modea.tar.gz",
         "ottplay-foss-modea.sha256",
         "build/packages/ottplay-foss-webos.ipk",
@@ -174,11 +174,23 @@ if (process.platform !== "win32") {
                 "ottplay-foss-modea.tar.gz",
                 "ottplay-foss-modea.sha256"
             );
+            // A realistic sidecar lets the adapter's rename be verified.
+            const modeaDigest = "0123456789abcdef".repeat(4);
             for (const name of sourceAssets)
                 fs.writeFileSync(
                     path.join(fixture, "build/packages", name),
-                    name + "\n"
+                    name === "ottplay-foss-modea.sha256"
+                        ? modeaDigest + "  ottplay-foss-modea.tar.gz\n"
+                        : name + "\n"
                 );
+            // A reused output directory may still hold the retired generic name.
+            fs.mkdirSync(path.join(fixture, "release-output"), {
+                recursive: true,
+            });
+            fs.writeFileSync(
+                path.join(fixture, "release-output/checksums.txt"),
+                "0".repeat(64) + "  ottplay-foss-dist.tar.gz\n"
+            );
             const log = path.join(fixture, "calls.log");
             fs.writeFileSync(
                 path.join(fixture, "bin/npm"),
@@ -264,6 +276,23 @@ if (process.platform !== "win32") {
                 assert.equal(
                     calls.some((call) => call.includes("--local")),
                     mode === "local"
+                );
+                // The sidecar must name the archive it verifies, and a rebuild
+                // must not leave the retired generic name behind.
+                assert.equal(
+                    fs.readFileSync(
+                        path.join(
+                            fixture,
+                            "release-output/ottplay-foss-dist.tar.gz.sha256"
+                        ),
+                        "utf8"
+                    ),
+                    modeaDigest + "  ottplay-foss-dist.tar.gz\n"
+                );
+                assert(
+                    !fs.existsSync(
+                        path.join(fixture, "release-output/checksums.txt")
+                    )
                 );
             }
         } finally {

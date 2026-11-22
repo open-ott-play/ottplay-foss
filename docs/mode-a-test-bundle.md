@@ -38,7 +38,10 @@ The same classic ES5 bundle is used on all these devices. Hardware capabilities,
 codecs and DRM remain device-specific. The boot script prefers tested local
 libraries on legacy engines, so CDN availability is not needed for startup.
 
-Tagged releases also contain `ottplay-foss-dist.tar.gz`. Docker publishes the
-Mode A companion and player as `alvit/ottplay-foss` (`main`, `latest` and revision
-tags; amd64/arm64). A downloaded release or existing deployment only contains
-changes from its own revision: check the revision before reporting device tests.
+Tagged releases also contain `ottplay-foss-dist.tar.gz`. Releases up to `v1.1.72`
+ship its checksum as the generic `checksums.txt`; later releases name it
+`ottplay-foss-dist.tar.gz.sha256`, which states the archive it verifies. Run
+`sha256sum -c` on that file beside the download. Docker publishes the Mode A
+companion and player as `alvit/ottplay-foss` (`main`, `latest` and revision tags;
+amd64/arm64). A downloaded release or existing deployment only contains changes
+from its own revision: check the revision before reporting device tests.
