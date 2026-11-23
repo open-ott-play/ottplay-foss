@@ -82,6 +82,17 @@ function createModernPlayer(w: any) {
         var element = w.document.getElementById(id);
         return element ? text(element) : "";
     }
+    function pageRoot(): any {
+        return w.document.body || w.document.documentElement;
+    }
+    function videoRes(): any {
+        return w.document.getElementById("video_res");
+    }
+    function stop(event: any): void {
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopPropagation) event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    }
     function kioskBlocked(): boolean {
         return !!(
             w.__ottKiosk &&
@@ -537,7 +548,7 @@ function createModernPlayer(w: any) {
             typeof w.stbSubtitleExists === "function"
                 ? Number(w.stbSubtitleExists()) > 0
                 : false;
-        var details = w.document.getElementById("video_res");
+        var details = videoRes();
         var canDetails = !!(
             details &&
             details.getAttribute("role") === "button" &&
@@ -640,7 +651,7 @@ function createModernPlayer(w: any) {
                 id: "details",
                 label: translate("Playback") + " · " + translate("Information"),
                 run: function (): void {
-                    var details = w.document.getElementById("video_res");
+                    var details = videoRes();
                     close();
                     if (details) (details as HTMLElement).click();
                 },
@@ -746,22 +757,23 @@ function createModernPlayer(w: any) {
         trackSlot = node.querySelector(".modern-player-track") as HTMLElement;
         rail = node.querySelector(".modern-player-actions") as HTMLElement;
         var scrim = node.querySelector(".modern-player-scrim") as HTMLElement;
-        scrim.onclick = function (event: Event): void {
-            event.preventDefault();
+        scrim.onclick = function (event: MouseEvent): void {
             event.stopPropagation();
+            // Reuse the Classic bottom-info band: a footer click keeps the bar
+            // and hands it the controls instead of dismissing it.
+            if (w.__ottInBottomInfoBand?.(event.clientY)) return keepAlive();
             close();
         };
         if (statusElement) {
             statusElement.onclick = function (event: Event): void {
                 if (!statusElement) return;
-                event.preventDefault();
-                event.stopPropagation();
+                stop(event);
                 if (
                     statusElement.classList.contains(
                         "modern-player-status-action"
                     )
                 ) {
-                    var details = w.document.getElementById("video_res");
+                    var details = videoRes();
                     close();
                     if (details) (details as HTMLElement).click();
                 }
@@ -827,7 +839,7 @@ function createModernPlayer(w: any) {
         var target = w.document.getElementById("list");
         if (target && target.parentNode)
             target.parentNode.insertBefore(node, target);
-        else (w.document.body || w.document.documentElement).appendChild(node);
+        else pageRoot().appendChild(node);
         mountProgress();
     }
     function mountProgress(): void {
@@ -942,8 +954,11 @@ function createModernPlayer(w: any) {
         }
     }
     function keepAlive(): void {
-        if (!opened) return;
-        if (typeof w.showChannelInfo === "function") w.showChannelInfo(1);
+        // A closed footer still has to open: the band click and the channel
+        // navigation are requests to show it, not only to extend its lifetime.
+        if (typeof w.showChannelInfo !== "function") return;
+        if (!opened) w.showChannelInfo();
+        else w.showChannelInfo(1);
     }
     function togglePlayback(): void {
         var kind = playbackKind();
@@ -1189,15 +1204,10 @@ function createModernPlayer(w: any) {
             if (id !== "accept") return false;
             setInteractive(true);
             keepAlive();
-            if (event.preventDefault) event.preventDefault();
-            if (event.stopPropagation) event.stopPropagation();
-            if (event.stopImmediatePropagation)
-                event.stopImmediatePropagation();
+            stop(event);
             return true;
         }
-        if (event.preventDefault) event.preventDefault();
-        if (event.stopPropagation) event.stopPropagation();
-        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        stop(event);
         if ((buttonSpace || statusSpace) && event.repeat) return true;
         if (id === "back") close();
         else if (id === "up" || id === "down") {
@@ -1265,9 +1275,7 @@ function createModernPlayer(w: any) {
         if (modalOpen()) return;
         if (w.__ottTauriSuppressClick || w.__ottInfoBandFromMouseUp) return;
         if (!videoTarget(event.target)) return;
-        if (event.preventDefault) event.preventDefault();
-        if (event.stopPropagation) event.stopPropagation();
-        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        stop(event);
         if (typeof w.showChannelInfo === "function") w.showChannelInfo();
     }
     function elementShown(id: string): boolean {
@@ -1543,7 +1551,7 @@ function createModernPlayer(w: any) {
     function updateStatus(): void {
         if (!statusElement) return;
         var hadFocus = statusElement === w.document.activeElement;
-        var source = w.document.getElementById("video_res");
+        var source = videoRes();
         var message = source ? text(source) : "";
         statusElement.textContent = message;
         statusElement.hidden = !message;
@@ -1580,9 +1588,7 @@ function createModernPlayer(w: any) {
         if (visible) {
             root.removeAttribute("hidden");
             root.setAttribute("aria-hidden", "false");
-            (w.document.body || w.document.documentElement).classList.add(
-                "modern-player-open"
-            );
+            pageRoot().classList.add("modern-player-open");
             mountProgress();
             render();
             if (interactive && !editingTarget(w.document.activeElement))
@@ -1596,9 +1602,7 @@ function createModernPlayer(w: any) {
             desktopControls = tabIntent = false;
             root.setAttribute("hidden", "hidden");
             root.setAttribute("aria-hidden", "true");
-            (w.document.body || w.document.documentElement).classList.remove(
-                "modern-player-open"
-            );
+            pageRoot().classList.remove("modern-player-open");
             if (ticker) w.clearInterval(ticker);
             ticker = null;
             if (
@@ -1645,9 +1649,7 @@ function createModernPlayer(w: any) {
         if (active) return;
         active = true;
         buildPanel();
-        (w.document.body || w.document.documentElement).classList.add(
-            "modern-player-ready"
-        );
+        pageRoot().classList.add("modern-player-ready");
         observe();
         w.addEventListener("keydown", onKeydown, true);
         w.addEventListener("click", onClick, true);
@@ -1676,10 +1678,10 @@ function createModernPlayer(w: any) {
         w.removeEventListener("click", onClick, true);
         restoreProgress();
         if (root && root.parentNode) root.parentNode.removeChild(root);
-        var body = w.document.body || w.document.documentElement;
-        if (body) {
-            body.classList.remove("modern-player-ready", "modern-player-open");
-        }
+        pageRoot().classList.remove(
+            "modern-player-ready",
+            "modern-player-open"
+        );
         root = panel = null;
         titleElement =
             kickerElement =
