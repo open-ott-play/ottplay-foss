@@ -52,6 +52,7 @@ struct Session {
     directory: PathBuf,
     producing: AtomicBool,
     retiring: AtomicBool,
+    closing: AtomicBool,
     retained_until: Mutex<Option<Instant>>,
     retain_seconds: AtomicU64,
 }
@@ -210,6 +211,7 @@ impl Manager {
             directory,
             producing: AtomicBool::new(true),
             retiring: AtomicBool::new(false),
+            closing: AtomicBool::new(false),
             retained_until: Mutex::new(None),
             retain_seconds: AtomicU64::new(40),
         });
@@ -294,12 +296,13 @@ impl Manager {
             .unwrap()
             .get(id)
             .is_some_and(|session| {
-                session.producing.load(Ordering::Acquire)
-                    || session
-                        .retained_until
-                        .lock()
-                        .unwrap()
-                        .is_some_and(|until| until > Instant::now())
+                !session.closing.load(Ordering::Acquire)
+                    && (session.producing.load(Ordering::Acquire)
+                        || session
+                            .retained_until
+                            .lock()
+                            .unwrap()
+                            .is_some_and(|until| until > Instant::now()))
             })
     }
 
@@ -313,6 +316,9 @@ impl Manager {
     }
     pub fn close(&self, id: &str) {
         if let Some(session) = self.0.sessions.lock().unwrap().get(id) {
+            // An explicit close releases a retained window now, unlike a retirement,
+            // which only advertises a later deadline.
+            session.closing.store(true, Ordering::Release);
             let _ = session.cancel.send(true);
         }
     }
@@ -360,7 +366,8 @@ impl Manager {
             .context("media session unavailable")?;
         let retiring = session.retiring.load(Ordering::Acquire);
         let retained_until = *session.retained_until.lock().unwrap();
-        if (!retiring && *session.cancel.borrow())
+        if session.closing.load(Ordering::Acquire)
+            || (!retiring && *session.cancel.borrow())
             || retained_until.is_some_and(|until| until <= Instant::now())
             || (retained_until.is_none()
                 && (session.renewed.lock().unwrap().elapsed() >= self.0.config.lease_duration
@@ -513,6 +520,11 @@ async fn hold_published_window(
     deadline: Instant,
 ) {
     loop {
+        // Only an explicit close releases the window early; a retirement that
+        // lands mid-window merely advertises a later deadline read below.
+        if session.closing.load(Ordering::Acquire) {
+            return;
+        }
         let until = session
             .retained_until
             .lock()
@@ -522,17 +534,9 @@ async fn hold_published_window(
         if Instant::now() >= until {
             return;
         }
-        if session.retiring.load(Ordering::Acquire) {
-            tokio::time::sleep_until(until.into()).await;
-        } else {
-            tokio::select! {
-                _ = cancel.changed() => {
-                    if !session.retiring.load(Ordering::Acquire) {
-                        return;
-                    }
-                }
-                _ = tokio::time::sleep_until(until.into()) => {}
-            }
+        tokio::select! {
+            _ = cancel.changed() => {}
+            _ = tokio::time::sleep_until(until.into()) => {}
         }
     }
 }
@@ -953,6 +957,7 @@ mod tests {
             // The producer has stopped; only the retained window keeps serving.
             producing: AtomicBool::new(false),
             retiring: AtomicBool::new(false),
+            closing: AtomicBool::new(false),
             retained_until: Mutex::new(None),
             retain_seconds: AtomicU64::new(1),
         });
@@ -1014,6 +1019,7 @@ mod tests {
             // The producer stopped on its own and began holding what it published.
             producing: AtomicBool::new(false),
             retiring: AtomicBool::new(false),
+            closing: AtomicBool::new(false),
             retained_until: Mutex::new(None),
             retain_seconds: AtomicU64::new(1),
         });
@@ -1045,12 +1051,12 @@ mod tests {
             "retiring a holding session must not end its window early"
         );
         assert!(manager.servable(&id));
-        // Even a cancel racing that retirement must not tear the window down.
-        manager.close(&id);
+        // A second retirement extends the window again instead of ending it.
+        manager.retire(&id);
         tokio::time::sleep(Duration::from_millis(60)).await;
         assert!(
             !hold.is_finished(),
-            "a cancel racing a retirement must not end the window early"
+            "a retirement must never end a held window early"
         );
         hold.await.unwrap();
         let held = retired.elapsed();
@@ -1062,30 +1068,90 @@ mod tests {
         tokio::fs::remove_dir_all(directory).await.unwrap();
     }
 
+    #[cfg(unix)]
     #[tokio::test]
-    async fn explicit_close_ends_a_held_window_before_its_deadline() {
+    async fn close_and_wait_releases_a_retired_hold_without_waiting_out_the_window() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory =
+            std::env::temp_dir().join(format!("ott-close-hold-{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir(&directory).await.unwrap();
+        for name in ["ffmpeg", "ffprobe"] {
+            let file = directory.join(name);
+            tokio::fs::write(
+                file.clone(),
+                format!("#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then echo '{name} version test'; exit 0; fi\nexit 1\n"),
+            )
+            .await
+            .unwrap();
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let manager = Manager::new(Config {
+            ffmpeg: directory.join("ffmpeg"),
+            ffprobe: directory.join("ffprobe"),
+            directory: directory.join("sessions"),
+            sessions: 2,
+            disk_limit: 1024 * 1024,
+            startup_timeout: Duration::from_secs(1),
+            idle_timeout: Duration::from_secs(60),
+            lease_duration: Duration::from_secs(60),
+        })
+        .await
+        .unwrap();
+        let id = "d".repeat(32);
+        let session_directory = manager.0.config.directory.join(&id);
+        tokio::fs::create_dir(&session_directory).await.unwrap();
+        tokio::fs::write(session_directory.join("master.m3u8"), b"#EXTM3U\n")
+            .await
+            .unwrap();
         let session = Arc::new(Session {
             cancel: watch::channel(false).0,
             touched: Mutex::new(Instant::now()),
             renewed: Mutex::new(Instant::now()),
-            directory: std::env::temp_dir(),
+            directory: session_directory,
+            // The producer stopped on its own and is holding what it published.
             producing: AtomicBool::new(false),
             retiring: AtomicBool::new(false),
-            retained_until: Mutex::new(Some(Instant::now() + Duration::from_secs(30))),
+            closing: AtomicBool::new(false),
+            retained_until: Mutex::new(None),
             retain_seconds: AtomicU64::new(30),
         });
+        manager
+            .0
+            .sessions
+            .lock()
+            .unwrap()
+            .insert(id.clone(), session.clone());
         let deadline = Instant::now() + Duration::from_secs(30);
+        *session.retained_until.lock().unwrap() = Some(deadline);
         let mut cancel = session.cancel.subscribe();
         let hold = tokio::spawn({
             let session = session.clone();
-            async move { hold_published_window(&session, &mut cancel, deadline).await }
+            let manager = manager.clone();
+            let id = id.clone();
+            async move {
+                hold_published_window(&session, &mut cancel, deadline).await;
+                // Mimic the producer task releasing its session once the hold ends.
+                manager.0.sessions.lock().unwrap().remove(&id);
+            }
         });
         tokio::time::sleep(Duration::from_millis(50)).await;
-        let _ = session.cancel.send(true);
-        tokio::time::timeout(Duration::from_millis(500), hold)
+        // A replacement retires the stopped generation; that only extends the window.
+        manager.retire(&id);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        assert!(!hold.is_finished(), "a retirement only extends the window");
+        assert!(manager.servable(&id));
+        assert!(manager.read(&id, "master.m3u8").await.is_ok());
+        tokio::time::timeout(Duration::from_millis(500), manager.close_and_wait(&id))
             .await
-            .expect("an explicit close must release a held window")
-            .unwrap();
+            .expect("an explicit close must not wait out the advertised window")
+            .expect("normalization shutdown timed out");
+        hold.await.unwrap();
+        assert!(!manager.servable(&id));
+        assert!(
+            manager.read(&id, "master.m3u8").await.is_err(),
+            "a closed session must stop serving its retained window"
+        );
+        tokio::fs::remove_dir_all(directory).await.unwrap();
     }
 
     #[tokio::test]
