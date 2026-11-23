@@ -908,6 +908,14 @@ export function showChannelInfo(
         } else {
             $("#descr").show(0, onInfoShown);
         }
+        // Expanding an already visible bar is still a timed presentation. A
+        // seek click off the scrubber used to lose the auto-hide timer here.
+        if (timeoutSec !== 2) {
+            infoTimeout = setTimeout(
+                hideInfoBarWhenReady,
+                (timeoutSec > 0 ? timeoutSec : w.sInfoTimeout || 5) * 1000
+            );
+        }
     } else {
         infoBarHide();
     }
