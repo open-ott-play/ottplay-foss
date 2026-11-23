@@ -51,6 +51,7 @@ struct Session {
     renewed: Mutex<Instant>,
     directory: PathBuf,
     producing: AtomicBool,
+    retiring: AtomicBool,
     retained_until: Mutex<Option<Instant>>,
     retain_seconds: AtomicU64,
 }
@@ -208,6 +209,7 @@ impl Manager {
             renewed: Mutex::new(Instant::now()),
             directory,
             producing: AtomicBool::new(true),
+            retiring: AtomicBool::new(false),
             retained_until: Mutex::new(None),
             retain_seconds: AtomicU64::new(40),
         });
@@ -266,6 +268,37 @@ impl Manager {
             })
     }
 
+    /// Freeze a replaced producer: stop generating, but keep the window already
+    /// published readable for as long as a client may still hold that playlist.
+    pub fn retire(&self, id: &str) {
+        if let Some(session) = self.0.sessions.lock().unwrap().get(id) {
+            session.retiring.store(true, Ordering::Release);
+            let deadline = Instant::now()
+                + Duration::from_secs(session.retain_seconds.load(Ordering::Relaxed));
+            let mut until = session.retained_until.lock().unwrap();
+            *until = Some(until.map_or(deadline, |current| current.max(deadline)));
+            drop(until);
+            let _ = session.cancel.send(true);
+        }
+    }
+
+    /// Whether a session still owns a generated window a client may read.
+    pub fn servable(&self, id: &str) -> bool {
+        self.0
+            .sessions
+            .lock()
+            .unwrap()
+            .get(id)
+            .is_some_and(|session| {
+                session.producing.load(Ordering::Acquire)
+                    || session
+                        .retained_until
+                        .lock()
+                        .unwrap()
+                        .is_some_and(|until| until > Instant::now())
+            })
+    }
+
     pub fn is_producing(&self, id: &str) -> bool {
         self.0
             .sessions
@@ -293,6 +326,22 @@ impl Manager {
     }
 
     /// Exact generated names only; never expose an arbitrary filesystem path.
+    /// Whether a generated resource is present without renewing the session.
+    pub fn contains(&self, id: &str, name: &str) -> bool {
+        if !valid_name(name) {
+            return false;
+        }
+        self.0
+            .sessions
+            .lock()
+            .unwrap()
+            .get(id)
+            .is_some_and(|session| {
+                std::fs::symlink_metadata(session.directory.join(name))
+                    .is_ok_and(|metadata| metadata.is_file())
+            })
+    }
+
     pub async fn read(&self, id: &str, name: &str) -> Result<Vec<u8>> {
         if !valid_name(name) {
             bail!("invalid media resource");
@@ -305,8 +354,9 @@ impl Manager {
             .get(id)
             .cloned()
             .context("media session unavailable")?;
+        let retiring = session.retiring.load(Ordering::Acquire);
         let retained_until = *session.retained_until.lock().unwrap();
-        if *session.cancel.borrow()
+        if (!retiring && *session.cancel.borrow())
             || retained_until.is_some_and(|until| until <= Instant::now())
             || (retained_until.is_none()
                 && (session.renewed.lock().unwrap().elapsed() >= self.0.config.lease_duration
@@ -404,10 +454,14 @@ impl Manager {
             tracing::debug!("audio normalization session ended");
         }
         session.producing.store(false, Ordering::Release);
-        if retain && !*cancel.borrow() {
+        let retiring = session.retiring.load(Ordering::Acquire);
+        if (retain && !*cancel.borrow()) || retiring {
             let deadline = Instant::now()
                 + Duration::from_secs(session.retain_seconds.load(Ordering::Relaxed));
-            *session.retained_until.lock().unwrap() = Some(deadline);
+            {
+                let mut until = session.retained_until.lock().unwrap();
+                *until = Some(until.map_or(deadline, |current| current.max(deadline)));
+            }
             let oldest = {
                 let mut retired = self.0.retired.lock().unwrap();
                 retired.push_back(id.clone());
@@ -421,7 +475,9 @@ impl Manager {
                 let _ = self.close_and_wait(&oldest).await;
             }
             drop(permit.take());
-            if !*cancel.borrow() {
+            if retiring {
+                tokio::time::sleep_until(deadline.into()).await;
+            } else if !*cancel.borrow() {
                 tokio::select! { _ = cancel.changed() => {}, _ = tokio::time::sleep_until(deadline.into()) => {} }
             }
         }
@@ -816,6 +872,71 @@ mod tests {
         .is_err());
         assert!(!manager.0.sessions.lock().unwrap().contains_key(&id));
         assert!(!directory.join("sessions").join(&id).exists());
+        tokio::fs::remove_dir_all(directory).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn retired_session_keeps_its_published_window_readable() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = std::env::temp_dir().join(format!("ott-retire-{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir(&directory).await.unwrap();
+        for name in ["ffmpeg", "ffprobe"] {
+            let file = directory.join(name);
+            tokio::fs::write(
+                file.clone(),
+                format!("#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then echo '{name} version test'; exit 0; fi\nexit 1\n"),
+            )
+            .await
+            .unwrap();
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let manager = Manager::new(Config {
+            ffmpeg: directory.join("ffmpeg"),
+            ffprobe: directory.join("ffprobe"),
+            directory: directory.join("sessions"),
+            sessions: 2,
+            disk_limit: 1024 * 1024,
+            startup_timeout: Duration::from_secs(1),
+            idle_timeout: Duration::from_secs(60),
+            lease_duration: Duration::from_secs(60),
+        })
+        .await
+        .unwrap();
+        let id = "b".repeat(32);
+        let session_directory = manager.0.config.directory.join(&id);
+        tokio::fs::create_dir(&session_directory).await.unwrap();
+        tokio::fs::write(session_directory.join("master.m3u8"), b"#EXTM3U\n")
+            .await
+            .unwrap();
+        let session = Arc::new(Session {
+            cancel: watch::channel(false).0,
+            touched: Mutex::new(Instant::now()),
+            renewed: Mutex::new(Instant::now()),
+            directory: session_directory.clone(),
+            // The producer has stopped; only the retained window keeps serving.
+            producing: AtomicBool::new(false),
+            retiring: AtomicBool::new(false),
+            retained_until: Mutex::new(None),
+            retain_seconds: AtomicU64::new(1),
+        });
+        manager
+            .0
+            .sessions
+            .lock()
+            .unwrap()
+            .insert(id.clone(), session);
+        assert!(manager.read(&id, "master.m3u8").await.is_ok());
+        manager.retire(&id);
+        assert!(manager.servable(&id));
+        assert!(manager.contains(&id, "master.m3u8"));
+        assert!(
+            manager.read(&id, "master.m3u8").await.is_ok(),
+            "a retired generation keeps serving the playlist it published"
+        );
+        tokio::time::sleep(Duration::from_millis(1100)).await;
+        assert!(!manager.servable(&id));
+        assert!(manager.read(&id, "master.m3u8").await.is_err());
         tokio::fs::remove_dir_all(directory).await.unwrap();
     }
 

@@ -147,8 +147,6 @@ struct Lease {
     source: Source,
     resources: Mutex<Resources>,
     media_expiry: Mutex<VecDeque<(String, u64)>>,
-    playlists: Mutex<HashMap<String, String>>,
-    previous: Mutex<Option<String>>,
     state: Mutex<Progress>,
     touched: Mutex<Instant>,
     created: Instant,
@@ -458,7 +456,7 @@ async fn configured_routes(settings: Settings) -> Result<Router> {
                                 .unwrap()
                                 .session
                                 .as_ref()
-                                .is_some_and(|session| !cleanup.manager.is_active(session)))
+                                .is_some_and(|session| !cleanup.manager.servable(session)))
                 })
                 .map(|(id, _)| id.clone())
                 .collect();
@@ -888,8 +886,6 @@ fn prepare(gateway: &Shared, source_id: &str, source: Source) -> Result<String> 
         }),
         source,
         media_expiry: Mutex::new(VecDeque::new()),
-        playlists: Mutex::new(HashMap::new()),
-        previous: Mutex::new(None),
         state: Mutex::new(Progress::default()),
         touched: Mutex::new(Instant::now()),
         created: Instant::now(),
@@ -1214,109 +1210,47 @@ fn playlist_number(playlist: &str, tag: &str) -> Option<u64> {
         .parse()
         .ok()
 }
-fn playlist_end(playlist: &str) -> Option<u64> {
-    playlist_number(playlist, "#EXT-X-MEDIA-SEQUENCE:")?.checked_add(
-        playlist
-            .lines()
-            .filter(|line| line.starts_with("#EXTINF:"))
-            .count() as u64,
-    )
+fn playlist_references(playlist: &str) -> Vec<&str> {
+    let mut references = Vec::new();
+    for line in playlist.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if !line.starts_with('#') {
+            references.push(line);
+            continue;
+        }
+        let mut rest = line;
+        while let Some(at) = rest.find("URI=\"") {
+            rest = &rest[at + 5..];
+            let Some(end) = rest.find('"') else {
+                break;
+            };
+            references.push(&rest[..end]);
+            rest = &rest[end + 1..];
+        }
+    }
+    references
 }
-fn remember_playlist(snapshots: &mut HashMap<String, String>, file: &str, playlist: String) {
-    if playlist_end(&playlist).is_some_and(|end| {
-        snapshots
-            .get(file)
-            .and_then(|old| playlist_end(old))
-            .is_none_or(|old| old <= end)
-    }) {
-        snapshots.insert(file.to_owned(), playlist);
-    }
+
+/// A resource that is momentarily absent is retryable: a replaced generation, a
+/// window that is still filling, or a segment that slid out just before the client
+/// asked for it. 404 would make players drop the stream permanently.
+fn retryable() -> Response {
+    let mut response = StatusCode::SERVICE_UNAVAILABLE.into_response();
+    response.headers_mut().insert(
+        axum::http::header::RETRY_AFTER,
+        HeaderValue::from_static("1"),
+    );
+    response
 }
-fn stitch_playlists(old: &str, new: &str, gap: u64) -> Option<String> {
-    if !(1..=64).contains(&gap) {
-        return None;
-    }
-    let start = playlist_number(old, "#EXT-X-MEDIA-SEQUENCE:")?;
-    let old_count = old
-        .lines()
-        .filter(|line| line.starts_with("#EXTINF:"))
-        .count() as u64;
-    if start.checked_add(old_count)? != playlist_number(new, "#EXT-X-MEDIA-SEQUENCE:")? {
-        return None;
-    }
-    let target = playlist_number(old, "#EXT-X-TARGETDURATION:")?
-        .max(playlist_number(new, "#EXT-X-TARGETDURATION:")?);
-    let discontinuity = playlist_number(old, "#EXT-X-DISCONTINUITY-SEQUENCE:")?;
-    let body = |playlist: &str| {
-        playlist
-            .lines()
-            .filter(|line| {
-                !line.is_empty()
-                    && ![
-                        "#EXTM3U",
-                        "#EXT-X-VERSION:",
-                        "#EXT-X-TARGETDURATION:",
-                        "#EXT-X-MEDIA-SEQUENCE:",
-                        "#EXT-X-DISCONTINUITY-SEQUENCE:",
-                        "#EXT-X-ENDLIST",
-                    ]
-                    .iter()
-                    .any(|prefix| line.starts_with(prefix))
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
-    let combined = format!("#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:{target}\n#EXT-X-MEDIA-SEQUENCE:{start}\n#EXT-X-DISCONTINUITY-SEQUENCE:{discontinuity}\n{}\n{}{}\n", body(old), "#EXT-X-DISCONTINUITY\n".repeat((gap - 1) as usize), body(new));
-    (combined.len() <= 256 * 1024).then_some(combined)
-}
-fn finish_playlist(gateway: &Gateway, lease: &Lease, file: &str, playlist: String) -> String {
-    let Some(track) = file
-        .strip_prefix("track_")
-        .and_then(|name| name.strip_suffix(".m3u8"))
-        .and_then(|value| value.parse::<u16>().ok())
-        .filter(|track| *track <= 16)
-    else {
-        return playlist;
-    };
-    if playlist.len() > 65536 {
-        return playlist;
-    }
-    {
-        let mut snapshots = lease.playlists.lock().unwrap();
-        remember_playlist(&mut snapshots, file, playlist.clone());
-    }
-    if playlist_number(&playlist, "#EXT-X-MEDIA-SEQUENCE:")
-        != Some(lease.sequence_starts.get(&track).copied().unwrap_or(0))
-    {
-        return playlist;
-    }
-    let Some(previous) = lease.previous.lock().unwrap().clone() else {
-        return playlist;
-    };
-    let Ok(old) = gateway.lease(&previous) else {
-        return playlist;
-    };
-    if old.source_id != lease.source_id
-        || !old
-            .state
-            .lock()
-            .unwrap()
-            .session
-            .as_ref()
-            .is_some_and(|id| gateway.manager.is_active(id))
-    {
-        return playlist;
-    }
-    let snapshot = old.playlists.lock().unwrap().get(file).cloned();
-    snapshot
-        .and_then(|old_playlist| {
-            stitch_playlists(
-                &old_playlist,
-                &playlist,
-                lease.generation.saturating_sub(old.generation),
-            )
-        })
-        .unwrap_or(playlist)
+
+/// A window is publishable only while every resource it names is still on disk.
+fn window_available(gateway: &Gateway, session: &str, playlist: &str) -> bool {
+    playlist_references(playlist)
+        .into_iter()
+        .all(|reference| gateway.manager.contains(session, reference))
 }
 
 fn validate_live_window(playlist: &str, target: u64) -> Result<()> {
@@ -1344,6 +1278,16 @@ fn published_playlist(
     file: &str,
     playlist: &str,
 ) -> Result<String> {
+    let session = lease
+        .state
+        .lock()
+        .unwrap()
+        .session
+        .clone()
+        .context("media session unavailable")?;
+    if !window_available(gateway, &session, playlist) {
+        bail!("media window is not yet available");
+    }
     let Some(track) = file
         .strip_prefix("track_")
         .and_then(|name| name.strip_suffix(".m3u8"))
@@ -1462,7 +1406,6 @@ async fn play(
     // A single producer is shared by all readers of this explicitly registered source.
     let mut entries = gateway.entries.lock().await;
     let mut id = entries.get(&source_id).cloned();
-    let mut previous = None;
     if id.as_ref().is_some_and(|id| {
         gateway.lease(id).map_or(true, |lease| {
             let state = lease.state.lock().unwrap();
@@ -1477,16 +1420,18 @@ async fn play(
     }) {
         if let Some(old) = &id {
             if let Ok(lease) = gateway.lease(old) {
-                let empty = lease.state.lock().unwrap().session.is_none();
-                previous = if empty {
-                    lease.previous.lock().unwrap().clone()
-                } else {
-                    Some(old.clone())
-                };
-                if empty {
-                    let _ = gateway.close(old);
-                } else {
-                    *lease.retired.lock().unwrap() = Some(Instant::now());
+                let session = lease.state.lock().unwrap().session.clone();
+                match session {
+                    // Nothing was published against this lease.
+                    None => {
+                        let _ = gateway.close(old);
+                    }
+                    // Freeze the replaced generation so a client still holding its
+                    // playlist keeps every segment that playlist names.
+                    Some(session) => {
+                        gateway.manager.retire(&session);
+                        *lease.retired.lock().unwrap() = Some(Instant::now());
+                    }
                 }
             }
         }
@@ -1498,9 +1443,6 @@ async fn play(
             Err(_) => return StatusCode::TOO_MANY_REQUESTS.into_response(),
         };
         if let Some(id) = &id {
-            if let Ok(lease) = gateway.lease(id) {
-                *lease.previous.lock().unwrap() = previous;
-            }
             entries.insert(source_id.clone(), id.clone());
         }
     }
@@ -1571,7 +1513,7 @@ async fn play(
             match result {
                 Ok(playlist) => guarded_response(
                     "application/vnd.apple.mpegurl",
-                    finish_playlist(&gateway, &lease, &file, playlist).into_bytes(),
+                    playlist.into_bytes(),
                     permit,
                 ),
                 Err(_) => StatusCode::BAD_GATEWAY.into_response(),
@@ -1626,7 +1568,7 @@ async fn leased_playlist(
             match result {
                 Ok(playlist) => guarded_response(
                     "application/vnd.apple.mpegurl",
-                    finish_playlist(&gateway, &lease, &file, playlist).into_bytes(),
+                    playlist.into_bytes(),
                     permit,
                 ),
                 Err(_) => StatusCode::BAD_GATEWAY.into_response(),
@@ -1649,7 +1591,7 @@ async fn media(
     };
     let session = lease.state.lock().unwrap().session.clone();
     let Some(session) = session else {
-        return StatusCode::NOT_FOUND.into_response();
+        return retryable();
     };
     let Ok(permit) = gateway.serve_slots.clone().try_acquire_owned() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
@@ -1676,7 +1618,9 @@ async fn media(
             };
             guarded_response(mime, bytes, permit)
         }
-        Err(_) => StatusCode::NOT_FOUND.into_response(),
+        // The window slides and generations are replaced; a resource that is gone
+        // right now may return with the next playlist, so it is not a final 404.
+        Err(_) => retryable(),
     }
 }
 async fn fetch(
@@ -1857,8 +1801,6 @@ mod tests {
                 bytes: 0,
             }),
             media_expiry: Mutex::new(VecDeque::new()),
-            playlists: Mutex::new(HashMap::new()),
-            previous: Mutex::new(None),
             state: Mutex::new(Progress::default()),
             touched: Mutex::new(Instant::now() - touched),
             created: Instant::now() - created,
@@ -2321,27 +2263,18 @@ mod tests {
     }
 
     #[test]
-    fn replacement_playlist_overlaps_old_tail_before_new_discontinuity() {
-        let old = "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:10\n#EXT-X-DISCONTINUITY-SEQUENCE:1\n#EXT-X-MAP:URI=\"old-init\"\n#EXTINF:2,\nold-10\n#EXTINF:2,\nold-11\n";
-        let new = "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:12\n#EXT-X-DISCONTINUITY-SEQUENCE:1\n#EXT-X-DISCONTINUITY\n#EXT-X-MAP:URI=\"new-init\"\n#EXTINF:2,\nnew-12\n";
-        let joined = stitch_playlists(old, new, 1).unwrap();
-        assert_eq!(joined.matches("#EXTM3U").count(), 1);
-        assert_eq!(joined.matches("#EXTINF:").count(), 3);
-        assert!(joined.contains("old-11\n#EXT-X-DISCONTINUITY\n#EXT-X-MAP:URI=\"new-init"));
-        assert!(stitch_playlists(old, &new.replace(":12", ":13"), 1).is_none());
-        assert!(stitch_playlists(old, new, 65).is_none());
-    }
-    #[test]
-    fn delayed_playlist_cannot_replace_newer_bridge_snapshot() {
-        let mut snapshots = HashMap::new();
-        let playlist = "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:10\n#EXTINF:2,\na\n";
-        remember_playlist(
-            &mut snapshots,
-            "track_0.m3u8",
-            playlist.replace(":10", ":12"),
+    fn window_references_cover_every_segment_init_and_child_playlist() {
+        let media = "#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MAP:URI=\"track_0_init.mp4\"\n#EXTINF:2,\ntrack_0_000000012.m4s\n#EXTINF:2,\ntrack_0_000000013.m4s\n";
+        assert_eq!(
+            playlist_references(media),
+            [
+                "track_0_init.mp4",
+                "track_0_000000012.m4s",
+                "track_0_000000013.m4s"
+            ]
         );
-        remember_playlist(&mut snapshots, "track_0.m3u8", playlist.into());
-        assert_eq!(playlist_end(&snapshots["track_0.m3u8"]), Some(13));
+        let master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1,AUDIO=\"sound\"\ntrack_0.m3u8\n";
+        assert_eq!(playlist_references(master), ["track_0.m3u8"]);
     }
     #[test]
     fn generation_boundary_stays_explicit_until_first_fragment_slides_out() {
