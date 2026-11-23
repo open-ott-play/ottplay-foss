@@ -2124,3 +2124,127 @@ for (const replacement of ["source", "mode", "dismiss", "load"]) {
         }
     });
 }
+
+// The lazy overlay must reuse the Classic bottom-info band instead of deriving
+// its own panel geometry. Load the shared helper and mirror its publication.
+function classicBand(f) {
+    const { w } = f;
+    const file = "src/key-handler/index.ts";
+    const source = ts.createSourceFile(
+        file,
+        fs.readFileSync(path.join(root, file), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const names = [
+        "ottBandViewportHeight",
+        "ottBottomInfoBandStart",
+        "ottInBottomInfoBand",
+    ];
+    const selected = source.statements.filter(
+        (node) =>
+            ts.isFunctionDeclaration(node) && names.includes(node.name?.text)
+    );
+    assert.equal(selected.length, names.length);
+    w.eval(
+        ts.transpileModule(
+            selected
+                .map((node) => node.getText(source).replace(/^export /, ""))
+                .join("\n"),
+            { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+        ).outputText
+    );
+    w.__ottInBottomInfoBand = w.ottInBottomInfoBand;
+    return w.ottInBottomInfoBand;
+}
+
+test("a scrim click in the footer zone keeps the bar; above it dismisses", async () => {
+    const f = automaticInfoFixture();
+    try {
+        f.w.showChannelInfo(5, false);
+        await f.settle();
+        assert.equal(f.api.state().open, true);
+        const band = classicBand(f);
+        assert.equal(
+            band(690),
+            true,
+            "the fixture click is in the Classic band"
+        );
+        assert.equal(band(100), false, "video clicks stay outside it");
+        const scrim = f.w.document.querySelector(".modern-player-scrim");
+        scrim.dispatchEvent(
+            new f.w.MouseEvent("click", { bubbles: true, clientY: 690 })
+        );
+        await f.settle();
+        assert.equal(
+            f.api.state().open,
+            true,
+            "the footer band raises the bar instead of closing it"
+        );
+        assert.equal(f.api.state().interactive, true);
+        scrim.dispatchEvent(
+            new f.w.MouseEvent("click", { bubbles: true, clientY: 100 })
+        );
+        await f.settle();
+        assert.equal(f.api.state().open, false, "video clicks still dismiss");
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("a footer-band click raises a closed bar", async () => {
+    const f = automaticInfoFixture();
+    try {
+        await f.settle();
+        const scrim = f.w.document.querySelector(".modern-player-scrim");
+        if (f.api.state().open) {
+            // A video click is the product's own way to dismiss an open bar.
+            scrim.dispatchEvent(
+                new f.w.MouseEvent("click", { bubbles: true, clientY: 100 })
+            );
+            await f.settle();
+        }
+        assert.equal(f.api.state().open, false, "the bar starts closed");
+        classicBand(f);
+        scrim.dispatchEvent(
+            new f.w.MouseEvent("click", { bubbles: true, clientY: 690 })
+        );
+        await f.settle();
+        assert.equal(
+            f.api.state().open,
+            true,
+            "the footer band opens the bar, not only keeps it"
+        );
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("expanding an already visible footer keeps its auto-hide deadline", async () => {
+    const f = automaticInfoFixture();
+    try {
+        f.w.showChannelInfo(5, false);
+        await f.settle();
+        const previous = f.w.infoTimeout;
+        assert.ok(f.timers.has(previous));
+        // Real programmes have details, so the refresh expands #descr instead
+        // of taking the empty-description recursion.
+        f.w.document.getElementById("programm_descr").textContent =
+            "Shared description";
+        f.w.showChannelInfo();
+        assert.equal(f.timers.has(previous), false);
+        assert.ok(
+            f.timers.has(f.w.infoTimeout),
+            "the refreshed bar is still timed"
+        );
+        assert.ok(f.timers.get(f.w.infoTimeout).delay >= 5000);
+        f.advance(5100);
+        await f.settle();
+        assert.equal(f.api.state().open, false);
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
