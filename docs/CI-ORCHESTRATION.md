@@ -6,7 +6,9 @@ run those events through Quality gate. Callable validators do not launch duplica
 runs. Superseded PR runs are cancelled, and validation jobs have explicit timeouts.
 
 The required CI configuration contracts check CodeQL pin compatibility, validation
-triggers, timeouts, and complete gate dependencies. Dependency Review, where present,
+triggers, timeouts, and complete gate dependencies. Commit signatures are validated
+by an always-validated check, so a documentation-only pull request is still refused
+before merge when one of its commits is unsigned. Dependency Review, where present,
 blocks the same gate for pull requests and reports other events as not applicable.
 CodeQL action updates are grouped where Dependabot Actions updates are configured.
 

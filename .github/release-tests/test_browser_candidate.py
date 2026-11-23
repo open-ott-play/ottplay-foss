@@ -218,7 +218,8 @@ class CandidateTests(unittest.TestCase):
     def test_explicit_windows_policy_keeps_portable_security_and_full_native_checks(self):
         policy = json.loads((ROOT / '.release-policy.json').read_text())
         self.assertEqual(policy['validation_workflows'],
-                         ['windows-validation.yml', 'codeql.yml', 'dependency-review.yml'])
+                         ['windows-validation.yml', 'codeql.yml', 'dependency-review.yml',
+                          'commit-signatures.yml'])
         self.assertEqual(policy['channel_validation_workflows'], {'beta': ['beta-checks.yml']})
         def load(name):
             return yaml.load((ROOT / '.github/workflows' / name).read_text(), Loader=yaml.BaseLoader)

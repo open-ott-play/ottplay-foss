@@ -70,6 +70,15 @@ jobs:
       - scope
       - workflow-contracts
     if: ${{ inputs.channel != 'beta' && (needs.scope.outputs.run == 'true') }}
+  check-3:
+    uses: ./.github/workflows/commit-signatures.yml
+    permissions:
+      contents: read
+      actions: read
+    needs:
+      - scope
+      - workflow-contracts
+    if: ${{ inputs.channel != 'beta' && (success()) }}
   workflow-contracts:
     name: CI configuration contracts
     runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name
@@ -150,6 +159,7 @@ jobs:
       - check-0
       - check-1
       - check-2
+      - check-3
       - workflow-contracts
       - release-contracts
       - beta-check-0

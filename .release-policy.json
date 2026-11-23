@@ -4,7 +4,8 @@
   "validation_workflows": [
     "windows-validation.yml",
     "codeql.yml",
-    "dependency-review.yml"
+    "dependency-review.yml",
+    "commit-signatures.yml"
   ],
   "channel_validation_workflows": {
     "beta": ["beta-checks.yml"]
@@ -261,7 +262,7 @@
   "change_scope": {
     "documentation_paths": ["vendor/README.md"],
     "required_paths": ["docs/privacy-policy.md", "CHANGELOG.md"],
-    "always_validate_workflows": ["codeql.yml"],
+    "always_validate_workflows": ["codeql.yml", "commit-signatures.yml"],
     "automatic_release_test_paths": [
       "tests/helpers/aspect-readiness-diagnostics.cjs",
       "tests/test_hls_aspect_fixture.cjs",
