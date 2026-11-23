@@ -56,6 +56,16 @@ struct Session {
     retained_until: Mutex<Option<Instant>>,
     retain_seconds: AtomicU64,
 }
+impl Session {
+    /// Advertise a full retention window from now without ever shortening a deadline
+    /// that was already given to a client.
+    fn extend_window(&self) {
+        let deadline =
+            Instant::now() + Duration::from_secs(self.retain_seconds.load(Ordering::Relaxed));
+        let mut until = self.retained_until.lock().unwrap();
+        *until = Some(until.map_or(deadline, |current| current.max(deadline)));
+    }
+}
 struct Job {
     id: String,
     session: Arc<Session>,
@@ -275,13 +285,9 @@ impl Manager {
     pub fn retire(&self, id: &str) {
         if let Some(session) = self.0.sessions.lock().unwrap().get(id) {
             session.retiring.store(true, Ordering::Release);
-            let deadline = Instant::now()
-                + Duration::from_secs(session.retain_seconds.load(Ordering::Relaxed));
-            let mut until = session.retained_until.lock().unwrap();
-            *until = Some(until.map_or(deadline, |current| current.max(deadline)));
-            drop(until);
+            session.extend_window();
             // A producer that already stopped is retaining its window; waking it would
-            // delete that window instead of serving it until the deadline below.
+            // delete that window instead of serving it until the deadline above.
             if session.producing.load(Ordering::Acquire) {
                 let _ = session.cancel.send(true);
             }
@@ -470,12 +476,7 @@ impl Manager {
         session.producing.store(false, Ordering::Release);
         let retiring = session.retiring.load(Ordering::Acquire);
         if (retain && !*cancel.borrow()) || retiring {
-            let deadline = Instant::now()
-                + Duration::from_secs(session.retain_seconds.load(Ordering::Relaxed));
-            {
-                let mut until = session.retained_until.lock().unwrap();
-                *until = Some(until.map_or(deadline, |current| current.max(deadline)));
-            }
+            session.extend_window();
             let oldest = {
                 let mut retired = self.0.retired.lock().unwrap();
                 retired.push_back(id.clone());
@@ -489,7 +490,7 @@ impl Manager {
                 let _ = self.close_and_wait(&oldest).await;
             }
             drop(permit.take());
-            hold_published_window(&session, &mut cancel, deadline).await;
+            hold_published_window(&session, &mut cancel).await;
         }
         #[cfg(test)]
         {
@@ -514,27 +515,23 @@ impl Manager {
 /// stopped on its own still owns the playlist a client may be reading, and a retirement
 /// that lands while it is holding extends that window instead of ending it early; only
 /// an explicit close releases the hold sooner.
-async fn hold_published_window(
-    session: &Session,
-    cancel: &mut watch::Receiver<bool>,
-    deadline: Instant,
-) {
+async fn hold_published_window(session: &Session, cancel: &mut watch::Receiver<bool>) {
     loop {
-        // Only an explicit close releases the window early; a retirement that
-        // lands mid-window merely advertises a later deadline read below.
+        // A close sets this before waking `cancel`, so a close that landed before the
+        // first await here is still observed.
         if session.closing.load(Ordering::Acquire) {
             return;
         }
-        let until = session
-            .retained_until
-            .lock()
-            .unwrap()
-            .unwrap_or(deadline)
-            .max(deadline);
+        let Some(until) = *session.retained_until.lock().unwrap() else {
+            return;
+        };
         if Instant::now() >= until {
             return;
         }
         tokio::select! {
+            // Only a close wakes this waiter, and it re-sends `true` on top of a value a
+            // retirement may already have set: `changed` reports that because it compares
+            // the channel version, not the value.
             _ = cancel.changed() => {}
             _ = tokio::time::sleep_until(until.into()) => {}
         }
@@ -1034,7 +1031,7 @@ mod tests {
         let mut cancel = session.cancel.subscribe();
         let hold = tokio::spawn({
             let session = session.clone();
-            async move { hold_published_window(&session, &mut cancel, deadline).await }
+            async move { hold_published_window(&session, &mut cancel).await }
         });
         tokio::time::sleep(Duration::from_millis(60)).await;
         // A replacement retires that stopped generation while it is still holding.
@@ -1070,7 +1067,7 @@ mod tests {
 
     #[cfg(unix)]
     #[tokio::test]
-    async fn close_and_wait_releases_a_retired_hold_without_waiting_out_the_window() {
+    async fn close_releases_a_retired_hold_even_when_cancel_is_already_true() {
         use std::os::unix::fs::PermissionsExt;
         let directory =
             std::env::temp_dir().join(format!("ott-close-hold-{}", uuid::Uuid::new_v4()));
@@ -1124,12 +1121,16 @@ mod tests {
         let deadline = Instant::now() + Duration::from_secs(30);
         *session.retained_until.lock().unwrap() = Some(deadline);
         let mut cancel = session.cancel.subscribe();
+        // A producer that was still running already woke on the retirement's cancel, so
+        // this receiver has marked `true` as seen; the close below re-sends that value.
+        let _ = session.cancel.send(true);
+        cancel.changed().await.unwrap();
         let hold = tokio::spawn({
             let session = session.clone();
             let manager = manager.clone();
             let id = id.clone();
             async move {
-                hold_published_window(&session, &mut cancel, deadline).await;
+                hold_published_window(&session, &mut cancel).await;
                 // Mimic the producer task releasing its session once the hold ends.
                 manager.0.sessions.lock().unwrap().remove(&id);
             }
