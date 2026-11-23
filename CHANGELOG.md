@@ -170,6 +170,28 @@
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
+- Name the web distribution checksum `ottplay-foss-dist.tar.gz.sha256` instead of
+  the generic `checksums.txt`, so the file states the archive it verifies. The
+  digest and its format are unchanged; a local rebuild removes the retired name.
+
+## [1.1.73] - 2026-11-23
+
+### Changes
+
+- Keep the Classic and Modern footer on screen when its own bottom band is
+  clicked, and show it again after switching to the next or previous channel.
+  Both views now share one pointer band instead of deriving separate geometry.
+
+### Upgrade
+
+- No settings or storage migration is required. Classic remains the default
+  interface and Modern reads the same stored preference as before.
+
+### Security
+
+- No new transport, permission or credential surface. The footer band only
+  reads the channel and programme values the player already renders.
+
 ## [1.1.72] - 2026-11-17
 
 ### Changes

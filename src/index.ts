@@ -357,6 +357,7 @@ import {
     keys,
     ottBandViewportHeight,
     ottBottomInfoBandStart,
+    ottInBottomInfoBand,
 } from "./key-handler";
 import { showHomeIntegration } from "./plugins/home-integration";
 import { createKiosk } from "./plugins/kiosk";
@@ -3881,14 +3882,7 @@ if (typeof window.__TAURI__ !== "undefined") {
             // Never drag from list/menu chrome or form controls.
             if (t.closest(NO_DRAG_SEL)) return false;
             try {
-                const h = ottBandViewportHeight();
-                if (
-                    h > 0 &&
-                    typeof clientY === "number" &&
-                    clientY > ottBottomInfoBandStart(h)
-                ) {
-                    return false;
-                }
+                if (ottInBottomInfoBand(clientY)) return false;
             } catch (_band) {}
             if (t.id === STRIP_ID) return true;
             if (t.closest(DRAG_SEL)) return true;
@@ -4025,12 +4019,7 @@ if (typeof window.__TAURI__ !== "undefined") {
                             el === document.body ||
                             el === document.documentElement;
                         if (onVideoSurface && !el.closest(NO_DRAG_SEL)) {
-                            const h = ottBandViewportHeight();
-                            if (
-                                h > 0 &&
-                                typeof ev.clientY === "number" &&
-                                ev.clientY > ottBottomInfoBandStart(h)
-                            ) {
+                            if (ottInBottomInfoBand(ev.clientY)) {
                                 (window as any).__ottInfoBandFromMouseUp = true;
                                 try {
                                     ev.preventDefault();

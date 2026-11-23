@@ -104,13 +104,13 @@ jobs:
           cp build/packages/ottplay-foss-modea.tar.gz build/packages/ottplay-foss-modea.sha256 .
           # Preserve the established download name after source-bound packaging.
           cp ottplay-foss-modea.tar.gz ottplay-foss-dist.tar.gz
-          sha256sum ottplay-foss-dist.tar.gz > checksums.txt
+          sha256sum ottplay-foss-dist.tar.gz > ottplay-foss-dist.tar.gz.sha256
       - name: Verify and stage versioned release assets
         shell: bash
         env:
           RELEASE_ASSET_TARGET: web
           RELEASE_ASSET_PATTERN_0: ottplay-foss-dist.tar.gz
-          RELEASE_ASSET_PATTERN_1: checksums.txt
+          RELEASE_ASSET_PATTERN_1: ottplay-foss-dist.tar.gz.sha256
           RELEASE_ASSET_PATTERN_2: ottplay-foss-modea.tar.gz
           RELEASE_ASSET_PATTERN_3: ottplay-foss-modea.sha256
           RELEASE_ASSET_PATTERN_4: build/packages/ottplay-foss-webos.ipk

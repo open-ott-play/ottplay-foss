@@ -1022,6 +1022,7 @@ for (const fingers of [1, 4]) {
 const bandCode = functions("src/key-handler/index.ts", [
     "ottBandViewportHeight",
     "ottBottomInfoBandStart",
+    "ottInBottomInfoBand",
     "body_onClick",
 ]);
 const indexAst = ts.createSourceFile(
