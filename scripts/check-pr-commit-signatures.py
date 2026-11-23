@@ -17,7 +17,11 @@ unverifiable locally and left to the API/ruleset proof.
 The gate also runs for the merge queue, where the event carries no pull request
 number. GitHub only queues pull requests whose commits already satisfy the
 signature rule, so that entry reports the fact and passes instead of failing on
-the missing number.
+the missing number. Release validation calls the same gate from ``schedule`` and
+``workflow_dispatch`` for its nightly and rc/stable profiles, where the main
+ruleset already verified the validated ref and there is no pull request to list;
+those entries report the fact and pass as well. Every other event without a pull
+request still fails loudly.
 """
 
 from __future__ import annotations
@@ -33,6 +37,28 @@ from pathlib import Path
 
 TIMEOUT_SECONDS = 20
 PAGE_SIZE = 100
+
+# Events the gate is called for with no pull request commit list. The merge queue
+# merges a head GitHub already qualified, and release validation runs the nightly,
+# rc and stable profiles from the default branch, which the main ruleset already
+# guarded. Each entry explains why nothing is listed here.
+NOT_APPLICABLE_EVENTS = {
+    "merge_group": (
+        "Merge queue: commit signatures were verified when the pull "
+        "request ran; the queue merges that reviewed head. Nothing to "
+        "list here."
+    ),
+    "schedule": (
+        "Scheduled release validation has no pull request commit list; the "
+        "main ruleset verified every commit of the validated ref. Nothing "
+        "to list here."
+    ),
+    "workflow_dispatch": (
+        "Dispatched release validation has no pull request commit list; the "
+        "main ruleset verified every commit of the validated ref. Nothing "
+        "to list here."
+    ),
+}
 
 
 def _request(url: str, token: str) -> urllib.request.Request:
@@ -224,17 +250,13 @@ def main(argv=None) -> int:
         return 2
     event_name = os.environ.get("GITHUB_EVENT_NAME")
     if number is None and event_name:
-        if event_name == "merge_group":
+        if event_name in NOT_APPLICABLE_EVENTS:
             # GitHub only queues pull requests whose commits already satisfy the
-            # signature rule, and the queue entry merges that reviewed head under
-            # a commit GitHub signs itself. There is no pull request commit list
-            # to review here, so the merge queue passes with an explicit message
-            # instead of failing on the missing number.
-            print(
-                "Merge queue: commit signatures were verified when the pull "
-                "request ran; the queue merges that reviewed head. Nothing to "
-                "list here."
-            )
+            # signature rule, and the release pipeline validates commits the main
+            # ruleset already guarded. Neither event carries a pull request commit
+            # list, so both pass with an explicit message instead of failing on
+            # the missing number.
+            print(NOT_APPLICABLE_EVENTS[event_name])
             return 0
         print(
             "No pull request in this " + event_name + " event; nothing to list.",

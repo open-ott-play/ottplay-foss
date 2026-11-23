@@ -204,7 +204,12 @@ class LocalSignatureTests(unittest.TestCase):
 
 
 class EventContextTests(unittest.TestCase):
-    """Quality gate also runs on merge_group, where no pull request number exists."""
+    """The gate also runs where no pull request number exists.
+
+    The merge queue merges an already-qualified head, and release validation calls
+    the gate from schedule and workflow_dispatch; none of them carries a pull
+    request commit list, so none may fail on the missing number.
+    """
 
     def event_file(self, directory, payload):
         path = Path(directory) / "event.json"
@@ -227,6 +232,30 @@ class EventContextTests(unittest.TestCase):
                 status = SIGNATURES.main(["--repo", "open-ott-play/ottplay-foss"])
         self.assertEqual(status, 0)
         self.assertIn("Merge queue", output.getvalue())
+
+    def test_release_validation_events_pass_without_a_pull_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            event = self.event_file(directory, {})
+            for event_name in ("schedule", "workflow_dispatch"):
+                with self.subTest(event=event_name), mock.patch.dict(
+                    os.environ,
+                    {"GITHUB_EVENT_NAME": event_name, "GITHUB_EVENT_PATH": event},
+                    clear=False,
+                ), mock.patch("sys.stdout", io.StringIO()) as output, mock.patch.object(
+                    SIGNATURES,
+                    "pull_request_commits",
+                    side_effect=AssertionError("release profiles have no commit listing"),
+                ):
+                    status = SIGNATURES.main(
+                        [
+                            "--repo",
+                            "open-ott-play/ottplay-foss",
+                            "--pull-request",
+                            "",
+                        ]
+                    )
+                self.assertEqual(status, 0)
+                self.assertIn("Nothing to list here", output.getvalue())
 
     def test_empty_pull_request_value_falls_back_to_the_event(self):
         with tempfile.TemporaryDirectory() as directory:

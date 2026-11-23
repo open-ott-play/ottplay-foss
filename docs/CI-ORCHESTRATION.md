@@ -8,8 +8,10 @@ runs. Superseded PR runs are cancelled, and validation jobs have explicit timeou
 The required CI configuration contracts check CodeQL pin compatibility, validation
 triggers, timeouts, and complete gate dependencies. Commit signatures are validated
 by an always-validated check, so a documentation-only pull request is still refused
-before merge when one of its commits is unsigned. Dependency Review, where present,
-blocks the same gate for pull requests and reports other events as not applicable.
+before merge when one of its commits is unsigned; the merge queue and the nightly,
+rc and stable release validation profiles carry no pull request commit list and
+report that fact instead of failing. Dependency Review, where present, blocks the
+same gate for pull requests and reports other events as not applicable.
 CodeQL action updates are grouped where Dependabot Actions updates are configured.
 
 Auto-merge verifies strict branch protection for CI gate, requests native GitHub
