@@ -278,7 +278,11 @@ impl Manager {
             let mut until = session.retained_until.lock().unwrap();
             *until = Some(until.map_or(deadline, |current| current.max(deadline)));
             drop(until);
-            let _ = session.cancel.send(true);
+            // A producer that already stopped is retaining its window; waking it would
+            // delete that window instead of serving it until the deadline below.
+            if session.producing.load(Ordering::Acquire) {
+                let _ = session.cancel.send(true);
+            }
         }
     }
 
@@ -482,6 +486,11 @@ impl Manager {
                 tokio::time::sleep_until(deadline.into()).await;
             } else if !*cancel.borrow() {
                 tokio::select! { _ = cancel.changed() => {}, _ = tokio::time::sleep_until(deadline.into()) => {} }
+                // A retirement may arrive while this window is already being retained;
+                // it must extend the window, not tear down media the playlist still names.
+                if session.retiring.load(Ordering::Acquire) {
+                    tokio::time::sleep_until(deadline.into()).await;
+                }
             }
         }
         #[cfg(test)]
