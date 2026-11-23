@@ -9,6 +9,7 @@ not refuse a valid signature just because this checkout has no signer keys.
 import importlib.util
 import io
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -200,6 +201,78 @@ class LocalSignatureTests(unittest.TestCase):
             self.assertEqual(failures, [])
             self.assertEqual(len(unverifiable), 1)
             self.assertEqual(unverifiable[0]["subject"], "signed change")
+
+
+class EventContextTests(unittest.TestCase):
+    """Quality gate also runs on merge_group, where no pull request number exists."""
+
+    def event_file(self, directory, payload):
+        path = Path(directory) / "event.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return str(path)
+
+    def test_merge_queue_entry_passes_with_an_explicit_message(self):
+        with tempfile.TemporaryDirectory() as directory:
+            event = self.event_file(directory, {"merge_group": {"head_sha": "e" * 40}})
+            output = io.StringIO()
+            with mock.patch.dict(
+                os.environ,
+                {"GITHUB_EVENT_NAME": "merge_group", "GITHUB_EVENT_PATH": event},
+                clear=False,
+            ), mock.patch("sys.stdout", output), mock.patch.object(
+                SIGNATURES,
+                "pull_request_commits",
+                side_effect=AssertionError("a merge queue entry has no commit listing"),
+            ):
+                status = SIGNATURES.main(["--repo", "open-ott-play/ottplay-foss"])
+        self.assertEqual(status, 0)
+        self.assertIn("Merge queue", output.getvalue())
+
+    def test_empty_pull_request_value_falls_back_to_the_event(self):
+        with tempfile.TemporaryDirectory() as directory:
+            event = self.event_file(directory, {"pull_request": {"number": 42}})
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "GITHUB_EVENT_NAME": "pull_request",
+                    "GITHUB_EVENT_PATH": event,
+                    "GITHUB_TOKEN": "token",
+                },
+                clear=False,
+            ), mock.patch.object(
+                SIGNATURES,
+                "pull_request_commits",
+                return_value=[signed(SIGNED_SHA, "chore")],
+            ) as listing, mock.patch("sys.stdout", io.StringIO()):
+                status = SIGNATURES.main(
+                    ["--repo", "open-ott-play/ottplay-foss", "--pull-request", ""]
+                )
+        self.assertEqual(status, 0)
+        self.assertEqual(listing.call_args.args[1], 42)
+
+    def test_other_events_without_a_pull_request_fail_loudly(self):
+        errors = io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            # Actions always sets GITHUB_EVENT_PATH, so the event file is replaced
+            # here instead of relying on the runner not having one.
+            event = self.event_file(directory, {})
+            with mock.patch.dict(
+                os.environ,
+                {"GITHUB_EVENT_NAME": "push", "GITHUB_EVENT_PATH": event},
+                clear=False,
+            ), mock.patch("sys.stderr", errors):
+                status = SIGNATURES.main(["--repo", "open-ott-play/ottplay-foss"])
+        self.assertEqual(status, 2)
+        self.assertIn("No pull request in this push event", errors.getvalue())
+
+    def test_non_numeric_pull_request_is_a_usage_error(self):
+        errors = io.StringIO()
+        with mock.patch("sys.stderr", errors):
+            status = SIGNATURES.main(
+                ["--repo", "open-ott-play/ottplay-foss", "--pull-request", "abc"]
+            )
+        self.assertEqual(status, 2)
+        self.assertIn("numeric pull request number", errors.getvalue())
 
 
 class GatePlacementTests(unittest.TestCase):

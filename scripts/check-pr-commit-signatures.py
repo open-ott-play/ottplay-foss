@@ -13,6 +13,11 @@ the result does not depend on the runner's key material. A local checkout can us
 still accepts a signature this checkout cannot verify because the signer key or
 ``gpg.ssh.allowedSignersFile`` is absent. Those commits are reported as
 unverifiable locally and left to the API/ruleset proof.
+
+The gate also runs for the merge queue, where the event carries no pull request
+number. GitHub only queues pull requests whose commits already satisfy the
+signature rule, so that entry reports the fact and passes instead of failing on
+the missing number.
 """
 
 from __future__ import annotations
@@ -184,8 +189,13 @@ def report(failures, unverifiable=(), base: str = "origin/main") -> int:
 
 
 def pull_request_number(arguments) -> int | None:
-    if arguments.pull_request is not None:
-        return int(arguments.pull_request)
+    # The gate passes github.event.pull_request.number whatever the event is, and
+    # a merge queue entry has none, so an empty value must not reach int().
+    explicit = str(arguments.pull_request or "").strip()
+    if explicit:
+        if not explicit.isdigit():
+            raise ValueError("Expected a numeric pull request number, got: " + explicit)
+        return int(explicit)
     event_path = os.environ.get("GITHUB_EVENT_PATH")
     if not event_path:
         return None
@@ -207,7 +217,30 @@ def main(argv=None) -> int:
     arguments = parser.parse_args(argv)
 
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
-    number = pull_request_number(arguments)
+    try:
+        number = pull_request_number(arguments)
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    event_name = os.environ.get("GITHUB_EVENT_NAME")
+    if number is None and event_name:
+        if event_name == "merge_group":
+            # GitHub only queues pull requests whose commits already satisfy the
+            # signature rule, and the queue entry merges that reviewed head under
+            # a commit GitHub signs itself. There is no pull request commit list
+            # to review here, so the merge queue passes with an explicit message
+            # instead of failing on the missing number.
+            print(
+                "Merge queue: commit signatures were verified when the pull "
+                "request ran; the queue merges that reviewed head. Nothing to "
+                "list here."
+            )
+            return 0
+        print(
+            "No pull request in this " + event_name + " event; nothing to list.",
+            file=sys.stderr,
+        )
+        return 2
     if number is not None:
         if not arguments.repo or not token:
             print(
