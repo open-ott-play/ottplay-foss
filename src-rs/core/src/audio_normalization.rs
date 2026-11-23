@@ -428,7 +428,10 @@ impl Manager {
                 tokio::select! {
                     _ = cancel.changed() => break Ok(()),
                     status = child.wait() => {
-                        retain = ready.is_none();
+                        // A producer that stops on its own also leaves a window that is
+                        // still published to clients; keep it for its retention period
+                        // instead of deleting media a live playlist still names.
+                        retain = true;
                         break match status { Ok(status) if status.success() && ready.is_none() => Ok(()), _ => Err(anyhow::anyhow!("normalization process stopped")) };
                     },
                     _ = interval.tick() => {
