@@ -33,6 +33,7 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import prepare_version
 import release_state as state
+import release_push_scope
 import release_versioned as lifecycle
 import test_release_control as legacy_tests
 import version_plan as versions
@@ -213,6 +214,36 @@ class CandidateDownloadTests(unittest.TestCase):
         self.assertEqual(gh.downloads, [rc.MANIFEST, "package.tar.gz"])
         self.assertEqual([asset["download_count"] for asset in gh.assets[10]], [1, 1])
         self.assertEqual(gh.writes, [])
+
+    def test_candidate_payload_uses_the_shared_bounded_asset_supervisor(self):
+        gh = DownloadingGitHub()
+        download = rc.download_asset
+        asset_ids = []
+
+        def observe_download(client, asset_id, *args, **kwargs):
+            asset_ids.append(asset_id)
+            return download(client, asset_id, *args, **kwargs)
+
+        with patch.object(rc, "download_asset", side_effect=observe_download):
+            manifest, _parent = self.verify(gh)
+
+        self.assertEqual(manifest, legacy_tests.manifest())
+        self.assertEqual(asset_ids, [20])
+        self.assertEqual(gh.downloads, [rc.MANIFEST, "package.tar.gz"])
+
+    def test_candidate_supervisor_failure_aborts_verification_before_writes(self):
+        gh = DownloadingGitHub()
+        denied = rc.ProcessCleanupError(
+            "Asset supervisor inherited pipes did not reach EOF before cleanup deadline",
+        )
+
+        with patch.object(rc, "download_asset", side_effect=denied):
+            with self.assertRaises(rc.ProcessCleanupError) as raised:
+                self.verify(gh)
+
+        self.assertIs(raised.exception, denied)
+        self.assertEqual(gh.writes, [])
+        self.assertEqual(gh.downloads, [rc.MANIFEST])
 
     def test_payloads_use_streaming_and_only_one_private_staged_file(self):
         gh = legacy_tests.FakeGitHub()
@@ -453,19 +484,27 @@ class AllocationTests(unittest.TestCase):
 
     def test_branch_creation_and_cas_requests_use_real_narrow_client(self):
         client = state.StateGitHub(REPO)
-        responses = [
-            legacy_tests.http_response(stdout=b'{"ref":"refs/heads/release-version-state"}'),
-            legacy_tests.http_response(stdout=b'{"content":{"sha":"' + SHA.encode() + b'"}}'),
-        ]
-        with patch.object(state.subprocess, "run", side_effect=responses) as run:
+        responses = [legacy_tests.http_response(stdout=b'{"ref":"refs/heads/release-version-state"}')]
+        ledger_response = legacy_tests.http_response(
+            stdout=b'{"content":{"sha":"' + SHA.encode() + b'"}}'
+        )
+        with (
+            patch.object(sys.modules["release_control"], "run_process", side_effect=responses) as run,
+            patch.object(state.subprocess, "run", return_value=ledger_response) as ledger_run,
+        ):
             client.api(
                 "git/refs", "POST", {"ref": "refs/heads/" + state.BRANCH, "sha": SHA}
             )
             state.write_state(client, {"schema": 1, "counter": 0, "plans": {}}, None)
         self.assertEqual(run.call_args_list[0].args[0][-1], f"repos/{REPO}/git/refs")
-        self.assertEqual(
-            json.loads(run.call_args_list[1].kwargs["input"])["branch"], state.BRANCH
-        )
+        self.assertEqual(ledger_run.call_count, 1)
+        expected_ledger = {"schema": 1, "counter": 0, "plans": {}}
+        expected_body = {
+            "branch": state.BRANCH,
+            "message": "Reserve release version plan",
+            "content": base64.b64encode(rc.json_bytes(expected_ledger)).decode(),
+        }
+        self.assertEqual(ledger_run.call_args.kwargs["input"], rc.json_bytes(expected_body))
         with (
             patch.object(state.subprocess, "run") as run,
             self.assertRaisesRegex(rc.ReleaseError, "branch mismatch"),
@@ -683,6 +722,45 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         (self.root / "version").write_text("1.2.3\n")
         self.args.assets = str(self.root / f"assets-{run_id}")
 
+    def test_create_readback_rechecks_local_job_even_when_run_is_in_progress(self):
+        publisher_run = legacy_tests.run(99, completed=False)
+        publisher_run["run_started_at"] = "2026-11-01T00:00:00Z"
+        proof = rc.ExecutionJobProof(700, 800, 900, "runner-example")
+        terminal_job = {
+            "id": 700, "run_id": 99, "run_attempt": 1, "head_sha": SHA,
+            "check_run_url": f"https://api.github.com/repos/{REPO}/check-runs/800",
+            "runner_id": 900, "runner_name": "runner-example",
+            "status": "completed", "conclusion": "cancelled",
+            "completed_at": "2026-11-01T00:05:00Z",
+        }
+        consumed = b"ledger"
+        source_path = "git/ref/heads/main"
+        source_ref = (source_path, {"ref": "refs/heads/main", "object": {"sha": SHA}})
+        encoded = base64.b64encode(consumed).decode()
+
+        class Readback:
+            repo = REPO
+
+            def json(self, path):
+                if path == "actions/runs/99/attempts/1":
+                    return publisher_run
+                if path == "actions/jobs/700":
+                    return terminal_job
+                if path == "":
+                    return {"default_branch": "main"}
+                if path == source_path:
+                    return source_ref[1]
+                if path == "contents/release-version-state.json?ref=release-version-state":
+                    return {"type": "file", "encoding": "base64", "content": encoded}
+                raise AssertionError(f"Unexpected create readback path: {path}")
+
+        confirm = lifecycle.create_confirmation(
+            publisher_run, source_ref, consumed, execution_proof=proof,
+        )
+        readback = Readback()
+        with self.assertRaisesRegex(rc.ReleaseError, "not executing"):
+            confirm(readback)
+
     def build_current(self):
         plan = json.loads(lifecycle.PLAN.read_text(encoding="utf-8"))
         evidence = versions.sync_versions(self.root, self.policy, plan)
@@ -782,13 +860,23 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
 
     def add_windows_package(self):
         assets = Path(self.args.assets)
+        package_bytes = b"synthetic Windows package"
         with tempfile.TemporaryDirectory(dir=self.root) as directory:
             package = Path(directory)
-            (package / "windows.bin").write_bytes(b"synthetic Windows package")
-            receipt.create_receipt(lifecycle.PLAN, self.root / ".release-inputs.json",
-                                   package, package / "release-inputs-windows.json")
-            for path in package.iterdir():
-                (assets / path.name).write_bytes(path.read_bytes())
+            (package / "windows.bin").write_bytes(package_bytes)
+            receipt_value = receipt.create_receipt(
+                lifecycle.PLAN,
+                self.root / ".release-inputs.json",
+                package,
+                package / "release-inputs-windows.json",
+            )
+            receipt_bytes = receipt.canonical(receipt_value)
+        (assets / "windows.bin").write_bytes(package_bytes)
+        (assets / "release-inputs-windows.json").write_bytes(receipt_bytes)
+        return {
+            "windows.bin": package_bytes,
+            "release-inputs-windows.json": receipt_bytes,
+        }
 
     def test_partial_current_attempt_missing_platform_fails_before_publication(self):
         self.require_build_receipts(["release-inputs-linux.json", "release-inputs-windows.json"])
@@ -813,15 +901,17 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         self.require_build_receipts(["release-inputs-linux.json", "release-inputs-windows.json"])
         lifecycle.prepare(self.args)
         self.build_current()
-        self.add_windows_package()
-        previous = Path(self.args.assets)
+        previous_assets = self.add_windows_package()
         self.fresh_attempt()
         (self.root / "version").write_text("1.2.3\n")
         self.args.assets = str(self.root / "attempt-2")
         lifecycle.prepare(self.args)
         self.build_current()
-        for name in ("windows.bin", "release-inputs-windows.json"):
-            (Path(self.args.assets) / name).write_bytes((previous / name).read_bytes())
+        attempt_two = Path(self.args.assets)
+        (attempt_two / "windows.bin").write_bytes(previous_assets["windows.bin"])
+        (attempt_two / "release-inputs-windows.json").write_bytes(
+            previous_assets["release-inputs-windows.json"]
+        )
         writes = copy.deepcopy(self.gh.writes)
         ledger = copy.deepcopy(self.gh.ledger)
         allocations = copy.deepcopy(self.gh.ledger_writes)
@@ -960,7 +1050,16 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         self.assertEqual(self.gh.writes, release_writes)
         state.verify_promotion_order(self.gh, accepted)
         self.assertFalse(rc.EVIDENCE.exists())
-        download.assert_not_called()
+        release_id = next(
+            key for key, value in self.gh.releases.items()
+            if value["tag_name"] == published["tag"]
+        )
+        manifest_id = next(
+            item["id"] for item in self.gh.assets[release_id]
+            if item["name"] == rc.MANIFEST
+        )
+        download.assert_called_once()
+        self.assertEqual(download.call_args.args[0], f"releases/assets/{manifest_id}")
 
     def test_scheduled_beta_reuses_retained_qualified_package(self):
         published, _ = self.qualify_schedule_fixture("beta")
@@ -1013,13 +1112,14 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
             for value in self.gh.releases.values()
             if value["tag_name"] == published["tag"]
         )
-        original = self.gh.binary
+        original = self.gh.download_asset
 
-        def changed(path):
+        def changed(path, *args, **kwargs):
+            result = original(path, *args, **kwargs)
             release["updated_at"] = "2026-10-02T11:59:00Z"
-            return original(path)
+            return result
 
-        with patch.object(self.gh, "binary", side_effect=changed):
+        with patch.object(self.gh, "download_asset", side_effect=changed):
             result = lifecycle.publish_versioned(self.args)
         self.assertEqual(result["status"], "published")
 
@@ -1124,6 +1224,134 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
                 self.gh, info, self.gh.runs[200], snapshot, "1.2.3"
             )
         self.assertEqual(result, "")
+
+    def test_automatic_beta_rechecks_source_after_final_tag_read(self):
+        """A branch advance after the tag read must leave the uploaded release a draft."""
+        plan = self.automatic_build()
+        api = self.gh.api
+        events = []
+        source_path = "git/ref/heads/main"
+        tag_path = f"git/ref/tags/{plan['tag']}"
+        source_reads = 0
+
+        def advance_after_final_tag(path, method="GET", body=None):
+            nonlocal source_reads
+            result = api(path, method, body)
+            if path == source_path:
+                source_reads += 1
+                events.append("source")
+            elif path == tag_path:
+                events.append("tag")
+                if source_reads >= 2:
+                    # Move after the final tag response but before the last
+                    # source-ref read that gates the public PATCH.
+                    self.gh.default_head = "b" * 40
+            elif path == "":
+                events.append("repository")
+            elif path == "actions/runs/99/attempts/1":
+                events.append("attempt")
+            return result
+
+        with (
+            patch.object(self.gh, "api", side_effect=advance_after_final_tag),
+            self.assertRaisesRegex(
+                rc.ReleaseError, "Automatic publication default source changed"
+            ),
+        ):
+            lifecycle.publish_versioned(self.args)
+
+        self.assertEqual(events[-4:], ["tag", "attempt", "repository", "source"])
+        self.assertEqual(self.gh.default_head, "b" * 40)
+        draft = next(
+            release for release in self.gh.releases.values()
+            if release["tag_name"] == plan["tag"]
+        )
+        self.assertTrue(draft["draft"])
+        self.assertTrue(self.gh.assets[draft["id"]])
+        self.assertFalse(any(method == "PATCH" for _, method, _ in self.gh.writes))
+
+    def test_automatic_beta_rechecks_default_branch_after_final_tag_read(self):
+        """A default-branch rename at the final boundary must block publication."""
+        plan = self.automatic_build()
+        api = self.gh.api
+        events = []
+        source_reads = 0
+        tag_path = f"git/ref/tags/{plan['tag']}"
+
+        def rename_after_final_tag(path, method="GET", body=None):
+            nonlocal source_reads
+            result = api(path, method, body)
+            if path == "git/ref/heads/main":
+                source_reads += 1
+                events.append("source")
+            elif path == tag_path:
+                events.append("tag")
+                if source_reads >= 2:
+                    self.gh.info["default_branch"] = "replacement"
+            elif path == "actions/runs/99/attempts/1":
+                events.append("attempt")
+            elif path == "":
+                events.append("repository")
+            return result
+
+        with (
+            patch.object(self.gh, "api", side_effect=rename_after_final_tag),
+            self.assertRaisesRegex(
+                rc.ReleaseError, "Automatic publication default branch changed"
+            ),
+        ):
+            lifecycle.publish_versioned(self.args)
+
+        self.assertEqual(events[-3:], ["tag", "attempt", "repository"])
+        draft = next(
+            release for release in self.gh.releases.values()
+            if release["tag_name"] == plan["tag"]
+        )
+        self.assertEqual(self.gh.info["default_branch"], "replacement")
+        self.assertTrue(draft["draft"])
+        self.assertTrue(self.gh.assets[draft["id"]])
+        self.assertFalse(any(method == "PATCH" for _, method, _ in self.gh.writes))
+
+    def test_scheduled_reuse_propagates_unconfirmed_process_cleanup(self):
+        """An unconfirmed child process must abort reuse rather than look unavailable."""
+        self.qualify_schedule_fixture()
+        self.build_schedule()
+        info = rc.repository_info(self.gh)
+        snapshot = rc.source_policy_snapshot(self.gh, SHA)
+        cleanup_error = rc.ProcessCleanupError("child cleanup was not confirmed")
+
+        with patch.object(
+            lifecycle, "verify_scheduled_reuse", side_effect=cleanup_error,
+        ):
+            with self.assertRaises(rc.ProcessCleanupError) as raised:
+                lifecycle.scheduled_reuse(
+                    self.gh, info, self.gh.runs[200], snapshot, "1.2.3"
+                )
+
+        self.assertIs(raised.exception, cleanup_error)
+
+    def test_automatic_test_push_propagates_unconfirmed_process_cleanup(self):
+        """Cleanup uncertainty is fatal even though ordinary proof gaps allow delivery."""
+        selected_policy = copy.deepcopy(self.policy)
+        selected_policy["change_scope"] = {
+            "automatic_release_test_paths": ["tests/release_fixture.py"]
+        }
+        snapshot = {"data": selected_policy}
+        info = {"default_branch": "main"}
+        run = {"head_sha": SHA}
+        cleanup_error = rc.ProcessCleanupError("child cleanup was not confirmed")
+        admission = {"test_only": True, "after": SHA, "before": "b" * 40}
+
+        with (
+            patch.dict(os.environ, {"GITHUB_EVENT_NAME": "push"}),
+            patch.object(release_push_scope, "current_push", return_value=admission),
+            patch.object(lifecycle, "scheduled_reuse", side_effect=cleanup_error),
+            self.assertRaises(rc.ProcessCleanupError) as raised,
+        ):
+            lifecycle.automatic_test_push(self.gh, info, run, snapshot, "1.2.3")
+
+        self.assertIs(raised.exception, cleanup_error)
+        self.assertFalse((self.root / ".release-push-admission.json").exists())
 
     def test_failed_current_gate_cannot_reuse_previous_rc(self):
         self.qualify_schedule_fixture()
@@ -1765,6 +1993,87 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         self.assertEqual(len(self.gh.ledger_writes), 2)
         self.assertNotIn(plan["tag"], self.gh.refs)
 
+    def test_publisher_termination_during_upload_stops_before_public_release(self):
+        plan = self.automatic_build()
+        verify = rc.verify_uploaded_asset
+        changed = []
+
+        def terminate_during_readback(*args, **kwargs):
+            result = verify(*args, **kwargs)
+            if not changed:
+                changed.append(True)
+                self.gh.runs[99].update(status="completed", conclusion="cancelled")
+            return result
+
+        with patch.object(rc, "verify_uploaded_asset", side_effect=terminate_during_readback):
+            with self.assertRaisesRegex(rc.ReleaseError, "not active"):
+                lifecycle.publish_versioned(self.args)
+        draft = next(release for release in self.gh.releases.values()
+                     if release["tag_name"] == plan["tag"])
+        self.assertTrue(draft["draft"])
+        self.assertTrue(self.gh.assets[draft["id"]])
+        self.assertFalse(any(method == "PATCH" for _, method, _ in self.gh.writes))
+
+    def test_publisher_termination_during_final_tag_read_stops_before_public_release(self):
+        """The exact-attempt callback catches termination after the final tag read."""
+        plan = self.automatic_build()
+        api = self.gh.api
+        final_tag_reads = 0
+        final_boundary_events = []
+        tag_path = f"git/ref/tags/{plan['tag']}"
+
+        def terminate_during_final_tag_read(path, method="GET", body=None):
+            nonlocal final_tag_reads
+            draft = next((release for release in self.gh.releases.values()
+                          if release["tag_name"] == plan["tag"]), None)
+            if path == "actions/runs/99/jobs" and draft and self.gh.assets[draft["id"]]:
+                final_boundary_events.append("full-publisher-validation")
+            if "tag" in final_boundary_events and path in {
+                "actions/runs/99", "actions/runs/99/jobs",
+            }:
+                final_boundary_events.append("aggregate")
+            result = api(path, method, body)
+            if path == tag_path and draft and self.gh.assets[draft["id"]]:
+                final_tag_reads += 1
+                if final_tag_reads == 1:
+                    final_boundary_events.append("tag")
+                    # The tag GET succeeds, but the publisher ends before the
+                    # exact-attempt GET which immediately precedes the PATCH.
+                    self.gh.runs[99].update(status="completed", conclusion="cancelled")
+            elif path == "actions/runs/99/attempts/1" and final_boundary_events:
+                final_boundary_events.append("attempt")
+            return result
+
+        pages = self.gh.pages
+
+        def record_full_publisher_validation(path, field=None):
+            draft = next((release for release in self.gh.releases.values()
+                          if release["tag_name"] == plan["tag"]), None)
+            if (path == "actions/runs/99/attempts/1/jobs" and draft
+                    and self.gh.assets[draft["id"]]):
+                final_boundary_events.append("full-publisher-validation")
+            return pages(path, field)
+
+        with (
+            patch.object(self.gh, "api", side_effect=terminate_during_final_tag_read),
+            patch.object(self.gh, "pages", side_effect=record_full_publisher_validation),
+        ):
+            with self.assertRaisesRegex(rc.ReleaseError, "not active"):
+                lifecycle.publish_versioned(self.args)
+
+        self.assertEqual(final_tag_reads, 1)
+        self.assertEqual(
+            final_boundary_events,
+            ["full-publisher-validation", "tag", "attempt"],
+        )
+        self.assertNotIn("aggregate", final_boundary_events,
+                         "the post-tag publisher check must remain a single exact-attempt read")
+        draft = next(release for release in self.gh.releases.values()
+                     if release["tag_name"] == plan["tag"])
+        self.assertTrue(draft["draft"])
+        self.assertTrue(self.gh.assets[draft["id"]])
+        self.assertFalse(any(method == "PATCH" for _, method, _ in self.gh.writes))
+
     def reject_workflow_drift_without_publication(self, publish):
         """Keep an allocated plan reusable when a known permission failure is found."""
         self.gh.default_head = "b" * 40
@@ -1865,8 +2174,8 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         plan = self.build_current()
         original = lifecycle.begin_publication
 
-        def advance_after_floor(*args):
-            original(*args)
+        def advance_after_floor(*args, **kwargs):
+            original(*args, **kwargs)
             self.gh.default_head = "b" * 40
             self.gh.github_directories[self.gh.default_head][0]["sha"] = "d" * 40
 
@@ -2147,17 +2456,26 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         with tempfile.TemporaryDirectory(prefix="release-versioned-") as temp:
             path = Path(temp).resolve() / "app.bin"
             path.write_bytes(b"package")
-            with patch.object(
-                rc.subprocess,
-                "run",
-                return_value=subprocess.CompletedProcess(
+            gh = rc.GitHub(REPO)
+            resolved_gh = "/reviewed/bin/gh"
+            with (
+                patch.object(rc, "resolve_executable", return_value=resolved_gh),
+                patch.object(
+                    rc,
+                    "run_process",
+                    return_value=subprocess.CompletedProcess(
                     [],
                     0,
                     b'HTTP/2.0 201 Created\r\n\r\n{"id": 10, "name": "app.bin", "state": "uploaded", "size": 7}',
                     b"",
-                ),
-            ) as run:
-                rc.GitHub(REPO).upload("v1.2.3-beta.1", path, release_id=11)
+                    ),
+                ) as run,
+                patch.object(gh, "pages", return_value=[
+                    {"id": 10, "name": "app.bin", "state": "uploaded", "size": 7}
+                ]),
+            ):
+                gh.upload("v1.2.3-beta.1", path, release_id=11)
+            self.assertEqual(run.call_args.args[0][0], resolved_gh)
             self.assertEqual(run.call_args.args[0][1:3], ["api", "--hostname"])
 
 
@@ -2290,7 +2608,7 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         def move_tag(path, *args, **kwargs):
             result = api(path, *args, **kwargs)
             draft = next((r for r in self.gh.releases.values() if r['tag_name'] == plan['tag']), None)
-            if path == 'git/ref/heads/main' and draft and self.gh.assets[draft['id']]:
+            if path == 'git/ref/heads/main' and draft and self.gh.assets[draft['id']] and not callback_reads:
                 callback_reads.append(path)
                 self.gh.refs[plan['tag']]['object']['sha'] = 'b' * 40
             return result
@@ -2422,6 +2740,111 @@ def compact_published_fixture(fixture, rc_tag=None):
     return candidate, candidate_raw, compact, stable_id
 
 
+class LegacyScheduledReuseTests(unittest.TestCase):
+    """Keep schema-1 full-inventory reuse bound to exact manifest bytes."""
+
+    def setUp(self):
+        self.fixture = LifecycleTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.result, self.plan, self.manifest = self.fixture.release_run("rc", 100)
+        self.gh = self.fixture.gh
+        self.gh.writes.clear()
+        self.gh.ledger_writes.clear()
+        self.gh.jobs_by_run[100] = [
+            copy.deepcopy(self.gh.jobs[0]),
+            {**self.gh.jobs[0], "name": "checks / CI gate"},
+        ]
+        for assets in self.gh.assets.values():
+            for asset in assets:
+                asset["digest"] = "sha256:" + rc.digest(self.gh.files[asset["id"]])
+        self.asset = next(
+            item for item in self.gh.assets[
+                next(key for key, value in self.gh.releases.items()
+                     if value["tag_name"] == self.result["tag"])
+            ]
+            if item["name"] == rc.MANIFEST
+        )
+        self.asset.pop("digest", None)
+
+    def verify(self):
+        lifecycle.verify_scheduled_reuse(
+            self.gh, self.gh.info, self.manifest["source_policy"], self.plan,
+            100, self.result["tag"],
+        )
+
+    def test_digestless_schema_one_manifest_reuse_is_accepted(self):
+        self.verify()
+        self.assertEqual(self.gh.writes, [])
+        self.assertEqual(self.gh.ledger_writes, [])
+
+    def test_digestless_payload_reuse_rechecks_source_attempt_after_download(self):
+        release_assets = self.gh.assets[
+            next(key for key, value in self.gh.releases.items()
+                 if value["tag_name"] == self.result["tag"])
+        ]
+        payload = next(item for item in release_assets if item["name"] != rc.MANIFEST)
+        payload.pop("digest", None)
+        download = self.gh.download_asset
+
+        def rerun_after_payload_read(path, output):
+            download(path, output)
+            if path == f"releases/assets/{payload['id']}":
+                self.gh.runs[100]["run_attempt"] = 2
+
+        with patch.object(self.gh, "download_asset", side_effect=rerun_after_payload_read), \
+                self.assertRaisesRegex(
+                    (ValueError, rc.ReleaseError),
+                    "Source run was rerun; evidence is not from its latest attempt",
+                ):
+            self.verify()
+        self.assertEqual(self.gh.writes, [])
+        self.assertEqual(self.gh.ledger_writes, [])
+
+    def test_digest_present_reuse_rechecks_source_attempt_after_evidence_read(self):
+        artifact_id = self.gh.evidence_by_run[100][0]["id"]
+        binary = self.gh.binary
+
+        def rerun_after_evidence_read(path):
+            data = binary(path)
+            if path == f"actions/artifacts/{artifact_id}/zip":
+                self.gh.runs[100]["run_attempt"] = 2
+            return data
+
+        with patch.object(self.gh, "binary", side_effect=rerun_after_evidence_read), \
+                self.assertRaisesRegex(
+                    (ValueError, rc.ReleaseError),
+                    "Source run was rerun; evidence is not from its latest attempt",
+                ):
+            self.verify()
+        self.assertEqual(self.gh.writes, [])
+        self.assertEqual(self.gh.ledger_writes, [])
+
+    def test_same_size_manifest_replacement_after_first_read_is_rejected(self):
+        asset_id = self.asset["id"]
+        original = self.gh.files[asset_id]
+        self.assertIn(b'"run_id": 100', original)
+        replacement = original.replace(b'"run_id": 100', b'"run_id": 101', 1)
+        self.assertEqual(len(replacement), len(original))
+        read = self.gh.binary
+        changed = False
+
+        def replace_after_initial_body(path):
+            nonlocal changed
+            data = read(path)
+            if path == f"releases/assets/{asset_id}" and not changed:
+                self.gh.files[asset_id] = replacement
+                changed = True
+            return data
+
+        with patch.object(self.gh, "binary", side_effect=replace_after_initial_body), \
+                self.assertRaisesRegex((ValueError, rc.ReleaseError), "size or checksum mismatch"):
+            self.verify()
+        self.assertTrue(changed)
+        self.assertEqual(self.gh.writes, [])
+        self.assertEqual(self.gh.ledger_writes, [])
+
+
 class CompactConsumerTests(unittest.TestCase):
     def setUp(self):
         self.fixture = LifecycleTests()
@@ -2438,6 +2861,26 @@ class CompactConsumerTests(unittest.TestCase):
 
     def verify(self, stage=None):
         return lifecycle.read_verified_distribution(self.gh, self.compact["tag"], rc.json_bytes(self.compact), stage=stage)
+
+    def test_compact_reuse_rechecks_source_attempt_after_nested_distribution_read(self):
+        original = lifecycle.read_verified_distribution
+
+        def rerun_after_nested_read(*args, **kwargs):
+            result = original(*args, **kwargs)
+            self.gh.runs[100]["run_attempt"] = 2
+            return result
+
+        with patch.object(lifecycle, "read_verified_distribution", side_effect=rerun_after_nested_read), \
+                self.assertRaisesRegex(
+                    (ValueError, rc.ReleaseError),
+                    "Source run was rerun; evidence is not from its latest attempt",
+                ):
+            lifecycle.verify_scheduled_reuse(
+                self.gh, self.gh.info, self.manifest["source_policy"],
+                self.manifest["version_plan"], 100, self.compact["tag"],
+            )
+        self.assertEqual(self.gh.writes, [])
+        self.assertEqual(self.gh.ledger_writes, [])
 
     def test_legacy_wrapper_streams_preproducer_receipt_but_strict_paths_reject_it(self):
         rewrite_retained_receipt(self.fixture, self.manifest, lambda value: value.pop("producer"))
@@ -2506,6 +2949,35 @@ class CompactConsumerTests(unittest.TestCase):
         self.assertEqual(proof, self.compact["rc_evidence"])
         self.assertEqual({path.name for path in directory.iterdir()}, {item["name"] for item in self.compact["assets"]})
         self.assertNotIn("stable_distribution", manifest["source_policy"]["data"])
+        self.assertEqual(self.gh.writes, [])
+        self.assertEqual(self.gh.ledger_writes, [])
+
+    def test_digestless_stable_manifest_is_bound_to_snapshot_bytes(self):
+        asset = next(item for item in self.gh.assets[self.stable_id]
+                     if item["name"] == rc.MANIFEST)
+        asset.pop("digest")
+        original = self.gh.files[asset["id"]]
+        self.assertIn(b"v1.2.3", original)
+        replacement = original.replace(b"v1.2.3", b"v9.9.9", 1)
+        self.assertEqual(len(replacement), len(original))
+        snapshot = lifecycle.published_plan_snapshot
+        changed = False
+
+        def mutate_after_caller_read(gh, tag, source, prerelease):
+            nonlocal changed
+            if tag == self.compact["tag"] and not changed:
+                # The caller has already supplied the original manifest bytes.
+                # Simulate a same-size replacement just before the inventory
+                # snapshot; GitHub's asset API omits its digest.
+                gh.files[asset["id"]] = replacement
+                changed = True
+            return snapshot(gh, tag, source, prerelease)
+
+        with patch.object(lifecycle, "published_plan_snapshot",
+                          side_effect=mutate_after_caller_read), \
+                self.assertRaisesRegex(rc.ReleaseError, "size or checksum mismatch"):
+            self.verify()
+        self.assertTrue(changed)
         self.assertEqual(self.gh.writes, [])
         self.assertEqual(self.gh.ledger_writes, [])
 
@@ -2648,6 +3120,37 @@ class CompactConsumerTests(unittest.TestCase):
                 self.assertRaisesRegex(rc.ReleaseError, "full-inventory signature"):
             self.verify()
         retained.assert_not_called()
+
+    def test_scheduled_reuse_hashes_compact_payloads_when_api_digests_are_missing(self):
+        candidate_id = next(key for key, value in self.gh.releases.items()
+                            if value["tag_name"] == self.manifest["tag"])
+        candidate_assets = self.gh.assets[candidate_id]
+        stable_assets = self.gh.assets[self.stable_id]
+        payload_name = self.compact["assets"][0]["name"]
+        for collection in (candidate_assets, stable_assets):
+            next(item for item in collection if item["name"] == payload_name).pop("digest")
+        lifecycle.verify_scheduled_reuse(
+            self.gh, self.gh.info, self.manifest["source_policy"],
+            self.manifest["version_plan"], 100, self.compact["tag"],
+        )
+        self.assertEqual(self.gh.writes, [])
+
+    def test_scheduled_reuse_rejects_wrong_bytes_when_digest_metadata_is_missing(self):
+        candidate_id = next(key for key, value in self.gh.releases.items()
+                            if value["tag_name"] == self.manifest["tag"])
+        candidate_assets = self.gh.assets[candidate_id]
+        asset = next(item for item in candidate_assets
+                     if item["name"] == self.compact["assets"][0]["name"])
+        asset.pop("digest")
+        raw = bytearray(self.gh.files[asset["id"]])
+        raw[0] ^= 1
+        self.gh.files[asset["id"]] = bytes(raw)
+        with self.assertRaises((ValueError, rc.ReleaseError)):
+            lifecycle.verify_scheduled_reuse(
+                self.gh, self.gh.info, self.manifest["source_policy"],
+                self.manifest["version_plan"], 100, self.compact["tag"],
+            )
+        self.assertEqual(self.gh.writes, [])
 
     def test_scheduled_reuse_accepts_compact_and_keeps_original_plan(self):
         lifecycle.verify_scheduled_reuse(self.gh, self.gh.info, self.manifest["source_policy"],

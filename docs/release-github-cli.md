@@ -31,14 +31,33 @@ Transport, TLS, response-body, size, other HTTP status and later checksum or
 version failures are not retried. Publication writes keep their separate
 single-attempt policy.
 
-The downloader and its Go regression tests are a targeted backport from
-[`venus-os-ci-toolkit` commit `35ea6ef05730806bd85e27fdbbeed326ac5c3deb`](https://github.com/victron-venus/venus-os-ci-toolkit/commit/35ea6ef05730806bd85e27fdbbeed326ac5c3deb).
-The general toolkit revision and the release engine are unchanged. Both CI and
-release validation run `scripts/download_release_gh_test.go` with the pinned Go
-version and FIPS setting. These synthetic-transport tests cover retry policy,
-deadline, response closure and size limits; they do not replace the separate TLS
-qualification. Preserve the test file and both workflow steps during toolkit
-regeneration, which can otherwise overwrite a targeted backport.
+The release process supervisor supports Linux with Python 3.12 or newer and
+macOS with Python 3.13 or newer. macOS Python 3.12 does not expose the
+`waitid(WNOWAIT)` capability needed to retain process-group identity during
+cleanup. Unsupported operating-system/runtime combinations fail closed before
+starting a process. The supervisor starts a fixed internal wrapper as the
+process-group leader and sends the target argv over a private bounded pipe, not
+the wrapper command line. It captures stdout and stderr under one aggregate
+byte limit. The wrapper stays alive after reporting the target exit status; the
+parent signals the group before draining inherited output pipes and reaping the
+wrapper, so a reused PID is never used as a process-group ID. Timeout,
+cancellation and output-limit cleanup use the same ordering. On ordinary target
+exit, the wrapper waits for and reaps the target before reporting its status. On
+timeout, cancellation or output-limit cleanup, the parent kills the still-live
+wrapper's owned process group; the target may consequently be reparented to
+init/launchd instead of being waitpid-reaped by the wrapper. Successful group
+signaling means the kernel accepted SIGKILL for at least one eligible member
+of the owned process group while the wrapper pinned its identity; it does not
+prove every group member exited. Bounded wrapper reap and pipe EOF bound the
+local call, not every descendant's lifetime. Processes that deliberately move
+into another group/session, cannot be signaled, or remain uninterruptible
+require an outer process/container cleanup boundary. A systemd
+`KillMode=control-group` boundary exists only when this helper runs inside that
+unit; otherwise the caller must provide an equivalent. A signal-permission
+failure or other unverified group-signal error fails closed and is not proof
+that descendants stopped. Windows browser checks do not invoke this helper.
+The caller's command timeout starts after `Popen` returns, so time spent inside
+the operating system's process-creation call is outside that deadline.
 
 `--archive FILE --output PATH` installs an already downloaded archive without
 network access or a Go compiler. The same size, archive hash, native executable
@@ -88,11 +107,18 @@ conservative authorization-diagnostic veto can then prevent a retry even for
 HTTP 503. Keep that veto intact; API debug traces are for diagnosis, not normal
 automated read recovery.
 
-POST, PATCH, PUT and uploads are never replayed. Large streamed downloads retain
-their separate 900-second limit, expected size/hash, cumulative byte budget and
-free-space floor. They remain single attempts: restarting them requires an
-explicit budget for transferred-and-discarded bytes. Recovery does not relax
-source, manifest, signature, provenance or payload validation.
+POST, PATCH and PUT writes are never replayed. An upload POST may be retried once
+only after an explicit HTTP 500/502/503/504 and a complete exact-release inventory
+proves that asset absent; timeouts and other outcomes never authorize a retry.
+Any matching asset still needs exact identity and byte verification. See the
+[release workflow upload-recovery rule](release-workflow.md#stable-promotion).
+
+Large streamed downloads retain their separate 900-second limit, expected
+size/hash, cumulative byte budget and free-space floor. Recognized transient GET
+connection or server failures may retry the whole asset up to three times;
+transfer timeouts remain terminal. Discarded bytes stay charged to the same
+budget. Recovery does not relax source, manifest, signature, provenance or
+payload validation.
 
 ## Scoped dependency assessment — 2026-10-22
 

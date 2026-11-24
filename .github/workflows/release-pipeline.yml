@@ -60,7 +60,7 @@ jobs:
         name: Classify documentation and build inputs
         env:
           DOCUMENTATION_PATHS: '["vendor/README.md"]'
-          REQUIRED_PATHS: '["docs/privacy-policy.md"]'
+          REQUIRED_PATHS: '["docs/privacy-policy.md", "CHANGELOG.md"]'
           FORCE_FULL: 'true'
         run: |
           args=()
@@ -88,6 +88,9 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: 1.27.4
@@ -107,6 +110,7 @@ jobs:
         env:
           PUBLICATION_ENABLED: ${{ vars.RELEASE_CHANNELS_ENABLED }}
           GH_TOKEN: ${{ github.token }}
+          RELEASE_EXECUTION_CHECK_RUN_ID: ${{ job.check_run_id }}
       - name: Store exact version plan before building
         if: ${{ steps.metadata.outputs.build == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -118,7 +122,7 @@ jobs:
           retention-days: 90
       - name: Retain test-only push admission
         if: ${{ steps.metadata.outputs.status == 'test-only-already-published' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-push-admission-${{ github.run_id }}-${{ github.run_attempt }}
           path: .release-push-admission.json
@@ -226,6 +230,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: 1.27.4
@@ -255,6 +262,7 @@ jobs:
         id: publication
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_EXECUTION_CHECK_RUN_ID: ${{ job.check_run_id }}
           CHANNEL: ${{ needs.prepare.outputs.channel }}
           VERSION: ${{ needs.prepare.outputs.version }}
         run: python3 scripts/release_versioned.py publish --repo "$GITHUB_REPOSITORY" --assets .release-assets
@@ -285,6 +293,9 @@ jobs:
         with:
           egress-policy: audit
       - *id001
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: 1.27.4
@@ -302,6 +313,7 @@ jobs:
       - name: Promote RC bytes after approval
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_EXECUTION_CHECK_RUN_ID: ${{ job.check_run_id }}
           RC_TAG: ${{ inputs.rc_tag }}
         run: python3 scripts/release_control.py promote --repo "$GITHUB_REPOSITORY" --rc "$RC_TAG" --run-id "$GITHUB_RUN_ID"
   final:
@@ -325,6 +337,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: 1.27.4
@@ -354,6 +369,7 @@ jobs:
         id: publication
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_EXECUTION_CHECK_RUN_ID: ${{ job.check_run_id }}
           CHANNEL: ${{ needs.prepare.outputs.channel }}
           VERSION: ${{ needs.prepare.outputs.version }}
         run: python3 scripts/release_versioned.py publish --repo "$GITHUB_REPOSITORY" --assets .release-assets

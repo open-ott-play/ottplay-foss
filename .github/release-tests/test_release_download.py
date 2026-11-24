@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
+import json
 from pathlib import Path
 import os
 import shutil
@@ -17,6 +19,7 @@ import sys
 import tempfile
 import time
 import unittest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
@@ -50,31 +53,57 @@ class ReleaseDownloadTests(unittest.TestCase):
         return Mock(download_asset=lambda _path, sink: sink.write(data))
 
     def fixture_process(self, code):
-        original = subprocess.Popen
-
-        def start(command, **options):
-            self.assertEqual(command[:3], ["gh", "api", "--hostname"])
-            process = original([sys.executable, "-c", code], **options)
-            self.children.append(process)
-            return process
-
-        return patch.object(rc.subprocess, "Popen", side_effect=start)
+        return self.fixture_processes(code)
 
     def fixture_processes(self, *programs):
-        """Substitute only gh with a fixed sequence of tiny offline children."""
-        original = subprocess.Popen
-        remaining = iter(programs)
+        """Run each fixed offline response through the real supervisor and fake gh."""
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir(exist_ok=True)
+        executable = fake_bin / "gh"
+        call_index = self.root / "gh-call-index"
+        call_index.unlink(missing_ok=True)
+        code = (
+            "import json,os,pathlib,sys\n"
+            f"programs=json.loads({json.dumps(programs)!r})\n"
+            f"counter=pathlib.Path({str(call_index)!r})\n"
+            "index=int(counter.read_text()) if counter.exists() else 0\n"
+            "counter.write_text(str(index+1))\n"
+            "expected=['api','--hostname','github.com','--include','--method','GET','-H',"
+            "'Accept: application/octet-stream','--','repos/test/repo/releases/assets/1']\n"
+            "if sys.argv[1:] != expected: sys.stderr.write(repr(sys.argv[1:])); raise SystemExit(97)\n"
+            "if index >= len(programs): sys.stderr.write('unexpected call'); raise SystemExit(98)\n"
+            "original_write=os.write\n"
+            "response_started=[False]\n"
+            "def framed_write(fd,data):\n"
+            " if fd==1 and not response_started[0]:\n"
+            "  original_write(1,b'HTTP/2 200 OK\\r\\nContent-Type: application/octet-stream\\r\\n\\r\\n')\n"
+            "  response_started[0]=True\n"
+            " return original_write(fd,data)\n"
+            "os.write=framed_write\n"
+            "exec(compile(programs[index],'<offline-gh-fixture>','exec'),globals())\n"
+        )
+        executable.write_text(f"#!{sys.executable}\n" + code)
+        executable.chmod(0o755)
+        original_launch = rc._launch_supervised_process
 
-        def start(command, **options):
-            self.assertEqual(command[:3], ["gh", "api", "--hostname"])
-            self.assertEqual(command[command.index("--method") + 1], "GET")
-            self.assertEqual(command[-1], "repos/test/repo/releases/assets/1")
+        def launch(command, **options):
+            self.assertEqual(Path(command[0]), executable.resolve())
+            self.assertTrue(Path(command[0]).is_absolute())
+            self.assertEqual(command[1:], (
+                "api", "--hostname", "github.com", "--include", "--method", "GET", "-H",
+                "Accept: application/octet-stream", "--", "repos/test/repo/releases/assets/1",
+            ))
             self.assertTrue(all(child.poll() is not None for child in self.children))
-            process = original([sys.executable, "-c", next(remaining)], **options)
-            self.children.append(process)
-            return process
+            started = original_launch(command, **options)
+            self.children.append(started.process)
+            return started
 
-        return patch.object(rc.subprocess, "Popen", side_effect=start)
+        stack = ExitStack()
+        stack.enter_context(patch.dict(os.environ, {
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }))
+        stack.enter_context(patch.object(rc, "_launch_supervised_process", side_effect=launch))
+        return stack
 
     @staticmethod
     def failed_stream(stderr=b"gh: unexpected end of JSON input", code=1):
@@ -83,6 +112,29 @@ class ReleaseDownloadTests(unittest.TestCase):
     def assert_reaped(self):
         self.assertTrue(self.children)
         self.assertTrue(all(child.poll() is not None for child in self.children))
+
+    def test_retry_free_space_is_checked_after_owned_partial_is_truncated(self):
+        self.output.write_bytes(b"x" * 6)
+        budget = rc.DownloadBudget(20, reserve_bytes=5)
+        expected = self.identity(b"x" * 10)
+        observed = []
+        with self.output.open("r+b", buffering=0) as handle:
+            writer = rc._AssetWriter(handle, self.output, expected, budget)
+            writer.size = 6
+            writer.checksum.update(b"x" * 6)
+            budget.written = 6
+
+            def free_after_truncate(_path):
+                size = self.output.stat().st_size
+                observed.append(size)
+                return SimpleNamespace(total=100, used=85, free=15)
+
+            with patch.object(rc.shutil, "disk_usage", side_effect=free_after_truncate):
+                writer.reset_for_retry()
+            self.assertEqual(observed, [0])
+            self.assertEqual(handle.tell(), 0)
+            self.assertEqual(writer.size, 0)
+            self.assertEqual(budget.written, 6)
 
     def test_exact_empty_and_multichunk_streams(self):
         for data in [b"", b"one", b"a" * 19]:
@@ -334,7 +386,7 @@ class ReleaseDownloadTests(unittest.TestCase):
             self.download(rc.GitHub("test/repo"))
         self.assertFalse(self.output.exists())
         self.assert_reaped()
-        self.assertEqual(len(readers), 2)
+        self.assertEqual(len(readers), 3)
         self.assertTrue(all(not reader.is_alive() for reader in readers))
 
     def test_direct_transport_cannot_bypass_expected_identity_and_budget(self):
@@ -522,7 +574,7 @@ class ReleaseDownloadTests(unittest.TestCase):
         clock = [100.0]
         deadlines = []
 
-        def stream(_command, sink, *, deadline=None):
+        def stream(_command, sink, *, deadline=None, frame_http=False):
             deadlines.append(deadline)
             clock[0] += 2
             if len(deadlines) == 1:
@@ -550,7 +602,7 @@ class ReleaseDownloadTests(unittest.TestCase):
         for timeout in (False, True):
             clock = [100.0]
 
-            def fail(command, sink, *, deadline=None):
+            def fail(command, sink, *, deadline=None, frame_http=False):
                 self.assertEqual(deadline, 110.0)
                 sink.write(b"p")
                 if timeout:
@@ -605,7 +657,7 @@ class ReleaseDownloadTests(unittest.TestCase):
         self.assertEqual(self.budget.written, 1)
         self.assertEqual(len(self.children), 2)
         self.assert_reaped()
-        self.assertEqual(len(readers), 4)
+        self.assertEqual(len(readers), 6)
         self.assertTrue(all(not reader.is_alive() for reader in readers))
 
     def test_json_eof_retry_does_not_extend_metadata_or_mutation_retry_policy(self):
@@ -618,7 +670,7 @@ class ReleaseDownloadTests(unittest.TestCase):
         for method, path, body in cases:
             with (
                 self.subTest(method=method),
-                patch.object(rc.subprocess, "run", return_value=self.failed_stream()) as run,
+                patch.object(rc, "run_process", return_value=self.failed_stream()) as run,
                 patch.object(rc.time, "sleep") as sleep,
                 self.assertRaises(rc.GitHubError),
             ):

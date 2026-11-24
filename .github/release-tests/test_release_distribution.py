@@ -11,9 +11,9 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import subprocess
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
@@ -69,6 +69,21 @@ class DistributionSchemaTests(unittest.TestCase):
         self.assertEqual({item["name"] for item in compact["assets"]},
                          {item["name"] for item in self.rc["assets"]} - {"release-inputs-build.json"})
         distribution.verify_distribution(compact, self.rc, encoded(self.rc))
+
+    def test_receipt_like_nonreceipt_payload_is_retained(self):
+        name = "release-inputs-.json"
+        asset = {"name": name, "size": len(name), "sha256": hashlib.sha256(name.encode()).hexdigest()}
+        self.rc["assets"].append(asset)
+        compact = distribution.stable_distribution(self.rc, encoded(self.rc))
+        self.assertIn(asset, compact["assets"])
+
+    def test_undeclared_exact_receipt_cannot_be_withheld(self):
+        name = "release-inputs-extra.json"
+        self.rc["assets"].append({
+            "name": name, "size": len(name), "sha256": hashlib.sha256(name.encode()).hexdigest(),
+        })
+        with self.assertRaisesRegex(ValueError, "Undeclared release-inputs asset"):
+            distribution.stable_distribution(self.rc, encoded(self.rc))
 
     def test_partial_fuzz_declaration_cannot_be_reclassified_as_an_ordinary_payload(self):
         for remove in ("profile", "report", "receipt", "receipt-and-report"):
@@ -277,13 +292,16 @@ class CompactPromotionTests(unittest.TestCase):
             path = Path(argv[argv.index("--input") + 1])
             self.assertTrue(path.parent.name.startswith("release-promote-distribution-"))
             response = {"id": 900, "name": path.name, "state": "uploaded", "size": path.stat().st_size}
-            return subprocess.CompletedProcess(argv, 0, b"HTTP/2.0 201 Created\r\n\r\n" + encoded(response), b"")
+            return SimpleNamespace(
+                argv=tuple(argv), returncode=0,
+                stdout=b"HTTP/2.0 201 Created\r\n\r\n" + encoded(response), stderr=b"",
+            )
 
         def admitted_upload(tag, path, *, release_id):
             real_client.upload(tag, path, release_id=release_id)
             fake_upload(tag, path, release_id=release_id)
 
-        with patch.object(rc.subprocess, "run", side_effect=transport) as requests, patch.object(
+        with patch.object(rc, "run_process", side_effect=transport) as requests, patch.object(
             self.gh, "upload", side_effect=admitted_upload
         ):
             _, files = self.promoted_files(args)
