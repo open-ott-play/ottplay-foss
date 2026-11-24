@@ -2107,6 +2107,25 @@ export function ottBottomInfoBandStart(h: number): number {
 }
 
 /**
+ * True when a pointer Y falls inside the bottom info band (the zone
+ * `body_onClick` hands to `showChannelInfo`).
+ *
+ * @param clientY - Pointer Y in client coordinates.
+ * @returns boolean — false when the viewport height is unknown.
+ * @sideeffect Publishes the helper for the lazy Modern overlay so both modes
+ *             share one pointer band instead of inventing their own geometry.
+ */
+export function ottInBottomInfoBand(clientY: number): boolean {
+    const h = ottBandViewportHeight();
+    return (
+        h > 0 &&
+        typeof clientY === "number" &&
+        clientY > ottBottomInfoBandStart(h)
+    );
+}
+(window as any).__ottInBottomInfoBand = ottInBottomInfoBand;
+
+/**
  * Handle `click` events on the document body (assigned to `document.body.onclick`).
  * Interprets the vertical click position:
  * - Top 20% → open popup menu (popupList)
