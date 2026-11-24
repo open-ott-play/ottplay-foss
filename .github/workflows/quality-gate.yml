@@ -71,6 +71,14 @@ jobs:
       - scope
       - workflow-contracts
     if: ${{ needs.scope.outputs.run == 'true' }}
+  check-3:
+    uses: ./.github/workflows/commit-signatures.yml
+    permissions:
+      contents: read
+      actions: read
+    needs:
+      - scope
+      - workflow-contracts
   workflow-contracts:
     name: CI configuration contracts
     runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name
@@ -151,6 +159,7 @@ jobs:
       - check-0
       - check-1
       - check-2
+      - check-3
       - workflow-contracts
       - release-contracts
     if: ${{ always() }}
@@ -171,8 +180,8 @@ jobs:
           python3 - <<'PY'
           import json, os
           results = json.loads(os.environ['RESULTS'])
-          expected = ['check-0', 'check-1', 'check-2', 'release-contracts', 'scope', 'workflow-contracts']
-          always = ['check-1', 'scope', 'workflow-contracts']
+          expected = ['check-0', 'check-1', 'check-2', 'check-3', 'release-contracts', 'scope', 'workflow-contracts']
+          always = ['check-1', 'check-3', 'scope', 'workflow-contracts']
           if set(results) != set(expected):
               raise SystemExit('Validation job inventory differs')
           scope = results['scope']
