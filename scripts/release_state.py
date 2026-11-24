@@ -327,9 +327,9 @@ def begin_publication(
     else:
         _verify_reservation(gh, state, plan, run_id, parent)
     state["publication_floor"] = cast(int, plan["build_number"])
-    # This is the last point after remote validation and before the single CAS PUT.
+    # This is the last point after remote validation and before the single CAS PUT,
+    # so a publisher cancelled during the ledger reads cannot consume the number.
     if confirm_before_write is not None:
-        rc.require(promotion, "Publisher recheck is only valid for promotion")
         confirm_before_write()
     write_state(gh, state, previous)
     # In-memory confirmation for this call only; never a persisted resume token.

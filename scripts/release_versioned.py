@@ -1158,9 +1158,13 @@ def publish_versioned(args: argparse.Namespace) -> dict[str, object]:
                 )
 
         # Execution admission may be minutes old after downloads and signatures.
-        # Recheck immediately before the first persistent ledger mutation.
+        # Recheck before the ledger reads and again inside the protected CAS write,
+        # so a publisher cancelled mid-read cannot consume the build number.
         confirm_publisher_execution()
-        consumed = begin_publication(gh, plan, cast(int, run["id"]), parent)
+        consumed = begin_publication(
+            gh, plan, cast(int, run["id"]), parent,
+            confirm_before_write=confirm_publisher_execution,
+        )
         confirm_create = create_confirmation(
             run, source_ref, consumed, execution_proof[0] if execution_proof else None
         )

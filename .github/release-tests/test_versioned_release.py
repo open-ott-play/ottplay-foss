@@ -2174,8 +2174,8 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         plan = self.build_current()
         original = lifecycle.begin_publication
 
-        def advance_after_floor(*args):
-            original(*args)
+        def advance_after_floor(*args, **kwargs):
+            original(*args, **kwargs)
             self.gh.default_head = "b" * 40
             self.gh.github_directories[self.gh.default_head][0]["sha"] = "d" * 40
 

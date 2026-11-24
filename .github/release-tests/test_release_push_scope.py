@@ -57,6 +57,48 @@ def record(
     return f":{old_mode} {new_mode} {old_hash} {new_hash} {status}\0{path}\0".encode()
 
 
+class WorkflowShellTests(unittest.TestCase):
+    """Reject shell overrides that would replace the audited run commands."""
+
+    def workflow(self):
+        import yaml  # noqa: PLC0415
+
+        return yaml.load(
+            (ROOT / ".github" / "workflows" / "release-pipeline.yml").read_text(),
+            Loader=yaml.BaseLoader,
+        )
+
+    def policy(self):
+        return {"change_scope": {"automatic_release_test_paths": PATHS}}
+
+    def test_reviewed_workflow_and_every_shell_scope_are_enforced(self):
+        SCOPE.validate_workflow(self.policy(), self.workflow())
+        mutations = {
+            "workflow": lambda workflow: workflow.update(
+                defaults={"run": {"shell": "bash -c true {0}"}}
+            ),
+            "job": lambda workflow: workflow["jobs"]["prepare"].update(
+                defaults={"run": {"shell": "bash -c true {0}"}}
+            ),
+            "prepare-step": lambda workflow: (
+                next(
+                    step
+                    for step in workflow["jobs"]["prepare"]["steps"]
+                    if step.get("id") == "metadata"
+                ).update(shell="bash -c true {0}")
+            ),
+            "scope-step": lambda workflow: workflow["jobs"]["scope"]["steps"][0].update(
+                shell="bash -c true {0}"
+            ),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(scope=name):
+                workflow = self.workflow()
+                mutate(workflow)
+                with self.assertRaisesRegex(ValueError, "overrides the run shell"):
+                    SCOPE.validate_workflow(self.policy(), workflow)
+
+
 class ClassifierTests(unittest.TestCase):
     def test_helper_supports_existing_package_import_callers(self):
         result = subprocess.run(
