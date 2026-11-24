@@ -473,10 +473,15 @@ impl Manager {
         if result.is_err() {
             tracing::debug!("audio normalization session ended");
         }
-        session.producing.store(false, Ordering::Release);
         let retiring = session.retiring.load(Ordering::Acquire);
-        if (retain && !*cancel.borrow()) || retiring {
+        let holding = retain && !*cancel.borrow();
+        // Advertise the window before the producer flag drops: a reader must never see
+        // a session that stopped producing while it still has a window to serve.
+        if holding || retiring {
             session.extend_window();
+        }
+        session.producing.store(false, Ordering::Release);
+        if holding || retiring {
             let oldest = {
                 let mut retired = self.0.retired.lock().unwrap();
                 retired.push_back(id.clone());
@@ -798,8 +803,7 @@ mod tests {
     #[test]
     fn disk_scan_ignores_only_missing_entry_metadata() {
         assert_eq!(
-            directory_entry_size(Err(std::io::Error::from(std::io::ErrorKind::NotFound)))
-                .unwrap(),
+            directory_entry_size(Err(std::io::Error::from(std::io::ErrorKind::NotFound))).unwrap(),
             0
         );
         let error = directory_entry_size(Err(std::io::Error::from(
@@ -1062,6 +1066,77 @@ mod tests {
             "window ended before its advertised deadline: {held:?}"
         );
         assert!(Instant::now() >= advertised);
+        tokio::fs::remove_dir_all(directory).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_ended_window_stops_being_servable_while_still_resident() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory =
+            std::env::temp_dir().join(format!("ott-ended-window-{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir(&directory).await.unwrap();
+        for name in ["ffmpeg", "ffprobe"] {
+            let file = directory.join(name);
+            tokio::fs::write(
+                file.clone(),
+                format!("#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then echo '{name} version test'; exit 0; fi\nexit 1\n"),
+            )
+            .await
+            .unwrap();
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let manager = Manager::new(Config {
+            ffmpeg: directory.join("ffmpeg"),
+            ffprobe: directory.join("ffprobe"),
+            directory: directory.join("sessions"),
+            sessions: 2,
+            disk_limit: 1024 * 1024,
+            startup_timeout: Duration::from_secs(1),
+            idle_timeout: Duration::from_secs(60),
+            lease_duration: Duration::from_secs(60),
+        })
+        .await
+        .unwrap();
+        let id = "e".repeat(32);
+        let session_directory = manager.0.config.directory.join(&id);
+        tokio::fs::create_dir(&session_directory).await.unwrap();
+        tokio::fs::write(session_directory.join("master.m3u8"), b"#EXTM3U\n")
+            .await
+            .unwrap();
+        let session = Arc::new(Session {
+            cancel: watch::channel(false).0,
+            touched: Mutex::new(Instant::now()),
+            renewed: Mutex::new(Instant::now()),
+            directory: session_directory,
+            // The producer stopped on its own and is holding what it published.
+            producing: AtomicBool::new(false),
+            retiring: AtomicBool::new(false),
+            closing: AtomicBool::new(false),
+            retained_until: Mutex::new(None),
+            retain_seconds: AtomicU64::new(1),
+        });
+        manager
+            .0
+            .sessions
+            .lock()
+            .unwrap()
+            .insert(id.clone(), session.clone());
+        *session.retained_until.lock().unwrap() = Some(Instant::now() + Duration::from_millis(150));
+        assert!(manager.servable(&id));
+        assert!(manager.read(&id, "master.m3u8").await.is_ok());
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        // The producer task has not released the session yet: a caller that only looked
+        // at the lease would still be here, which is why the deadline itself must decide.
+        assert!(manager.0.sessions.lock().unwrap().contains_key(&id));
+        assert!(
+            !manager.servable(&id),
+            "a window past its deadline must not stay servable"
+        );
+        assert!(
+            manager.read(&id, "master.m3u8").await.is_err(),
+            "a window past its deadline must not serve media"
+        );
         tokio::fs::remove_dir_all(directory).await.unwrap();
     }
 
