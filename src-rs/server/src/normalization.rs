@@ -439,6 +439,8 @@ async fn configured_routes(settings: Settings) -> Result<Router> {
     });
     let cleanup = gateway.clone();
     tokio::spawn(async move {
+        // This only reclaims leases; whether a window can still be read is decided by the
+        // routes themselves, so a tick that lands late never turns a final 410 into a 503.
         let mut interval = tokio::time::interval(Duration::from_secs(2));
         loop {
             interval.tick().await;
@@ -823,6 +825,15 @@ impl Gateway {
             .context("lease unavailable")?;
         if expired(&lease) {
             bail!("lease expired");
+        }
+        // A generation whose window has ended is final the moment it ends. Deciding it
+        // here keeps every route consistent with `read`, instead of leaving a gap of
+        // retryable 503s until the sweeper's tick closes the lease below.
+        let session = lease.state.lock().unwrap().session.clone();
+        if let Some(session) = session {
+            if !self.manager.servable(&session) {
+                bail!("lease window ended");
+            }
         }
         Ok(lease)
     }
@@ -1246,6 +1257,18 @@ fn retryable() -> Response {
     response
 }
 
+/// A read that failed while the session still owns its window is retryable; one that
+/// failed after that window ended is final. Without this the endpoint answered 503 for
+/// every resource of a released window until the sweeper's tick caught up, which is the
+/// retry storm the retained window exists to prevent.
+fn unreachable(gateway: &Gateway, session: &str) -> Response {
+    if gateway.manager.servable(session) {
+        retryable()
+    } else {
+        StatusCode::GONE.into_response()
+    }
+}
+
 /// A window is publishable only while every resource it names is still on disk.
 fn window_available(gateway: &Gateway, session: &str, playlist: &str) -> bool {
     playlist_references(playlist)
@@ -1492,7 +1515,7 @@ async fn play(
                 return StatusCode::BAD_GATEWAY.into_response();
             };
             let Ok(playlist) = published_playlist(&gateway, &lease, &file, &playlist) else {
-                return StatusCode::SERVICE_UNAVAILABLE.into_response();
+                return unreachable(&gateway, &session);
             };
             let result = rewrite(&playlist, |child| {
                 if child.ends_with(".m3u8") {
@@ -1519,7 +1542,7 @@ async fn play(
                 Err(_) => StatusCode::BAD_GATEWAY.into_response(),
             }
         }
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+        Err(_) => unreachable(&gateway, &session),
     }
 }
 
@@ -1553,7 +1576,7 @@ async fn leased_playlist(
                 return StatusCode::BAD_GATEWAY.into_response();
             };
             let Ok(playlist) = published_playlist(&gateway, &lease, &file, &playlist) else {
-                return StatusCode::SERVICE_UNAVAILABLE.into_response();
+                return unreachable(&gateway, &session);
             };
             let result = rewrite(&playlist, |child| {
                 if child.ends_with(".m3u8") || child.ends_with("_init.mp4") {
@@ -1574,7 +1597,7 @@ async fn leased_playlist(
                 Err(_) => StatusCode::BAD_GATEWAY.into_response(),
             }
         }
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+        Err(_) => unreachable(&gateway, &session),
     }
 }
 
@@ -1619,8 +1642,9 @@ async fn media(
             guarded_response(mime, bytes, permit)
         }
         // The window slides and generations are replaced; a resource that is gone
-        // right now may return with the next playlist, so it is not a final 404.
-        Err(_) => retryable(),
+        // right now may return with the next playlist, so it is not a final 404. Once
+        // the window itself ended there is nothing left to retry.
+        Err(_) => unreachable(&gateway, &session),
     }
 }
 async fn fetch(
