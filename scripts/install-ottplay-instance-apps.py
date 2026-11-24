@@ -91,9 +91,16 @@ def stage_legacy_origins(home, stage):
     """Seed a named store from the shared default profile without touching it."""
     root = home / "Library/WebKit" / IDENTIFIER / "WebsiteData" / "Default"
     origins = legacy_shared_origins(home)
-    if origins is None:
+    salt = root / "salt"
+    # WebKit names origin directories by a per-store salted hash, so the copy is
+    # only readable with the source salt. Without it the restored profile would
+    # look empty even though its files are present.
+    if origins is None or not salt.is_file():
         return None
     (stage / "Origins").mkdir(parents=True)
+    run("ditto", "--rsrc", "--extattr", "--acl", str(salt), str(stage / "Origins/salt"))
+    require((stage / "Origins/salt").read_bytes() == salt.read_bytes(),
+            "Shared profile salt changed during snapshot")
     for name, expected in origins.items():
         run("ditto", "--rsrc", "--extattr", "--acl", str(root / name), str(stage / "Origins" / name))
         require(tree(stage / "Origins" / name) == expected, "Shared profile changed during snapshot")

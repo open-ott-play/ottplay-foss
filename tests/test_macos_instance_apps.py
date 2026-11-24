@@ -58,7 +58,10 @@ class InstanceApps(unittest.TestCase):
         if args[0] == "ps":
             return self.running
         if args[0] == "ditto":
-            shutil.copytree(args[-2], args[-1], symlinks=True)
+            if Path(args[-2]).is_file():
+                shutil.copy2(args[-2], args[-1])
+            else:
+                shutil.copytree(args[-2], args[-1], symlinks=True)
         elif args[0] not in ("codesign", INSTALL.LSREGISTER):
             self.fail(f"Unexpected command {args[0]}")
         return ""
@@ -225,6 +228,7 @@ class InstanceApps(unittest.TestCase):
         origin = default / "origin-hash" / "origin-hash"
         (origin / "LocalStorage").mkdir(parents=True)
         (origin / "LocalStorage/localstorage.sqlite3").write_bytes(b"shared settings")
+        (default / "salt").write_bytes(b"store-salt")
         for number in self.ports:
             shutil.rmtree(self.old_stores[number])
         self.prepare()
@@ -235,7 +239,11 @@ class InstanceApps(unittest.TestCase):
                      / "WebsiteDataStore" / INSTALL.store_id(data))
             saved = store / "Origins/origin-hash/origin-hash/LocalStorage/localstorage.sqlite3"
             self.assertEqual(saved.read_bytes(), b"shared settings")
+            # WebKit hashes origin names with the store salt, so the restored
+            # files are only visible when the source salt comes along.
+            self.assertEqual((store / "Origins/salt").read_bytes(), b"store-salt")
         self.assertEqual((origin / "LocalStorage/localstorage.sqlite3").read_bytes(), b"shared settings")
+        self.assertEqual((default / "salt").read_bytes(), b"store-salt")
 
 
 if __name__ == "__main__":
