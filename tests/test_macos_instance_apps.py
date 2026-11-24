@@ -217,6 +217,26 @@ class InstanceApps(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no recognized WebKit store"):
             self.prepare()
 
+    def test_shared_default_store_seeds_new_instance_stores(self):
+        # Legacy launchers executed the main binary, so every instance shared the
+        # main app's default store. A fresh install must adopt that profile
+        # instead of starting each player with empty settings.
+        default = self.home / "Library/WebKit/com.ottplay.foss/WebsiteData/Default"
+        origin = default / "origin-hash" / "origin-hash"
+        (origin / "LocalStorage").mkdir(parents=True)
+        (origin / "LocalStorage/localstorage.sqlite3").write_bytes(b"shared settings")
+        for number in self.ports:
+            shutil.rmtree(self.old_stores[number])
+        self.prepare()
+        INSTALL.apply(self.work)
+        for number in self.ports:
+            data = self.home / "Library/Application Support" / f"com.ottplay.foss.{number}"
+            store = (self.home / f"Library/WebKit/com.ottplay.foss.inst{number}"
+                     / "WebsiteDataStore" / INSTALL.store_id(data))
+            saved = store / "Origins/origin-hash/origin-hash/LocalStorage/localstorage.sqlite3"
+            self.assertEqual(saved.read_bytes(), b"shared settings")
+        self.assertEqual((origin / "LocalStorage/localstorage.sqlite3").read_bytes(), b"shared settings")
+
 
 if __name__ == "__main__":
     unittest.main()

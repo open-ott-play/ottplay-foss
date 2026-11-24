@@ -166,8 +166,22 @@ import sys
 path, binary, dest, label, archive, ports = sys.argv[1:]
 p = Path(path)
 config = plistlib.loads(p.read_bytes()) if p.exists() else {}
+# Operator-installed TLS listeners are not recreated by this script. Keep them
+# instead of silently dropping the HTTPS origin their players and remote control
+# use; a reinstall must not change which origins carry the saved settings.
+previous = config.get("ProgramArguments") or []
+carried = []
+for flag in ("--cert", "--key"):
+    if flag in previous[:-1]:
+        value = previous[previous.index(flag) + 1]
+        if Path(value).is_file():
+            carried += [flag, value]
+if "--https-port" in previous[:-1]:
+    port = previous[previous.index("--https-port") + 1]
+    if port.isdigit() and 1 <= int(port) <= 65535 and str(int(port)) not in ports.split():
+        carried += ["--https-port", str(int(port))]
 config.update(Label=label, ProgramArguments=[binary, "--host", "0.0.0.0"] +
-              [value for port in ports.split() for value in ("--port", str(int(port)))],
+              [value for port in ports.split() for value in ("--port", str(int(port)))] + carried,
               WorkingDirectory=dest, RunAtLoad=True, KeepAlive=True)
 env = config.setdefault("EnvironmentVariables", {})
 env.setdefault("EPG_URLS", "http://epg.it999.ru/epg2.xml.gz")
