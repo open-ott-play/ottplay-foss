@@ -99,6 +99,7 @@ try {
         "verify-player-build-source.py",
         "version_plan.py",
         "release_control.py",
+        "async_process.py",
     ])
         fs.copyFileSync(
             path.join(project, "scripts", file),

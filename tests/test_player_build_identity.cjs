@@ -29,6 +29,7 @@ function testReleaseOverlay() {
                 ".release-policy.json",
                 "scripts/version_plan.py",
                 "scripts/release_control.py",
+                "scripts/async_process.py",
                 "scripts/verify-player-build-source.py",
                 "scripts/player-build-identity.cjs",
                 ...policy.versioning.files.map((item) => item.path),

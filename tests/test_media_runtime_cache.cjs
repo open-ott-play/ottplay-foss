@@ -183,6 +183,7 @@ async function verifyCheckoutBytes() {
                 ".release-policy.json",
                 "scripts/version_plan.py",
                 "scripts/release_control.py",
+                "scripts/async_process.py",
                 "scripts/verify-player-build-source.py",
                 "scripts/player-build-identity.cjs",
                 "scripts/media-runtime.cjs",
