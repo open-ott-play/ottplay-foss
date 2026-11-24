@@ -1,0 +1,40 @@
+name: PR commit signatures
+
+# Called by Quality gate as an always-validated check: a documentation-only pull
+# request skips the runtime validators, but an unsigned commit must still be named
+# before GitHub refuses the merge. Never add a pull_request trigger here; the
+# configuration contracts require every pull request validator to run inside the
+# gate.
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-signatures-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  signatures:
+    name: Commit signatures
+    runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Require a verified signature on every reviewed commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python3 scripts/check-pr-commit-signatures.py
+          --repo "${{ github.repository }}"
+          --pull-request "${{ github.event.pull_request.number }}"
