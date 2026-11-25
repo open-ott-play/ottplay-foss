@@ -718,7 +718,7 @@ export function updateCoreVideoInfo(opening = false): void {
     var html =
         res +
         (mbps > 0 && isFinite(mbps)
-            ? "<br>" + Math.round(mbps * 100) / 100 + " Mbps"
+            ? " <br>" + Math.round(mbps * 100) / 100 + " Mbps"
             : "");
     if (label.innerHTML !== html) label.innerHTML = html;
 }
