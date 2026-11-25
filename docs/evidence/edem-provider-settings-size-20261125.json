@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "feature": "Slot-addressed Edem provider settings on the control server",
+  "scope": "Advertise the native_provider_settings capability and compare or save one Edem account transactionally through the shared provider field codec. The code stays in the existing remote-settings asset and classic entry; provider, optional and Modern caps are unchanged.",
+  "baseline": {
+    "bytes": 1222131,
+    "gzipBytes": 373078,
+    "sha256": "e2ce72a0258c9f1e736e7ea255edbf9c493aa00df33e07ed30b0306c31a395f2",
+    "method": "npm run build at 80f56b37, the parent of the feature commit, measuring the emitted dist/player.js.",
+    "remoteSettings": {
+      "bytes": 15851,
+      "gzipBytes": 5185,
+      "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251",
+      "method": "The same build, measuring the emitted dist/remote-settings.js."
+    }
+  },
+  "candidate": {
+    "bytes": 1222615,
+    "gzipBytes": 373220,
+    "sha256": "0fd497a5bcba0db2c50951c21bf526082fc92ac9fe2c475a2e8a05d07b7f34ae",
+    "method": "npm run build at the feature commit, measuring the emitted dist/player.js.",
+    "remoteSettings": {
+      "bytes": 20660,
+      "gzipBytes": 6358,
+      "sha256": "0e3408b1fb86b600bb371dd1047bc66f7b00cd67f16701ed0c1189e587166e8c",
+      "method": "The same build, measuring the emitted dist/remote-settings.js."
+    }
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "delta": {
+    "bytes": 484,
+    "gzipBytes": 142,
+    "remoteSettings": {
+      "bytes": 4809,
+      "gzipBytes": 1173
+    }
+  },
+  "allowance": {
+    "entry": {
+      "bytes": 484,
+      "gzipBytes": 142
+    },
+    "settings": {
+      "bytes": 4809,
+      "gzipBytes": 1173
+    }
+  },
+  "reason": "The feature commit advertised the capability and saved the Edem account from the classic entry and the remote-settings asset, which the existing budgets did not cover. The allowance is the measured delta of both assets, counted once in the entry, legacy-complete and complete caps; the provider, optional, Modern and per-family limits stay unchanged.",
+  "budgets": {
+    "before": {
+      "player.js": {
+        "bytes": 1222241,
+        "gzipBytes": 374595
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "legacyComplete": {
+        "bytes": 1467886,
+        "gzipBytes": 459094
+      },
+      "complete": {
+        "bytes": 1965502,
+        "gzipBytes": 609228
+      }
+    },
+    "after": {
+      "player.js": {
+        "bytes": 1222725,
+        "gzipBytes": 374737
+      },
+      "remote-settings": {
+        "bytes": 22309,
+        "gzipBytes": 6973
+      },
+      "legacyComplete": {
+        "bytes": 1468370,
+        "gzipBytes": 459236
+      },
+      "complete": {
+        "bytes": 1965986,
+        "gzipBytes": 609370
+      }
+    }
+  }
+}

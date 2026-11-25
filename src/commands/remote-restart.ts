@@ -7,6 +7,24 @@ import { remoteAppUpdateAvailable } from "./remote-app-update";
 import { remoteFavoritesCapability } from "./remote-favorites-contract";
 import { remotePlexQueue } from "./remote-plex";
 
+/** Slot-addressed native provider configuration this build can persist itself. */
+function nativeProviderCapability(w: any): any {
+    var profiles = w.__ottProviderDriverProfiles;
+    if (!Array.isArray(profiles)) return undefined;
+    for (var i = 0; i < profiles.length; i++)
+        if (
+            profiles[i] &&
+            profiles[i].id === "edem" &&
+            profiles[i].kind === "edem"
+        )
+            return {
+                operations: ["compare", "set"],
+                providers: ["edem"],
+                version: 1,
+            };
+    return undefined;
+}
+
 function remoteSettingsLocked(w: any): boolean {
     return w.__ottParental
         ? w.__ottParental.needs("providers") ||
@@ -919,6 +937,7 @@ export function executeRemoteControl(
                 localMessage10,
             ].filter(lifecycleAvailable),
             local_media: localMedia,
+            native_provider_settings: nativeProviderCapability(w),
             local_media_progressive:
                 localMedia && w.__ottLocalMedia.remoteProgressive?.() === true
                     ? { version: 1 }

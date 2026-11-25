@@ -65,8 +65,12 @@ function installProviderSettingsPort(driver: any): void {
         }
     };
 }
-/** Provider codecs behind typed settings receipts; storage keys never come from callers. */
-function createRemoteProviderFields(w: any, driver: any): any {
+/**
+ * Provider codecs behind typed settings receipts; storage keys never come from
+ * callers. A configuration-only instance is not the active provider, so it is
+ * addressed directly by a session that already bound the exact source.
+ */
+function createRemoteProviderFields(w: any, driver: any, mounted?: boolean): any {
     var profile: any = null;
     (w.__ottProviderDriverProfiles || []).forEach(function (row: any) {
         if (row.id === driver.id) profile = row;
@@ -84,7 +88,7 @@ function createRemoteProviderFields(w: any, driver: any): any {
         remove = w.stbDelItem;
     function active(): boolean {
         return (
-            w.__ottActiveProviderDriver === driver &&
+            (mounted === false || w.__ottActiveProviderDriver === driver) &&
             read === w.stbGetItem &&
             write === w.stbSetItem &&
             remove === w.stbDelItem
@@ -567,6 +571,27 @@ function createRemoteProviderFields(w: any, driver: any): any {
             value: normalized,
         };
     }
+    /** Name-addressed codec entry for callers that only have a field id. */
+    function normalizeField(name: string, value: any): any {
+        return normalize(find(name), value);
+    }
+    /** Apply every requested field in one driver transaction, then verify. */
+    function saveFields(values: any, before: any, current: () => boolean): any {
+        var names = Object.keys(values),
+            normalized: any = {},
+            next = model();
+        names.forEach(function (name) {
+            var definition = find(name);
+            normalized[name] = normalize(definition, values[name]);
+            selected(next)[definition.field] = normalized[name];
+        });
+        var failed = persist(next, before, current, function () {
+            return names.every(function (name) {
+                return valueOf(find(name), model()) === normalized[name];
+            });
+        });
+        return { effectFailed: failed };
+    }
     function folderSnapshot(): any {
         if (kind !== "plex") throw new Error("unsupported");
         var value = driver.configuration();
@@ -599,7 +624,9 @@ function createRemoteProviderFields(w: any, driver: any): any {
         active: active,
         capture: capture,
         folderSnapshot: folderSnapshot,
+        normalize: normalizeField,
         save: save,
+        saveFields: saveFields,
         saveFolders: saveFolders,
         schema: schema,
     };
