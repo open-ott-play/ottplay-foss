@@ -70,7 +70,11 @@ function installProviderSettingsPort(driver: any): void {
  * callers. A configuration-only instance is not the active provider, so it is
  * addressed directly by a session that already bound the exact source.
  */
-function createRemoteProviderFields(w: any, driver: any, mounted?: boolean): any {
+function createRemoteProviderFields(
+    w: any,
+    driver: any,
+    mounted?: boolean
+): any {
     var profile: any = null;
     (w.__ottProviderDriverProfiles || []).forEach(function (row: any) {
         if (row.id === driver.id) profile = row;

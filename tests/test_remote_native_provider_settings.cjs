@@ -143,24 +143,27 @@ check("inactive save writes the slot bytes without switching provider", () => {
     assert.equal(f.host.__ottActiveProviderDriver, before);
     assert.equal(f.compare().data.matched, true);
 });
-check("the native save reuses the driver codec and one storage transaction", () => {
-    const f = create(),
-        writes = [];
-    const commit = f.host.commitSettingsWrites;
-    f.host.commitSettingsWrites = (batch, admitted, rollback) => {
-        writes.push(batch.map((row) => row.storage.key));
-        return commit(batch, admitted, rollback);
-    };
-    const settings = { key: key, list: 2, portal: nextPortal };
-    const save = f.write(f.compare(settings), settings);
-    assert.equal(save.status, "ok");
-    assert.equal(writes.length, 1);
-    assert.equal(
-        JSON.stringify(Array.from(writes[0]).sort()),
-        '["edkey","edlist","edvpurl"]'
-    );
-    assert.equal(f.saved.get("edlist"), "2");
-});
+check(
+    "the native save reuses the driver codec and one storage transaction",
+    () => {
+        const f = create(),
+            writes = [];
+        const commit = f.host.commitSettingsWrites;
+        f.host.commitSettingsWrites = (batch, admitted, rollback) => {
+            writes.push(batch.map((row) => row.storage.key));
+            return commit(batch, admitted, rollback);
+        };
+        const settings = { key: key, list: 2, portal: nextPortal };
+        const save = f.write(f.compare(settings), settings);
+        assert.equal(save.status, "ok");
+        assert.equal(writes.length, 1);
+        assert.equal(
+            JSON.stringify(Array.from(writes[0]).sort()),
+            '["edkey","edlist","edvpurl"]'
+        );
+        assert.equal(f.saved.get("edlist"), "2");
+    }
+);
 check("active Edem slot reloads the catalogue once", () => {
     const f = create(true),
         save = f.write(f.compare());
@@ -178,38 +181,41 @@ check("standby defers the active reload instead of fetching media", () => {
     assert.equal(save.data.reload_required, true);
     assert.equal(f.state.reloads, 0);
 });
-check("unsupported slot numbers, values and providers reject without writing", () => {
-    const f = create(),
-        before = f.saved.get("edvpurl");
-    for (const params of [
-        { number: 2 },
-        { settings: { key: "bad\u0000key" } },
-        { settings: { key: "x".repeat(4097) } },
-        { settings: { list: "1" } },
-        { settings: { list: 4 } },
-        { settings: { list: 1.5 } },
-        { settings: { portal: "https://portal.example/api/" } },
-        { settings: {} },
-        { provider: "vportal" },
-        { version: 2 },
-        { runtime: "page-999" },
-    ]) {
-        const request = {
-            number: 1,
-            provider: "edem",
-            runtime: f.state.runtime,
-            settings: { portal: nextPortal },
-            version: 1,
-        };
-        Object.assign(request, params);
-        const reply = f.request("settings_compare", request);
-        assert.equal(reply.status, "rejected", JSON.stringify(params));
-        assert.equal(typeof reply.data.reason, "string");
-        assert.equal(f.saved.get("edvpurl"), before);
+check(
+    "unsupported slot numbers, values and providers reject without writing",
+    () => {
+        const f = create(),
+            before = f.saved.get("edvpurl");
+        for (const params of [
+            { number: 2 },
+            { settings: { key: "bad\u0000key" } },
+            { settings: { key: "x".repeat(4097) } },
+            { settings: { list: "1" } },
+            { settings: { list: 4 } },
+            { settings: { list: 1.5 } },
+            { settings: { portal: "https://portal.example/api/" } },
+            { settings: {} },
+            { provider: "vportal" },
+            { version: 2 },
+            { runtime: "page-999" },
+        ]) {
+            const request = {
+                number: 1,
+                provider: "edem",
+                runtime: f.state.runtime,
+                settings: { portal: nextPortal },
+                version: 1,
+            };
+            Object.assign(request, params);
+            const reply = f.request("settings_compare", request);
+            assert.equal(reply.status, "rejected", JSON.stringify(params));
+            assert.equal(typeof reply.data.reason, "string");
+            assert.equal(f.saved.get("edvpurl"), before);
+        }
+        assert.equal(f.saved.get("edkey"), key);
+        assert.equal(f.write(f.compare()).status, "ok");
     }
-    assert.equal(f.saved.get("edkey"), key);
-    assert.equal(f.write(f.compare()).status, "ok");
-});
+);
 check("policy, runtime, source and receipt guards block stale writes", () => {
     const f = create();
     f.state.denied = true;

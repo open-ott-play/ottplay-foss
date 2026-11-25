@@ -365,9 +365,7 @@ function createRemoteProviderSettings(
                     provider: "edem",
                     snapshot:
                         writing && !matched
-                            ? JSON.stringify(
-                                  api.capture(ids[fields[0]]).state
-                              )
+                            ? JSON.stringify(api.capture(ids[fields[0]]).state)
                             : snapshot,
                 }),
                 runtime: params.runtime,

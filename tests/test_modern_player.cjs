@@ -2282,10 +2282,14 @@ test("a media-library item keeps its scrubber on a live-shaped transport", () =>
     const f = fixture();
     try {
         f.w.playType = -99999999999;
-        Object.defineProperty(f.w.document.getElementById("video"), "currentTime", {
-            configurable: true,
-            value: 120,
-        });
+        Object.defineProperty(
+            f.w.document.getElementById("video"),
+            "currentTime",
+            {
+                configurable: true,
+                value: 120,
+            }
+        );
         f.api.refresh();
         f.w.document.getElementById("info1").style.display = "block";
         f.api.sync();

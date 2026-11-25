@@ -1476,8 +1476,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // lifecycle29193/9276; entry1037905/321296. Existing entry/legacy caps stay fixed.
     "remote-settings": Object.freeze({
         bytes: 17500 + EDEM_PROVIDER_SETTINGS_ALLOWANCE.settings.bytes,
-        gzipBytes:
-            5800 + EDEM_PROVIDER_SETTINGS_ALLOWANCE.settings.gzipBytes,
+        gzipBytes: 5800 + EDEM_PROVIDER_SETTINGS_ALLOWANCE.settings.gzipBytes,
     }),
     // Existing UI/debug owners stay in startup; typed extras, CAS and ACK handling
     // are optional. Node22 level9: extras5651/2255, combined entry1038397/320895.
