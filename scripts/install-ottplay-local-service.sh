@@ -40,8 +40,11 @@ if [ -n "${OTTPLAY_PORT:-}" ] || [ -n "${OTTPLAY_HTTPS_PORTS:-}" ]; then
     echo "error: use OTTPLAY_HTTP_PORTS; OTTPLAY_PORT and OTTPLAY_HTTPS_PORTS are retired" >&2
     exit 1
 fi
-# Reject invalid lists before syncing files or touching launchd.
-python3 - "$HTTP_PORTS" "$LABEL_BASE" <<'PYCONFIG'
+# Reject invalid lists before syncing files or touching launchd. The TLS
+# listener plan is resolved once here and reused verbatim by the plist writer.
+TLS_PLAN="$(mktemp "${TMPDIR:-/tmp}/ottplay-tls-plan.XXXXXX")"
+trap 'rm -f "$TLS_PLAN"' EXIT
+python3 - "$HTTP_PORTS" "$LABEL_BASE" "$TLS_PLAN" <<'PYCONFIG'
 import re
 import sys
 import os
@@ -57,7 +60,36 @@ if (not ports or any(not re.fullmatch(r"[0-9]+", p) for p in ports)
 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", sys.argv[2]):
     sys.exit("error: invalid OTTPLAY_LABEL")
 saved = Path.home() / "Library/LaunchAgents" / (sys.argv[2] + ".plist")
-swop = plistlib.loads(saved.read_bytes()).get("EnvironmentVariables", {}) if saved.exists() else {}
+existing = plistlib.loads(saved.read_bytes()) if saved.exists() else {}
+previous = existing.get("ProgramArguments") or []
+
+def tls_values(flag):
+    return [previous[index + 1] for index, arg in enumerate(previous[:-1]) if arg == flag]
+
+certs, keys, https = tls_values("--cert"), tls_values("--key"), tls_values("--https-port")
+carried = []
+# The server accepts --cert and --key only together and listens on every
+# --https-port (defaulting to 8443). Resolve the operator's TLS listener once
+# here, before the working service is stopped or replaced; a lone flag, missing
+# file or conflicting port is rejected instead of installing a service that
+# cannot start or that silently loses an HTTPS origin.
+if any(flag in previous for flag in ("--cert", "--key", "--https-port")):
+    if len(certs) != 1 or len(keys) != 1:
+        sys.exit("error: existing service must set --cert and --key once each; "
+                 "remove the partial TLS arguments from ProgramArguments")
+    if not (Path(certs[0]).is_file() and Path(keys[0]).is_file()):
+        sys.exit("error: existing service certificate or key is missing; "
+                 "restore both files or remove the TLS arguments")
+    if any(not port.isdigit() or not 1 <= int(port) <= 65535 for port in https):
+        sys.exit("error: existing service has an invalid --https-port")
+    tls_ports = [int(port) for port in https] or [8443]
+    if len(set(tls_ports)) != len(tls_ports) or set(tls_ports) & {int(port) for port in ports}:
+        sys.exit("error: existing service HTTPS ports conflict with the configured HTTP "
+                 "ports; remove the conflicting listeners or change OTTPLAY_HTTP_PORTS")
+    carried = ["--cert", certs[0], "--key", keys[0]]
+    carried += [value for port in tls_ports for value in ("--https-port", str(port))]
+Path(sys.argv[3]).write_text("\n".join(carried) + ("\n" if carried else ""))
+swop = existing.get("EnvironmentVariables", {})
 for key in ("SWOP_BASE_URL", "SWOP_INSTALLATION_TOKEN"):
     if os.environ.get(key, "").strip():
         swop[key] = os.environ[key].strip()
@@ -158,28 +190,18 @@ chmod +x "$BIN.new"
 mv -f "$BIN.new" "$BIN"
 # plistlib handles paths safely and preserves operator-specific environment,
 # logging and launchd options from an existing installation.
-python3 - "$PLIST" "$BIN" "$DEST" "$LABEL" "$DEBUG_ARCHIVE" "$HTTP_PORTS" <<'PYPLIST'
+python3 - "$PLIST" "$BIN" "$DEST" "$LABEL" "$DEBUG_ARCHIVE" "$HTTP_PORTS" "$TLS_PLAN" <<'PYPLIST'
 import os
 from pathlib import Path
 import plistlib
 import sys
-path, binary, dest, label, archive, ports = sys.argv[1:]
+path, binary, dest, label, archive, ports, *plan = sys.argv[1:]
 p = Path(path)
 config = plistlib.loads(p.read_bytes()) if p.exists() else {}
-# Operator-installed TLS listeners are not recreated by this script. Keep them
-# instead of silently dropping the HTTPS origin their players and remote control
-# use; a reinstall must not change which origins carry the saved settings.
-previous = config.get("ProgramArguments") or []
-carried = []
-for flag in ("--cert", "--key"):
-    if flag in previous[:-1]:
-        value = previous[previous.index(flag) + 1]
-        if Path(value).is_file():
-            carried += [flag, value]
-if "--https-port" in previous[:-1]:
-    port = previous[previous.index("--https-port") + 1]
-    if port.isdigit() and 1 <= int(port) <= 65535 and str(int(port)) not in ports.split():
-        carried += ["--https-port", str(int(port))]
+# The TLS listener plan was resolved and validated before the working service
+# was stopped. Reuse it unchanged: a reinstall must not drop or alter the HTTPS
+# origins that carry the operator's saved player settings.
+carried = [line for line in Path(plan[0]).read_text().splitlines() if line] if plan else []
 config.update(Label=label, ProgramArguments=[binary, "--host", "0.0.0.0"] +
               [value for port in ports.split() for value in ("--port", str(int(port)))] + carried,
               WorkingDirectory=dest, RunAtLoad=True, KeepAlive=True)

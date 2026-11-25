@@ -278,6 +278,76 @@ sys.exit(113)
                 self.assertTrue(current["RunAtLoad"] and current["KeepAlive"])
                 self.assertEqual(plist.stat().st_mode & 0o777, 0o600)
 
+    def test_tls_listener_survives_reinstall_as_one_configuration(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            cert, key = root / "server.crt", root / "server.key"
+            cert.write_text("certificate")
+            key.write_text("private key")
+            agents = root / "Library/LaunchAgents"
+            agents.mkdir(parents=True)
+            plist = agents / "com.ottplay-foss-local.plist"
+            plist.write_bytes(plistlib.dumps({"ProgramArguments": [
+                str(root / "ottplay-server"), "--cert", str(cert), "--key", str(key),
+                "--https-port", "9443", "--https-port", "9444"]}))
+            env = {name: value for name, value in os.environ.items()
+                   if not name.startswith("SWOP_")}
+            env["HOME"] = str(root)
+            plan = root / "tls-plan"
+            for _ in range(2):
+                subprocess.run(
+                    [sys.executable, "-", "8443 8444 8445 8446", "com.ottplay-foss-local",
+                     str(plan)], input=embedded_python("PYCONFIG"), env=env, text=True,
+                    capture_output=True, check=True)
+                subprocess.run(
+                    [sys.executable, "-", str(plist), str(root / "ottplay-server"), str(root),
+                     "com.ottplay-foss-local", str(root / "archive"), "8443 8444 8445 8446",
+                     str(plan)], input=embedded_python("PYPLIST"), text=True,
+                    capture_output=True, check=True)
+                arguments = plistlib.loads(plist.read_bytes())["ProgramArguments"]
+            self.assertEqual(arguments[arguments.index("--cert") + 1], str(cert))
+            self.assertEqual(arguments[arguments.index("--key") + 1], str(key))
+            self.assertEqual([arguments[index + 1] for index, argument in enumerate(arguments[:-1])
+                              if argument == "--https-port"], ["9443", "9444"])
+
+    def test_invalid_existing_tls_blocks_install_before_service_changes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            cert, key = root / "server.crt", root / "server.key"
+            cert.write_text("certificate")
+            key.write_text("private key")
+            agents = root / "Library/LaunchAgents"
+            agents.mkdir(parents=True)
+            plist = agents / "com.ottplay-foss-local.plist"
+            env = {name: value for name, value in os.environ.items()
+                   if not name.startswith("SWOP_")}
+            env["HOME"] = str(root)
+
+            def run():
+                return subprocess.run(
+                    [sys.executable, "-", "8443 8444 8445 8446", "com.ottplay-foss-local",
+                     str(root / "tls-plan")], input=embedded_python("PYCONFIG"), env=env,
+                    text=True, capture_output=True)
+
+            for arguments, message in [
+                (["--cert", str(cert), "--https-port", "9443"], "once each"),
+                (["--cert"], "once each"),
+                (["--cert", str(cert), "--key", str(root / "missing.key")], "missing"),
+                (["--cert", str(cert), "--key", str(key), "--https-port", "8444"], "conflict"),
+                (["--cert", str(cert), "--key", str(key)], "conflict"),
+            ]:
+                with self.subTest(arguments=arguments):
+                    plist.write_bytes(plistlib.dumps({"ProgramArguments":
+                        [str(root / "ottplay-server")] + arguments}))
+                    result = run()
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(message, result.stderr)
+            plist.write_bytes(plistlib.dumps({"ProgramArguments": [
+                str(root / "ottplay-server"), "--cert", str(cert), "--key", str(key),
+                "--https-port", "9443", "--https-port", "9444"]}))
+            result = run()
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_fresh_configuration_needs_no_certificate(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
