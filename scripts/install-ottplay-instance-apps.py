@@ -69,6 +69,56 @@ def store_id(data_dir):
     ).digest()))
 
 
+def legacy_shared_origins(home):
+    """Origin trees the main app persisted in its default WK store.
+
+    Apps that never used a named store keep their profile under
+    WebsiteData/Default, not WebsiteDataStore/<uuid>, so the named-store
+    migration below cannot find it. Every legacy instance launcher executed the
+    main binary, so this tree is the profile they all shared.
+    """
+    root = home / "Library/WebKit" / IDENTIFIER / "WebsiteData" / "Default"
+    if not root.is_dir():
+        return None
+    origins = {}
+    for origin in sorted(root.iterdir()):
+        if origin.is_dir():
+            origins[origin.name] = tree(origin)
+    return origins or None
+
+
+def shared_profile(home):
+    """Snapshot the legacy shared profile, salt included, for later validation."""
+    root = home / "Library/WebKit" / IDENTIFIER / "WebsiteData" / "Default"
+    origins = legacy_shared_origins(home)
+    salt = root / "salt"
+    if origins is None or not salt.is_file():
+        return None
+    return {"root": str(root), "origins": origins,
+            "salt": hashlib.sha256(salt.read_bytes()).hexdigest()}
+
+
+def stage_legacy_origins(home, stage):
+    """Seed a named store from the shared default profile without touching it."""
+    profile = shared_profile(home)
+    if profile is None:
+        return None
+    root = Path(profile["root"])
+    # WebKit names origin directories by a per-store salted hash, so the copy is
+    # only readable with the source salt. Without it the restored profile would
+    # look empty even though its files are present.
+    (stage / "Origins").mkdir(parents=True)
+    run("ditto", "--rsrc", "--extattr", "--acl", str(root / "salt"), str(stage / "Origins/salt"))
+    require(hashlib.sha256((stage / "Origins/salt").read_bytes()).hexdigest() == profile["salt"],
+            "Shared profile salt changed during snapshot")
+    for name, expected in profile["origins"].items():
+        run("ditto", "--rsrc", "--extattr", "--acl", str(root / name), str(stage / "Origins" / name))
+        require(tree(stage / "Origins" / name) == expected, "Shared profile changed during snapshot")
+        require(tree(root / name) == expected, "Shared profile changed during snapshot")
+    require(shared_profile(home) == profile, "Shared profile changed during snapshot")
+    return profile
+
+
 def configuration(app, number):
     """Read current instance context; never execute an existing launcher."""
     env = read_info(app).get("LSEnvironment", {}) if app.exists() else {}
@@ -149,6 +199,7 @@ def prepare(main, applications, work, home):
         existing_store = tree(new_store)
         source_store = tree(old_store)
         stage_store = work / "stores" / str(number)
+        shared_source = None
         if existing_store is None and source_store is not None:
             # The operator must close players before preparing too: a live
             # SQLite/WAL snapshot is not established by copying its files.
@@ -156,12 +207,20 @@ def prepare(main, applications, work, home):
             run("ditto", "--rsrc", "--extattr", "--acl", str(old_store), str(stage_store))
             require(tree(old_store) == source_store == tree(stage_store), "WebKit store changed during snapshot")
         elif existing_store is None:
-            require(not app.exists(), "Existing instance has no recognized WebKit store; do not reset its profile")
+            # An instance that already exists must never come back with an empty
+            # profile: adopt the shared default store the legacy launchers used.
+            # Otherwise the player loses its provider profile, favorites, remote
+            # control token and command-server settings on a fresh install.
+            shared_source = stage_legacy_origins(home, stage_store)
+            if shared_source is None:
+                require(not app.exists(),
+                        "Existing instance has no recognized WebKit store; do not reset its profile")
         entries.append({
             "number": number, "app": str(app), "candidate": str(candidate),
             "oldApp": tree(app), "newApp": tree(candidate),
             "store": str(new_store), "oldStore": existing_store,
             "sourceStore": str(old_store), "sourceStoreTree": source_store,
+            "sharedSource": shared_source,
             "stagedStore": str(stage_store),
             "stagedStoreTree": tree(stage_store),
             "environment": environment,
@@ -197,6 +256,11 @@ def apply(work):
         if entry["stagedStoreTree"] is not None:
             require(tree(Path(entry["sourceStore"])) == entry["sourceStoreTree"], "Original profile changed")
             require(tree(Path(entry["stagedStore"])) == entry["stagedStoreTree"], "Staged profile changed")
+        if entry.get("sharedSource") is not None:
+            # The same guarantee as the named-store path: a profile written after
+            # prepare must not be silently replaced by the earlier snapshot.
+            require(shared_profile(Path(plan["home"])) == entry["sharedSource"],
+                    "Original profile changed")
     (work / "apply-intent.json").write_text(json.dumps({"plan": expected}) + "\n")
     backups = work / "backups"
     backups.mkdir()

@@ -58,7 +58,10 @@ class InstanceApps(unittest.TestCase):
         if args[0] == "ps":
             return self.running
         if args[0] == "ditto":
-            shutil.copytree(args[-2], args[-1], symlinks=True)
+            if Path(args[-2]).is_file():
+                shutil.copy2(args[-2], args[-1])
+            else:
+                shutil.copytree(args[-2], args[-1], symlinks=True)
         elif args[0] not in ("codesign", INSTALL.LSREGISTER):
             self.fail(f"Unexpected command {args[0]}")
         return ""
@@ -216,6 +219,45 @@ class InstanceApps(unittest.TestCase):
         shutil.rmtree(self.old_stores[2])
         with self.assertRaisesRegex(RuntimeError, "no recognized WebKit store"):
             self.prepare()
+
+    def test_changed_shared_profile_blocks_apply_before_intent(self):
+        default = self.home / "Library/WebKit/com.ottplay.foss/WebsiteData/Default"
+        origin = default / "origin-hash" / "origin-hash"
+        (origin / "LocalStorage").mkdir(parents=True)
+        (origin / "LocalStorage/localstorage.sqlite3").write_bytes(b"shared settings")
+        (default / "salt").write_bytes(b"store-salt")
+        for number in self.ports:
+            shutil.rmtree(self.old_stores[number])
+        self.prepare()
+        (origin / "LocalStorage/localstorage.sqlite3").write_bytes(b"newer shared settings")
+        with self.assertRaisesRegex(RuntimeError, "Original profile changed"):
+            INSTALL.apply(self.work)
+        self.assertFalse((self.work / "apply-intent.json").exists())
+
+    def test_shared_default_store_seeds_new_instance_stores(self):
+        # Legacy launchers executed the main binary, so every instance shared the
+        # main app's default store. A fresh install must adopt that profile
+        # instead of starting each player with empty settings.
+        default = self.home / "Library/WebKit/com.ottplay.foss/WebsiteData/Default"
+        origin = default / "origin-hash" / "origin-hash"
+        (origin / "LocalStorage").mkdir(parents=True)
+        (origin / "LocalStorage/localstorage.sqlite3").write_bytes(b"shared settings")
+        (default / "salt").write_bytes(b"store-salt")
+        for number in self.ports:
+            shutil.rmtree(self.old_stores[number])
+        self.prepare()
+        INSTALL.apply(self.work)
+        for number in self.ports:
+            data = self.home / "Library/Application Support" / f"com.ottplay.foss.{number}"
+            store = (self.home / f"Library/WebKit/com.ottplay.foss.inst{number}"
+                     / "WebsiteDataStore" / INSTALL.store_id(data))
+            saved = store / "Origins/origin-hash/origin-hash/LocalStorage/localstorage.sqlite3"
+            self.assertEqual(saved.read_bytes(), b"shared settings")
+            # WebKit hashes origin names with the store salt, so the restored
+            # files are only visible when the source salt comes along.
+            self.assertEqual((store / "Origins/salt").read_bytes(), b"store-salt")
+        self.assertEqual((origin / "LocalStorage/localstorage.sqlite3").read_bytes(), b"shared settings")
+        self.assertEqual((default / "salt").read_bytes(), b"store-salt")
 
 
 if __name__ == "__main__":
