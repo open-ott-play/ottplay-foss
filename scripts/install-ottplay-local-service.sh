@@ -89,10 +89,14 @@ def absolute(value):
     path = Path(os.path.expanduser(value))
     return path if path.is_absolute() else working / path
 
-def rsync_literal(value):
-    # rsync reads \\, *, ? and [] in patterns as syntax; escape them so an
-    # operator's file name is protected exactly as written.
-    return re.sub(r"([\\*?\[\]])", r"\\\1", "/" + str(value))
+def rsync_pattern(path, root):
+    # rsync runs inside DEST and reads its patterns as globs, so keep the path
+    # relative to DEST, escape the characters rsync takes as syntax, and drop
+    # anything outside DEST (the sync only deletes inside it).
+    relative = os.path.relpath(path, root)
+    if relative.split(os.sep)[0] == "..":
+        return None
+    return re.sub(r"([\\*?\[\]])", r"\\\1", "/" + relative)
 
 tls_flags = ("--cert", "--key", "--https-port")
 # The server accepts --cert and --key only together and listens on every
@@ -118,22 +122,15 @@ if any(argument in tls_flags or argument.startswith(tuple(flag + "=" for flag in
     carried = ["--cert", str(certificate), "--key", str(private_key)]
     carried += [value for port in tls_ports for value in ("--https-port", str(port))]
     # The sync below replaces DEST with --delete, so a certificate or key the
-    # operator keeps inside DEST would vanish before the service restarts.
-    # A symlink to another file inside DEST needs both paths protected, or the
-    # sync leaves a dangling link behind.
+    # operator keeps inside DEST would vanish before the service restarts, and a
+    # symlink to another file inside DEST would be left dangling. Protect both,
+    # each compared with DEST in the same terms so a symlinked prefix such as
+    # /var -> /private/var still matches.
     if dest:
-        dest_root = Path(dest)
-        # Compare the link and its target against matching roots: DEST itself
-        # may sit behind a symlinked prefix such as /var -> /private/var.
-        for resolved, root in ((False, dest_root), (True, Path(os.path.realpath(dest_root)))):
-            for path in (certificate, private_key):
-                candidate = Path(os.path.realpath(path)) if resolved else path
-                try:
-                    relative = Path(os.path.abspath(candidate)).relative_to(root)
-                except ValueError:
-                    continue
-                pattern = rsync_literal(relative)
-                if pattern not in excludes:
+        for path in (certificate, private_key):
+            for pattern in (rsync_pattern(path, dest),
+                            rsync_pattern(os.path.realpath(path), os.path.realpath(dest))):
+                if pattern and pattern not in excludes:
                     excludes.append(pattern)
 Path(sys.argv[3]).write_text("\n".join(carried) + ("\n" if carried else ""))
 if excludes_path:
