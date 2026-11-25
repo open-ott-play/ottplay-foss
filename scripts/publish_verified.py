@@ -70,10 +70,8 @@ DOCKER_CREDENTIAL_HELPER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 DOCKER_CREDENTIAL_TIMEOUT = 30
 
 
-# Keep source policy, run evidence and downloaded bytes in one validation scope.
-# pylint: disable-next=too-many-locals
-def verified_assets(gh, tag, directory):
-    """Verify stable provenance and source policy before downloading approved bytes."""
+def _read_stable_release(gh, tag):
+    """Read the published release, tag and bounded manifest before trusting contents."""
     require(
         re.fullmatch(r"v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", tag),
         "An exact stable vX.Y.Z tag is required",
@@ -85,24 +83,32 @@ def verified_assets(gh, tag, directory):
     )
     ref = gh.api(f"git/ref/tags/{quote(tag, safe='')}")
     assets = gh.pages(f"releases/{positive(release['id'], 'release ID')}/assets")
-    manifests = [a for a in assets if a["name"] == MANIFEST]
-    require(len(manifests) == 1 and 0 < manifests[0].get("size", 2_000_001) <= 2_000_000,
-            "Stable release has no bounded unambiguous manifest")
+    manifests = [asset for asset in assets if asset["name"] == MANIFEST]
+    require(
+        len(manifests) == 1 and 0 < manifests[0].get("size", 2_000_001) <= 2_000_000,
+        "Stable release has no bounded unambiguous manifest",
+    )
     raw = gh.binary(f"releases/assets/{manifests[0]['id']}")
     candidate = json.loads(raw)
-    if isinstance(candidate, dict) and type(candidate.get("schema")) is int and candidate["schema"] == 2:
-        # Resolve the full RC before admitting any receipt-free stable payload.
-        # pylint: disable-next=import-outside-toplevel
-        if __package__:
-            from .release_versioned import read_verified_distribution
-        else:
-            from release_versioned import read_verified_distribution
+    require(isinstance(candidate, dict), "Stable manifest must be an object")
+    return release, ref, assets, raw, candidate
 
-        manifest, _, _ = read_verified_distribution(gh, tag, raw, stage=directory)
-        return manifest
-    manifest = validate_manifest(
-        raw, gh.repo, candidate.get("tag", ""), allow_final=True
-    )
+
+def _read_versioned_stable_release(gh, tag, directory, raw, candidate):
+    """Resolve the strict schema-2 compact distribution through its RC evidence."""
+    if type(candidate.get("schema")) is not int or candidate["schema"] != 2:
+        return None
+    if __package__:
+        from .release_versioned import read_verified_distribution
+    else:
+        from release_versioned import read_verified_distribution
+    manifest, _, _ = read_verified_distribution(gh, tag, raw, stage=directory)
+    return manifest
+
+
+def _validate_legacy_stable_provenance(gh, tag, ref, raw, candidate):
+    """Validate original policy, tag source and immutable run evidence."""
+    manifest = validate_manifest(raw, gh.repo, candidate.get("tag", ""), allow_final=True)
     original_policy = source_policy_snapshot(gh, manifest["source_sha"])
     require_release_policy(original_policy["data"], gh.repo, qualified=True)
     require(
@@ -118,31 +124,31 @@ def verified_assets(gh, tag, directory):
     info = repository_info(gh)
     run = gh.api(f"actions/runs/{manifest['run_id']}")
     require(run.get("id") == manifest["run_id"], "Source run identity mismatch")
-    require(
-        run.get("event") == "workflow_dispatch",
-        "Release candidate must come from a manual workflow dispatch",
-    )
-    validate_run(
-        gh, run, info, manifest["source_sha"], manifest["run_attempt"], completed=True
-    )
+    require(run.get("event") == "workflow_dispatch",
+            "Release candidate must come from a manual workflow dispatch")
+    validate_run(gh, run, info, manifest["source_sha"], manifest["run_attempt"], completed=True)
     verify_evidence(gh, manifest, raw)
     if manifest["channel"] == "stable":
-        # Legacy consumers do not vendor optional versioning modules.
-        # pylint: disable-next=import-outside-toplevel
         if __package__:
             from .release_versioned import verified_rc
         else:
             from release_versioned import verified_rc
-
-        _, parent = verified_rc(gh, manifest["derived_from_rc"]["tag"], info, run)
+        _, parent = verified_rc(
+            gh, manifest["derived_from_rc"]["tag"], info, run,
+        )
         require(
             parent == manifest["derived_from_rc"],
             "Final package RC provenance mismatch",
         )
+    return manifest, original_policy
+
+
+def _download_stable_inventory(gh, assets, manifest, directory):
+    """Download each exact stable payload using one inventory-wide byte budget."""
     expected = {item["name"]: item for item in manifest["assets"]}
     require(
         len(assets) == len(expected) + 1
-        and {a["name"] for a in assets} == set(expected) | {MANIFEST},
+        and {asset["name"] for asset in assets} == set(expected) | {MANIFEST},
         "Stable inventory differs from RC evidence",
     )
     budget = DownloadBudget(sum(item["size"] for item in expected.values()))
@@ -160,24 +166,32 @@ def verified_assets(gh, tag, directory):
             and identity["sha256"] == item["sha256"],
             f"Stable payload changed: {asset['name']}",
         )
-    if manifest.get("version_plan"):
-        # pylint: disable-next=import-outside-toplevel
-        if __package__:
-            from .version_receipt import verify_declared_artifacts, verify_receipts
-        else:
-            from version_receipt import verify_declared_artifacts, verify_receipts
 
-        verify_receipts(
-            directory,
-            manifest["version_plan"],
-            manifest["assets"],
-            original_policy["data"],
-        )
-        verify_declared_artifacts(
-            directory, original_policy["data"], manifest["version_plan"]
-        )
+
+def _verify_stable_receipts(directory, manifest, original_policy):
+    """Check any package and declared-artifact receipts after byte verification."""
+    if not manifest.get("version_plan"):
+        return
+    if __package__:
+        from .version_receipt import verify_declared_artifacts, verify_receipts
+    else:
+        from version_receipt import verify_declared_artifacts, verify_receipts
+    verify_receipts(directory, manifest["version_plan"], manifest["assets"], original_policy["data"])
+    verify_declared_artifacts(directory, original_policy["data"], manifest["version_plan"])
+
+
+def verified_assets(gh, tag, directory):
+    """Verify stable provenance and source policy before downloading approved bytes."""
+    _release, ref, assets, raw, candidate = _read_stable_release(gh, tag)
+    manifest = _read_versioned_stable_release(gh, tag, directory, raw, candidate)
+    if manifest is not None:
+        return manifest
+    manifest, original_policy = _validate_legacy_stable_provenance(
+        gh, tag, ref, raw, candidate,
+    )
+    _download_stable_inventory(gh, assets, manifest, directory)
+    _verify_stable_receipts(directory, manifest, original_policy)
     return manifest
-
 
 def verified_publication_config(policy, manifest, field):
     """Reject destination mappings that differ from the immutable RC policy."""
@@ -228,43 +242,125 @@ def skopeo_auth_paths():
     return [primary, configured / "containers" / "auth.json"]
 
 
-def normalised_registry(key):
-    """Compare one auth key with the registry names containers/image accepts."""
+def normalised_auth_key(key):
+    """Canonicalise one auth key, keeping the repository path it narrows to."""
     stripped = key.removeprefix("http://").removeprefix("https://")
     if stripped != key:
+        # A URL key names only the registry; any path there is legacy.
         stripped = stripped.split("/", 1)[0]
-    return (
-        "index.docker.io"
-        if stripped in {"docker.io", "registry-1.docker.io"}
-        else stripped
+    host, _, path = stripped.partition("/")
+    if host in DOCKER_HUB_HOSTS:
+        host = "index.docker.io"
+    return host + ("/" + path.rstrip("/") if path else "")
+
+
+def normalised_registry(key):
+    """Compare one auth key with the registry names containers/image accepts."""
+    return normalised_auth_key(key).split("/", 1)[0]
+
+
+def destination_auth_keys(image):
+    """Return the auth keys containers/image checks, most specific first."""
+    parts = image.split("/")
+    keys = [normalised_auth_key(parts[0])]
+    for part in parts[1:]:
+        keys.append(keys[-1] + "/" + part)
+    keys.reverse()
+    return keys
+
+
+def inline_login_present(document, image):
+    """Report whether an auth document stores a login for one destination."""
+    auths = document.get("auths") if isinstance(document, dict) else None
+    if not isinstance(auths, dict):
+        return False
+    entries = {
+        normalised_auth_key(key): value
+        for key, value in auths.items()
+        if isinstance(value, dict)
+    }
+    return any(
+        entries.get(key)
+        and (entries[key].get("auth") or entries[key].get("identitytoken"))
+        for key in destination_auth_keys(image)
     )
 
 
-def skopeo_login_present(host):
-    """Report whether skopeo's own auth files already carry a login for a host."""
-    keys = {normalised_registry(host)}
+def configured_helpers(document, image):
+    """Return each configured helper and its lookup key for one destination."""
+    if not isinstance(document, dict):
+        return []
+    helpers = document.get("credHelpers")
+    entries = {}
+    if isinstance(helpers, dict):
+        entries = {
+            normalised_auth_key(key): (value, key) for key, value in helpers.items()
+        }
+    matches = [entries[key] for key in destination_auth_keys(image) if key in entries]
+    if matches:
+        return matches
+    store = document.get("credsStore")
+    if isinstance(store, str) and store:
+        host = image.split("/", 1)[0]
+        server = (
+            DOCKER_HUB_SERVER
+            if normalised_registry(host) == "index.docker.io"
+            else host
+        )
+        return [(store, server)]
+    return []
+
+
+def registry_entry(credential):
+    """Encode one resolved credential the way containers/image expects it."""
+    username, secret = credential
+    if username == "<token>":
+        # Docker reports an OAuth refresh token in its username field; keep
+        # an empty basic pair so containers/image reaches identitytoken.
+        return {"auth": "Og==", "identitytoken": secret}
+    return {"auth": base64.b64encode(f"{username}:{secret}".encode()).decode()}
+
+
+def resolved_key(query, server):
+    """Keep a namespace-scoped helper answer from widening to its registry."""
+    return query if "/" in normalised_auth_key(query) else server
+
+
+def skopeo_login(image):
+    """Return the login skopeo's own auth files carry for one image.
+
+    The first value reports whether a file covers the destination. Helper-backed
+    answers keep the credential and the key it belongs to, so the publisher can
+    pass them on; inline answers are read by skopeo directly.
+    """
+    host = image.split("/", 1)[0]
+    server = DOCKER_HUB_SERVER if host in DOCKER_HUB_HOSTS else host
     for path in skopeo_auth_paths():
         try:
             stored = json.loads(path.read_text())
         except (OSError, ValueError):
             continue
-        auths = stored.get("auths") if isinstance(stored, dict) else None
-        if isinstance(auths, dict) and any(
-            isinstance(auths[key], dict)
-            and (auths[key].get("auth") or auths[key].get("identitytoken"))
-            and normalised_registry(key) in keys
-            for key in auths
-        ):
-            return True
-    return False
+        if not isinstance(stored, dict):
+            continue
+        if inline_login_present(stored, image):
+            return True, None, server
+        for helper, query in configured_helpers(stored, image):
+            credential = docker_helper_credentials(
+                helper, query, host, "skopeo's containers auth file"
+            )
+            if credential is not None:
+                return True, credential, resolved_key(query, server)
+    return False, None, server
 
 
-def docker_helper_credentials(helper, server, host):
+def docker_helper_credentials(
+    helper, server, host, where="the docker client configuration"
+):
     """Resolve one registry login through a docker credential helper."""
     require(
         isinstance(helper, str) and DOCKER_CREDENTIAL_HELPER.fullmatch(helper),
         f"Invalid docker credential helper name {helper!r} for {host}; "
-        "correct credHelpers in the docker client configuration",
+        f"correct credHelpers in {where}",
     )
     try:
         result = subprocess.run(  # nosec B603, B607
@@ -295,46 +391,39 @@ def registry_auth_entries(images):
     config = docker_config()
     auths = config.get("auths")
     auths = auths if isinstance(auths, dict) else {}
-    helpers = config.get("credHelpers")
-    helpers = helpers if isinstance(helpers, dict) else {}
-    store = config.get("credsStore")
-    store = store if isinstance(store, str) else None
     resolved = {}
     missing = []
-    for host in sorted({image.split("/", 1)[0] for image in images}):
+    for image in sorted(set(images)):
+        host = image.split("/", 1)[0]
         server = DOCKER_HUB_SERVER if host in DOCKER_HUB_HOSTS else host
-        if skopeo_login_present(host):
-            # Skopeo searches its own auth files before the docker client config.
+        found, credential, owner = skopeo_login(image)
+        if found:
+            # Skopeo searches its own auth files first; a helper answer there
+            # still needs to reach the config the skopeo commands receive.
+            if credential is not None:
+                resolved[owner] = registry_entry(credential)
             continue
-        if any(
-            isinstance(auths.get(key), dict)
-            and (auths[key].get("auth") or auths[key].get("identitytoken"))
-            for key in (server, host)
-        ):
+        if inline_login_present(config, image):
             # The docker client configuration already carries this login.
             continue
-        # Docker keys a Hub login by registry URL, so prefer that helper entry.
-        helper = helpers.get(server) or helpers.get(host) or store
-        credential = (
-            docker_helper_credentials(helper, server, host) if helper else None
-        )
-        if credential is None and helper and server != host:
-            credential = docker_helper_credentials(helper, host, host)
+        # A helper keyed for this destination wins over the global store.
+        credential = None
+        owner = server
+        helpers = configured_helpers(config, image)
+        for helper, query in helpers:
+            credential = docker_helper_credentials(helper, query, host)
+            if credential is not None:
+                owner = resolved_key(query, server)
+                break
+        if credential is None and helpers and helpers[0][1] != host:
+            credential = docker_helper_credentials(helpers[0][0], host, host)
         if credential is None:
             missing.append(host)
             continue
-        username, secret = credential
-        if username == "<token>":
-            # Docker reports an OAuth refresh token in its username field; keep
-            # an empty basic pair so containers/image reaches identitytoken.
-            resolved[server] = {"auth": "Og==", "identitytoken": secret}
-        else:
-            resolved[server] = {
-                "auth": base64.b64encode(f"{username}:{secret}".encode()).decode()
-            }
+        resolved[owner] = registry_entry(credential)
     require(
         not missing,
-        "No registry credentials for " + ", ".join(missing)
+        "No registry credentials for " + ", ".join(sorted(set(missing)))
         + "; run docker login for that registry and retry",
     )
     return auths, resolved
