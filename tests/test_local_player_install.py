@@ -378,8 +378,8 @@ sys.exit(113)
                 "--cert", str(dest / "server.crt"),
                 "--key", str(dest / "tls/server[1].key"), "--https-port", "9443"])
             self.assertEqual(excludes.read_text().splitlines(),
-                             ["/server.crt", "/tls/server\\[1\\].key",
-                              "/tls-archive/server.crt"])
+                             ["/server.crt", "/tls-archive/server.crt",
+                              "/tls/server\\[1\\].key"])
 
     def test_invalid_existing_tls_blocks_install_before_service_changes(self):
         with tempfile.TemporaryDirectory() as temp:
