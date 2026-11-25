@@ -173,16 +173,16 @@ exit "$status"
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content)
             (dest / "tls").mkdir()
-            (dest / "tls/server.crt").write_text("certificate")
+            (dest / "tls/server[1].crt").write_text("certificate")
             (dest / "tls/server.key").write_text("private key")
             (dest / "stale.txt").write_text("removed by --delete")
             excludes = root / "tls-excludes"
-            excludes.write_text("/tls/server.crt\n/tls/server.key\n")
+            excludes.write_text("/tls/server\\[1\\].crt\n/tls/server.key\n")
             subprocess.run(["bash", "-c", "set -euo pipefail\n" + sync],
                            env=dict(os.environ, SRC=str(source), DEST=str(dest),
                                     TLS_EXCLUDES=str(excludes)),
                            capture_output=True, text=True, check=True)
-            self.assertEqual((dest / "tls/server.crt").read_text(), "certificate")
+            self.assertEqual((dest / "tls/server[1].crt").read_text(), "certificate")
             self.assertEqual((dest / "tls/server.key").read_text(), "private key")
             self.assertFalse((dest / "stale.txt").exists())
             self.assertFalse((dest / "android").exists())
@@ -348,6 +348,38 @@ sys.exit(113)
                 "--key", str(dest / "tls/server.key"), "--https-port", "9443"])
             self.assertEqual(excludes.read_text().splitlines(),
                              ["/tls/server.crt", "/tls/server.key"])
+
+    def test_tls_excludes_cover_symlink_targets_and_pattern_characters(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dest = root / "player"
+            (dest / "tls-archive").mkdir(parents=True)
+            (dest / "tls-archive/server.crt").write_text("certificate")
+            (dest / "server.crt").symlink_to(dest / "tls-archive/server.crt")
+            (dest / "tls").mkdir()
+            (dest / "tls/server[1].key").write_text("private key")
+            agents = root / "Library/LaunchAgents"
+            agents.mkdir(parents=True)
+            plist = agents / "com.ottplay-foss-local.plist"
+            plist.write_bytes(plistlib.dumps({
+                "ProgramArguments": [str(dest / "ottplay-server"),
+                                     "--cert", "server.crt",
+                                     "--key", "tls/server[1].key", "--https-port=9443"],
+                "WorkingDirectory": str(dest)}))
+            env = {name: value for name, value in os.environ.items()
+                   if not name.startswith("SWOP_")}
+            env["HOME"] = str(root)
+            plan, excludes = root / "tls-plan", root / "tls-excludes"
+            subprocess.run(
+                [sys.executable, "-", "8443 8444 8445 8446", "com.ottplay-foss-local",
+                 str(plan), str(dest), str(excludes)], input=embedded_python("PYCONFIG"),
+                env=env, text=True, capture_output=True, check=True)
+            self.assertEqual(plan.read_text().splitlines(), [
+                "--cert", str(dest / "server.crt"),
+                "--key", str(dest / "tls/server[1].key"), "--https-port", "9443"])
+            self.assertEqual(excludes.read_text().splitlines(),
+                             ["/server.crt", "/tls/server\\[1\\].key",
+                              "/tls-archive/server.crt"])
 
     def test_invalid_existing_tls_blocks_install_before_service_changes(self):
         with tempfile.TemporaryDirectory() as temp:
