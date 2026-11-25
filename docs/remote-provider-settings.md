@@ -62,6 +62,41 @@ Paths must be canonical Plex library/folder roots, not arbitrary URLs. Titles ar
 
 Snapshots expire after two minutes. The CLI rejects incomplete, repeated or changed pagination rather than displaying a partial selection as complete. It does not automatically replay a lost write; reread the selection first.
 
+## Slot-addressed native provider settings
+
+A saved preset may carry `native_provider_settings` entries that name an explicit
+provider slot. The player advertises capability `native_provider_settings` version
+1 with operations `compare` and `set` and the providers it can persist without
+switching to them; this build advertises `edem` only.
+
+The terminal reads the current slot with `settings_compare`:
+
+```json
+{"version":1,"runtime":"RUNTIME","provider":"edem","number":1,
+ "settings":{"key":"PRIVATE_KEY","list":1,"portal":"portal::[key:...]https://..."}}
+```
+
+The reply carries `version`, `runtime`, `provider`, `number`, `context`,
+`revision` and `matched`. A save uses those two tokens with `provider_settings`
+and the same `settings`; the reply adds `saved`, `fields`, `reloaded` and
+`reload_required`. Rejections carry `reason` from the shared provider vocabulary
+(`invalid_request`, `invalid_value`, `policy_restricted`, `runtime_changed`,
+`source_changed`, `revision_conflict`, `storage_failed`, `unsupported`).
+
+Edem keeps one account per player, so only slot 1 is accepted; another number is
+reported as `invalid_request` rather than written to the single account. The save
+never selects the provider: the active provider, its catalogue and playback stay
+unchanged. When Edem is already active the catalogue reloads after the verified
+write, except in standby, where the reply reports `reload_required` instead.
+Secrets are compared and written byte-for-byte and never returned in a reply.
+
+```sh
+ott t1 load local
+```
+
+A preset whose provider entries are not advertised is rejected before any setting
+is sent, so an incomplete player build cannot leave a half-applied profile.
+
 ## Troubleshooting
 
 - Missing field: verify the active provider and update player, controller and CLI together.

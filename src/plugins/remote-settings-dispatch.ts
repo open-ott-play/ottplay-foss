@@ -13,6 +13,10 @@ function executeRemoteSettingsDispatch(
         releases: (() => void)[] = [];
     var provider =
         params.provider === "vportal" && request.action !== "player_settings";
+    var nativeProvider =
+        params.provider === "edem" &&
+        (request.action === "settings_compare" ||
+            request.action === "provider_settings");
     var initial = scope();
     function scope(): string {
         var h = w.__ottPlayerSettingsHost,
@@ -71,6 +75,12 @@ function executeRemoteSettingsDispatch(
                 request.action === "provider_settings"
                     ? params.settings && params.settings.profile
                     : params.number;
+        } else if (nativeProvider) {
+            data.version = 1;
+            data.provider = params.provider;
+            data.runtime = params.runtime;
+            data.number = params.number;
+            data.reason = reason;
         }
         respond({
             data: data,
@@ -222,6 +232,16 @@ function executeRemoteSettingsDispatch(
                             return ports.runtime();
                         }));
                 api.request(request, respond, afterReply);
+            } else if (nativeProvider) {
+                respond(
+                    w.__ottRemoteLegacySettings.native(
+                        w,
+                        request,
+                        params,
+                        policy,
+                        ports.runtime
+                    )
+                );
             } else if (provider) {
                 var driverApi =
                     w.__ottRemoteVPortalSettings ||

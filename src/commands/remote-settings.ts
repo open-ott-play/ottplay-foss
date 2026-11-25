@@ -56,6 +56,16 @@ export function executeRemoteSettings(
         ) {
             data.error = "unsupported";
             reason = "source_changed";
+        } else if (
+            params.provider === "edem" &&
+            (request.action === "settings_compare" ||
+                request.action === "provider_settings")
+        ) {
+            data.version = 1;
+            data.provider = "edem";
+            data.runtime = params.runtime;
+            data.number = params.number;
+            data.reason = reason;
         } else if (params.provider === "vportal") {
             data.provider = "vportal";
             data.runtime = params.runtime;
