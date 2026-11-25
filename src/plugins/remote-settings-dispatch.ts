@@ -232,20 +232,10 @@ function executeRemoteSettingsDispatch(
                             return ports.runtime();
                         }));
                 api.request(request, respond, afterReply);
-            } else if (nativeProvider) {
-                respond(
-                    w.__ottRemoteLegacySettings.native(
-                        w,
-                        request,
-                        params,
-                        policy,
-                        ports.runtime
-                    )
-                );
-            } else if (provider) {
+            } else if (provider || nativeProvider) {
                 var driverApi =
-                    w.__ottRemoteVPortalSettings ||
-                    (w.__ottRemoteVPortalSettings =
+                    w.__ottRemoteProviderSession ||
+                    (w.__ottRemoteProviderSession =
                         w.__ottRemoteProviderSettings.create(
                             w,
                             function () {
@@ -344,6 +334,7 @@ function executeRemoteSettingsDispatch(
                     fail("unsupported");
                 }
             } else if (
+                nativeProvider ||
                 request.action === "plex_folders" ||
                 (request.action === "provider_settings" &&
                     params.provider === "plex") ||

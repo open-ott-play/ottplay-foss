@@ -90,6 +90,12 @@ unchanged. When Edem is already active the catalogue reloads after the verified
 write, except in standby, where the reply reports `reload_required` instead.
 Secrets are compared and written byte-for-byte and never returned in a reply.
 
+The slot request uses the same Edem driver codec as the local editor: a
+detached, configuration-only instance owns the storage keys, the portal form and
+the single settings transaction. A preset therefore cannot save a second format
+of the same account, and validation, verification and revision handling are the
+ones the player already applies to local edits.
+
 ```sh
 ott t1 load local
 ```

@@ -34,6 +34,7 @@ function create(active = false) {
         }),
         w = f.host;
     const state = {
+        denied: false,
         locked: false,
         reloads: 0,
         runtime: "page-123",
@@ -45,29 +46,31 @@ function create(active = false) {
     w.__ottKiosk = { enabled: () => state.locked };
     w.__ottActiveProviderDriver = active
         ? {
-              configuration: () => ({ key: key }),
+              configuration: () => null,
               id: "edem",
               settingsChanged() {},
           }
         : { configuration: () => ({ active: 0 }), id: "m3u" };
     w.loadChannels = () => state.reloads++;
-    runtime(w, "src/plugins/remote-legacy-settings.ts");
+    runtime(w, "src/plugins/remote-provider-fields.ts");
+    runtime(w, "src/plugins/remote-provider-settings.ts");
+    const api = w.__ottRemoteProviderSettings.create(w, () => state.runtime, {
+        allowed: () => !state.denied,
+        url: () => true,
+    });
     function request(action, params) {
         let result,
             replies = 0;
-        result = w.__ottRemoteLegacySettings.native(
-            w,
-            { action, params },
-            params,
-            { allowed: () => !state.denied, url: () => true },
-            () => state.runtime
-        );
-        replies++;
+        api.request({ action, params }, (value) => {
+            result = JSON.parse(JSON.stringify(value));
+            replies++;
+        });
         assert.equal(replies, 1);
         assert(!JSON.stringify(result).includes("PRIVATE"));
-        return JSON.parse(JSON.stringify(result));
+        return result;
     }
     return Object.assign(f, {
+        request,
         compare(settings = { key: key, list: 0, portal: nextPortal }) {
             return request("settings_compare", {
                 number: 1,
@@ -101,13 +104,27 @@ check("compare reports an exact, secret-free slot snapshot", () => {
     const f = create(),
         compare = f.compare();
     assert.equal(compare.status, "ok");
-    assert.deepEqual(Object.keys(compare.data).sort(), compareKeys.slice().sort());
+    assert.deepEqual(
+        Object.keys(compare.data).sort(),
+        compareKeys.slice().sort()
+    );
     assert.equal(compare.data.matched, false);
     assert.equal(compare.data.number, 1);
     assert.equal(compare.data.provider, "edem");
     assert.match(compare.data.context, /^[A-Za-z0-9_.:-]{1,128}$/);
     assert.match(compare.data.revision, /^[A-Za-z0-9_.:-]{1,128}$/);
     assert.equal(f.compare({ edkey: undefined }).status, "rejected");
+});
+check("an already saved slot matches without writing", () => {
+    const f = create(),
+        compare = f.compare({ key: key, list: 0, portal: portal });
+    assert.equal(compare.status, "ok");
+    assert.equal(compare.data.matched, true);
+    const save = f.write(compare, { key: key, list: 0, portal: portal });
+    assert.equal(save.status, "ok");
+    assert.equal(save.data.saved, true);
+    assert.equal(save.data.reloaded, false);
+    assert.equal(f.saved.get("edvpurl"), portal);
 });
 check("inactive save writes the slot bytes without switching provider", () => {
     const f = create(),
@@ -125,6 +142,24 @@ check("inactive save writes the slot bytes without switching provider", () => {
     assert.equal(f.state.reloads, 0);
     assert.equal(f.host.__ottActiveProviderDriver, before);
     assert.equal(f.compare().data.matched, true);
+});
+check("the native save reuses the driver codec and one storage transaction", () => {
+    const f = create(),
+        writes = [];
+    const commit = f.host.commitSettingsWrites;
+    f.host.commitSettingsWrites = (batch, admitted, rollback) => {
+        writes.push(batch.map((row) => row.storage.key));
+        return commit(batch, admitted, rollback);
+    };
+    const settings = { key: key, list: 2, portal: nextPortal };
+    const save = f.write(f.compare(settings), settings);
+    assert.equal(save.status, "ok");
+    assert.equal(writes.length, 1);
+    assert.equal(
+        JSON.stringify(Array.from(writes[0]).sort()),
+        '["edkey","edlist","edvpurl"]'
+    );
+    assert.equal(f.saved.get("edlist"), "2");
 });
 check("active Edem slot reloads the catalogue once", () => {
     const f = create(true),
@@ -148,7 +183,9 @@ check("unsupported slot numbers, values and providers reject without writing", (
         before = f.saved.get("edvpurl");
     for (const params of [
         { number: 2 },
-        { settings: { key: "bad key" } },
+        { settings: { key: "bad\u0000key" } },
+        { settings: { key: "x".repeat(4097) } },
+        { settings: { list: "1" } },
         { settings: { list: 4 } },
         { settings: { list: 1.5 } },
         { settings: { portal: "https://portal.example/api/" } },
@@ -165,15 +202,9 @@ check("unsupported slot numbers, values and providers reject without writing", (
             version: 1,
         };
         Object.assign(request, params);
-        const result = f.host.__ottRemoteLegacySettings.native(
-            f.host,
-            { action: "settings_compare", params: request },
-            request,
-            { allowed: () => true, url: () => true },
-            () => f.state.runtime
-        );
-        assert.equal(result.status, "rejected", JSON.stringify(params));
-        assert.equal(typeof result.data.reason, "string");
+        const reply = f.request("settings_compare", request);
+        assert.equal(reply.status, "rejected", JSON.stringify(params));
+        assert.equal(typeof reply.data.reason, "string");
         assert.equal(f.saved.get("edvpurl"), before);
     }
     assert.equal(f.saved.get("edkey"), key);
