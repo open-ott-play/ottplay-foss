@@ -160,6 +160,8 @@ function projectCapsWithoutAllowances(names, preserveDropPreferences = false) {
                 ? "Object.freeze({entry:Object.freeze({bytes:0,gzipBytes:0}),appearance:Object.freeze({bytes:0,gzipBytes:0})})"
                 : name === "DESKTOP_DROP_ALLOWANCE"
                   ? "Object.freeze({entry:Object.freeze({bytes:0,gzipBytes:0}),optional:Object.freeze({bytes:0,gzipBytes:0})})"
+                  : name === "EDEM_PROVIDER_SETTINGS_ALLOWANCE"
+                    ? "Object.freeze({entry:Object.freeze({bytes:0,gzipBytes:0}),settings:Object.freeze({bytes:0,gzipBytes:0})})"
                   : "Object.freeze({bytes:0,gzipBytes:0,optional:Object.freeze({bytes:4800,gzipBytes:1900}),entry:Object.freeze({bytes:0,gzipBytes:0}),favorites:Object.freeze({bytes:0,gzipBytes:0})})";
         source =
             source.slice(0, initializer.getStart(parsed)) +
@@ -194,6 +196,7 @@ function capsWithoutAllowances(names) {
         "DESKTOP_PLAYLIST_DROP_ALLOWANCE",
         "DESKTOP_PLAYLIST_TRANSPORT_ENTRY_ALLOWANCE",
         "VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE",
+        "EDEM_PROVIDER_SETTINGS_ALLOWANCE",
         ...names,
     ]);
 }
@@ -314,6 +317,7 @@ function capsWithoutAllowances(names) {
     const actual = projectCapsWithoutAllowances([
         "DESKTOP_PLAYLIST_DROP_ALLOWANCE",
         "DESKTOP_PLAYLIST_TRANSPORT_ENTRY_ALLOWANCE",
+        "EDEM_PROVIDER_SETTINGS_ALLOWANCE",
     ]);
     const before = capsWithoutAllowances([]);
     const allowance = VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE;
