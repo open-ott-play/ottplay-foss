@@ -697,6 +697,17 @@ const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
     "remote-settings-lifecycle": Object.freeze({ bytes: 700, gzipBytes: 256 }),
     "subtitle-appearance": Object.freeze({ bytes: 96, gzipBytes: 32 }),
 });
+// Slot-addressed native provider settings advertise one control capability and
+// save the Edem account through the shared provider field codec. They stay in
+// the existing remote-settings asset and classic entry; no provider or optional
+// family cap changes. Node 26.8.2 / zlib 1.2.12 level9 against the branch parent:
+// entry 1222131/373078 -> 1222615/373220, remote-settings 15851/5185 ->
+// 20660/6358 raw/gzip. Entry, legacy and complete caps each count this once.
+// Evidence: docs/evidence/edem-provider-settings-size-20261125.json.
+const EDEM_PROVIDER_SETTINGS_ALLOWANCE = Object.freeze({
+    entry: Object.freeze({ bytes: 484, gzipBytes: 142 }),
+    settings: Object.freeze({ bytes: 4809, gzipBytes: 1173 }),
+});
 // Native-only Torrent provider: measured HEAD/source-archive comparison on Node26.
 // Catalog/editor is a lazy provider asset; shared entry adds only capability and
 // registry plumbing. Retired companion UI savings are deducted once, and the
@@ -981,6 +992,7 @@ const BUDGET = Object.freeze({
         CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.bytes +
         EPG_PRESENTATION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
+        EDEM_PROVIDER_SETTINGS_ALLOWANCE.entry.bytes +
         1062760 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
@@ -1038,7 +1050,8 @@ const BUDGET = Object.freeze({
         SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
         ARCHIVE_RELATIVE_SEEK_ALLOWANCE.gzipBytes +
         RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
-        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes,
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes +
+        EDEM_PROVIDER_SETTINGS_ALLOWANCE.entry.gzipBytes,
 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
@@ -1267,6 +1280,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
         1205560 +
+        EDEM_PROVIDER_SETTINGS_ALLOWANCE.entry.bytes +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes +
@@ -1339,7 +1353,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
         ARCHIVE_RELATIVE_SEEK_ALLOWANCE.gzipBytes +
         RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
-        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes,
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes +
+        EDEM_PROVIDER_SETTINGS_ALLOWANCE.entry.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -1459,7 +1474,10 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // Move the typed factory/dispatcher into the lifecycle asset, and the remote-only
     // handoff/notification handlers out of startup. Combined Node22: base15851/5206,
     // lifecycle29193/9276; entry1037905/321296. Existing entry/legacy caps stay fixed.
-    "remote-settings": Object.freeze({ bytes: 17500, gzipBytes: 5800 }),
+    "remote-settings": Object.freeze({
+        bytes: 17500 + EDEM_PROVIDER_SETTINGS_ALLOWANCE.settings.bytes,
+        gzipBytes: 5800 + EDEM_PROVIDER_SETTINGS_ALLOWANCE.settings.gzipBytes,
+    }),
     // Existing UI/debug owners stay in startup; typed extras, CAS and ACK handling
     // are optional. Node22 level9: extras5651/2255, combined entry1038397/320895.
     "remote-settings-extras": Object.freeze({ bytes: 7000, gzipBytes: 2800 }),
@@ -1628,7 +1646,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
-        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes +
+        EDEM_PROVIDER_SETTINGS_ALLOWANCE.entry.bytes,
     gzipBytes:
         MODERN_VPORTAL_ARTWORK_OPTIONAL_ALLOWANCE.gzipBytes +
         MODERN_LG_PLAYBACK_OPTIONAL_ALLOWANCE.gzipBytes +
@@ -1737,7 +1756,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
         PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.gzipBytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes +
-        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.gzipBytes,
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.gzipBytes +
+        EDEM_PROVIDER_SETTINGS_ALLOWANCE.entry.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.

@@ -126,8 +126,8 @@ test("ten-minute footer workload only mutates metadata on visible changes", () =
             { hidden, opening, visible },
             { hidden: 0, opening: 1, visible: 2 }
         );
-        assert.equal(f.shown[0], "1920x10808 Mbps");
-        assert.equal(f.label.innerHTML, "<br>1280x720<br>16 Mbps");
+        assert.equal(f.shown[0], "1920x1080 8 Mbps");
+        assert.equal(f.label.innerHTML, "<br>1280x720 <br>16 Mbps");
     } finally {
         f.close();
     }
@@ -141,15 +141,15 @@ test("animated and strict footer openings immediately show current metadata", ()
             f.w.__ottKiosk = { strict: () => mode === "strict" };
             f.rate(4);
             f.w.showChannelInfo(5);
-            assert.equal(f.shown[0], "1920x10804 Mbps");
+            assert.equal(f.shown[0], "1920x1080 4 Mbps");
             f.w.infoBarHide();
             f.rate(6);
             f.w.video.videoWidth = 1280;
             f.w.video.videoHeight = 720;
             f.w.updateCoreVideoInfo();
-            assert.equal(f.label.textContent, "1920x10804 Mbps");
+            assert.equal(f.label.textContent, "1920x1080 4 Mbps");
             f.w.showChannelInfo(5);
-            assert.equal(f.shown[1], "1280x7206 Mbps");
+            assert.equal(f.shown[1], "1280x720 6 Mbps");
         } finally {
             f.close();
         }
@@ -250,7 +250,7 @@ test("strict gesture keepalive preserves metadata until the normal refresh", () 
         assert.equal(scheduled[1].delay, 5000);
         f.w.updateCoreVideoInfo();
         assert.equal(f.mutations(), 1);
-        assert.equal(f.label.innerHTML, "<br>1920x1080<br>4 Mbps");
+        assert.equal(f.label.innerHTML, "<br>1920x1080 <br>4 Mbps");
     } finally {
         f.close();
     }
@@ -272,7 +272,7 @@ test("unchanged rounded bitrate preserves nodes and unavailable bitrate is remov
         assert.equal(f.label.innerHTML, "<br>1920x1080");
         f.rate(4);
         f.w.updateCoreVideoInfo();
-        assert.equal(f.label.innerHTML, "<br>1920x1080<br>4 Mbps");
+        assert.equal(f.label.innerHTML, "<br>1920x1080 <br>4 Mbps");
     } finally {
         f.close();
     }
@@ -288,15 +288,15 @@ test("feedback owns the label, and normal rendering recovers after replacement",
         assert.equal(f.label.textContent, "Buffering...");
         feedback = false;
         f.w.updateCoreVideoInfo();
-        assert.equal(f.label.textContent, "1920x10808 Mbps");
+        assert.equal(f.label.textContent, "1920x1080 8 Mbps");
         f.label.textContent = "";
         f.w.updateCoreVideoInfo();
-        assert.equal(f.label.textContent, "1920x10808 Mbps");
+        assert.equal(f.label.textContent, "1920x1080 8 Mbps");
         const replacement = f.w.document.createElement("div");
         replacement.id = "video_res";
         f.label.replaceWith(replacement);
         f.w.updateCoreVideoInfo();
-        assert.equal(replacement.textContent, "1920x10808 Mbps");
+        assert.equal(replacement.textContent, "1920x1080 8 Mbps");
     } finally {
         f.close();
     }
@@ -316,7 +316,7 @@ test("hidden native sampling and transport polling continue without DOM work", (
         assert.equal(polls, 3);
         assert.equal(f.mutations(), 0);
         f.w.showChannelInfo(5);
-        assert.equal(f.shown[0], "1920x10808 Mbps");
+        assert.equal(f.shown[0], "1920x1080 8 Mbps");
     } finally {
         f.close();
     }

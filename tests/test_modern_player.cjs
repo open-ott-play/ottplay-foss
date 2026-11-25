@@ -2248,3 +2248,84 @@ test("expanding an already visible footer keeps its auto-hide deadline", async (
         f.dom.window.close();
     }
 });
+
+test("catch-up keeps its scrubber when the transport still reports live", () => {
+    const f = fixture();
+    try {
+        f.w.playType = 1120;
+        f.w.playTime = 0;
+        f.w._prog100 = { name: "Film", time: 1000, time_to: 1600 };
+        f.api.refresh();
+        f.w.document.getElementById("info1").style.display = "block";
+        f.api.sync();
+        const timeline = f.w.document.querySelector(".modern-player-timeline");
+        assert.equal(timeline.hidden, false);
+        assert.equal(
+            f.w.document.getElementById("progress").style.width,
+            "20%"
+        );
+        assert.equal(
+            f.w.document.querySelector(".modern-player-elapsed").textContent,
+            "2:00"
+        );
+        assert.equal(
+            f.w.document.querySelector(".modern-player-remaining").textContent,
+            "-8:00"
+        );
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("a media-library item keeps its scrubber on a live-shaped transport", () => {
+    const f = fixture();
+    try {
+        f.w.playType = -99999999999;
+        Object.defineProperty(
+            f.w.document.getElementById("video"),
+            "currentTime",
+            {
+                configurable: true,
+                value: 120,
+            }
+        );
+        f.api.refresh();
+        f.w.document.getElementById("info1").style.display = "block";
+        f.api.sync();
+        const timeline = f.w.document.querySelector(".modern-player-timeline");
+        assert.equal(timeline.hidden, false);
+        assert.equal(
+            f.w.document.getElementById("progress").style.width,
+            "20%"
+        );
+        assert.equal(
+            f.w.document.querySelector(".modern-player-elapsed").textContent,
+            "2:00"
+        );
+        assert.equal(
+            f.w.document.querySelector(".modern-player-remaining").textContent,
+            "-8:00"
+        );
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("stream resolution and bitrate stay separate words in the footer", () => {
+    const f = fixture();
+    try {
+        f.w.document.getElementById("video_res").innerHTML =
+            "<br>1920x1080 <br>8 Mbps";
+        f.api.refresh();
+        f.w.document.getElementById("info1").style.display = "block";
+        f.api.sync();
+        const status = f.w.document.querySelector(".modern-player-status");
+        assert.equal(status.textContent, "1920x1080 8 Mbps");
+        assert.equal(status.hidden, false);
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});

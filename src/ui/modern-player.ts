@@ -122,16 +122,19 @@ function createModernPlayer(w: any) {
                 port.screens.current())
         );
     }
+    /** Catch-up and media items also ride the live transport; playType decides. */
     function playbackKind(): string {
+        var mode = Number(w.playType) || 0;
+        if (mode > 0) return "archive";
         var playback = w.__ottClassicPlayback;
         var state =
             playback && typeof playback.snapshot === "function"
                 ? playback.snapshot()
                 : null;
-        if (state && state.target && state.target.kind)
-            return String(state.target.kind);
-        if (!Number(w.playType)) return "live";
-        return Number(w.playType) < 0 ? "vod" : "archive";
+        var kind = (state && state.target && state.target.kind) || "";
+        if (kind === "archive") return "archive";
+        if (mode < 0) return "vod";
+        return kind === "vod" ? "vod" : "live";
     }
     function playing(forToggle?: boolean): boolean {
         return !!(w.stbIsPlaying && w.stbIsPlaying(forToggle));

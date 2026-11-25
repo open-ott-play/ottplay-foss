@@ -13,6 +13,10 @@ function executeRemoteSettingsDispatch(
         releases: (() => void)[] = [];
     var provider =
         params.provider === "vportal" && request.action !== "player_settings";
+    var nativeProvider =
+        params.provider === "edem" &&
+        (request.action === "settings_compare" ||
+            request.action === "provider_settings");
     var initial = scope();
     function scope(): string {
         var h = w.__ottPlayerSettingsHost,
@@ -71,6 +75,12 @@ function executeRemoteSettingsDispatch(
                 request.action === "provider_settings"
                     ? params.settings && params.settings.profile
                     : params.number;
+        } else if (nativeProvider) {
+            data.version = 1;
+            data.provider = params.provider;
+            data.runtime = params.runtime;
+            data.number = params.number;
+            data.reason = reason;
         }
         respond({
             data: data,
@@ -222,10 +232,10 @@ function executeRemoteSettingsDispatch(
                             return ports.runtime();
                         }));
                 api.request(request, respond, afterReply);
-            } else if (provider) {
+            } else if (provider || nativeProvider) {
                 var driverApi =
-                    w.__ottRemoteVPortalSettings ||
-                    (w.__ottRemoteVPortalSettings =
+                    w.__ottRemoteProviderSession ||
+                    (w.__ottRemoteProviderSession =
                         w.__ottRemoteProviderSettings.create(
                             w,
                             function () {
@@ -324,6 +334,7 @@ function executeRemoteSettingsDispatch(
                     fail("unsupported");
                 }
             } else if (
+                nativeProvider ||
                 request.action === "plex_folders" ||
                 (request.action === "provider_settings" &&
                     params.provider === "plex") ||
