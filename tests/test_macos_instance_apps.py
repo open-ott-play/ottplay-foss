@@ -220,6 +220,20 @@ class InstanceApps(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no recognized WebKit store"):
             self.prepare()
 
+    def test_changed_shared_profile_blocks_apply_before_intent(self):
+        default = self.home / "Library/WebKit/com.ottplay.foss/WebsiteData/Default"
+        origin = default / "origin-hash" / "origin-hash"
+        (origin / "LocalStorage").mkdir(parents=True)
+        (origin / "LocalStorage/localstorage.sqlite3").write_bytes(b"shared settings")
+        (default / "salt").write_bytes(b"store-salt")
+        for number in self.ports:
+            shutil.rmtree(self.old_stores[number])
+        self.prepare()
+        (origin / "LocalStorage/localstorage.sqlite3").write_bytes(b"newer shared settings")
+        with self.assertRaisesRegex(RuntimeError, "Original profile changed"):
+            INSTALL.apply(self.work)
+        self.assertFalse((self.work / "apply-intent.json").exists())
+
     def test_shared_default_store_seeds_new_instance_stores(self):
         # Legacy launchers executed the main binary, so every instance shared the
         # main app's default store. A fresh install must adopt that profile
