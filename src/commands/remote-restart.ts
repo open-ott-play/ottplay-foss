@@ -937,7 +937,6 @@ export function executeRemoteControl(
                 localMessage10,
             ].filter(lifecycleAvailable),
             local_media: localMedia,
-            native_provider_settings: nativeProviderCapability(w),
             local_media_progressive:
                 localMedia && w.__ottLocalMedia.remoteProgressive?.() === true
                     ? { version: 1 }
@@ -947,6 +946,7 @@ export function executeRemoteControl(
                 typeof w.__ottLocalSourceDiagnostics === "function"
                     ? { version: 1 }
                     : undefined,
+            native_provider_settings: nativeProviderCapability(w),
             offline_profiles: w.__ottOfflineProfiles
                 ? w.__ottOfflineProfiles.capabilities()
                 : null,

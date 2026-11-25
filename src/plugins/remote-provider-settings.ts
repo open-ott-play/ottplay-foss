@@ -138,8 +138,8 @@ function createRemoteProviderSettings(
                     );
                     return valid();
                 },
-                createLifetime: w.__ottProviderRuntime.createRegistry,
                 core: {},
+                createLifetime: w.__ottProviderRuntime.createRegistry,
                 murmur: function (value: string, seed: number) {
                     return typeof w.murmurhash3_32_gc === "function"
                         ? w.murmurhash3_32_gc(value, seed)
