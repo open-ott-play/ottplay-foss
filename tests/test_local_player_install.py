@@ -172,9 +172,19 @@ exit "$status"
                 path = source / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content)
+            (dest / "tls").mkdir()
+            (dest / "tls/server.crt").write_text("certificate")
+            (dest / "tls/server.key").write_text("private key")
+            (dest / "stale.txt").write_text("removed by --delete")
+            excludes = root / "tls-excludes"
+            excludes.write_text("/tls/server.crt\n/tls/server.key\n")
             subprocess.run(["bash", "-c", "set -euo pipefail\n" + sync],
-                           env=dict(os.environ, SRC=str(source), DEST=str(dest)),
+                           env=dict(os.environ, SRC=str(source), DEST=str(dest),
+                                    TLS_EXCLUDES=str(excludes)),
                            capture_output=True, text=True, check=True)
+            self.assertEqual((dest / "tls/server.crt").read_text(), "certificate")
+            self.assertEqual((dest / "tls/server.key").read_text(), "private key")
+            self.assertFalse((dest / "stale.txt").exists())
             self.assertFalse((dest / "android").exists())
             self.assertFalse((dest / "ios").exists())
             for relative in ["licenses/android/Apache-2.0.txt", "licenses/ios/LICENSE.txt",
@@ -309,6 +319,35 @@ sys.exit(113)
             self.assertEqual(arguments[arguments.index("--key") + 1], str(key))
             self.assertEqual([arguments[index + 1] for index, argument in enumerate(arguments[:-1])
                               if argument == "--https-port"], ["9443", "9444"])
+
+    def test_tls_arguments_accept_equals_form_and_resolve_from_working_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dest = root / "installed player"
+            (dest / "tls").mkdir(parents=True)
+            (dest / "tls/server.crt").write_text("certificate")
+            (dest / "tls/server.key").write_text("private key")
+            agents = root / "Library/LaunchAgents"
+            agents.mkdir(parents=True)
+            plist = agents / "com.ottplay-foss-local.plist"
+            plist.write_bytes(plistlib.dumps({
+                "ProgramArguments": [str(dest / "ottplay-server"),
+                                     "--cert=tls/server.crt", "--key", "tls/server.key",
+                                     "--https-port=9443"],
+                "WorkingDirectory": str(dest)}))
+            env = {name: value for name, value in os.environ.items()
+                   if not name.startswith("SWOP_")}
+            env["HOME"] = str(root)
+            plan, excludes = root / "tls-plan", root / "tls-excludes"
+            subprocess.run(
+                [sys.executable, "-", "8443 8444 8445 8446", "com.ottplay-foss-local",
+                 str(plan), str(dest), str(excludes)], input=embedded_python("PYCONFIG"),
+                env=env, text=True, capture_output=True, check=True)
+            self.assertEqual(plan.read_text().splitlines(), [
+                "--cert", str(dest / "tls/server.crt"),
+                "--key", str(dest / "tls/server.key"), "--https-port", "9443"])
+            self.assertEqual(excludes.read_text().splitlines(),
+                             ["/tls/server.crt", "/tls/server.key"])
 
     def test_invalid_existing_tls_blocks_install_before_service_changes(self):
         with tempfile.TemporaryDirectory() as temp:

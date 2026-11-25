@@ -43,8 +43,9 @@ fi
 # Reject invalid lists before syncing files or touching launchd. The TLS
 # listener plan is resolved once here and reused verbatim by the plist writer.
 TLS_PLAN="$(mktemp "${TMPDIR:-/tmp}/ottplay-tls-plan.XXXXXX")"
-trap 'rm -f "$TLS_PLAN"' EXIT
-python3 - "$HTTP_PORTS" "$LABEL_BASE" "$TLS_PLAN" <<'PYCONFIG'
+TLS_EXCLUDES="$(mktemp "${TMPDIR:-/tmp}/ottplay-tls-excludes.XXXXXX")"
+trap 'rm -f "$TLS_PLAN" "$TLS_EXCLUDES"' EXIT
+python3 - "$HTTP_PORTS" "$LABEL_BASE" "$TLS_PLAN" "$DEST" "$TLS_EXCLUDES" <<'PYCONFIG'
 import re
 import sys
 import os
@@ -63,21 +64,44 @@ saved = Path.home() / "Library/LaunchAgents" / (sys.argv[2] + ".plist")
 existing = plistlib.loads(saved.read_bytes()) if saved.exists() else {}
 previous = existing.get("ProgramArguments") or []
 
-def tls_values(flag):
-    return [previous[index + 1] for index, arg in enumerate(previous[:-1]) if arg == flag]
+dest = os.path.abspath(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4] else ""
+excludes_path = sys.argv[5] if len(sys.argv) > 5 else ""
 
-certs, keys, https = tls_values("--cert"), tls_values("--key"), tls_values("--https-port")
-carried = []
+def flag_values(flag):
+    # clap accepts both "--flag value" and "--flag=value" spellings.
+    values = []
+    for index, argument in enumerate(previous):
+        if argument.startswith(flag + "="):
+            values.append(argument[len(flag) + 1:])
+        elif argument == flag and index + 1 < len(previous):
+            values.append(previous[index + 1])
+    return values
+
+certs, keys, https = flag_values("--cert"), flag_values("--key"), flag_values("--https-port")
+carried, excludes = [], []
+# launchd starts the service in WorkingDirectory, so the server (and this
+# installer's relative paths) resolve relative TLS paths there. Resolve them
+# once to absolute paths, so the carried arguments keep pointing at the same
+# files after a reinstall rewrites ProgramArguments.
+working = Path(os.path.abspath(existing.get("WorkingDirectory") or dest or os.getcwd()))
+
+def absolute(value):
+    path = Path(os.path.expanduser(value))
+    return path if path.is_absolute() else working / path
+
+tls_flags = ("--cert", "--key", "--https-port")
 # The server accepts --cert and --key only together and listens on every
 # --https-port (defaulting to 8443). Resolve the operator's TLS listener once
 # here, before the working service is stopped or replaced; a lone flag, missing
 # file or conflicting port is rejected instead of installing a service that
 # cannot start or that silently loses an HTTPS origin.
-if any(flag in previous for flag in ("--cert", "--key", "--https-port")):
+if any(argument in tls_flags or argument.startswith(tuple(flag + "=" for flag in tls_flags))
+       for argument in previous):
     if len(certs) != 1 or len(keys) != 1:
         sys.exit("error: existing service must set --cert and --key once each; "
                  "remove the partial TLS arguments from ProgramArguments")
-    if not (Path(certs[0]).is_file() and Path(keys[0]).is_file()):
+    certificate, private_key = absolute(certs[0]), absolute(keys[0])
+    if not (certificate.is_file() and private_key.is_file()):
         sys.exit("error: existing service certificate or key is missing; "
                  "restore both files or remove the TLS arguments")
     if any(not port.isdigit() or not 1 <= int(port) <= 65535 for port in https):
@@ -86,9 +110,21 @@ if any(flag in previous for flag in ("--cert", "--key", "--https-port")):
     if len(set(tls_ports)) != len(tls_ports) or set(tls_ports) & {int(port) for port in ports}:
         sys.exit("error: existing service HTTPS ports conflict with the configured HTTP "
                  "ports; remove the conflicting listeners or change OTTPLAY_HTTP_PORTS")
-    carried = ["--cert", certs[0], "--key", keys[0]]
+    carried = ["--cert", str(certificate), "--key", str(private_key)]
     carried += [value for port in tls_ports for value in ("--https-port", str(port))]
+    # The sync below replaces DEST with --delete, so a certificate or key the
+    # operator keeps inside DEST would vanish before the service restarts.
+    if dest:
+        for path in (certificate, private_key):
+            try:
+                relative = Path(os.path.abspath(path)).relative_to(Path(dest))
+            except ValueError:
+                continue
+            if "/" + str(relative) not in excludes:
+                excludes.append("/" + str(relative))
 Path(sys.argv[3]).write_text("\n".join(carried) + ("\n" if carried else ""))
+if excludes_path:
+    Path(excludes_path).write_text("".join(pattern + "\n" for pattern in excludes))
 swop = existing.get("EnvironmentVariables", {})
 for key in ("SWOP_BASE_URL", "SWOP_INSTALLATION_TOKEN"):
     if os.environ.get(key, "").strip():
@@ -122,7 +158,8 @@ mkdir -p "$DEST"
 # Preserve live debug flag/log across --delete. Keep source-local artifacts out
 # of DEST; the service receives the source archive path explicitly below.
 # Anchor native project exclusions so platform adapters and licenses are copied.
-rsync -a --delete \
+# The generated exclude list protects TLS files the service uses inside DEST.
+rsync -a --delete --exclude-from "$TLS_EXCLUDES" \
     --exclude .git --exclude node_modules --exclude logs --exclude .local-artifacts \
     --exclude target --exclude build --exclude .herenow --exclude .cache \
     --exclude .local-ops --exclude ottplay-server \
