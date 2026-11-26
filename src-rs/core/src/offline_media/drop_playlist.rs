@@ -1,6 +1,9 @@
-//! Native-picked playlists only. HTTP entries are returned to the player;
-//! this module never fetches, proxies, recursively opens or persists them.
+//! Native-picked playlists only. HTTP entries are returned to the player, except
+//! a channel-list URL that is fetched once, bounded and in place, so a dropped
+//! playlist link becomes its channels instead of a single stream. Proxying,
+//! recursion and persistence stay out of this module.
 use super::*;
+use std::time::Duration;
 
 pub(super) const MAX_PLAYLIST_BYTES: usize = 8 * 1024 * 1024;
 const MAX_TOTAL_TEXT: usize = 16 * 1024 * 1024;
@@ -13,6 +16,10 @@ const HLS: &str =
     "Local HLS manifests are not supported; add the HTTP(S) manifest URL as a playlist entry";
 const NESTED: &str = "Nested local playlists are not supported";
 const ITEMS: &str = "Dropped playlists exceed 20000 entries or 128 local files";
+const MANIFEST_TIMEOUT: Duration = Duration::from_secs(20);
+/// A dropped playlist may reference a handful of remote channel lists; fetching
+/// more than this from one gesture would turn a drop into a crawl.
+const MAX_REMOTE_MANIFESTS: usize = 32;
 
 pub(super) enum Member {
     Local(usize),
@@ -408,6 +415,133 @@ fn parse(
     }
     Ok(())
 }
+/// HLS media and master playlists are streams, not channel lists: their
+/// `#EXT-X-` tags must never be read as channel entries.
+fn looks_like_hls(text: &str) -> bool {
+    text.lines()
+        .any(|line| line.trim_start().starts_with("#EXT-X-"))
+}
+/// Remote entries stay absolute; a relative entry resolves against its manifest.
+fn remote_entry(
+    line: &str,
+    base: &reqwest::Url,
+    title: Option<String>,
+) -> Result<Requested, &'static str> {
+    let joined = base.join(line.trim()).map_err(|_| INVALID)?;
+    remote(joined.as_str(), title)
+}
+fn parse_remote(
+    text: &str,
+    base: &reqwest::Url,
+    out: &mut Vec<Requested>,
+) -> Result<(), &'static str> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let before = out.len();
+    let mut title = None;
+    for raw in text.lines() {
+        if raw.len() > MAX_LINE || raw.chars().any(|c| c.is_control() && c != '\t') {
+            return Err(INVALID);
+        }
+        let line = raw.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if line.starts_with("#EXTINF:") {
+            title = extinf_title(line)?;
+            continue;
+        }
+        if line.starts_with('#') {
+            continue;
+        }
+        if out.len() >= MAX_DROPPED_ITEMS {
+            return Err(ITEMS);
+        }
+        out.push(remote_entry(line, base, title.take())?);
+    }
+    if out.len() == before {
+        return Err(EMPTY);
+    }
+    Ok(())
+}
+/// One bounded, non-recursive read of a dropped channel-list URL. `None` keeps
+/// the reference as a stream when the server is unreachable or declines it.
+async fn fetch_manifest(
+    owner: &ReadWork,
+    url: &str,
+    limit: usize,
+) -> Result<Option<String>, Failure> {
+    let client = reqwest::Client::builder()
+        .timeout(MANIFEST_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::limited(2))
+        .build()
+        .map_err(|_| bad(INVALID))?;
+    let Ok(response) = client.get(url).send().await else {
+        return Ok(None);
+    };
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+    if response
+        .content_length()
+        .is_some_and(|length| length > limit as u64)
+    {
+        return Err(bad(TOO_LARGE));
+    }
+    let mut body = Vec::new();
+    let mut response = response;
+    loop {
+        owner.check()?;
+        let Some(chunk) = response.chunk().await.map_err(|_| bad(INVALID))? else {
+            break;
+        };
+        if body.len() + chunk.len() > limit {
+            return Err(bad(TOO_LARGE));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    String::from_utf8(body)
+        .map(Some)
+        .map_err(|_| bad("Dropped playlist must be UTF-8"))
+}
+async fn expand_remote_references(
+    owner: &ReadWork,
+    items: Vec<Requested>,
+    total_text: &mut usize,
+) -> Result<Vec<Requested>, Failure> {
+    let mut out = Vec::with_capacity(items.len());
+    let mut fetched = 0usize;
+    for item in items {
+        let Requested::Remote { url, mime, .. } = &item else {
+            out.push(item);
+            continue;
+        };
+        if mime != "application/vnd.apple.mpegurl" || fetched >= MAX_REMOTE_MANIFESTS {
+            out.push(item);
+            continue;
+        }
+        owner.check()?;
+        let Some(text) = fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text).await? else {
+            out.push(item);
+            continue;
+        };
+        fetched += 1;
+        let Ok(base) = reqwest::Url::parse(url) else {
+            out.push(item);
+            continue;
+        };
+        let mut expanded = Vec::new();
+        if looks_like_hls(&text) || parse_remote(&text, &base, &mut expanded).is_err() {
+            out.push(item);
+            continue;
+        }
+        if out.len() + expanded.len() > MAX_DROPPED_ITEMS {
+            return Err(bad(ITEMS));
+        }
+        *total_text += text.len();
+        out.extend(expanded);
+    }
+    Ok(out)
+}
 pub(super) async fn expand(
     owner: &ReadWork,
     paths: Vec<PathBuf>,
@@ -429,7 +563,7 @@ pub(super) async fn expand(
             out.push(local(path, None).map_err(bad)?);
         }
     }
-    Ok(out)
+    expand_remote_references(owner, out, &mut total_text).await
 }
 
 #[cfg(test)]
@@ -476,6 +610,40 @@ mod tests {
             Method::GET,
         )
         .await
+    }
+
+    #[test]
+    fn remote_channel_list_entries_resolve_against_manifest_and_keep_titles() {
+        let base = reqwest::Url::parse("https://example.invalid/playlists/ru/live.m3u").unwrap();
+        let text = "#EXTM3U\n#EXTINF:-1 tvg-id=\"a\",Первый\nlive/1.m3u8\n#EXTINF:-1,Второй\nhttps://cdn.example.invalid/2.ts\n";
+        let mut rows = Vec::new();
+        parse_remote(text, &base, &mut rows).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert!(matches!(&rows[0], Requested::Remote { name, url, mime }
+            if name == "Первый"
+                && url == "https://example.invalid/playlists/ru/live/1.m3u8"
+                && mime == "application/vnd.apple.mpegurl"));
+        assert!(matches!(&rows[1], Requested::Remote { name, url, mime }
+            if name == "Второй" && url == "https://cdn.example.invalid/2.ts" && mime == "video/mp2t"));
+    }
+
+    #[test]
+    fn hls_media_and_master_playlists_stay_streams() {
+        assert!(looks_like_hls(
+            "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:6\n"
+        ));
+        assert!(looks_like_hls(
+            "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nlow.m3u8\n"
+        ));
+        assert!(!looks_like_hls(
+            "#EXTM3U\n#EXTINF:-1,Channel\nhttps://example.invalid/s.m3u8\n"
+        ));
+        let base = reqwest::Url::parse("https://example.invalid/x.m3u").unwrap();
+        assert_eq!(
+            parse_remote("#EXTM3U\n#EXT-X-VERSION:3\n", &base, &mut Vec::new()).err(),
+            Some(EMPTY),
+            "an HLS manifest has no channel entries to expand"
+        );
     }
 
     #[test]
