@@ -566,13 +566,17 @@ async fn public_target(url: &reqwest::Url) -> bool {
 }
 /// Where a redirect points, if that stays a public reference. Relative locations
 /// resolve against the document that asked for them.
-fn redirect_target(current: &reqwest::Url, location: &str) -> Option<reqwest::Url> {
+fn redirect_target(
+    current: &reqwest::Url,
+    location: &str,
+    allow_private: bool,
+) -> Option<reqwest::Url> {
     let location = location.trim();
     if location.is_empty() {
         return None;
     }
     let next = current.join(location).ok()?;
-    public_reference(&next).then_some(next)
+    (allow_private || public_reference(&next)).then_some(next)
 }
 /// Where one dropped channel-list reference ends up. A reference that stays a
 /// stream keeps its bounded reason, never a URL or an error string.
@@ -588,7 +592,12 @@ enum Fetched {
 /// One bounded, non-recursive read of a dropped channel-list URL, following at
 /// most `MAX_REDIRECTS` hops that each stay public. Anything else keeps the
 /// reference as a stream.
-async fn fetch_manifest(owner: &ReadWork, url: &str, limit: usize) -> Result<Fetched, Failure> {
+async fn fetch_manifest(
+    owner: &ReadWork,
+    url: &str,
+    limit: usize,
+    allow_private: bool,
+) -> Result<Fetched, Failure> {
     let Ok(parsed) = reqwest::Url::parse(url) else {
         return Ok(Fetched::Unavailable);
     };
@@ -600,7 +609,7 @@ async fn fetch_manifest(owner: &ReadWork, url: &str, limit: usize) -> Result<Fet
     let mut current = parsed;
     for _ in 0..=MAX_REDIRECTS {
         owner.check()?;
-        if !public_target(&current).await {
+        if !allow_private && !public_target(&current).await {
             return Ok(Fetched::Blocked);
         }
         let Ok(response) = client.get(current.clone()).send().await else {
@@ -615,7 +624,7 @@ async fn fetch_manifest(owner: &ReadWork, url: &str, limit: usize) -> Result<Fet
             let Some(location) = location else {
                 return Ok(Fetched::Unavailable);
             };
-            let Some(next) = redirect_target(&current, location) else {
+            let Some(next) = redirect_target(&current, location, allow_private) else {
                 return Ok(Fetched::Blocked);
             };
             current = next;
@@ -665,6 +674,7 @@ async fn expand_remote_references(
     owner: &ReadWork,
     items: Vec<Requested>,
     total_text: &mut usize,
+    allow_private: bool,
 ) -> Result<(Vec<Requested>, Option<ExpansionIssue>), Failure> {
     let mut out = Vec::with_capacity(items.len());
     let mut fetched = 0usize;
@@ -679,19 +689,20 @@ async fn expand_remote_references(
             continue;
         }
         owner.check()?;
-        let (text, base) = match fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text).await? {
-            Fetched::Document(text, base) => (text, base),
-            Fetched::Blocked => {
-                issue.get_or_insert(ExpansionIssue::Blocked);
-                out.push(item);
-                continue;
-            }
-            Fetched::Unavailable => {
-                issue.get_or_insert(ExpansionIssue::Unavailable);
-                out.push(item);
-                continue;
-            }
-        };
+        let (text, base) =
+            match fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text, allow_private).await? {
+                Fetched::Document(text, base) => (text, base),
+                Fetched::Blocked => {
+                    issue.get_or_insert(ExpansionIssue::Blocked);
+                    out.push(item);
+                    continue;
+                }
+                Fetched::Unavailable => {
+                    issue.get_or_insert(ExpansionIssue::Unavailable);
+                    out.push(item);
+                    continue;
+                }
+            };
         fetched += 1;
         let mut expanded = Vec::new();
         if looks_like_hls(&text) || parse_remote(&text, &base, &mut expanded).is_err() {
@@ -711,6 +722,15 @@ pub(super) async fn expand(
     owner: &ReadWork,
     paths: Vec<PathBuf>,
 ) -> Result<(Vec<Requested>, Option<ExpansionIssue>), Failure> {
+    expand_reach(owner, paths, false).await
+}
+/// The same batch, reading a fixture from loopback. Only tests set
+/// `allow_private`; a dropped playlist is always read public-only.
+async fn expand_reach(
+    owner: &ReadWork,
+    paths: Vec<PathBuf>,
+    allow_private: bool,
+) -> Result<(Vec<Requested>, Option<ExpansionIssue>), Failure> {
     let mut out = Vec::new();
     let mut total_text = 0usize;
     let mut local_count = 0usize;
@@ -728,7 +748,7 @@ pub(super) async fn expand(
             out.push(local(path, None).map_err(bad)?);
         }
     }
-    expand_remote_references(owner, out, &mut total_text).await
+    expand_remote_references(owner, out, &mut total_text, allow_private).await
 }
 
 #[cfg(test)]
@@ -827,13 +847,13 @@ mod tests {
     fn redirects_follow_only_public_references() {
         let base = reqwest::Url::parse("http://example.org/list/channels.m3u").unwrap();
         assert_eq!(
-            redirect_target(&base, "https://example.org/list/channels.m3u")
+            redirect_target(&base, "https://example.org/list/channels.m3u", false)
                 .map(|url| url.to_string())
                 .as_deref(),
             Some("https://example.org/list/channels.m3u")
         );
         assert_eq!(
-            redirect_target(&base, "  ../other.m3u  ")
+            redirect_target(&base, "  ../other.m3u  ", false)
                 .map(|url| url.to_string())
                 .as_deref(),
             Some("http://example.org/other.m3u")
@@ -847,7 +867,7 @@ mod tests {
             "   ",
         ] {
             assert!(
-                redirect_target(&base, refused).is_none(),
+                redirect_target(&base, refused, false).is_none(),
                 "{refused} must not be followed"
             );
         }
@@ -1256,6 +1276,47 @@ mod tests {
         assert_eq!(
             issue.map(ExpansionIssue::code),
             Some("playlist_link_blocked")
+        );
+        assert!(f.library.transient.lock().unwrap().groups.is_empty());
+    }
+
+    #[tokio::test]
+    async fn declined_playlist_reference_keeps_its_reason() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let f = Fixture::new().await;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut head = [0u8; 1024];
+            let _ = stream.read(&mut head).await;
+            stream
+                .write_all(
+                    b"HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
+                )
+                .await
+                .unwrap();
+            let _ = stream.shutdown().await;
+        });
+        let manifest = f
+            .manifest(format!("http://{address}/declined.m3u8\n"))
+            .await;
+        let lease = f.library.background.enter().unwrap();
+        let (rows, issue) = owned_read(&lease, move |owner| async move {
+            expand_reach(&owner, vec![manifest], true).await
+        })
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0].name(),
+            "Playlist stream",
+            "a declined reference still plays as one stream"
+        );
+        assert_eq!(
+            issue.map(ExpansionIssue::code),
+            Some("playlist_link_unavailable")
         );
         assert!(f.library.transient.lock().unwrap().groups.is_empty());
     }
