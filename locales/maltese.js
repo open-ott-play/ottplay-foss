@@ -803,8 +803,7 @@ var keyStrings = {
     "Playlist is too large": "Il-playlist hija kbira wisq",
     "Playlist link could not be loaded":
         "Il-link tal-playlist ma setax jiġi mgħobbi",
-    "Playlist link is not public":
-        "Il-link tal-playlist mhuwiex pubbliku",
+    "Playlist link is not public": "Il-link tal-playlist mhuwiex pubbliku",
     "Playlist local files must be dropped together with the playlist":
         "Il-fajls lokali tal-playlist għandhom jitniżżlu flimkien mal-playlist",
     "Playlist must use UTF-8": "Il-playlist trid tuża UTF-8",
