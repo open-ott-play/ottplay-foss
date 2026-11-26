@@ -1,7 +1,7 @@
 //! Native-picked playlists only. HTTP entries are returned to the player, except
-//! a channel-list URL that is fetched once, bounded and in place, so a dropped
-//! playlist link becomes its channels instead of a single stream. Proxying,
-//! recursion and persistence stay out of this module.
+//! a public channel-list URL that is fetched once, bounded and in place, so a
+//! dropped playlist link becomes its channels instead of a single stream.
+//! Proxying, recursion and persistence stay out of this module.
 use super::*;
 use std::time::Duration;
 
@@ -463,16 +463,104 @@ fn parse_remote(
     }
     Ok(())
 }
+/// A dropped playlist may only make the player read a public document:
+/// loopback, private, link-local and local-only names would turn a link into a
+/// probe of the machine or its network.
+fn public_address(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            !(v4.is_private()
+                || v4.is_loopback()
+                || v4.is_link_local()
+                || v4.is_broadcast()
+                || v4.is_documentation()
+                || v4.is_unspecified()
+                || v4.is_multicast())
+        }
+        std::net::IpAddr::V6(v6) => {
+            if let Some(v4) = v6.to_ipv4_mapped() {
+                return public_address(std::net::IpAddr::V4(v4));
+            }
+            !(v6.is_loopback()
+                || v6.is_unspecified()
+                || v6.is_multicast()
+                || v6.is_unique_local()
+                || v6.is_unicast_link_local())
+        }
+    }
+}
+/// `Url::host_str` keeps the brackets of an IPv6 literal.
+fn literal_address(host: &str) -> Option<std::net::IpAddr> {
+    host.strip_prefix('[')
+        .and_then(|rest| rest.strip_suffix(']'))
+        .unwrap_or(host)
+        .parse()
+        .ok()
+}
+fn public_host_name(host: &str) -> bool {
+    let name = host.trim_end_matches('.').to_ascii_lowercase();
+    !(name == "localhost"
+        || name.ends_with(".localhost")
+        || name.ends_with(".local")
+        || name.ends_with(".internal")
+        || name.ends_with(".home.arpa"))
+}
+/// Scheme and host shape without DNS; a literal address must already be public.
+fn public_reference(url: &reqwest::Url) -> bool {
+    if !matches!(url.scheme(), "http" | "https") {
+        return false;
+    }
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    match literal_address(host) {
+        Some(ip) => public_address(ip),
+        None => public_host_name(host),
+    }
+}
+/// Every address the name resolves to must be public, so a rebinding name is
+/// refused before the request is made.
+async fn public_target(url: &reqwest::Url) -> bool {
+    if !public_reference(url) {
+        return false;
+    }
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    if literal_address(host).is_some() {
+        return true;
+    }
+    let port = url.port_or_known_default().unwrap_or(443);
+    let Ok(mut addresses) = tokio::net::lookup_host((host, port)).await else {
+        return false;
+    };
+    let mut resolved = false;
+    for address in addresses.by_ref() {
+        resolved = true;
+        if !public_address(address.ip()) {
+            return false;
+        }
+    }
+    resolved
+}
 /// One bounded, non-recursive read of a dropped channel-list URL. `None` keeps
-/// the reference as a stream when the server is unreachable or declines it.
+/// the reference as a stream when it is not a public target, when the server is
+/// unreachable, or when it declines: redirects are not followed so a public
+/// document cannot bounce the player onto a local address.
 async fn fetch_manifest(
     owner: &ReadWork,
     url: &str,
     limit: usize,
 ) -> Result<Option<String>, Failure> {
+    let Ok(parsed) = reqwest::Url::parse(url) else {
+        return Ok(None);
+    };
+    if !public_target(&parsed).await {
+        return Ok(None);
+    }
     let client = reqwest::Client::builder()
         .timeout(MANIFEST_TIMEOUT)
-        .redirect(reqwest::redirect::Policy::limited(2))
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|_| bad(INVALID))?;
     let Ok(response) = client.get(url).send().await else {
@@ -625,6 +713,37 @@ mod tests {
                 && mime == "application/vnd.apple.mpegurl"));
         assert!(matches!(&rows[1], Requested::Remote { name, url, mime }
             if name == "Второй" && url == "https://cdn.example.invalid/2.ts" && mime == "video/mp2t"));
+    }
+
+    #[test]
+    fn dropped_playlist_references_stay_on_public_hosts() {
+        let public = |value: &str| public_reference(&reqwest::Url::parse(value).unwrap());
+        for allowed in [
+            "https://raw.githubusercontent.com/o/r/main/ru.m3u",
+            "http://93.184.216.34/list.m3u",
+            "https://[2606:4700:4700::1111]/list.m3u",
+        ] {
+            assert!(public(allowed), "{allowed} is a public target");
+        }
+        for refused in [
+            "http://127.0.0.1:8765/playlist.m3u",
+            "http://localhost/list.m3u",
+            "http://player.localhost/list.m3u",
+            "http://[::1]/list.m3u",
+            "http://[::ffff:127.0.0.1]/list.m3u",
+            "http://10.1.2.3/list.m3u",
+            "http://172.16.0.9/list.m3u",
+            "http://192.168.1.5/list.m3u",
+            "http://169.254.10.1/list.m3u",
+            "http://0.0.0.0/list.m3u",
+            "http://[fd00::1]/list.m3u",
+            "http://[fe80::1]/list.m3u",
+            "http://printer.local/list.m3u",
+            "http://media.internal/list.m3u",
+            "ftp://example.invalid/list.m3u",
+        ] {
+            assert!(!public(refused), "{refused} must stay a single stream");
+        }
     }
 
     #[test]
