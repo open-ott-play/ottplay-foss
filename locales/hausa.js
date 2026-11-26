@@ -114,8 +114,9 @@ var keyStrings = {
         "Jerin kunnawa babu komai a ciki ko bai dace ba",
     "Playlist is too large": "Jerin kunnawa ya yi girma sosai",
     "Playlist link could not be loaded":
-        "Ba a iya loda hanyar jerin waƙoƙin ba",
-    "Playlist link is not public": "Hanyar jerin waƙoƙin ba ta jama'a ba ce",
+        "Ba a iya loda hanyar haɗin jerin kunnawa ba",
+    "Playlist link is not public":
+        "Hanyar haɗin jerin kunnawa ba ta jama'a ba ce",
     "Playlist local files must be dropped together with the playlist":
         "Dole a ja fayilolin cikin na’ura tare da jerin kunnawa a sauke su",
     "Playlist must use UTF-8": "Dole jerin kunnawa ya yi amfani da UTF-8",

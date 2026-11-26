@@ -785,8 +785,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "پلې‌لېست په مستقیم ډول نشي پورته کیدی. د سرور له لارې بار کول…",
     "Playlist is too large": "پلې‌لېسټ ډېر لوی دی",
-    "Playlist link could not be loaded": "د غږلړلیست لینک پورته نه شو",
-    "Playlist link is not public": "د غږلړلیست لینک عامه نه دی",
+    "Playlist link could not be loaded": "د پلېلېست لینک پورته نه شو",
+    "Playlist link is not public": "د پلېلېست لینک عامه نه دی",
     "Playlist local files must be dropped together with the playlist":
         "د پلې‌لېسټ ځايي فایلونه باید له پلې‌لېسټ سره یوځای وغورځول شي",
     "Playlist must use UTF-8": "پلې‌لېسټ باید UTF-8 وکاروي",
