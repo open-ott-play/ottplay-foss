@@ -878,6 +878,30 @@ async function admitNativeBoot(
     markPhase("documentReady");
 }
 
+/**
+ * WebView2 command line for one owned fixture launch. Windows randomizes its
+ * ephemeral ports per outbound connect (TcpPortRandomizationWin); across the
+ * thousands of loopback connects this harness makes, that randomization
+ * intermittently fails a socket connect with WSAENOBUFS, which the browser
+ * reports as net::ERR_NO_BUFFER_SPACE. The page then never loads its own
+ * scripts and the case dies without ever producing pixels. Only the fixture
+ * browser disables the feature, and wry's default feature list is repeated so
+ * the player keeps the WebView2 settings it already ships with.
+ */
+function fixtureBrowserArguments(debugPort) {
+    if (
+        !Number.isSafeInteger(debugPort) ||
+        debugPort < 1024 ||
+        debugPort > 65535
+    )
+        throw new Error("Invalid owned debug port");
+    return (
+        "--remote-debugging-address=127.0.0.1 --remote-debugging-port=" +
+        debugPort +
+        " --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection," +
+        "TcpPortRandomizationWin"
+    );
+}
 async function exercise(binary, origin, item, index, report, debugPort) {
     const data = fs.mkdtempSync(path.join(os.tmpdir(), "ott-video-geometry-"));
     const id = crypto.createHash("md5").update(data).digest("hex").slice(0, 10);
@@ -940,8 +964,7 @@ async function exercise(binary, origin, item, index, report, debugPort) {
                 OTTPLAY_INSTANCE: "video-geometry-" + id,
                 OTTPLAY_WEB_URL: pageUrl,
                 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:
-                    "--remote-debugging-address=127.0.0.1 --remote-debugging-port=" +
-                    debugPort,
+                    fixtureBrowserArguments(debugPort),
             },
             stdio: ["ignore", log, log],
         });
@@ -1468,6 +1491,7 @@ module.exports = {
     captureOwnedImage,
     cases,
     cleanupOwnedDataDirectory,
+    fixtureBrowserArguments,
     nativeChannelIds,
     nativePlaybackSample,
     nativeSourceAttached,
