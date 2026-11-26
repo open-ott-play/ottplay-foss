@@ -267,6 +267,11 @@
       "reason": "Plex translation wrapper forwards finite literal labels; translate() callers are scanned for catalog keys."
     },
     {
+      "file": "src/plugins/remote-provider-settings.ts",
+      "expression": "value",
+      "reason": "The configuration-only Edem session forwards the driver translate port; every provider call site passes finite literal labels scanned by localization-catalog.cjs, while provider titles and external error details stay runtime metadata."
+    },
+    {
       "file": "src/index.ts",
       "expression": "key",
       "reason": "Local label/notice helpers forward their literal key argument; label calls and transfer-ui notice calls are explicitly scanned by localization-catalog.cjs."

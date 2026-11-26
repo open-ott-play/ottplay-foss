@@ -1,6 +1,9 @@
-//! Native-picked playlists only. HTTP entries are returned to the player;
-//! this module never fetches, proxies, recursively opens or persists them.
+//! Native-picked playlists only. HTTP entries are returned to the player, except
+//! a public channel-list URL that is fetched once, bounded and in place, so a
+//! dropped playlist link becomes its channels instead of a single stream.
+//! Proxying, recursion and persistence stay out of this module.
 use super::*;
+use std::time::Duration;
 
 pub(super) const MAX_PLAYLIST_BYTES: usize = 8 * 1024 * 1024;
 const MAX_TOTAL_TEXT: usize = 16 * 1024 * 1024;
@@ -13,6 +16,11 @@ const HLS: &str =
     "Local HLS manifests are not supported; add the HTTP(S) manifest URL as a playlist entry";
 const NESTED: &str = "Nested local playlists are not supported";
 const ITEMS: &str = "Dropped playlists exceed 20000 entries or 128 local files";
+const MANIFEST_TIMEOUT: Duration = Duration::from_secs(20);
+/// A dropped playlist may reference a handful of remote channel lists; fetching
+/// more than this from one gesture would turn a drop into a crawl.
+const MAX_REMOTE_MANIFESTS: usize = 32;
+const MAX_REDIRECTS: usize = 3;
 
 pub(super) enum Member {
     Local(usize),
@@ -408,6 +416,254 @@ fn parse(
     }
     Ok(())
 }
+/// HLS media and master playlists are streams, not channel lists: their
+/// `#EXT-X-` tags must never be read as channel entries.
+fn looks_like_hls(text: &str) -> bool {
+    text.lines()
+        .any(|line| line.trim_start().starts_with("#EXT-X-"))
+}
+/// Remote entries stay absolute; a relative entry resolves against its manifest.
+fn remote_entry(
+    line: &str,
+    base: &reqwest::Url,
+    title: Option<String>,
+) -> Result<Requested, &'static str> {
+    let joined = base.join(line.trim()).map_err(|_| INVALID)?;
+    remote(joined.as_str(), title)
+}
+fn parse_remote(
+    text: &str,
+    base: &reqwest::Url,
+    out: &mut Vec<Requested>,
+) -> Result<(), &'static str> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let before = out.len();
+    let mut title = None;
+    for raw in text.lines() {
+        if raw.len() > MAX_LINE || raw.chars().any(|c| c.is_control() && c != '\t') {
+            return Err(INVALID);
+        }
+        let line = raw.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if line.starts_with("#EXTINF:") {
+            title = extinf_title(line)?;
+            continue;
+        }
+        if line.starts_with('#') {
+            continue;
+        }
+        if out.len() >= MAX_DROPPED_ITEMS {
+            return Err(ITEMS);
+        }
+        out.push(remote_entry(line, base, title.take())?);
+    }
+    if out.len() == before {
+        return Err(EMPTY);
+    }
+    Ok(())
+}
+/// A dropped playlist may only make the player read a public document:
+/// loopback, private, link-local and local-only names would turn a link into a
+/// probe of the machine or its network.
+fn public_address(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            !(v4.is_private()
+                || v4.is_loopback()
+                || v4.is_link_local()
+                || v4.is_broadcast()
+                || v4.is_documentation()
+                || v4.is_unspecified()
+                || v4.is_multicast())
+        }
+        std::net::IpAddr::V6(v6) => {
+            if let Some(v4) = v6.to_ipv4_mapped() {
+                return public_address(std::net::IpAddr::V4(v4));
+            }
+            !(v6.is_loopback()
+                || v6.is_unspecified()
+                || v6.is_multicast()
+                || v6.is_unique_local()
+                || v6.is_unicast_link_local())
+        }
+    }
+}
+/// `Url::host_str` keeps the brackets of an IPv6 literal.
+fn literal_address(host: &str) -> Option<std::net::IpAddr> {
+    host.strip_prefix('[')
+        .and_then(|rest| rest.strip_suffix(']'))
+        .unwrap_or(host)
+        .parse()
+        .ok()
+}
+fn public_host_name(host: &str) -> bool {
+    let name = host.trim_end_matches('.').to_ascii_lowercase();
+    !(name == "localhost"
+        || name.ends_with(".localhost")
+        || name.ends_with(".local")
+        || name.ends_with(".internal")
+        || name.ends_with(".home.arpa"))
+}
+/// Scheme and host shape without DNS; a literal address must already be public.
+fn public_reference(url: &reqwest::Url) -> bool {
+    if !matches!(url.scheme(), "http" | "https") {
+        return false;
+    }
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    match literal_address(host) {
+        Some(ip) => public_address(ip),
+        None => public_host_name(host),
+    }
+}
+/// Every address the name resolves to must be public, so a rebinding name is
+/// refused before the request is made.
+async fn public_target(url: &reqwest::Url) -> bool {
+    if !public_reference(url) {
+        return false;
+    }
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    if literal_address(host).is_some() {
+        return true;
+    }
+    let port = url.port_or_known_default().unwrap_or(443);
+    let Ok(mut addresses) = tokio::net::lookup_host((host, port)).await else {
+        return false;
+    };
+    let mut resolved = false;
+    for address in addresses.by_ref() {
+        resolved = true;
+        if !public_address(address.ip()) {
+            return false;
+        }
+    }
+    resolved
+}
+/// Where a redirect points, if that stays a public reference. Relative locations
+/// resolve against the document that asked for them.
+fn redirect_target(current: &reqwest::Url, location: &str) -> Option<reqwest::Url> {
+    let location = location.trim();
+    if location.is_empty() {
+        return None;
+    }
+    let next = current.join(location).ok()?;
+    public_reference(&next).then_some(next)
+}
+/// One bounded, non-recursive read of a dropped channel-list URL, following at
+/// most `MAX_REDIRECTS` hops that each stay public. `None` keeps the reference
+/// as a stream when it is not a public target, when the server is unreachable,
+/// or when it declines. The final URL comes back too, so relative entries
+/// resolve against the document that actually arrived.
+async fn fetch_manifest(
+    owner: &ReadWork,
+    url: &str,
+    limit: usize,
+) -> Result<Option<(String, reqwest::Url)>, Failure> {
+    let Ok(parsed) = reqwest::Url::parse(url) else {
+        return Ok(None);
+    };
+    let client = reqwest::Client::builder()
+        .timeout(MANIFEST_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|_| bad(INVALID))?;
+    let mut current = parsed;
+    for _ in 0..=MAX_REDIRECTS {
+        owner.check()?;
+        if !public_target(&current).await {
+            return Ok(None);
+        }
+        let Ok(response) = client.get(current.clone()).send().await else {
+            return Ok(None);
+        };
+        let status = response.status();
+        if status.is_redirection() {
+            let location = response
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|value| value.to_str().ok());
+            let Some(next) = location.and_then(|value| redirect_target(&current, value)) else {
+                return Ok(None);
+            };
+            current = next;
+            continue;
+        }
+        if !status.is_success() {
+            return Ok(None);
+        }
+        return read_manifest_body(owner, response, limit, current).await;
+    }
+    Ok(None)
+}
+/// Reads the accepted response up to `limit`, keeping the URL it came from.
+async fn read_manifest_body(
+    owner: &ReadWork,
+    response: reqwest::Response,
+    limit: usize,
+    url: reqwest::Url,
+) -> Result<Option<(String, reqwest::Url)>, Failure> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > limit as u64)
+    {
+        return Err(bad(TOO_LARGE));
+    }
+    let mut body = Vec::new();
+    let mut response = response;
+    loop {
+        owner.check()?;
+        let Some(chunk) = response.chunk().await.map_err(|_| bad(INVALID))? else {
+            break;
+        };
+        if body.len() + chunk.len() > limit {
+            return Err(bad(TOO_LARGE));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    let text = String::from_utf8(body).map_err(|_| bad("Dropped playlist must be UTF-8"))?;
+    Ok(Some((text, url)))
+}
+async fn expand_remote_references(
+    owner: &ReadWork,
+    items: Vec<Requested>,
+    total_text: &mut usize,
+) -> Result<Vec<Requested>, Failure> {
+    let mut out = Vec::with_capacity(items.len());
+    let mut fetched = 0usize;
+    for item in items {
+        let Requested::Remote { url, mime, .. } = &item else {
+            out.push(item);
+            continue;
+        };
+        if mime != "application/vnd.apple.mpegurl" || fetched >= MAX_REMOTE_MANIFESTS {
+            out.push(item);
+            continue;
+        }
+        owner.check()?;
+        let Some((text, base)) = fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text).await?
+        else {
+            out.push(item);
+            continue;
+        };
+        fetched += 1;
+        let mut expanded = Vec::new();
+        if looks_like_hls(&text) || parse_remote(&text, &base, &mut expanded).is_err() {
+            out.push(item);
+            continue;
+        }
+        if out.len() + expanded.len() > MAX_DROPPED_ITEMS {
+            return Err(bad(ITEMS));
+        }
+        *total_text += text.len();
+        out.extend(expanded);
+    }
+    Ok(out)
+}
 pub(super) async fn expand(
     owner: &ReadWork,
     paths: Vec<PathBuf>,
@@ -429,7 +685,7 @@ pub(super) async fn expand(
             out.push(local(path, None).map_err(bad)?);
         }
     }
-    Ok(out)
+    expand_remote_references(owner, out, &mut total_text).await
 }
 
 #[cfg(test)]
@@ -476,6 +732,101 @@ mod tests {
             Method::GET,
         )
         .await
+    }
+
+    #[test]
+    fn remote_channel_list_entries_resolve_against_manifest_and_keep_titles() {
+        let base = reqwest::Url::parse("https://example.invalid/playlists/ru/live.m3u").unwrap();
+        let text = "#EXTM3U\n#EXTINF:-1 tvg-id=\"a\",Первый\nlive/1.m3u8\n#EXTINF:-1,Второй\nhttps://cdn.example.invalid/2.ts\n";
+        let mut rows = Vec::new();
+        parse_remote(text, &base, &mut rows).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert!(matches!(&rows[0], Requested::Remote { name, url, mime }
+            if name == "Первый"
+                && url == "https://example.invalid/playlists/ru/live/1.m3u8"
+                && mime == "application/vnd.apple.mpegurl"));
+        assert!(matches!(&rows[1], Requested::Remote { name, url, mime }
+            if name == "Второй" && url == "https://cdn.example.invalid/2.ts" && mime == "video/mp2t"));
+    }
+
+    #[test]
+    fn dropped_playlist_references_stay_on_public_hosts() {
+        let public = |value: &str| public_reference(&reqwest::Url::parse(value).unwrap());
+        for allowed in [
+            "https://raw.githubusercontent.com/o/r/main/ru.m3u",
+            "http://93.184.216.34/list.m3u",
+            "https://[2606:4700:4700::1111]/list.m3u",
+        ] {
+            assert!(public(allowed), "{allowed} is a public target");
+        }
+        for refused in [
+            "http://127.0.0.1:8765/playlist.m3u",
+            "http://localhost/list.m3u",
+            "http://player.localhost/list.m3u",
+            "http://[::1]/list.m3u",
+            "http://[::ffff:127.0.0.1]/list.m3u",
+            "http://10.1.2.3/list.m3u",
+            "http://172.16.0.9/list.m3u",
+            "http://192.168.1.5/list.m3u",
+            "http://169.254.10.1/list.m3u",
+            "http://0.0.0.0/list.m3u",
+            "http://[fd00::1]/list.m3u",
+            "http://[fe80::1]/list.m3u",
+            "http://printer.local/list.m3u",
+            "http://media.internal/list.m3u",
+            "ftp://example.invalid/list.m3u",
+        ] {
+            assert!(!public(refused), "{refused} must stay a single stream");
+        }
+    }
+
+    #[test]
+    fn redirects_follow_only_public_references() {
+        let base = reqwest::Url::parse("http://example.org/list/channels.m3u").unwrap();
+        assert_eq!(
+            redirect_target(&base, "https://example.org/list/channels.m3u")
+                .map(|url| url.to_string())
+                .as_deref(),
+            Some("https://example.org/list/channels.m3u")
+        );
+        assert_eq!(
+            redirect_target(&base, "  ../other.m3u  ")
+                .map(|url| url.to_string())
+                .as_deref(),
+            Some("http://example.org/other.m3u")
+        );
+        for refused in [
+            "http://127.0.0.1:8765/playlist.m3u",
+            "http://localhost/playlist.m3u",
+            "http://[::1]/playlist.m3u",
+            "http://192.168.0.10/list.m3u",
+            "file:///etc/passwd",
+            "   ",
+        ] {
+            assert!(
+                redirect_target(&base, refused).is_none(),
+                "{refused} must not be followed"
+            );
+        }
+    }
+
+    #[test]
+    fn hls_media_and_master_playlists_stay_streams() {
+        assert!(looks_like_hls(
+            "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:6\n"
+        ));
+        assert!(looks_like_hls(
+            "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nlow.m3u8\n"
+        ));
+        assert!(!looks_like_hls(
+            "#EXTM3U\n#EXTINF:-1,Channel\nhttps://example.invalid/s.m3u8\n"
+        ));
+        let base = reqwest::Url::parse("https://example.invalid/x.m3u").unwrap();
+        assert_eq!(
+            parse_remote("#EXTM3U\n#EXT-X-VERSION:3\n", &base, &mut Vec::new()).err(),
+            Some(EMPTY),
+            "an HLS manifest has no channel entries to expand"
+        );
     }
 
     #[test]
