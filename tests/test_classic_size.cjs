@@ -197,6 +197,7 @@ function capsWithoutAllowances(names) {
         "DESKTOP_PLAYLIST_TRANSPORT_ENTRY_ALLOWANCE",
         "VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE",
         "EDEM_PROVIDER_SETTINGS_ALLOWANCE",
+        "ENTRY_IDENTITY_HEADROOM",
         ...names,
     ]);
 }
@@ -318,6 +319,7 @@ function capsWithoutAllowances(names) {
         "DESKTOP_PLAYLIST_DROP_ALLOWANCE",
         "DESKTOP_PLAYLIST_TRANSPORT_ENTRY_ALLOWANCE",
         "EDEM_PROVIDER_SETTINGS_ALLOWANCE",
+        "ENTRY_IDENTITY_HEADROOM",
     ]);
     const before = capsWithoutAllowances([]);
     const allowance = VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE;

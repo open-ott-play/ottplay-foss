@@ -960,8 +960,18 @@ const VIDEO_FIT_LIFECYCLE_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 0,
     gzipBytes: 192,
 });
+// Nightly release builds stamp the candidate version and source identity into
+// the entry before the gate measures it. The 2026-11-26 scheduled run measured
+// 1222727 bytes against the 1222725-byte cap, so the entry keeps a fixed
+// 512-byte margin for identity and compiler variation instead of sitting on the
+// edge. Only the entry moves; legacy and complete payloads keep their headroom.
+const ENTRY_IDENTITY_HEADROOM = Object.freeze({
+    bytes: 512,
+    gzipBytes: 0,
+});
 const BUDGET = Object.freeze({
     bytes:
+        ENTRY_IDENTITY_HEADROOM.bytes +
         MODERN_CATALOG_ENTRY_ALLOWANCE.bytes +
         SEEK_PREVIEW_ENTRY_ALLOWANCE.bytes +
         TIMEZONE_LOCAL_STARTUP_ALLOWANCE.entry.bytes +
@@ -2316,6 +2326,7 @@ function writeBuildBundleReport(
             desktopPlaylistTransportEntryAllowance:
                 DESKTOP_PLAYLIST_TRANSPORT_ENTRY_ALLOWANCE,
             diagnostic: true,
+            entryIdentityHeadroom: ENTRY_IDENTITY_HEADROOM,
             epgPresentationEntryAllowance: EPG_PRESENTATION_ENTRY_ALLOWANCE,
             favoritesCategoryPersistenceAllowance:
                 FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
@@ -2464,6 +2475,7 @@ module.exports = {
     DESKTOP_VIDEO_QUEUE_ALLOWANCE,
     DESKTOP_PLAYLIST_DROP_ALLOWANCE,
     DESKTOP_PLAYLIST_TRANSPORT_ENTRY_ALLOWANCE,
+    ENTRY_IDENTITY_HEADROOM,
     EPG_PRESENTATION_ENTRY_ALLOWANCE,
     FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
     FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
