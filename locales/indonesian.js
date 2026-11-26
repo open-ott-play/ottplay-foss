@@ -111,7 +111,7 @@ var keyStrings = {
     "Playlist is too large": "Daftar putar terlalu besar",
     "Playlist link could not be loaded":
         "Tautan daftar putar tidak dapat dimuat",
-    "Playlist link is not public": "Tautan daftar putar tidak bersifat publik",
+    "Playlist link is not public": "Tautan daftar putar tidak publik",
     "Playlist local files must be dropped together with the playlist":
         "File lokal harus diseret dan dilepas bersama daftar putar",
     "Playlist must use UTF-8": "Daftar putar harus menggunakan UTF-8",

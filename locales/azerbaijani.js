@@ -109,8 +109,8 @@ var keyStrings = {
         "Pleylistdə dəstəklənməyən mənbələr var",
     "Playlist is empty or invalid": "Pleylist boşdur və ya etibarsızdır",
     "Playlist is too large": "Pleylist çox böyükdür",
-    "Playlist link could not be loaded": "Pleylist keçidi yüklənə bilmədi",
-    "Playlist link is not public": "Pleylist keçidi ictimai deyil",
+    "Playlist link could not be loaded": "Pleylist linki yüklənə bilmədi",
+    "Playlist link is not public": "Pleylist linki ictimai deyil",
     "Playlist local files must be dropped together with the playlist":
         "Yerli faylları pleylistlə birlikdə sürükləyib buraxın",
     "Playlist must use UTF-8": "Pleylist UTF-8 istifadə etməlidir",
