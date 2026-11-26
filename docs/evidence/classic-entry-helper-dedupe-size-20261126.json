@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "feature": "Share the compiled object-spread helper across classic entry modules",
+  "scope": "The classic linker already removes repeated TypeScript __awaiter and __generator initializations. Object spread emits the same kind of per-module __assign fallback, and the linker did not recognize it, so ten identical copies of one helper shipped inside the entry. The linker now accepts __assign and derives its signature from compiler output that includes object spread. No source module, runtime behavior, budget or asset cap changes.",
+  "source": {
+    "before": {
+      "scripts/classic-bundle.cjs": "1d1056c1ded86b3a1d39a6fb03d01d17d9e196a6b6e3b209033bc3cc99f15400"
+    },
+    "candidate": {
+      "scripts/classic-bundle.cjs": "2c2dea62a1e9c41bb2eb03c90cf01262e30210a16a3ac666f9bae70c2ad5d47d"
+    },
+    "identityMode": "Unstamped local npm run build for both artifacts; the same commit, toolchain and optimizer, with only the linker change between them."
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "entries": [
+    {
+      "path": "dist/player.js",
+      "base": {
+        "bytes": 1222576,
+        "gzipBytes": 373182,
+        "sha256": "64b58fa3e1b28558268fc2a9f8d6cb6eb3887a4a1d7228786c1ac7e982aa55a8"
+      },
+      "candidate": {
+        "bytes": 1220326,
+        "gzipBytes": 372675,
+        "sha256": "4ec3d6ff7c9a3b8bbec6dac10fa9be9a88010fabd8d4435d71a8f9d7629f07b1"
+      },
+      "delta": {
+        "bytes": -2250,
+        "gzipBytes": -507
+      }
+    },
+    {
+      "path": "src-tauri/frontend/dist/player.js",
+      "base": {
+        "bytes": 1222538,
+        "gzipBytes": 373236
+      },
+      "candidate": {
+        "bytes": 1220288,
+        "gzipBytes": 372729,
+        "sha256": "6e35bf00cf631615f9ec5f97d6cda71094cde1f9846e97821038d54753335676"
+      },
+      "delta": {
+        "bytes": -2250,
+        "gzipBytes": -507
+      }
+    },
+    {
+      "path": "dist-mobile/dist/player.js",
+      "base": {
+        "bytes": 1222538,
+        "gzipBytes": 373236
+      },
+      "candidate": {
+        "bytes": 1220288,
+        "gzipBytes": 372729,
+        "sha256": "6e35bf00cf631615f9ec5f97d6cda71094cde1f9846e97821038d54753335676"
+      },
+      "delta": {
+        "bytes": -2250,
+        "gzipBytes": -507
+      }
+    }
+  ],
+  "helperOccurrences": {
+    "name": "__assign",
+    "before": 10,
+    "after": 1,
+    "sourceBytesBefore": 3820,
+    "sourceBytesAfter": 382,
+    "method": "Counted emitted helper statements in the classic entry modules and measured the source text of each block.",
+    "keptDefinition": "The first initialization stays in its original position, so preceding code and a pre-existing global helper observe the same execution order."
+  },
+  "startupCost": {
+    "perInitializationNs": 27.8,
+    "removedInitializations": 9,
+    "removedNs": 250,
+    "method": "Isolated evaluation of the emitted initializer block, 300000 iterations after warmup.",
+    "claim": "Nine duplicate top-level initializations are gone. The measured cost is about 0.25 microseconds, so this change is a payload reduction and is not claimed as a runtime speedup."
+  },
+  "budgets": {
+    "before": {
+      "player.js": {
+        "bytes": 1223237,
+        "gzipBytes": 374737
+      }
+    },
+    "after": {
+      "player.js": {
+        "bytes": 1223237,
+        "gzipBytes": 374737
+      }
+    }
+  },
+  "artifacts": {
+    "releaseEnvelopeEntryAfter": {
+      "bytes": 1220402,
+      "gzipBytes": 372736,
+      "method": "node scripts/check-release-envelope-size.cjs with the release version suffix and revision stamp.",
+      "headroomUnderCap": {
+        "bytes": 2835,
+        "gzipBytes": 2001
+      }
+    }
+  },
+  "validation": [
+    "tests/test_classic_linker.cjs now links two object-spread modules and asserts one __assign definition, plus the merged result of each module; it still covers __awaiter and __generator, dynamic-code fallbacks, conflicting helpers and already-linked input.",
+    "tests/test_classic_size.cjs, tests/test_classic_size_diagnostics.cjs, tests/test_classic_optimizer.cjs, node scripts/check-es5.cjs and node scripts/check-release-envelope-size.cjs pass.",
+    "Runtime suites that exercise the affected modules pass: tests/test_settings_store.cjs, tests/test_command_server.cjs, tests/test_remote_controls.cjs, tests/test_kiosk.cjs, tests/test_channel_library_lifecycle.cjs, tests/test_remote_requests.cjs."
+  ],
+  "unchangedGuards": [
+    "Every provider and optional asset cap, and the provider, optional and compatibility inventories",
+    "Legacy, base and complete payload caps",
+    "Private classic modules keep their own helper scope; the pass still receives only shared modules",
+    "Existing historical receipts and the fixed identity headroom"
+  ],
+  "limitations": [
+    "Payload and helper-count measurements only. No end-to-end startup benchmark was run, because the entry needs a DOM to execute.",
+    "The remaining identical-function duplication in the entry is 1358 bytes across small closures; it was left alone because each merge would change module boundaries for a marginal gain."
+  ]
+}

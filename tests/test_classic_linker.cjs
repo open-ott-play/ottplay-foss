@@ -537,6 +537,26 @@ async function testHelpers() {
     const linked = assembleClassic(root, modules);
     assert.equal(helperCount(linked, "__awaiter"), 1);
     assert.equal(helperCount(linked, "__generator"), 1);
+    // Object spread emits the same compiler helper as downlevel async code and
+    // must share one definition instead of repeating it per module.
+    write(
+        "spread-a.js",
+        compile("export function spreadA(base) { return { ...base, a: 1 }; }")
+    );
+    write(
+        "spread-b.js",
+        compile("export function spreadB(base) { return { ...base, b: 2 }; }")
+    );
+    const spread = assembleClassic(root, ["spread-a.js", "spread-b.js"]);
+    assert.equal(helperCount(spread, "__assign"), 1);
+    const spreadContext = vm.createContext({});
+    vm.runInContext(spread, spreadContext);
+    const mergedA = spreadContext.spreadA({ z: 0 });
+    const mergedB = spreadContext.spreadB({ z: 0 });
+    assert.equal(Object.keys(mergedA).join(","), "z,a");
+    assert.equal(mergedA.a, 1);
+    assert.equal(Object.keys(mergedB).join(","), "z,b");
+    assert.equal(mergedB.z, 0);
     assert.ok(
         linked.indexOf("var beforeHelpers") < linked.indexOf("var __awaiter")
     );
