@@ -784,8 +784,7 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "பிளேலிஸ்ட்டை நேரடியாக ஏற்ற முடியவில்லை. சர்வர் வழியாக ஏற்றுகிறது…",
     "Playlist is too large": "பிளேலிஸ்ட் மிகப் பெரியது",
-    "Playlist link could not be loaded":
-        "இயக்கப்பட்டியல் இணைப்பை ஏற்ற முடியவில்லை",
+    "Playlist link could not be loaded": "இயக்கப்பட்டியல் இணைப்பை ஏற்ற முடியவில்லை",
     "Playlist link is not public": "இயக்கப்பட்டியல் இணைப்பு பொதுவானது அல்ல",
     "Playlist local files must be dropped together with the playlist":
         "பிளேலிஸ்ட்டின் உள்ளூர் கோப்புகளை அதனுடன் சேர்த்தே விட வேண்டும்",
