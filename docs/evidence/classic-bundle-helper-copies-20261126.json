@@ -1,0 +1,255 @@
+{
+  "schema": 1,
+  "feature": "Audit and guard compiler-helper copies in every classic bundle",
+  "scope": "The classic linker shares one TypeScript helper initialization per bundle. This note records the audit of all 27 production bundles, the measured bytes the existing dedupe already saves in the two bundles that repeat helpers, and the new guard test. No linker behavior, source module, budget or asset cap changes.",
+  "source": {
+    "scripts/classic-bundle.cjs": "2c2dea62a1e9c41bb2eb03c90cf01262e30210a16a3ac666f9bae70c2ad5d47d",
+    "tests/test_classic_helper_copies.cjs": "e58ba435a053be8193a2aec0437128b9efae84c19474dfd512981446f859cd73",
+    "package.json": "76f0c09ed301ca99735de23d03f07a51cacee26f49fab324244b8faab53c84b3",
+    "identityMode": "Unstamped local assemblies plus the existing dist artifacts from the same commit. No build, budget or optimizer setting changed."
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "bundles": {
+    "total": 27,
+    "entry": 1,
+    "provider": 9,
+    "optional": 17,
+    "withHelperDeclarations": [
+      "entry",
+      "provider-torrent",
+      "optional-favorites-transfer"
+    ],
+    "withoutHelperDeclarations": "The other 24 bundles declare no TypeScript helper at all, so there is nothing to share in them."
+  },
+  "moduleLevelCopies": {
+    "method": "Parsed each emitted module listed in CLASSIC_MODULES, CLASSIC_PROVIDER_BUNDLES and CLASSIC_OPTIONAL_BUNDLES and counted top-level helper declarations inside it.",
+    "entry": {
+      "__assign": 10,
+      "__awaiter": 7,
+      "__generator": 7
+    },
+    "provider-torrent": {
+      "__awaiter": 2,
+      "__generator": 2,
+      "owners": [
+        "build/provider/torrent-catalog.js",
+        "build/plugins/torrent-catalog-runtime.js"
+      ]
+    },
+    "optional-favorites-transfer": {
+      "__awaiter": 20,
+      "__generator": 20,
+      "owners": "Twenty of the 32 members, from build/commands/favorites-transfer.js through build/media/global-favorites-host.js"
+    },
+    "providerAndOptionalAssign": {
+      "copies": 0,
+      "singleCopiesOutsideDuplicateGroup": [
+        "build/ui/playback-info.js in optional-modern-interface",
+        "build/commands/remote-local-runner.js in optional-remote-local-runner"
+      ],
+      "reason": "Both modules are private classic modules wrapped in their own function scope, so their helper is local to that closure and there is no second copy to share with."
+    }
+  },
+  "bundleLevelCopies": {
+    "method": "Assembled every bundle through assembleClassic and counted top-level helper declarations in the linked output.",
+    "entry": {
+      "__assign": 1,
+      "__awaiter": 1,
+      "__generator": 1,
+      "__spreadArray": 1
+    },
+    "provider-torrent": {
+      "__awaiter": 1,
+      "__generator": 1
+    },
+    "optional-favorites-transfer": {
+      "__awaiter": 1,
+      "__generator": 1,
+      "__spreadArray": 1
+    },
+    "spreadArrayNote": "One module in each of those two bundles emits __spreadArray, so the single copy is not evidence that the linker would share it. helperName currently recognizes __assign, __awaiter and __generator only."
+  },
+  "dedupeSavings": {
+    "method": "Assembled each bundle twice: once through the shipped linker and once through a temporary copy whose duplicateHelpers returns an empty set. Both outputs went through optimizeClassic with the production name policy; sizes are UTF-8 bytes and gzip level 9. The dedupe-enabled sizes reproduced the shipped assets exactly (91 666, 253 324, 1 220 326 bytes).",
+    "provider-torrent": {
+      "shared": {
+        "bytes": 91666,
+        "gzipBytes": 28683
+      },
+      "unshared": {
+        "bytes": 93195,
+        "gzipBytes": 28732
+      },
+      "saved": {
+        "bytes": 1529,
+        "gzipBytes": 49
+      }
+    },
+    "optional-favorites-transfer": {
+      "shared": {
+        "bytes": 253324,
+        "gzipBytes": 64999
+      },
+      "unshared": {
+        "bytes": 282377,
+        "gzipBytes": 67106
+      },
+      "saved": {
+        "bytes": 29053,
+        "gzipBytes": 2107
+      }
+    },
+    "entryReference": {
+      "shared": {
+        "bytes": 1220326,
+        "gzipBytes": 372653
+      },
+      "unshared": {
+        "bytes": 1231752,
+        "gzipBytes": 375820
+      },
+      "saved": {
+        "bytes": 11426,
+        "gzipBytes": 3167
+      },
+      "gzipNote": "The shipped entry is 372 675 gzip bytes because dist/player.js carries the build identity stamp; the comparison uses the unstamped assembly on both sides."
+    },
+    "reading": "The gzip saving is small where only one helper pair is removed, because the repeated initializer compresses against its own first copy. Raw bytes and module count are the meaningful measures in those bundles."
+  },
+  "optionalFavoritesTransferProfile": {
+    "artifact": {
+      "path": "dist/favorites-transfer.js",
+      "bytes": 253324,
+      "gzipBytes": 64999,
+      "sha256": "9288b9e7ab5cd3d254684993436ea2d6b9af7cf208929f9469a81b965a5ab88b"
+    },
+    "linked": {
+      "modules": 32,
+      "bytes": 656818,
+      "gzipBytes": 98219,
+      "moduleBytes": 656786
+    },
+    "budget": {
+      "bytes": 258069,
+      "gzipBytes": 66730,
+      "headroom": {
+        "bytes": 4745,
+        "gzipBytes": 1731
+      }
+    },
+    "groups": {
+      "method": "Linked UTF-8 bytes of each member, grouped by the subsystem that owns it; shares are of the 656 786 module bytes.",
+      "globalFavorites": {
+        "bytes": 374428,
+        "percent": 57.0,
+        "members": "build/media/global-favorites-*.js, build/commands/global-favorites-protocol.js, build/settings/global-favorites*.js, build/settings/local-favorite-proofs.js"
+      },
+      "localFavoritesTransferAndRecovery": {
+        "bytes": 221185,
+        "percent": 33.7,
+        "members": "build/commands/favorites-transfer.js, build/commands/favorites-recovery.js, build/settings/favorites-bindings.js, build/settings/favorites-recovery-codec.js, build/settings/favorites-operation-receipts.js, build/media/favorites-transfer-port.js, build/plugins/favorites-transfer-runtime.js, build/commands/favorites-document-json.js"
+      },
+      "plexFavorites": {
+        "bytes": 56511,
+        "percent": 8.6,
+        "members": "build/settings/favorites-current-plex-host.js, build/media/favorites-plex-document.js, build/media/favorites-plex-codec.js, build/channels/favorites-plex-references.js"
+      },
+      "torrentCatalogCodec": {
+        "bytes": 4662,
+        "percent": 0.7,
+        "members": "build/provider/torrent-catalog-codec.js"
+      }
+    },
+    "largestMembers": [
+      {
+        "file": "build/media/global-favorites-host.js",
+        "bytes": 72519,
+        "gzipBytes": 11009
+      },
+      {
+        "file": "build/media/global-favorites-player.js",
+        "bytes": 69064,
+        "gzipBytes": 9639
+      },
+      {
+        "file": "build/commands/favorites-transfer.js",
+        "bytes": 46898,
+        "gzipBytes": 8054
+      },
+      {
+        "file": "build/commands/global-favorites-protocol.js",
+        "bytes": 42911,
+        "gzipBytes": 6226
+      },
+      {
+        "file": "build/media/favorites-transfer-port.js",
+        "bytes": 38101,
+        "gzipBytes": 5771
+      },
+      {
+        "file": "build/settings/favorites-current-plex-host.js",
+        "bytes": 34762,
+        "gzipBytes": 6624
+      },
+      {
+        "file": "build/settings/global-favorites.js",
+        "bytes": 33515,
+        "gzipBytes": 4883
+      },
+      {
+        "file": "build/settings/global-favorites-recovery.js",
+        "bytes": 28989,
+        "gzipBytes": 4103
+      },
+      {
+        "file": "build/settings/favorites-bindings.js",
+        "bytes": 28147,
+        "gzipBytes": 4745
+      },
+      {
+        "file": "build/plugins/favorites-transfer-runtime.js",
+        "bytes": 26327,
+        "gzipBytes": 5292
+      }
+    ],
+    "loaders": [
+      "src/commands/global-favorites.ts:242 loads it from ensureGlobalFavorites, with the read-only favorites-recovery variant, and src/ui/modern-player.ts:345 reaches that through window.__ottEnsureGlobalFavorites.",
+      "src/commands/global-favorites.ts:299 loads it for open, toggle, add and remove global-favorites actions.",
+      "src/commands/remote-favorites-global.ts:24 exposes the remote favorites capability through the same entry point.",
+      "src/commands/remote-favorites-transfer.ts:80 loads it for server-driven favorites transfer and recovery commands."
+    ],
+    "publishedGlobals": [
+      "__ottFavoritesTransferRuntime",
+      "__ottGlobalFavoritesFactory",
+      "__ottFavoritesCurrentPlexHost",
+      "__ottFavoritesBindings",
+      "__ottFavoritesPlexDocument",
+      "__ottFavoritesPlexReferences",
+      "__ottTorrentCodec"
+    ],
+    "conclusion": "The asset is one lazy favorites feature pack, not a shared general-purpose bundle. Three favorites subsystems share it, plus the torrent catalog codec that global favorites need for torrent identities. The size comes from the cross-device protocol, receipt and ledger code and from the host and player wiring, not from unrelated features."
+  },
+  "guardTest": {
+    "path": "tests/test_classic_helper_copies.cjs",
+    "asserts": "Assembles all 27 production bundles and fails when any TypeScript compiler helper is declared more than once in one bundle, naming the bundle and the helper.",
+    "reachability": "package.json test:port, which npm test runs (ci.yml:552).",
+    "runtimeMs": 2138,
+    "counterSelfTest": "A synthetic two-copy __awaiter source is counted as two, and a non-helper __-prefixed name is ignored, so the guard cannot pass by matching nothing."
+  },
+  "validation": [
+    "node tests/test_classic_helper_copies.cjs passes: 2 tests, 27 bundles, about 2.1 s.",
+    "Negative control: with duplicateHelpers forced to return an empty set in a temporary copy of the linker, the guard failed with 'entry: __assign is declared 10 times; the classic linker must share one copy per bundle'. The linker file was restored byte for byte and the guard passed again.",
+    "node scripts/check-test-inventory.cjs passes: 452 automatically reachable tests, 0 unjustified exclusions.",
+    "The dedupe comparison reproduced the shipped sizes exactly: dist/provider-torrent.js 91 666, dist/favorites-transfer.js 253 324 and dist/player.js 1 220 326 bytes."
+  ],
+  "limitations": [
+    "The guard reads build/ inputs, not dist artifacts, so it catches a linker regression and a repeated helper in a module, but not a stale build.",
+    "Helper detection uses an explicit list of TypeScript helper names. A new compiler helper must be added to that list to be guarded, and __spreadArray currently appears once per bundle, so it is not evidence that the linker would share it.",
+    "Group shares and largest-member sizes are linked raw bytes, not minified attribution; cross-module minification moves a few bytes between members.",
+    "The dedupe comparison measures payload only. No runtime benchmark was run."
+  ]
+}
