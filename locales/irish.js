@@ -111,6 +111,9 @@ var keyStrings = {
         "Tá foinsí nach dtacaítear leo sa seinmliosta",
     "Playlist is empty or invalid": "Tá an seinmliosta folamh nó neamhbhailí",
     "Playlist is too large": "Tá an seinmliosta rómhór",
+    "Playlist link could not be loaded":
+        "Níorbh fhéidir nasc an liosta seinmthe a lódáil",
+    "Playlist link is not public": "Níl nasc an liosta seinmthe poiblí",
     "Playlist local files must be dropped together with the playlist":
         "Caithfear comhaid áitiúla a tharraingt agus a scaoileadh leis an seinmliosta",
     "Playlist must use UTF-8": "Caithfidh an seinmliosta UTF-8 a úsáid",

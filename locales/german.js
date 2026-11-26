@@ -109,6 +109,9 @@ var keyStrings = {
     "Playlist is empty or invalid":
         "Die Wiedergabeliste ist leer oder ungültig",
     "Playlist is too large": "Die Wiedergabeliste ist zu groß",
+    "Playlist link could not be loaded":
+        "Der Playlist-Link konnte nicht geladen werden",
+    "Playlist link is not public": "Der Playlist-Link ist nicht öffentlich",
     "Playlist local files must be dropped together with the playlist":
         "Lokale Dateien müssen zusammen mit der Wiedergabeliste abgelegt werden",
     "Playlist must use UTF-8": "Die Wiedergabeliste muss UTF-8 verwenden",

@@ -111,6 +111,9 @@ var keyStrings = {
     "Playlist is empty or invalid":
         "Ndepụta egwu tọgbọrọ chakoo ma ọ bụ ezighi ezi",
     "Playlist is too large": "Ndepụta egwu buru ibu karịa oke",
+    "Playlist link could not be loaded":
+        "Enweghị ike ibudata njikọ ndepụta egwu",
+    "Playlist link is not public": "Njikọ ndepụta egwu abụghị nke ọha",
     "Playlist local files must be dropped together with the playlist":
         "Dọrọ faịlụ dị na ngwaọrụ ma tụnye ha na ndepụta egwu n’otu oge",
     "Playlist must use UTF-8": "Ndepụta egwu ga-eji UTF-8",

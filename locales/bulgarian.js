@@ -108,6 +108,9 @@ var keyStrings = {
         "Плейлистът съдържа неподдържани източници",
     "Playlist is empty or invalid": "Плейлистът е празен или невалиден",
     "Playlist is too large": "Плейлистът е твърде голям",
+    "Playlist link could not be loaded":
+        "Връзката на плейлиста не можа да се зареди",
+    "Playlist link is not public": "Връзката на плейлиста не е публична",
     "Playlist local files must be dropped together with the playlist":
         "Локалните файлове трябва да се пуснат заедно с плейлиста",
     "Playlist must use UTF-8": "Плейлистът трябва да използва UTF-8",

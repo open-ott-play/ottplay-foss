@@ -108,6 +108,10 @@ var keyStrings = {
         "Die snitlys bevat onondersteunde bronne",
     "Playlist is empty or invalid": "Die snitlys is leeg of ongeldig",
     "Playlist is too large": "Die snitlys is te groot",
+    "Playlist link could not be loaded":
+        "Die skakel na die speellys kon nie gelaai word nie",
+    "Playlist link is not public":
+        "Die skakel na die speellys is nie openbaar nie",
     "Playlist local files must be dropped together with the playlist":
         "Sleep plaaslike lêers saam met die snitlys hierheen",
     "Playlist must use UTF-8": "Die snitlys moet UTF-8 gebruik",

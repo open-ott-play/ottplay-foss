@@ -588,6 +588,7 @@ pub struct TransientVideos {
     library: Library,
     entries: Vec<Arc<TransientRecord>>,
     order: Vec<drop_playlist::Member>,
+    notice: Option<drop_playlist::ExpansionIssue>,
     source_id: String,
     source_name: String,
     live: Arc<AtomicBool>,
@@ -674,6 +675,7 @@ impl TransientVideos {
             &self.source_id,
             &self.source_name,
             items,
+            self.notice.map(|issue| issue.code()),
         ))
     }
 }
@@ -723,13 +725,20 @@ fn transient_catalog(
         .iter()
         .map(|entry| drop_local_item(entry, endpoint, source_id))
         .collect();
-    Ok(drop_catalog(library, source_id, &first.record.name, items))
+    Ok(drop_catalog(
+        library,
+        source_id,
+        &first.record.name,
+        items,
+        None,
+    ))
 }
 fn drop_catalog(
     library: &Library,
     source_id: &str,
     source_name: &str,
     items: Vec<Item>,
+    notice: Option<&str>,
 ) -> Catalog {
     let count = items.len() as u64;
     Catalog {
@@ -753,6 +762,7 @@ fn drop_catalog(
         total: Some(count),
         scan_error: None,
         preferred: None,
+        notice: notice.map(str::to_owned),
         compatibility: crate::local_compatibility::Capability::new(library.compatibility.is_some()),
     }
 }
@@ -918,6 +928,10 @@ pub struct Catalog {
     pub scan_error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preferred: Option<Preferred>,
+    /// A closed reason a dropped playlist link stayed a single stream. The UI
+    /// owns its translated hint, so no URL or error text is carried here.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notice: Option<String>,
     pub compatibility: crate::local_compatibility::Capability,
 }
 #[derive(Deserialize)]
@@ -1320,7 +1334,7 @@ impl Library {
                 // Keep the complete reservation in the reader until its file
                 // operations finish, including after caller cancellation.
                 let mut reservation = reservation;
-                let requested = drop_playlist::expand(&owner, paths).await?;
+                let (requested, notice) = drop_playlist::expand(&owner, paths).await?;
                 let source_name = requested
                     .first()
                     .map(|item| item.name().to_owned())
@@ -1397,6 +1411,7 @@ impl Library {
                         library: library.clone(),
                         entries,
                         order,
+                        notice,
                         source_id,
                         source_name,
                         live,
@@ -4618,6 +4633,7 @@ impl Library {
             },
             scan_error,
             preferred,
+            notice: None,
         })
     }
 }

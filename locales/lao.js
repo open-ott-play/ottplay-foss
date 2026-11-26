@@ -752,6 +752,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "ບໍ່ສາມາດໂຫຼດລາຍການຫຼິ້ນໂດຍກົງ. ກຳລັງໂຫຼດຜ່ານເຊີບເວີ…",
     "Playlist is too large": "ລາຍການຫຼິ້ນໃຫຍ່ເກີນໄປ",
+    "Playlist link could not be loaded": "ບໍ່ສາມາດໂຫຼດລິ້ງລາຍການເພງໄດ້",
+    "Playlist link is not public": "ລິ້ງລາຍການເພງບໍ່ແມ່ນສາທາລະນະ",
     "Playlist local files must be dropped together with the playlist":
         "ຕ້ອງລາກໄຟລ໌ໃນເຄື່ອງຂອງລາຍການຫຼິ້ນມາພ້ອມກັບລາຍການຫຼິ້ນ",
     "Playlist must use UTF-8": "ລາຍການຫຼິ້ນຕ້ອງໃຊ້ UTF-8",

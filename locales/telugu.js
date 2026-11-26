@@ -764,6 +764,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "ప్లేజాబితా నేరుగా లోడ్ చేయబడలేదు. సర్వర్ ద్వారా లోడ్ అవుతోంది…",
     "Playlist is too large": "ప్లేలిస్ట్ చాలా పెద్దది",
+    "Playlist link could not be loaded": "ప్లేలిస్ట్ లింక్ లోడ్ చేయలేకపోయాం",
+    "Playlist link is not public": "ప్లేలిస్ట్ లింక్ పబ్లిక్ కాదు",
     "Playlist local files must be dropped together with the playlist":
         "ప్లేలిస్ట్‌లోని స్థానిక ఫైళ్లను ప్లేలిస్ట్‌తో పాటే డ్రాప్ చేయాలి",
     "Playlist must use UTF-8": "ప్లేలిస్ట్ UTF-8 ఉపయోగించాలి",

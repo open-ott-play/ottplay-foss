@@ -108,6 +108,8 @@ var keyStrings = {
         "Երգացանկը պարունակում է չաջակցվող աղբյուրներ",
     "Playlist is empty or invalid": "Երգացանկը դատարկ է կամ անվավեր",
     "Playlist is too large": "Երգացանկը չափազանց մեծ է",
+    "Playlist link could not be loaded": "Նվագացանկի հղումը չհաջողվեց բեռնել",
+    "Playlist link is not public": "Նվագացանկի հղումը հանրային չէ",
     "Playlist local files must be dropped together with the playlist":
         "Տեղային ֆայլերը պետք է քաշել և թողնել երգացանկի հետ միասին",
     "Playlist must use UTF-8": "Երգացանկը պետք է օգտագործի UTF-8",

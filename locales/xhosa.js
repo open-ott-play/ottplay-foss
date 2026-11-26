@@ -809,6 +809,10 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Uluhlu lokudlala alukwazanga ukulayishwa ngqo. Kulayishwa ngeseva…",
     "Playlist is too large": "Uluhlu lokudlala lukhulu kakhulu",
+    "Playlist link could not be loaded":
+        "Ikhonkco loluhlu lokudlala alikwazanga kulayishwa",
+    "Playlist link is not public":
+        "Ikhonkco loluhlu lokudlala alikho esidlangalaleni",
     "Playlist local files must be dropped together with the playlist":
         "Iifayile zasekuhlaleni zoluhlu lokudlala kufuneka zilahlwe kunye nalo",
     "Playlist must use UTF-8": "Uluhlu lokudlala kufuneka lusebenzise i-UTF-8",

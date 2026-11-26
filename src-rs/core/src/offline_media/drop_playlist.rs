@@ -1,10 +1,30 @@
 //! Native-picked playlists only. HTTP entries are returned to the player, except
 //! a public channel-list URL that is fetched once, bounded and in place, so a
 //! dropped playlist link becomes its channels instead of a single stream.
+//! A reference that stays a stream because it could not be expanded reports a
+//! bounded reason, so the player can say why its playlist link did not open.
 //! Proxying, recursion and persistence stay out of this module.
 use super::*;
 use std::time::Duration;
 
+/// Why a dropped playlist reference stayed a single stream instead of its
+/// channel entries. The catalog carries the first reason of a batch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ExpansionIssue {
+    /// The reference, or one of its redirects, left public address space.
+    Blocked,
+    /// The server was unreachable, declined, or returned no document.
+    Unavailable,
+}
+impl ExpansionIssue {
+    /// A closed diagnostic code; the UI owns its translated message.
+    pub(super) fn code(self) -> &'static str {
+        match self {
+            Self::Blocked => "playlist_link_blocked",
+            Self::Unavailable => "playlist_link_unavailable",
+        }
+    }
+}
 pub(super) const MAX_PLAYLIST_BYTES: usize = 8 * 1024 * 1024;
 const MAX_TOTAL_TEXT: usize = 16 * 1024 * 1024;
 const MAX_LINE: usize = 8192;
@@ -554,18 +574,23 @@ fn redirect_target(current: &reqwest::Url, location: &str) -> Option<reqwest::Ur
     let next = current.join(location).ok()?;
     public_reference(&next).then_some(next)
 }
+/// Where one dropped channel-list reference ends up. A reference that stays a
+/// stream keeps its bounded reason, never a URL or an error string.
+enum Fetched {
+    /// The document that arrived, with the URL it came from, so relative
+    /// entries resolve against the document that actually answered.
+    Document(String, reqwest::Url),
+    /// The reference, or one of its redirects, left public address space.
+    Blocked,
+    /// The server was unreachable, declined, or returned no document.
+    Unavailable,
+}
 /// One bounded, non-recursive read of a dropped channel-list URL, following at
-/// most `MAX_REDIRECTS` hops that each stay public. `None` keeps the reference
-/// as a stream when it is not a public target, when the server is unreachable,
-/// or when it declines. The final URL comes back too, so relative entries
-/// resolve against the document that actually arrived.
-async fn fetch_manifest(
-    owner: &ReadWork,
-    url: &str,
-    limit: usize,
-) -> Result<Option<(String, reqwest::Url)>, Failure> {
+/// most `MAX_REDIRECTS` hops that each stay public. Anything else keeps the
+/// reference as a stream.
+async fn fetch_manifest(owner: &ReadWork, url: &str, limit: usize) -> Result<Fetched, Failure> {
     let Ok(parsed) = reqwest::Url::parse(url) else {
-        return Ok(None);
+        return Ok(Fetched::Unavailable);
     };
     let client = reqwest::Client::builder()
         .timeout(MANIFEST_TIMEOUT)
@@ -576,10 +601,10 @@ async fn fetch_manifest(
     for _ in 0..=MAX_REDIRECTS {
         owner.check()?;
         if !public_target(&current).await {
-            return Ok(None);
+            return Ok(Fetched::Blocked);
         }
         let Ok(response) = client.get(current.clone()).send().await else {
-            return Ok(None);
+            return Ok(Fetched::Unavailable);
         };
         let status = response.status();
         if status.is_redirection() {
@@ -587,18 +612,25 @@ async fn fetch_manifest(
                 .headers()
                 .get(reqwest::header::LOCATION)
                 .and_then(|value| value.to_str().ok());
-            let Some(next) = location.and_then(|value| redirect_target(&current, value)) else {
-                return Ok(None);
+            let Some(location) = location else {
+                return Ok(Fetched::Unavailable);
+            };
+            let Some(next) = redirect_target(&current, location) else {
+                return Ok(Fetched::Blocked);
             };
             current = next;
             continue;
         }
         if !status.is_success() {
-            return Ok(None);
+            return Ok(Fetched::Unavailable);
         }
-        return read_manifest_body(owner, response, limit, current).await;
+        return Ok(read_manifest_body(owner, response, limit, current)
+            .await?
+            .map_or(Fetched::Unavailable, |(text, url)| {
+                Fetched::Document(text, url)
+            }));
     }
-    Ok(None)
+    Ok(Fetched::Unavailable)
 }
 /// Reads the accepted response up to `limit`, keeping the URL it came from.
 async fn read_manifest_body(
@@ -628,13 +660,15 @@ async fn read_manifest_body(
     let text = String::from_utf8(body).map_err(|_| bad("Dropped playlist must be UTF-8"))?;
     Ok(Some((text, url)))
 }
+/// Keeps the first bounded reason a reference could not become its channels.
 async fn expand_remote_references(
     owner: &ReadWork,
     items: Vec<Requested>,
     total_text: &mut usize,
-) -> Result<Vec<Requested>, Failure> {
+) -> Result<(Vec<Requested>, Option<ExpansionIssue>), Failure> {
     let mut out = Vec::with_capacity(items.len());
     let mut fetched = 0usize;
+    let mut issue: Option<ExpansionIssue> = None;
     for item in items {
         let Requested::Remote { url, mime, .. } = &item else {
             out.push(item);
@@ -645,10 +679,18 @@ async fn expand_remote_references(
             continue;
         }
         owner.check()?;
-        let Some((text, base)) = fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text).await?
-        else {
-            out.push(item);
-            continue;
+        let (text, base) = match fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text).await? {
+            Fetched::Document(text, base) => (text, base),
+            Fetched::Blocked => {
+                issue.get_or_insert(ExpansionIssue::Blocked);
+                out.push(item);
+                continue;
+            }
+            Fetched::Unavailable => {
+                issue.get_or_insert(ExpansionIssue::Unavailable);
+                out.push(item);
+                continue;
+            }
         };
         fetched += 1;
         let mut expanded = Vec::new();
@@ -662,12 +704,13 @@ async fn expand_remote_references(
         *total_text += text.len();
         out.extend(expanded);
     }
-    Ok(out)
+    Ok((out, issue))
 }
+/// The batch and the first reason one of its references stayed a stream.
 pub(super) async fn expand(
     owner: &ReadWork,
     paths: Vec<PathBuf>,
-) -> Result<Vec<Requested>, Failure> {
+) -> Result<(Vec<Requested>, Option<ExpansionIssue>), Failure> {
     let mut out = Vec::new();
     let mut total_text = 0usize;
     let mut local_count = 0usize;
@@ -1189,6 +1232,31 @@ mod tests {
         let manifest = f.manifest("alias.mp4").await;
         assert!(f.library.transient_videos(vec![manifest]).await.is_err());
         assert!(f.library.transient.lock().unwrap().entries.is_empty());
+        assert!(f.library.transient.lock().unwrap().groups.is_empty());
+    }
+
+    #[tokio::test]
+    async fn playlist_reference_outside_public_space_keeps_its_reason() {
+        let f = Fixture::new().await;
+        let manifest = f
+            .manifest("https://example.invalid/live.ts\nhttp://127.0.0.1:9/list.m3u\n")
+            .await;
+        let lease = f.library.background.enter().unwrap();
+        let (rows, issue) = owned_read(&lease, move |owner| async move {
+            expand(&owner, vec![manifest]).await
+        })
+        .await
+        .unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(
+            rows[1].name(),
+            "Playlist stream",
+            "a refused reference still plays as one stream"
+        );
+        assert_eq!(
+            issue.map(ExpansionIssue::code),
+            Some("playlist_link_blocked")
+        );
         assert!(f.library.transient.lock().unwrap().groups.is_empty());
     }
 }

@@ -108,6 +108,8 @@ var keyStrings = {
         "تحتوي قائمة التشغيل على مصادر غير مدعومة",
     "Playlist is empty or invalid": "قائمة التشغيل فارغة أو غير صالحة",
     "Playlist is too large": "قائمة التشغيل كبيرة جدًا",
+    "Playlist link could not be loaded": "تعذر تحميل رابط قائمة التشغيل",
+    "Playlist link is not public": "رابط قائمة التشغيل ليس عامًا",
     "Playlist local files must be dropped together with the playlist":
         "يجب سحب الملفات المحلية وإفلاتها مع قائمة التشغيل",
     "Playlist must use UTF-8": "يجب أن تستخدم قائمة التشغيل UTF-8",

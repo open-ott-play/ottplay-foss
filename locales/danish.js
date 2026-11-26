@@ -108,6 +108,9 @@ var keyStrings = {
         "Afspilningslisten indeholder ikke-understøttede kilder",
     "Playlist is empty or invalid": "Afspilningslisten er tom eller ugyldig",
     "Playlist is too large": "Afspilningslisten er for stor",
+    "Playlist link could not be loaded":
+        "Linket til spillelisten kunne ikke indlæses",
+    "Playlist link is not public": "Linket til spillelisten er ikke offentligt",
     "Playlist local files must be dropped together with the playlist":
         "Lokale filer skal trækkes ind sammen med afspilningslisten",
     "Playlist must use UTF-8": "Afspilningslisten skal bruge UTF-8",
