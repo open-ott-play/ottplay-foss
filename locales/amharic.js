@@ -104,6 +104,8 @@ var keyStrings = {
     "Playlist contains unsupported sources": "የማጫወቻ ዝርዝሩ ያልተደገፉ ምንጮችን ይዟል",
     "Playlist is empty or invalid": "የማጫወቻ ዝርዝሩ ባዶ ወይም ልክ ያልሆነ ነው",
     "Playlist is too large": "የማጫወቻ ዝርዝሩ በጣም ትልቅ ነው",
+    "Playlist link could not be loaded": "የማጫወቻ ዝርዝሩ አገናኝ ሊጫን አልቻለም",
+    "Playlist link is not public": "የማጫወቻ ዝርዝሩ አገናኝ ለሁሉም አይገኝም",
     "Playlist local files must be dropped together with the playlist":
         "የማጫወቻ ዝርዝሩ አካባቢያዊ ፋይሎች ከዝርዝሩ ጋር አብረው መጎተት አለባቸው",
     "Playlist must use UTF-8": "የማጫወቻ ዝርዝሩ UTF-8 መጠቀም አለበት",

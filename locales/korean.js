@@ -107,6 +107,8 @@ var keyStrings = {
         "재생목록에 지원하지 않는 소스가 있습니다",
     "Playlist is empty or invalid": "재생목록이 비어 있거나 잘못되었습니다",
     "Playlist is too large": "재생목록이 너무 큽니다",
+    "Playlist link could not be loaded": "재생목록 링크를 불러올 수 없습니다",
+    "Playlist link is not public": "재생목록 링크가 공개 주소가 아닙니다",
     "Playlist local files must be dropped together with the playlist":
         "로컬 파일은 재생목록과 함께 끌어다 놓아야 합니다",
     "Playlist must use UTF-8": "재생목록은 UTF-8을 사용해야 합니다",

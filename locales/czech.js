@@ -106,6 +106,8 @@ var keyStrings = {
         "Seznam skladeb obsahuje nepodporované zdroje",
     "Playlist is empty or invalid": "Seznam skladeb je prázdný nebo neplatný",
     "Playlist is too large": "Seznam skladeb je příliš velký",
+    "Playlist link could not be loaded": "Odkaz playlistu se nepodařilo načíst",
+    "Playlist link is not public": "Odkaz playlistu není veřejný",
     "Playlist local files must be dropped together with the playlist":
         "Místní soubory je nutné přetáhnout společně se seznamem skladeb",
     "Playlist must use UTF-8": "Seznam skladeb musí používat UTF-8",

@@ -107,6 +107,9 @@ var keyStrings = {
         "Спіс прайгравання змяшчае крыніцы, якія не падтрымліваюцца",
     "Playlist is empty or invalid": "Спіс прайгравання пусты або няправільны",
     "Playlist is too large": "Спіс прайгравання занадта вялікі",
+    "Playlist link could not be loaded":
+        "Не ўдалося загрузіць спасылку плэйліста",
+    "Playlist link is not public": "Спасылка плэйліста не публічная",
     "Playlist local files must be dropped together with the playlist":
         "Лакальныя файлы трэба перацягнуць разам са спісам прайгравання",
     "Playlist must use UTF-8": "Спіс прайгравання павінен выкарыстоўваць UTF-8",

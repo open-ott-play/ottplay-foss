@@ -772,6 +772,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "प्लेलिस्ट सीधै लोड गर्न सकिएन। सर्भर मार्फत लोड हुँदै...",
     "Playlist is too large": "प्लेलिस्ट धेरै ठूलो छ",
+    "Playlist link could not be loaded": "प्लेलिस्ट लिङ्क लोड हुन सकेन",
+    "Playlist link is not public": "प्लेलिस्ट लिङ्क सार्वजनिक छैन",
     "Playlist local files must be dropped together with the playlist":
         "प्लेलिस्टका स्थानीय फाइलहरू प्लेलिस्टसँगै ड्रप गर्नुपर्छ",
     "Playlist must use UTF-8": "प्लेलिस्टले UTF-8 प्रयोग गर्नुपर्छ",

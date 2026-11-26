@@ -394,7 +394,18 @@ test("playlist failures translate every safe diagnostic and redact unknown nativ
             { droppedPlaylistCode: "playlist_invalid" },
             "Playlist is empty or invalid",
         ],
-        [{ droppedPlaylistCode: "playlist_limit" }, "Playlist is too large"],
+        [
+            { droppedPlaylistCode: "playlist_link_blocked" },
+            "Playlist link is not public",
+        ],
+        [
+            { droppedPlaylistCode: "playlist_link_unavailable" },
+            "Playlist link could not be loaded",
+        ],
+        [
+            { droppedPlaylistCode: "playlist_limit" },
+            "Playlist is too large",
+        ],
         ["Dropped playlist must be UTF-8", "Playlist must use UTF-8"],
         [
             "Local HLS manifests are not supported; add the HTTP(S) manifest URL as a playlist entry",
@@ -449,6 +460,25 @@ test("playlist failures translate every safe diagnostic and redact unknown nativ
     fallback.requests[0].reject("Dropped playlist must be UTF-8");
     await flush();
     assert.deepEqual(fallback.messages, ["Playlist must use UTF-8"]);
+});
+test("a playlist link that stayed one stream shows its reason once", async () => {
+    for (const [notice, expected] of [
+        ["playlist_link_blocked", "Playlist link is not public"],
+        ["playlist_link_unavailable", "Playlist link could not be loaded"],
+    ]) {
+        const f = fixture(true);
+        f.grant("grant-notice-1234567890");
+        f.requests[0].resolve({ ...catalog("notice"), notice });
+        await flush();
+        assert.equal(f.played.length, 1);
+        assert.deepEqual(f.messages, [expected]);
+    }
+    const plain = fixture(true);
+    plain.grant("grant-notice-1234567890");
+    plain.requests[0].resolve(catalog("plain"));
+    await flush();
+    assert.equal(plain.played.length, 1);
+    assert.deepEqual(plain.messages, [], "a plain stream drop stays silent");
 });
 test("native consumes only opaque OS grants and ignores duplicate DOM file delivery", async () => {
     const f = fixture(true);

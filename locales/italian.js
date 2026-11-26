@@ -108,6 +108,10 @@ var keyStrings = {
         "La playlist contiene sorgenti non supportate",
     "Playlist is empty or invalid": "La playlist è vuota o non valida",
     "Playlist is too large": "La playlist è troppo grande",
+    "Playlist link could not be loaded":
+        "Impossibile caricare il collegamento della playlist",
+    "Playlist link is not public":
+        "Il collegamento della playlist non è pubblico",
     "Playlist local files must be dropped together with the playlist":
         "Trascina i file locali insieme alla playlist",
     "Playlist must use UTF-8": "La playlist deve usare UTF-8",

@@ -110,6 +110,10 @@ var keyStrings = {
         "Η λίστα περιέχει μη υποστηριζόμενες πηγές",
     "Playlist is empty or invalid": "Η λίστα είναι κενή ή μη έγκυρη",
     "Playlist is too large": "Η λίστα είναι πολύ μεγάλη",
+    "Playlist link could not be loaded":
+        "Δεν ήταν δυνατή η φόρτωση του συνδέσμου της λίστας αναπαραγωγής",
+    "Playlist link is not public":
+        "Ο σύνδεσμος της λίστας αναπαραγωγής δεν είναι δημόσιος",
     "Playlist local files must be dropped together with the playlist":
         "Τα τοπικά αρχεία πρέπει να μεταφερθούν μαζί με τη λίστα αναπαραγωγής",
     "Playlist must use UTF-8": "Η λίστα πρέπει να χρησιμοποιεί UTF-8",

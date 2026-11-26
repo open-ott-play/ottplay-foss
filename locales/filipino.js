@@ -112,6 +112,8 @@ var keyStrings = {
         "May mga hindi suportadong source ang playlist",
     "Playlist is empty or invalid": "Walang laman o hindi wasto ang playlist",
     "Playlist is too large": "Masyadong malaki ang playlist",
+    "Playlist link could not be loaded": "Hindi ma-load ang link ng playlist",
+    "Playlist link is not public": "Ang link ng playlist ay hindi pampubliko",
     "Playlist local files must be dropped together with the playlist":
         "Dapat sabay na i-drag at i-drop ang mga lokal na file at ang playlist",
     "Playlist must use UTF-8": "Dapat gumamit ng UTF-8 ang playlist",

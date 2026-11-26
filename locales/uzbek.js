@@ -797,6 +797,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Playlist to'g'ridan-to'g'ri yuklanmayapti...Server orqali yuklanmoqda...",
     "Playlist is too large": "Pleylist juda katta",
+    "Playlist link could not be loaded":
+        "Ijro roʻyxati havolasini yuklab boʻlmadi",
+    "Playlist link is not public": "Ijro roʻyxati havolasi ommaviy emas",
     "Playlist local files must be dropped together with the playlist":
         "Pleylistning mahalliy fayllarini pleylist bilan birga tashlang",
     "Playlist must use UTF-8": "Pleylist UTF-8 dan foydalanishi kerak",

@@ -111,6 +111,9 @@ var keyStrings = {
         "La liste de lecture contient des sources non prises en charge",
     "Playlist is empty or invalid": "La liste de lecture est vide ou invalide",
     "Playlist is too large": "La liste de lecture est trop volumineuse",
+    "Playlist link could not be loaded":
+        "Le lien de la playlist n'a pas pu être chargé",
+    "Playlist link is not public": "Le lien de la playlist n'est pas public",
     "Playlist local files must be dropped together with the playlist":
         "Déposez les fichiers locaux avec la liste de lecture",
     "Playlist must use UTF-8": "La liste de lecture doit utiliser UTF-8",

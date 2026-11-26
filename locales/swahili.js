@@ -800,6 +800,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Orodha ya kucheza haikuweza kupakiwa moja kwa moja. Inapakia kupitia seva...",
     "Playlist is too large": "Orodha ya kucheza ni kubwa mno",
+    "Playlist link could not be loaded":
+        "Kiungo cha orodha ya uchezaji hakikuweza kupakiwa",
+    "Playlist link is not public": "Kiungo cha orodha ya uchezaji si cha umma",
     "Playlist local files must be dropped together with the playlist":
         "Faili za ndani za orodha ya kucheza lazima udondoshe pamoja na orodha",
     "Playlist must use UTF-8": "Orodha ya kucheza lazima itumie UTF-8",

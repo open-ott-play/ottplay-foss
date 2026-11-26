@@ -785,6 +785,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Плейлист не грузится напрямую...Загрузка через сервер...",
     "Playlist is too large": "Плейлист слишком большой",
+    "Playlist link could not be loaded":
+        "Не удалось загрузить ссылку плейлиста",
+    "Playlist link is not public": "Ссылка плейлиста не является публичной",
     "Playlist local files must be dropped together with the playlist":
         "Локальные файлы плейлиста нужно добавить вместе с плейлистом",
     "Playlist must use UTF-8": "Плейлист должен использовать UTF-8",

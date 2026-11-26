@@ -786,6 +786,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Oýnatma sanawy göni ýüklenmedi. Serwer arkaly ýüklenýär…",
     "Playlist is too large": "Pleýlist juda uly",
+    "Playlist link could not be loaded": "Pleýlist salgysyny ýükläp bolmady",
+    "Playlist link is not public": "Pleýlist salgysy umumy däl",
     "Playlist local files must be dropped together with the playlist":
         "Pleýlistiň ýerli faýllaryny pleýlist bilen bilelikde taşlaň",
     "Playlist must use UTF-8": "Pleýlist UTF-8 ulanmalydyr",

@@ -104,6 +104,8 @@ var keyStrings = {
     "Playlist contains unsupported sources": "ಪ್ಲೇಪಟ್ಟಿಯಲ್ಲಿ ಬೆಂಬಲಿತವಲ್ಲದ ಮೂಲಗಳಿವೆ",
     "Playlist is empty or invalid": "ಪ್ಲೇಪಟ್ಟಿ ಖಾಲಿಯಾಗಿದೆ ಅಥವಾ ಅಮಾನ್ಯವಾಗಿದೆ",
     "Playlist is too large": "ಪ್ಲೇಪಟ್ಟಿ ತುಂಬಾ ದೊಡ್ಡದಾಗಿದೆ",
+    "Playlist link could not be loaded": "ಪ್ಲೇಲಿಸ್ಟ್ ಲಿಂಕ್ ಲೋಡ್ ಆಗಲಿಲ್ಲ",
+    "Playlist link is not public": "ಪ್ಲೇಲಿಸ್ಟ್ ಲಿಂಕ್ ಸಾರ್ವಜನಿಕವಲ್ಲ",
     "Playlist local files must be dropped together with the playlist":
         "ಸ್ಥಳೀಯ ಫೈಲ್‌ಗಳನ್ನು ಪ್ಲೇಪಟ್ಟಿಯೊಂದಿಗೆ ಒಟ್ಟಿಗೆ ಎಳೆದು ಬಿಡಬೇಕು",
     "Playlist must use UTF-8": "ಪ್ಲೇಪಟ್ಟಿ UTF-8 ಬಳಸಬೇಕು",

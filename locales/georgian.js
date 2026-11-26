@@ -109,6 +109,8 @@ var keyStrings = {
         "დასაკრავი სია შეიცავს მხარდაუჭერელ წყაროებს",
     "Playlist is empty or invalid": "დასაკრავი სია ცარიელია ან არასწორია",
     "Playlist is too large": "დასაკრავი სია ზედმეტად დიდია",
+    "Playlist link could not be loaded": "დასაკრავი სიის ბმული ვერ ჩაიტვირთა",
+    "Playlist link is not public": "დასაკრავი სიის ბმული საჯარო არ არის",
     "Playlist local files must be dropped together with the playlist":
         "ლოკალური ფაილები დასაკრავ სიასთან ერთად უნდა გადმოიტანოთ",
     "Playlist must use UTF-8": "დასაკრავმა სიამ უნდა გამოიყენოს UTF-8",

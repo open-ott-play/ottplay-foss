@@ -5,16 +5,16 @@
   },
   "asset": "dist/local-drop.js",
   "measured": {
-    "bytes": 17793,
-    "gzipBytes": 5794
+    "bytes": 18157,
+    "gzipBytes": 5885
   },
   "previousBudget": {
     "bytes": 5807,
     "gzipBytes": 2369
   },
   "addedAllowance": {
-    "bytes": 12000,
-    "gzipBytes": 3500
+    "bytes": 12364,
+    "gzipBytes": 3591
   },
   "scope": "Parser allowance is confined to the lazy desktop-drop asset and counted once per payload. Adaptive routing has a separately measured shared-entry allowance; other provider and optional caps remain unchanged.",
   "transportEntryAllowance": {
@@ -39,5 +39,5 @@
     },
     "purpose": "Retain catalog membership while distinguishing adaptive HTTP from direct media for Main and PiP. Measured complete entry feature delta, not cap overrun."
   },
-  "measurementNote": "Includes strict FileReader decoding, early aggregate bounds and literal localized failure messages. Existing allowance unchanged."
+  "measurementNote": "Includes strict FileReader decoding, early aggregate bounds, literal localized failure messages and the single reason notice for a playlist link that stayed a stream. Allocate the measured 364 raw / 91 gzip delta once over the existing 5807 / 2369 cap."
 }

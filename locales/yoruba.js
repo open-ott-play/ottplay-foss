@@ -776,6 +776,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "A kò lè gbé àkójọ ìṣeré wọlé tààrà. Ń gbé wọlé nípasẹ̀ sáfà…",
     "Playlist is too large": "Playlist tóbi jù",
+    "Playlist link could not be loaded": "A kò lè gbé ọ̀nà àkójọ orin wá",
+    "Playlist link is not public": "Ọ̀nà àkójọ orin kì í ṣe ti gbogbo ènìyàn",
     "Playlist local files must be dropped together with the playlist":
         "Gbọ́dọ̀ ju àwọn fáìlì agbègbè playlist sílẹ̀ pọ̀ mọ́ playlist náà",
     "Playlist must use UTF-8": "Playlist gbọ́dọ̀ lo UTF-8",

@@ -107,6 +107,8 @@ var keyStrings = {
         "ဖွင့်ရန်စာရင်းတွင် မပံ့ပိုးသော ရင်းမြစ်များ ပါဝင်သည်",
     "Playlist is empty or invalid": "ဖွင့်ရန်စာရင်းသည် ဗလာ သို့မဟုတ် မမှန်ကန်ပါ",
     "Playlist is too large": "ဖွင့်ရန်စာရင်း အရွယ်အစား ကြီးလွန်းသည်",
+    "Playlist link could not be loaded": "ပလေးလစ် လင့်ခ်ကို မဖွင့်နိုင်ပါ",
+    "Playlist link is not public": "ပလေးလစ် လင့်ခ်သည် အများသုံး မဟုတ်ပါ",
     "Playlist local files must be dropped together with the playlist":
         "စက်တွင်းဖိုင်များကို ဖွင့်ရန်စာရင်းနှင့်အတူ ဆွဲထည့်ရမည်",
     "Playlist must use UTF-8": "ဖွင့်ရန်စာရင်းတွင် UTF-8 ကို သုံးရမည်",
