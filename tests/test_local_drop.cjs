@@ -402,10 +402,7 @@ test("playlist failures translate every safe diagnostic and redact unknown nativ
             { droppedPlaylistCode: "playlist_link_unavailable" },
             "Playlist link could not be loaded",
         ],
-        [
-            { droppedPlaylistCode: "playlist_limit" },
-            "Playlist is too large",
-        ],
+        [{ droppedPlaylistCode: "playlist_limit" }, "Playlist is too large"],
         ["Dropped playlist must be UTF-8", "Playlist must use UTF-8"],
         [
             "Local HLS manifests are not supported; add the HTTP(S) manifest URL as a playlist entry",

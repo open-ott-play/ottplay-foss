@@ -802,7 +802,8 @@ var keyStrings = {
     "Playlist is too large": "Плейлист өтө чоң",
     "Playlist link could not be loaded":
         "Ойнотуу тизмесинин шилтемеси жүктөлбөдү",
-    "Playlist link is not public": "Ойнотуу тизмесинин шилтемеси коомдук эмес",
+    "Playlist link is not public":
+        "Ойнотуу тизмесинин шилтемеси жалпыга ачык эмес",
     "Playlist local files must be dropped together with the playlist":
         "Плейлисттин жергиликтүү файлдарын плейлист менен кошо таштаңыз",
     "Playlist must use UTF-8": "Плейлист UTF-8 коддоосун колдонушу керек",

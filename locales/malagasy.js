@@ -820,9 +820,9 @@ var keyStrings = {
         "Tsy afaka naka mivantana ny lisitra fandefasana. Maka amin'ny alalan'ny lohamilina…",
     "Playlist is too large": "Lehibe loatra ny playlist",
     "Playlist link could not be loaded":
-        "Tsy afaka nampidirina ny rohy lisitra",
+        "Tsy afaka nampidirina ny rohy lisitra fandefasana",
     "Playlist link is not public":
-        "Tsy ampahibemaso ny rohy lisitra fanolorana",
+        "Tsy ampahibemaso ny rohy lisitra fandefasana",
     "Playlist local files must be dropped together with the playlist":
         "Tsy maintsy aroso miaraka amin’ny playlist ireo rakitra eo an-toerana ao anatiny",
     "Playlist must use UTF-8": "Tsy maintsy mampiasa UTF-8 ny playlist",

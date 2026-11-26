@@ -774,8 +774,7 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "പ്ലേലിസ്റ്റ് നേരിട്ട് ലോഡുചെയ്യാൻ കഴിഞ്ഞില്ല. സെർവർ വഴി ലോഡ് ചെയ്യുന്നു...",
     "Playlist is too large": "പ്ലേലിസ്റ്റ് വളരെ വലുതാണ്",
-    "Playlist link could not be loaded":
-        "പ്ലേലിസ്റ്റ് ലിങ്ക് ലോഡ് ചെയ്യാനായില്ല",
+    "Playlist link could not be loaded": "പ്ലേലിസ്റ്റ് ലിങ്ക് ലോഡ് ചെയ്യാനായില്ല",
     "Playlist link is not public": "പ്ലേലിസ്റ്റ് ലിങ്ക് പൊതുവായതല്ല",
     "Playlist local files must be dropped together with the playlist":
         "പ്ലേലിസ്റ്റിലെ പ്രാദേശിക ഫയലുകൾ പ്ലേലിസ്റ്റിനൊപ്പം ചേർത്ത് ഡ്രോപ്പ് ചെയ്യണം",

@@ -108,7 +108,8 @@ var keyStrings = {
         "プレイリストに非対応のソースが含まれています",
     "Playlist is empty or invalid": "プレイリストが空か無効です",
     "Playlist is too large": "プレイリストが大きすぎます",
-    "Playlist link could not be loaded": "再生リストのリンクを読み込めませんでした",
+    "Playlist link could not be loaded":
+        "再生リストのリンクを読み込めませんでした",
     "Playlist link is not public": "再生リストのリンクは公開されていません",
     "Playlist local files must be dropped together with the playlist":
         "ローカルファイルはプレイリストと一緒にドロップしてください",

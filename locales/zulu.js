@@ -811,7 +811,7 @@ var keyStrings = {
     "Playlist link could not be loaded":
         "Isixhumanisi sohlu lokudlala asikwazanga kulayishwa",
     "Playlist link is not public":
-        "Isixhumanisi sohlu lokudlala asisidlangalaleni",
+        "Isixhumanisi sohlu lokudlala asikho esidlangalaleni",
     "Playlist local files must be dropped together with the playlist":
         "Amafayela asendaweni ohlu lokudlala kufanele adonswe kanye nohlu lokudlala",
     "Playlist must use UTF-8": "Uhlu lokudlala kufanele lusebenzise i-UTF-8",

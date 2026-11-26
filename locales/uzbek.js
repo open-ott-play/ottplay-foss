@@ -799,7 +799,7 @@ var keyStrings = {
     "Playlist is too large": "Pleylist juda katta",
     "Playlist link could not be loaded":
         "Ijro roʻyxati havolasini yuklab boʻlmadi",
-    "Playlist link is not public": "Ijro roʻyxati havolasi ommaviy emas",
+    "Playlist link is not public": "Ijro roʻyxati havolasi ochiq emas",
     "Playlist local files must be dropped together with the playlist":
         "Pleylistning mahalliy fayllarini pleylist bilan birga tashlang",
     "Playlist must use UTF-8": "Pleylist UTF-8 dan foydalanishi kerak",
