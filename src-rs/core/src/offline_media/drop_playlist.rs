@@ -20,6 +20,7 @@ const MANIFEST_TIMEOUT: Duration = Duration::from_secs(20);
 /// A dropped playlist may reference a handful of remote channel lists; fetching
 /// more than this from one gesture would turn a drop into a crawl.
 const MAX_REMOTE_MANIFESTS: usize = 32;
+const MAX_REDIRECTS: usize = 3;
 
 pub(super) enum Member {
     Local(usize),
@@ -543,32 +544,69 @@ async fn public_target(url: &reqwest::Url) -> bool {
     }
     resolved
 }
-/// One bounded, non-recursive read of a dropped channel-list URL. `None` keeps
-/// the reference as a stream when it is not a public target, when the server is
-/// unreachable, or when it declines: redirects are not followed so a public
-/// document cannot bounce the player onto a local address.
+/// Where a redirect points, if that stays a public reference. Relative locations
+/// resolve against the document that asked for them.
+fn redirect_target(current: &reqwest::Url, location: &str) -> Option<reqwest::Url> {
+    let location = location.trim();
+    if location.is_empty() {
+        return None;
+    }
+    let next = current.join(location).ok()?;
+    public_reference(&next).then_some(next)
+}
+/// One bounded, non-recursive read of a dropped channel-list URL, following at
+/// most `MAX_REDIRECTS` hops that each stay public. `None` keeps the reference
+/// as a stream when it is not a public target, when the server is unreachable,
+/// or when it declines. The final URL comes back too, so relative entries
+/// resolve against the document that actually arrived.
 async fn fetch_manifest(
     owner: &ReadWork,
     url: &str,
     limit: usize,
-) -> Result<Option<String>, Failure> {
+) -> Result<Option<(String, reqwest::Url)>, Failure> {
     let Ok(parsed) = reqwest::Url::parse(url) else {
         return Ok(None);
     };
-    if !public_target(&parsed).await {
-        return Ok(None);
-    }
     let client = reqwest::Client::builder()
         .timeout(MANIFEST_TIMEOUT)
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|_| bad(INVALID))?;
-    let Ok(response) = client.get(url).send().await else {
-        return Ok(None);
-    };
-    if !response.status().is_success() {
-        return Ok(None);
+    let mut current = parsed;
+    for _ in 0..=MAX_REDIRECTS {
+        owner.check()?;
+        if !public_target(&current).await {
+            return Ok(None);
+        }
+        let Ok(response) = client.get(current.clone()).send().await else {
+            return Ok(None);
+        };
+        let status = response.status();
+        if status.is_redirection() {
+            let location = response
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|value| value.to_str().ok());
+            let Some(next) = location.and_then(|value| redirect_target(&current, value)) else {
+                return Ok(None);
+            };
+            current = next;
+            continue;
+        }
+        if !status.is_success() {
+            return Ok(None);
+        }
+        return read_manifest_body(owner, response, limit, current).await;
     }
+    Ok(None)
+}
+/// Reads the accepted response up to `limit`, keeping the URL it came from.
+async fn read_manifest_body(
+    owner: &ReadWork,
+    response: reqwest::Response,
+    limit: usize,
+    url: reqwest::Url,
+) -> Result<Option<(String, reqwest::Url)>, Failure> {
     if response
         .content_length()
         .is_some_and(|length| length > limit as u64)
@@ -587,9 +625,8 @@ async fn fetch_manifest(
         }
         body.extend_from_slice(&chunk);
     }
-    String::from_utf8(body)
-        .map(Some)
-        .map_err(|_| bad("Dropped playlist must be UTF-8"))
+    let text = String::from_utf8(body).map_err(|_| bad("Dropped playlist must be UTF-8"))?;
+    Ok(Some((text, url)))
 }
 async fn expand_remote_references(
     owner: &ReadWork,
@@ -608,15 +645,12 @@ async fn expand_remote_references(
             continue;
         }
         owner.check()?;
-        let Some(text) = fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text).await? else {
+        let Some((text, base)) = fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text).await?
+        else {
             out.push(item);
             continue;
         };
         fetched += 1;
-        let Ok(base) = reqwest::Url::parse(url) else {
-            out.push(item);
-            continue;
-        };
         let mut expanded = Vec::new();
         if looks_like_hls(&text) || parse_remote(&text, &base, &mut expanded).is_err() {
             out.push(item);
@@ -743,6 +777,36 @@ mod tests {
             "ftp://example.invalid/list.m3u",
         ] {
             assert!(!public(refused), "{refused} must stay a single stream");
+        }
+    }
+
+    #[test]
+    fn redirects_follow_only_public_references() {
+        let base = reqwest::Url::parse("http://example.org/list/channels.m3u").unwrap();
+        assert_eq!(
+            redirect_target(&base, "https://example.org/list/channels.m3u")
+                .map(|url| url.to_string())
+                .as_deref(),
+            Some("https://example.org/list/channels.m3u")
+        );
+        assert_eq!(
+            redirect_target(&base, "  ../other.m3u  ")
+                .map(|url| url.to_string())
+                .as_deref(),
+            Some("http://example.org/other.m3u")
+        );
+        for refused in [
+            "http://127.0.0.1:8765/playlist.m3u",
+            "http://localhost/playlist.m3u",
+            "http://[::1]/playlist.m3u",
+            "http://192.168.0.10/list.m3u",
+            "file:///etc/passwd",
+            "   ",
+        ] {
+            assert!(
+                redirect_target(&base, refused).is_none(),
+                "{refused} must not be followed"
+            );
         }
     }
 
