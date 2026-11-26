@@ -798,6 +798,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Seznama predvajanja ni bilo mogoče neposredno naložiti. Nalaganje prek strežnika …",
     "Playlist is too large": "Seznam predvajanja je prevelik",
+    "Playlist link could not be loaded":
+        "Povezave seznama predvajanja ni bilo mogoče naložiti",
+    "Playlist link is not public": "Povezava seznama predvajanja ni javna",
     "Playlist local files must be dropped together with the playlist":
         "Lokalne datoteke seznama predvajanja dodajte skupaj s seznamom",
     "Playlist must use UTF-8": "Seznam predvajanja mora uporabljati UTF-8",

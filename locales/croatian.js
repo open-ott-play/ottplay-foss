@@ -108,6 +108,9 @@ var keyStrings = {
     "Playlist is empty or invalid":
         "Popis za reprodukciju prazan je ili nevaljan",
     "Playlist is too large": "Popis za reprodukciju prevelik je",
+    "Playlist link could not be loaded":
+        "Veza popisa za reprodukciju nije se mogla učitati",
+    "Playlist link is not public": "Veza popisa za reprodukciju nije javna",
     "Playlist local files must be dropped together with the playlist":
         "Lokalne datoteke morate povući zajedno s popisom za reprodukciju",
     "Playlist must use UTF-8":

@@ -111,6 +111,10 @@ var keyStrings = {
     "Playlist is empty or invalid":
         "Erreprodukzio-zerrenda hutsik dago edo baliogabea da",
     "Playlist is too large": "Erreprodukzio-zerrenda handiegia da",
+    "Playlist link could not be loaded":
+        "Ezin izan da erreprodukzio-zerrendaren esteka kargatu",
+    "Playlist link is not public":
+        "Erreprodukzio-zerrendaren esteka ez da publikoa",
     "Playlist local files must be dropped together with the playlist":
         "Erreprodukzio-zerrendako tokiko fitxategiak zerrendarekin batera arrastatu eta jaregin behar dira",
     "Playlist must use UTF-8": "Erreprodukzio-zerrendak UTF-8 erabili behar du",

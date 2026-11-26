@@ -105,6 +105,9 @@ var keyStrings = {
         "רשימת ההשמעה מכילה מקורות שאינם נתמכים",
     "Playlist is empty or invalid": "רשימת ההשמעה ריקה או לא תקינה",
     "Playlist is too large": "רשימת ההשמעה גדולה מדי",
+    "Playlist link could not be loaded":
+        "לא ניתן היה לטעון את קישור רשימת ההשמעה",
+    "Playlist link is not public": "קישור רשימת ההשמעה אינו ציבורי",
     "Playlist local files must be dropped together with the playlist":
         "יש לגרור את הקבצים המקומיים יחד עם רשימת ההשמעה",
     "Playlist must use UTF-8": "רשימת ההשמעה חייבת להשתמש ב-UTF-8",

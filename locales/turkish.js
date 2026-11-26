@@ -790,6 +790,10 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Oynatma listesi doğrudan yüklenmiyor...Sunucu üzerinden yükleniyor...",
     "Playlist is too large": "Çalma listesi çok büyük",
+    "Playlist link could not be loaded":
+        "Oynatma listesi bağlantısı yüklenemedi",
+    "Playlist link is not public":
+        "Oynatma listesi bağlantısı herkese açık değil",
     "Playlist local files must be dropped together with the playlist":
         "Çalma listesindeki yerel dosyalar listeyle birlikte bırakılmalıdır",
     "Playlist must use UTF-8": "Çalma listesi UTF-8 kullanmalıdır",

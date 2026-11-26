@@ -104,6 +104,8 @@ var keyStrings = {
     "Playlist contains unsupported sources": "播放列表包含不支持的来源",
     "Playlist is empty or invalid": "播放列表为空或无效",
     "Playlist is too large": "播放列表过大",
+    "Playlist link could not be loaded": "无法加载播放列表链接",
+    "Playlist link is not public": "播放列表链接不是公开地址",
     "Playlist local files must be dropped together with the playlist":
         "播放列表中的本地文件必须与播放列表一起拖入",
     "Playlist must use UTF-8": "播放列表必须使用 UTF-8",

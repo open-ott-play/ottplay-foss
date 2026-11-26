@@ -791,6 +791,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "پلے لسٹ کو براہ راست لوڈ نہیں کیا جا سکتا۔ سرور کے ذریعے لوڈ ہو رہا ہے…",
     "Playlist is too large": "پلے لسٹ بہت بڑی ہے",
+    "Playlist link could not be loaded": "پلے لسٹ کا لنک لوڈ نہیں ہو سکا",
+    "Playlist link is not public": "پلے لسٹ کا لنک عوامی نہیں ہے",
     "Playlist local files must be dropped together with the playlist":
         "پلے لسٹ کی مقامی فائلیں پلے لسٹ کے ساتھ چھوڑنا ضروری ہے",
     "Playlist must use UTF-8": "پلے لسٹ کو UTF-8 استعمال کرنا چاہیے",

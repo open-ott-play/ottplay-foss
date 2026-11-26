@@ -794,6 +794,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Рӯйхати пахш мустақим бор нашуд. Боркунӣ тавассути сервер…",
     "Playlist is too large": "Рӯйхати навозиш хеле калон аст",
+    "Playlist link could not be loaded":
+        "Пайванди феҳристи пахш боргузорӣ нашуд",
+    "Playlist link is not public": "Пайванди феҳристи пахш оммавӣ нест",
     "Playlist local files must be dropped together with the playlist":
         "Файлҳои маҳаллии рӯйхати навозишро ҳамроҳи худи рӯйхат партоед",
     "Playlist must use UTF-8": "Рӯйхати навозиш бояд UTF-8 истифода барад",

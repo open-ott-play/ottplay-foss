@@ -800,6 +800,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Ойнотуу тизмеси түз жүктөлгөн жок. Сервер аркылуу жүктөлүүдө…",
     "Playlist is too large": "Плейлист өтө чоң",
+    "Playlist link could not be loaded":
+        "Ойнотуу тизмесинин шилтемеси жүктөлбөдү",
+    "Playlist link is not public": "Ойнотуу тизмесинин шилтемеси коомдук эмес",
     "Playlist local files must be dropped together with the playlist":
         "Плейлисттин жергиликтүү файлдарын плейлист менен кошо таштаңыз",
     "Playlist must use UTF-8": "Плейлист UTF-8 коддоосун колдонушу керек",

@@ -766,6 +766,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "ไม่สามารถโหลดเพลย์ลิสต์ได้โดยตรง กำลังโหลดผ่านเซิร์ฟเวอร์...",
     "Playlist is too large": "เพลย์ลิสต์มีขนาดใหญ่เกินไป",
+    "Playlist link could not be loaded": "โหลดลิงก์เพลย์ลิสต์ไม่ได้",
+    "Playlist link is not public": "ลิงก์เพลย์ลิสต์ไม่ใช่ที่สาธารณะ",
     "Playlist local files must be dropped together with the playlist":
         "ต้องลากไฟล์ในเครื่องของเพลย์ลิสต์มาพร้อมกับเพลย์ลิสต์",
     "Playlist must use UTF-8": "เพลย์ลิสต์ต้องใช้ UTF-8",

@@ -801,6 +801,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Плејлистата не може да се вчита директно. Се вчитува преку сервер…",
     "Playlist is too large": "Плејлистата е преголема",
+    "Playlist link could not be loaded":
+        "Врската на плејлистата не можеше да се вчита",
+    "Playlist link is not public": "Врската на плејлистата не е јавна",
     "Playlist local files must be dropped together with the playlist":
         "Локалните датотеки на плејлистата мора да се повлечат заедно со плејлистата",
     "Playlist must use UTF-8": "Плејлистата мора да користи UTF-8",

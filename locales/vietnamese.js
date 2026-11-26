@@ -782,6 +782,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Không thể tải trực tiếp danh sách phát. Đang tải qua máy chủ…",
     "Playlist is too large": "Danh sách phát quá lớn",
+    "Playlist link could not be loaded":
+        "Không tải được liên kết danh sách phát",
+    "Playlist link is not public": "Liên kết danh sách phát không công khai",
     "Playlist local files must be dropped together with the playlist":
         "Cần thả các tệp cục bộ của danh sách phát cùng với danh sách phát",
     "Playlist must use UTF-8": "Danh sách phát phải dùng UTF-8",

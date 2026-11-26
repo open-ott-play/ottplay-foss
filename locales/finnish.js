@@ -108,6 +108,8 @@ var keyStrings = {
         "Soittolista sisältää lähteitä, joita ei tueta",
     "Playlist is empty or invalid": "Soittolista on tyhjä tai virheellinen",
     "Playlist is too large": "Soittolista on liian suuri",
+    "Playlist link could not be loaded": "Soittolistan linkkiä ei voitu ladata",
+    "Playlist link is not public": "Soittolistan linkki ei ole julkinen",
     "Playlist local files must be dropped together with the playlist":
         "Paikalliset tiedostot on pudotettava yhdessä soittolistan kanssa",
     "Playlist must use UTF-8": "Soittolistan on käytettävä UTF-8-koodausta",

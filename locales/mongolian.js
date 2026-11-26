@@ -797,6 +797,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Тоглуулах жагсаалтыг шууд ачаалж чадсангүй. Серверээр ачаалж байна…",
     "Playlist is too large": "Тоглуулах жагсаалт хэт том байна",
+    "Playlist link could not be loaded":
+        "Тоглуулах жагсаалтын холбоосыг ачаалж чадсангүй",
+    "Playlist link is not public": "Тоглуулах жагсаалтын холбоос нийтийн биш",
     "Playlist local files must be dropped together with the playlist":
         "Тоглуулах жагсаалтын дотоод файлуудыг жагсаалттай нь хамт чирж оруулна уу",
     "Playlist must use UTF-8": "Тоглуулах жагсаалт UTF-8 ашиглах ёстой",

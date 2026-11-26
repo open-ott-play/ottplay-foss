@@ -105,6 +105,8 @@ var keyStrings = {
     "Playlist contains unsupported sources": "प्लेलिस्ट में असमर्थित स्रोत हैं",
     "Playlist is empty or invalid": "प्लेलिस्ट खाली या अमान्य है",
     "Playlist is too large": "प्लेलिस्ट बहुत बड़ी है",
+    "Playlist link could not be loaded": "प्लेलिस्ट लिंक लोड नहीं हो सका",
+    "Playlist link is not public": "प्लेलिस्ट लिंक सार्वजनिक नहीं है",
     "Playlist local files must be dropped together with the playlist":
         "स्थानीय फ़ाइलों को प्लेलिस्ट के साथ ही खींचकर छोड़ना होगा",
     "Playlist must use UTF-8": "प्लेलिस्ट में UTF-8 इस्तेमाल होना चाहिए",

@@ -106,6 +106,8 @@ var keyStrings = {
     "Playlist contains unsupported sources": "បញ្ជីចាក់មានប្រភពដែលមិនគាំទ្រ",
     "Playlist is empty or invalid": "បញ្ជីចាក់ទទេ ឬមិនត្រឹមត្រូវ",
     "Playlist is too large": "បញ្ជីចាក់ធំពេក",
+    "Playlist link could not be loaded": "មិនអាចផ្ទុកតំណបញ្ជីចាក់បានទេ",
+    "Playlist link is not public": "តំណបញ្ជីចាក់មិនមែនជាសាធារណៈទេ",
     "Playlist local files must be dropped together with the playlist":
         "ត្រូវអូសឯកសារក្នុងឧបករណ៍មកទម្លាក់ជាមួយបញ្ជីចាក់",
     "Playlist must use UTF-8": "បញ្ជីចាក់ត្រូវប្រើ UTF-8",

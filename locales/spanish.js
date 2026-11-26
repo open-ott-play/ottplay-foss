@@ -802,6 +802,10 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "La lista no se carga directamente...Cargando a través del servidor...",
     "Playlist is too large": "La lista es demasiado grande",
+    "Playlist link could not be loaded":
+        "No se pudo cargar el enlace de la lista de reproducción",
+    "Playlist link is not public":
+        "El enlace de la lista de reproducción no es público",
     "Playlist local files must be dropped together with the playlist":
         "Los archivos locales de la lista deben soltarse junto con la lista",
     "Playlist must use UTF-8": "La lista debe usar UTF-8",

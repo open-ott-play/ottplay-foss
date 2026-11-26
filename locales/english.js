@@ -105,6 +105,8 @@ var keyStrings = {
         "Playlist contains unsupported sources",
     "Playlist is empty or invalid": "Playlist is empty or invalid",
     "Playlist is too large": "Playlist is too large",
+    "Playlist link could not be loaded": "Playlist link could not be loaded",
+    "Playlist link is not public": "Playlist link is not public",
     "Playlist local files must be dropped together with the playlist":
         "Playlist local files must be dropped together with the playlist",
     "Playlist must use UTF-8": "Playlist must use UTF-8",

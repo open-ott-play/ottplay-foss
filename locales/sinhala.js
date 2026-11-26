@@ -770,6 +770,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "ධාවන ලැයිස්තුව කෙලින්ම පූරණය කළ නොහැක. සේවාදායකය හරහා පූරණය වෙමින්...",
     "Playlist is too large": "ධාවන ලැයිස්තුව විශාල වැඩියි",
+    "Playlist link could not be loaded":
+        "වාදන ලැයිස්තු සබැඳිය පූරණය කළ නොහැකි විය",
+    "Playlist link is not public": "වාදන ලැයිස්තු සබැඳිය පොදු නොවේ",
     "Playlist local files must be dropped together with the playlist":
         "ධාවන ලැයිස්තුවේ දේශීය ගොනු එම ලැයිස්තුව සමඟම ඇද දමන්න",
     "Playlist must use UTF-8": "ධාවන ලැයිස්තුව UTF-8 භාවිත කළ යුතුය",
