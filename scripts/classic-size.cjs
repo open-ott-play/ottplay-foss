@@ -834,12 +834,14 @@ const DESKTOP_VIDEO_QUEUE_ALLOWANCE = Object.freeze({
     gzipBytes: 169,
 });
 // M3U admission, strict decoding and temporary mixed queues stay in the lazy
-// desktop-drop asset. Measured optional asset: 17793 raw / 5794 gzip on
+// desktop-drop asset. Measured optional asset: 18157 raw / 5885 gzip on
 // Node 26.8.2; allocate its delta over the existing 5807 / 2369 cap once.
-// Evidence: docs/evidence/desktop-playlist-drop-size.json.
+// A playlist link that could not be expanded reports one bounded reason so the
+// player can say why it stayed a single stream; that notice adds 364 raw /
+// 91 gzip bytes. Evidence: docs/evidence/desktop-playlist-drop-size.json.
 const DESKTOP_PLAYLIST_DROP_ALLOWANCE = Object.freeze({
-    bytes: 12000,
-    gzipBytes: 3500,
+    bytes: 12364,
+    gzipBytes: 3591,
 });
 // Preserve adaptive-stream routing for playlist entries in the shared core.
 // Measured entry delta: 996 raw / at most 388 gzip bytes on Node 26.8.2.

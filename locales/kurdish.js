@@ -790,6 +790,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Lîsteya lêdanê rasterast nehat barkirin. Bi rêya serverê tê barkirin…",
     "Playlist is too large": "Lîsteya lêdanê pir mezin e",
+    "Playlist link could not be loaded":
+        "Girêdana lîsteya lêdanê nehat barkirin",
+    "Playlist link is not public": "Girêdana lîsteya lêdanê ne giştî ye",
     "Playlist local files must be dropped together with the playlist":
         "Divê pelên herêmî yên lîsteya lêdanê bi lîsteya lêdanê re bên avêtin",
     "Playlist must use UTF-8": "Lîsteya lêdanê divê UTF-8 bikar bîne",

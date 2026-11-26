@@ -108,6 +108,9 @@ var keyStrings = {
         "Esitusloend sisaldab toetamata allikaid",
     "Playlist is empty or invalid": "Esitusloend on tühi või vigane",
     "Playlist is too large": "Esitusloend on liiga suur",
+    "Playlist link could not be loaded":
+        "Esitusloendi linki ei õnnestunud laadida",
+    "Playlist link is not public": "Esitusloendi link ei ole avalik",
     "Playlist local files must be dropped together with the playlist":
         "Kohalikud failid tuleb lohistada koos esitusloendiga",
     "Playlist must use UTF-8": "Esitusloend peab kasutama UTF-8",

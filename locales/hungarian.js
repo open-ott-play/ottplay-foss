@@ -108,6 +108,10 @@ var keyStrings = {
         "A lejátszási lista nem támogatott forrásokat tartalmaz",
     "Playlist is empty or invalid": "A lejátszási lista üres vagy érvénytelen",
     "Playlist is too large": "A lejátszási lista túl nagy",
+    "Playlist link could not be loaded":
+        "A lejátszási lista hivatkozását nem sikerült betölteni",
+    "Playlist link is not public":
+        "A lejátszási lista hivatkozása nem nyilvános",
     "Playlist local files must be dropped together with the playlist":
         "A helyi fájlokat a lejátszási listával együtt kell behúzni",
     "Playlist must use UTF-8":

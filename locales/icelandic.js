@@ -106,6 +106,9 @@ var keyStrings = {
         "Spilunarlistinn inniheldur óstuddar uppsprettur",
     "Playlist is empty or invalid": "Spilunarlistinn er tómur eða ógildur",
     "Playlist is too large": "Spilunarlistinn er of stór",
+    "Playlist link could not be loaded":
+        "Ekki tókst að hlaða tengli spilunarlistans",
+    "Playlist link is not public": "Tengill spilunarlistans er ekki opinber",
     "Playlist local files must be dropped together with the playlist":
         "Draga verður staðbundnar skrár inn ásamt spilunarlistanum",
     "Playlist must use UTF-8": "Spilunarlistinn verður að nota UTF-8",

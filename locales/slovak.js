@@ -796,6 +796,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Zoznam skladieb sa nepodarilo načítať priamo. Načítava sa cez server…",
     "Playlist is too large": "Zoznam skladieb je príliš veľký",
+    "Playlist link could not be loaded":
+        "Odkaz playlistu sa nepodarilo načítať",
+    "Playlist link is not public": "Odkaz playlistu nie je verejný",
     "Playlist local files must be dropped together with the playlist":
         "Miestne súbory zoznamu skladieb treba pridať spolu so zoznamom",
     "Playlist must use UTF-8": "Zoznam skladieb musí používať UTF-8",

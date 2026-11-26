@@ -804,6 +804,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Playlistul nu se încarcă direct...Se încarcă prin server...",
     "Playlist is too large": "Lista de redare este prea mare",
+    "Playlist link could not be loaded":
+        "Linkul listei de redare nu a putut fi încărcat",
+    "Playlist link is not public": "Linkul listei de redare nu este public",
     "Playlist local files must be dropped together with the playlist":
         "Fișierele locale din lista de redare trebuie adăugate împreună cu lista",
     "Playlist must use UTF-8": "Lista de redare trebuie să folosească UTF-8",

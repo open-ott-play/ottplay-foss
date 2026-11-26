@@ -1,10 +1,30 @@
 //! Native-picked playlists only. HTTP entries are returned to the player, except
 //! a public channel-list URL that is fetched once, bounded and in place, so a
 //! dropped playlist link becomes its channels instead of a single stream.
+//! A reference that stays a stream because it could not be expanded reports a
+//! bounded reason, so the player can say why its playlist link did not open.
 //! Proxying, recursion and persistence stay out of this module.
 use super::*;
 use std::time::Duration;
 
+/// Why a dropped playlist reference stayed a single stream instead of its
+/// channel entries. The catalog carries the first reason of a batch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ExpansionIssue {
+    /// The reference, or one of its redirects, left public address space.
+    Blocked,
+    /// The server was unreachable, declined, or returned no document.
+    Unavailable,
+}
+impl ExpansionIssue {
+    /// A closed diagnostic code; the UI owns its translated message.
+    pub(super) fn code(self) -> &'static str {
+        match self {
+            Self::Blocked => "playlist_link_blocked",
+            Self::Unavailable => "playlist_link_unavailable",
+        }
+    }
+}
 pub(super) const MAX_PLAYLIST_BYTES: usize = 8 * 1024 * 1024;
 const MAX_TOTAL_TEXT: usize = 16 * 1024 * 1024;
 const MAX_LINE: usize = 8192;
@@ -546,26 +566,40 @@ async fn public_target(url: &reqwest::Url) -> bool {
 }
 /// Where a redirect points, if that stays a public reference. Relative locations
 /// resolve against the document that asked for them.
-fn redirect_target(current: &reqwest::Url, location: &str) -> Option<reqwest::Url> {
+fn redirect_target(
+    current: &reqwest::Url,
+    location: &str,
+    allow_private: bool,
+) -> Option<reqwest::Url> {
     let location = location.trim();
     if location.is_empty() {
         return None;
     }
     let next = current.join(location).ok()?;
-    public_reference(&next).then_some(next)
+    (allow_private || public_reference(&next)).then_some(next)
+}
+/// Where one dropped channel-list reference ends up. A reference that stays a
+/// stream keeps its bounded reason, never a URL or an error string.
+enum Fetched {
+    /// The document that arrived, with the URL it came from, so relative
+    /// entries resolve against the document that actually answered.
+    Document(String, reqwest::Url),
+    /// The reference, or one of its redirects, left public address space.
+    Blocked,
+    /// The server was unreachable, declined, or returned no document.
+    Unavailable,
 }
 /// One bounded, non-recursive read of a dropped channel-list URL, following at
-/// most `MAX_REDIRECTS` hops that each stay public. `None` keeps the reference
-/// as a stream when it is not a public target, when the server is unreachable,
-/// or when it declines. The final URL comes back too, so relative entries
-/// resolve against the document that actually arrived.
+/// most `MAX_REDIRECTS` hops that each stay public. Anything else keeps the
+/// reference as a stream.
 async fn fetch_manifest(
     owner: &ReadWork,
     url: &str,
     limit: usize,
-) -> Result<Option<(String, reqwest::Url)>, Failure> {
+    allow_private: bool,
+) -> Result<Fetched, Failure> {
     let Ok(parsed) = reqwest::Url::parse(url) else {
-        return Ok(None);
+        return Ok(Fetched::Unavailable);
     };
     let client = reqwest::Client::builder()
         .timeout(MANIFEST_TIMEOUT)
@@ -575,11 +609,11 @@ async fn fetch_manifest(
     let mut current = parsed;
     for _ in 0..=MAX_REDIRECTS {
         owner.check()?;
-        if !public_target(&current).await {
-            return Ok(None);
+        if !allow_private && !public_target(&current).await {
+            return Ok(Fetched::Blocked);
         }
         let Ok(response) = client.get(current.clone()).send().await else {
-            return Ok(None);
+            return Ok(Fetched::Unavailable);
         };
         let status = response.status();
         if status.is_redirection() {
@@ -587,18 +621,25 @@ async fn fetch_manifest(
                 .headers()
                 .get(reqwest::header::LOCATION)
                 .and_then(|value| value.to_str().ok());
-            let Some(next) = location.and_then(|value| redirect_target(&current, value)) else {
-                return Ok(None);
+            let Some(location) = location else {
+                return Ok(Fetched::Unavailable);
+            };
+            let Some(next) = redirect_target(&current, location, allow_private) else {
+                return Ok(Fetched::Blocked);
             };
             current = next;
             continue;
         }
         if !status.is_success() {
-            return Ok(None);
+            return Ok(Fetched::Unavailable);
         }
-        return read_manifest_body(owner, response, limit, current).await;
+        return Ok(read_manifest_body(owner, response, limit, current)
+            .await?
+            .map_or(Fetched::Unavailable, |(text, url)| {
+                Fetched::Document(text, url)
+            }));
     }
-    Ok(None)
+    Ok(Fetched::Unavailable)
 }
 /// Reads the accepted response up to `limit`, keeping the URL it came from.
 async fn read_manifest_body(
@@ -628,13 +669,16 @@ async fn read_manifest_body(
     let text = String::from_utf8(body).map_err(|_| bad("Dropped playlist must be UTF-8"))?;
     Ok(Some((text, url)))
 }
+/// Keeps the first bounded reason a reference could not become its channels.
 async fn expand_remote_references(
     owner: &ReadWork,
     items: Vec<Requested>,
     total_text: &mut usize,
-) -> Result<Vec<Requested>, Failure> {
+    allow_private: bool,
+) -> Result<(Vec<Requested>, Option<ExpansionIssue>), Failure> {
     let mut out = Vec::with_capacity(items.len());
     let mut fetched = 0usize;
+    let mut issue: Option<ExpansionIssue> = None;
     for item in items {
         let Requested::Remote { url, mime, .. } = &item else {
             out.push(item);
@@ -645,11 +689,20 @@ async fn expand_remote_references(
             continue;
         }
         owner.check()?;
-        let Some((text, base)) = fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text).await?
-        else {
-            out.push(item);
-            continue;
-        };
+        let (text, base) =
+            match fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text, allow_private).await? {
+                Fetched::Document(text, base) => (text, base),
+                Fetched::Blocked => {
+                    issue.get_or_insert(ExpansionIssue::Blocked);
+                    out.push(item);
+                    continue;
+                }
+                Fetched::Unavailable => {
+                    issue.get_or_insert(ExpansionIssue::Unavailable);
+                    out.push(item);
+                    continue;
+                }
+            };
         fetched += 1;
         let mut expanded = Vec::new();
         if looks_like_hls(&text) || parse_remote(&text, &base, &mut expanded).is_err() {
@@ -662,12 +715,22 @@ async fn expand_remote_references(
         *total_text += text.len();
         out.extend(expanded);
     }
-    Ok(out)
+    Ok((out, issue))
 }
+/// The batch and the first reason one of its references stayed a stream.
 pub(super) async fn expand(
     owner: &ReadWork,
     paths: Vec<PathBuf>,
-) -> Result<Vec<Requested>, Failure> {
+) -> Result<(Vec<Requested>, Option<ExpansionIssue>), Failure> {
+    expand_reach(owner, paths, false).await
+}
+/// The same batch, reading a fixture from loopback. Only tests set
+/// `allow_private`; a dropped playlist is always read public-only.
+async fn expand_reach(
+    owner: &ReadWork,
+    paths: Vec<PathBuf>,
+    allow_private: bool,
+) -> Result<(Vec<Requested>, Option<ExpansionIssue>), Failure> {
     let mut out = Vec::new();
     let mut total_text = 0usize;
     let mut local_count = 0usize;
@@ -685,7 +748,7 @@ pub(super) async fn expand(
             out.push(local(path, None).map_err(bad)?);
         }
     }
-    expand_remote_references(owner, out, &mut total_text).await
+    expand_remote_references(owner, out, &mut total_text, allow_private).await
 }
 
 #[cfg(test)]
@@ -784,13 +847,13 @@ mod tests {
     fn redirects_follow_only_public_references() {
         let base = reqwest::Url::parse("http://example.org/list/channels.m3u").unwrap();
         assert_eq!(
-            redirect_target(&base, "https://example.org/list/channels.m3u")
+            redirect_target(&base, "https://example.org/list/channels.m3u", false)
                 .map(|url| url.to_string())
                 .as_deref(),
             Some("https://example.org/list/channels.m3u")
         );
         assert_eq!(
-            redirect_target(&base, "  ../other.m3u  ")
+            redirect_target(&base, "  ../other.m3u  ", false)
                 .map(|url| url.to_string())
                 .as_deref(),
             Some("http://example.org/other.m3u")
@@ -804,7 +867,7 @@ mod tests {
             "   ",
         ] {
             assert!(
-                redirect_target(&base, refused).is_none(),
+                redirect_target(&base, refused, false).is_none(),
                 "{refused} must not be followed"
             );
         }
@@ -1189,6 +1252,72 @@ mod tests {
         let manifest = f.manifest("alias.mp4").await;
         assert!(f.library.transient_videos(vec![manifest]).await.is_err());
         assert!(f.library.transient.lock().unwrap().entries.is_empty());
+        assert!(f.library.transient.lock().unwrap().groups.is_empty());
+    }
+
+    #[tokio::test]
+    async fn playlist_reference_outside_public_space_keeps_its_reason() {
+        let f = Fixture::new().await;
+        let manifest = f
+            .manifest("https://example.invalid/live.ts\nhttp://127.0.0.1:9/list.m3u\n")
+            .await;
+        let lease = f.library.background.enter().unwrap();
+        let (rows, issue) = owned_read(&lease, move |owner| async move {
+            expand(&owner, vec![manifest]).await
+        })
+        .await
+        .unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(
+            rows[1].name(),
+            "Playlist stream",
+            "a refused reference still plays as one stream"
+        );
+        assert_eq!(
+            issue.map(ExpansionIssue::code),
+            Some("playlist_link_blocked")
+        );
+        assert!(f.library.transient.lock().unwrap().groups.is_empty());
+    }
+
+    #[tokio::test]
+    async fn declined_playlist_reference_keeps_its_reason() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let f = Fixture::new().await;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut head = [0u8; 1024];
+            let _ = stream.read(&mut head).await;
+            stream
+                .write_all(
+                    b"HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
+                )
+                .await
+                .unwrap();
+            let _ = stream.shutdown().await;
+        });
+        let manifest = f
+            .manifest(format!("http://{address}/declined.m3u8\n"))
+            .await;
+        let lease = f.library.background.enter().unwrap();
+        let (rows, issue) = owned_read(&lease, move |owner| async move {
+            expand_reach(&owner, vec![manifest], true).await
+        })
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0].name(),
+            "Playlist stream",
+            "a declined reference still plays as one stream"
+        );
+        assert_eq!(
+            issue.map(ExpansionIssue::code),
+            Some("playlist_link_unavailable")
+        );
         assert!(f.library.transient.lock().unwrap().groups.is_empty());
     }
 }

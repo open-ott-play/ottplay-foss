@@ -787,6 +787,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Spellistan kunde inte läsas in direkt. Läser in via server…",
     "Playlist is too large": "Spellistan är för stor",
+    "Playlist link could not be loaded":
+        "Länken till spellistan kunde inte laddas",
+    "Playlist link is not public": "Länken till spellistan är inte offentlig",
     "Playlist local files must be dropped together with the playlist":
         "Lokala filer i spellistan måste släppas tillsammans med spellistan",
     "Playlist must use UTF-8": "Spellistan måste använda UTF-8",

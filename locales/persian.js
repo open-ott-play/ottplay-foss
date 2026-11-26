@@ -781,6 +781,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "لیست پخش مستقیماً بارگیری نشد. در حال بارگیری از طریق سرور…",
     "Playlist is too large": "فهرست پخش بیش از حد بزرگ است",
+    "Playlist link could not be loaded": "پیوند فهرست پخش بارگذاری نشد",
+    "Playlist link is not public": "پیوند فهرست پخش عمومی نیست",
     "Playlist local files must be dropped together with the playlist":
         "فایل‌های محلی فهرست پخش باید همراه خود فهرست پخش رها شوند",
     "Playlist must use UTF-8": "فهرست پخش باید از UTF-8 استفاده کند",

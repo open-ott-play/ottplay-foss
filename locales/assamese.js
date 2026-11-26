@@ -106,6 +106,8 @@ var keyStrings = {
     "Playlist contains unsupported sources": "প্লেলিষ্টত অসমৰ্থিত উৎস আছে",
     "Playlist is empty or invalid": "প্লেলিষ্ট খালী বা অবৈধ",
     "Playlist is too large": "প্লেলিষ্ট অতি ডাঙৰ",
+    "Playlist link could not be loaded": "প্লেলিষ্ট লিংকটো লোড কৰিব পৰা নগ'ল",
+    "Playlist link is not public": "প্লেলিষ্ট লিংকটো ৰাজহুৱা নহয়",
     "Playlist local files must be dropped together with the playlist":
         "স্থানীয় ফাইলবোৰ প্লেলিষ্টৰ সৈতে একেলগে টানি এৰিব লাগিব",
     "Playlist must use UTF-8": "প্লেলিষ্টত UTF-8 ব্যৱহাৰ কৰিব লাগিব",

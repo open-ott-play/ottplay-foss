@@ -108,6 +108,10 @@ var keyStrings = {
         "Ойнату тізімінде қолдау көрсетілмейтін көздер бар",
     "Playlist is empty or invalid": "Ойнату тізімі бос немесе жарамсыз",
     "Playlist is too large": "Ойнату тізімі тым үлкен",
+    "Playlist link could not be loaded":
+        "Ойнату тізімінің сілтемесі жүктелмеді",
+    "Playlist link is not public":
+        "Ойнату тізімінің сілтемесі жалпыға ашық емес",
     "Playlist local files must be dropped together with the playlist":
         "Жергілікті файлдарды ойнату тізімімен бірге сүйреп апару керек",
     "Playlist must use UTF-8": "Ойнату тізімі UTF-8 қолдануы керек",

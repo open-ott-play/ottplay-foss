@@ -56,6 +56,8 @@ export function installLocalDrop(w: any): any {
             playlist_hls_local_unsupported: 0,
             playlist_invalid: 3,
             playlist_limit: 4,
+            playlist_link_blocked: 6,
+            playlist_link_unavailable: 7,
             playlist_local_unavailable: 1,
             playlist_unsupported: 2,
         };
@@ -120,10 +122,25 @@ export function installLocalDrop(w: any): any {
             case "Playlist must use UTF-8":
                 text = _("Playlist must use UTF-8");
                 break;
+            case 6:
+                text = _("Playlist link is not public");
+                break;
+            case 7:
+                text = _("Playlist link could not be loaded");
+                break;
             default:
                 text = _("Unsupported source");
         }
         message(text);
+    }
+    // A dropped playlist link that stayed one stream carries a closed reason;
+    // a plain single-stream drop carries none and stays silent.
+    function notice(catalog: any): void {
+        if (!catalog) return;
+        if (catalog.notice === "playlist_link_blocked")
+            failure({ droppedPlaylistCode: "playlist_link_blocked" });
+        else if (catalog.notice === "playlist_link_unavailable")
+            failure({ droppedPlaylistCode: "playlist_link_unavailable" });
     }
     function invoke(name: string, args: any): Promise<any> {
         var bridge = w.__TAURI__?.core || w.__TAURI__;
@@ -167,6 +184,7 @@ export function installLocalDrop(w: any): any {
                     release(lease);
                 }
             );
+            notice(lease.catalog);
         } catch (_) {
             release(lease);
             if (previous && !previous.released) active = previous;

@@ -791,6 +791,8 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Grojaraštis neįkeliamas tiesiogiai...Įkeliama per serverį...",
     "Playlist is too large": "Grojaraštis per didelis",
+    "Playlist link could not be loaded": "Nepavyko įkelti grojaraščio nuorodos",
+    "Playlist link is not public": "Grojaraščio nuoroda nėra vieša",
     "Playlist local files must be dropped together with the playlist":
         "Vietinius grojaraščio failus reikia įkelti kartu su grojaraščiu",
     "Playlist must use UTF-8": "Grojaraštyje turi būti naudojamas UTF-8",

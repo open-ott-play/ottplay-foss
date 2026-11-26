@@ -109,6 +109,10 @@ var keyStrings = {
         "Lista përmban burime të pambështetura",
     "Playlist is empty or invalid": "Lista është bosh ose e pavlefshme",
     "Playlist is too large": "Lista është tepër e madhe",
+    "Playlist link could not be loaded":
+        "Lidhja e listës së luajtjes nuk mund të ngarkohej",
+    "Playlist link is not public":
+        "Lidhja e listës së luajtjes nuk është publike",
     "Playlist local files must be dropped together with the playlist":
         "Skedarët lokalë duhen hedhur bashkë me listën e luajtjes",
     "Playlist must use UTF-8": "Lista duhet të përdorë UTF-8",

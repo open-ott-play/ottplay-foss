@@ -786,6 +786,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Senarai main tidak dapat dimuatkan terus. Memuatkan melalui pelayan…",
     "Playlist is too large": "Senarai main terlalu besar",
+    "Playlist link could not be loaded":
+        "Pautan senarai main tidak dapat dimuatkan",
+    "Playlist link is not public": "Pautan senarai main bukan awam",
     "Playlist local files must be dropped together with the playlist":
         "Fail setempat dalam senarai main mesti disertakan bersama senarai main",
     "Playlist must use UTF-8": "Senarai main mesti menggunakan UTF-8",

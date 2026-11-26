@@ -792,6 +792,9 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Atskaņošanas saraksts netiek ielādēts tieši...Ielāde caur serveri...",
     "Playlist is too large": "Saraksts ir pārāk liels",
+    "Playlist link could not be loaded":
+        "Atskaņošanas saraksta saiti neizdevās ielādēt",
+    "Playlist link is not public": "Atskaņošanas saraksta saite nav publiska",
     "Playlist local files must be dropped together with the playlist":
         "Atskaņošanas saraksta lokālie faili jāievelk kopā ar sarakstu",
     "Playlist must use UTF-8": "Sarakstam jāizmanto UTF-8",

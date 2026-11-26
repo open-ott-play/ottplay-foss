@@ -110,6 +110,10 @@ var keyStrings = {
         "La llista conté fonts no compatibles",
     "Playlist is empty or invalid": "La llista és buida o no és vàlida",
     "Playlist is too large": "La llista és massa gran",
+    "Playlist link could not be loaded":
+        "No s'ha pogut carregar l'enllaç de la llista de reproducció",
+    "Playlist link is not public":
+        "L'enllaç de la llista de reproducció no és públic",
     "Playlist local files must be dropped together with the playlist":
         "Cal arrossegar els fitxers locals juntament amb la llista de reproducció",
     "Playlist must use UTF-8": "La llista ha d’utilitzar UTF-8",

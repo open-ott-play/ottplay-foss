@@ -109,6 +109,10 @@ var keyStrings = {
         "De afspeellijst bevat niet-ondersteunde bronnen",
     "Playlist is empty or invalid": "De afspeellijst is leeg of ongeldig",
     "Playlist is too large": "De afspeellijst is te groot",
+    "Playlist link could not be loaded":
+        "De link naar de afspeellijst kon niet worden geladen",
+    "Playlist link is not public":
+        "De link naar de afspeellijst is niet openbaar",
     "Playlist local files must be dropped together with the playlist":
         "Sleep lokale bestanden samen met de afspeellijst hierheen",
     "Playlist must use UTF-8": "De afspeellijst moet UTF-8 gebruiken",

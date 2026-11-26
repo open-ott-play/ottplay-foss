@@ -803,6 +803,10 @@ var keyStrings = {
     "Playlist is not loading directly...Loading via server...":
         "Liiska daarista si toos ah ayaa loo soo rari waayey. Waxaa lagu soo rarayaa seerfarka…",
     "Playlist is too large": "Liisku aad buu u weyn yahay",
+    "Playlist link could not be loaded":
+        "Xiriirka liiska daarista lama soo dejin karin",
+    "Playlist link is not public":
+        "Xiriirka liiska daarista ma aha mid dadweyne",
     "Playlist local files must be dropped together with the playlist":
         "Faylasha maxalliga ah ee liiska waa in lala soo jiidaa liiska",
     "Playlist must use UTF-8": "Liisku waa inuu adeegsadaa UTF-8",

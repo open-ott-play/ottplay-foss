@@ -111,6 +111,10 @@ var keyStrings = {
     "Playlist is empty or invalid":
         "Urutonde rwo gukina rurimo ubusa cyangwa ntirwemewe",
     "Playlist is too large": "Urutonde rwo gukina ni runini cyane",
+    "Playlist link could not be loaded":
+        "Ntibyashobotse gupakira umurongo w'urutonde rwo gukina",
+    "Playlist link is not public":
+        "Umurongo w'urutonde rwo gukina ntabwo uri rusange",
     "Playlist local files must be dropped together with the playlist":
         "Idosiye zo ku gikoresho zigomba gukururwa zigashyirwa hamwe n’urutonde rwo gukina",
     "Playlist must use UTF-8": "Urutonde rwo gukina rugomba gukoresha UTF-8",
