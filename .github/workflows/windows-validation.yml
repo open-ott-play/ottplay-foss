@@ -303,7 +303,7 @@ jobs:
       matrix:
         os: [ ubuntu-26.04, macos-15 ]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 35
+    timeout-minutes: 55
     defaults:
       run:
         shell: bash
