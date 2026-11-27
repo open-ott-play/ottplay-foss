@@ -16,6 +16,7 @@ const {
     captureOwnedImage,
     cases,
     cleanupOwnedDataDirectory,
+    fixtureBrowserArguments,
     nativeChannelIds,
     nativeStartupUrl,
     nativeSourceAttached,
@@ -1242,4 +1243,20 @@ test("first native media remains undecodable until owned cold-capture admission"
         await exited;
         fs.rmSync(root, { force: true, recursive: true });
     }
+});
+
+test("owned fixture browser arguments stay loopback-only and cancel Windows port randomization", () => {
+    const args = fixtureBrowserArguments(60800);
+    assert.match(args, /^--remote-debugging-address=127\.0\.0\.1 /);
+    assert.match(args, /--remote-debugging-port=60800(?: |$)/);
+    assert.match(
+        args,
+        /--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,TcpPortRandomizationWin(?: |$)/
+    );
+    assert.equal((args.match(/--disable-features=/g) || []).length, 1);
+    for (const invalid of [0, 1023, 65536, 1.5, "60800", undefined, null])
+        assert.throws(
+            () => fixtureBrowserArguments(invalid),
+            /Invalid owned debug port/
+        );
 });

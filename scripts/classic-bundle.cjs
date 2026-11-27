@@ -586,7 +586,8 @@ function emittedHelperSignatures() {
         // Compare with this compiler's output, rather than assuming that a name
         // or a function-shaped initializer identifies a TypeScript helper.
         const emitted = ts.transpileModule(
-            "export async function helperFixture(value: unknown) { return await value; }",
+            "export async function helperFixture(value: unknown) { return await value; }\n" +
+                "export function helperSpreadFixture(value: object) { return { ...value }; }",
             {
                 compilerOptions: {
                     module: ts.ModuleKind.ES2015,
@@ -627,7 +628,9 @@ function helperName(statement) {
         return undefined;
     const name = statement.declarationList.declarations[0].name;
     return ts.isIdentifier(name) &&
-        (name.text === "__awaiter" || name.text === "__generator")
+        (name.text === "__assign" ||
+            name.text === "__awaiter" ||
+            name.text === "__generator")
         ? name.text
         : undefined;
 }

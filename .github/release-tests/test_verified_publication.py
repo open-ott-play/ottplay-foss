@@ -1054,6 +1054,35 @@ class RegistryCredentialTests(unittest.TestCase):
                     "canonicalhelper:canonicalhelper-secret",
                 )
 
+    def test_host_only_docker_hub_helper_uses_the_canonical_query(self):
+        """A host-only Hub helper key still finds the canonical Docker login."""
+        queries = []
+
+        def helper(command, **kwargs):
+            queries.append(kwargs.get("input"))
+            if kwargs.get("input") == publisher.DOCKER_HUB_SERVER:
+                return subprocess.CompletedProcess(
+                    command, 0, '{"Username":"alvit","Secret":"hunter2"}', ""
+                )
+            return subprocess.CompletedProcess(
+                command, 1, "", "credentials not found"
+            )
+
+        with (
+            tempfile.TemporaryDirectory() as config_dir,
+            self.docker_environment(
+                config_dir, {"credHelpers": {"docker.io": "pass"}}
+            ),
+            mock.patch.object(publisher.subprocess, "run", side_effect=helper),
+        ):
+            with publisher.registry_credentials(
+                ["docker.io/alvit/ottplay-foss"]
+            ) as overrides:
+                _, config = self.materialized(overrides)
+        entry = config["auths"][publisher.DOCKER_HUB_SERVER]["auth"]
+        self.assertEqual(base64.b64decode(entry).decode(), "alvit:hunter2")
+        self.assertEqual(queries, [publisher.DOCKER_HUB_SERVER])
+
     def test_helper_query_falls_back_to_the_image_host(self):
         """A helper keyed for the host still answers when the URL query misses."""
         queries = []

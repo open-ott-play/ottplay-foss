@@ -342,6 +342,11 @@ def resolved_key(query, server):
     return query if "/" in normalised_auth_key(query) else server
 
 
+def helper_lookup_key(query, server):
+    """Ask a host-only helper for the canonical registry entry containers/image uses."""
+    return query if "/" in normalised_auth_key(query) else server
+
+
 def skopeo_login(image):
     """Return the login skopeo's own auth files carry for one image.
 
@@ -362,7 +367,7 @@ def skopeo_login(image):
             return True, None, server
         for helper, query in configured_helpers(stored, image):
             credential = docker_helper_credentials(
-                helper, query, host, "skopeo's containers auth file"
+                helper, helper_lookup_key(query, server), host, "skopeo's containers auth file"
             )
             if credential is not None:
                 return True, credential, resolved_key(query, server)
@@ -427,7 +432,7 @@ def registry_auth_entries(images):
         owner = server
         helpers = configured_helpers(config, image)
         for helper, query in helpers:
-            credential = docker_helper_credentials(helper, query, host)
+            credential = docker_helper_credentials(helper, helper_lookup_key(query, server), host)
             if credential is not None:
                 owner = resolved_key(query, server)
                 break

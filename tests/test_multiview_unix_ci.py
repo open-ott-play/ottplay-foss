@@ -57,6 +57,16 @@ guard = load('multiview_ci_reviewed_guard', REFERENCE)
 media = load('multiview_unix_media_forensic_under_test', ROOT / 'scripts/ci-multiview-unix-media.py')
 
 
+def assert_reviewed_budget_deadlines(test, budget):
+    """Compare absolute deadlines: fractional monotonic subtraction rounds.
+
+    StreamedContracts.test_original_deadlines_preserve_exact_absolute_fractional_clock
+    documents why a deadline minus its fractional start is not bit-exact.
+    """
+    test.assertEqual(budget.deadline, budget.started + 1800)
+    test.assertEqual(budget.work_deadline, budget.started + 1680)
+
+
 def setUpModule():
     global no_processes
     no_processes = mock.patch.object(guard.subprocess, 'Popen',
@@ -1220,8 +1230,7 @@ class BoundaryContracts(unittest.TestCase):
                 self.assertTrue(result['pending_clock']['pass'])
                 self.assertFalse(result['pending_clock']['production_admission'])
                 self.assertTrue((attempt.output / 'evidence/pending-clock-control.json').is_file())
-                self.assertEqual(attempt.driver.budget.deadline, attempt.driver.budget.started + 1800)
-                self.assertEqual(attempt.driver.budget.work_deadline, attempt.driver.budget.started + 1680)
+                assert_reviewed_budget_deadlines(self, attempt.driver.budget)
 
     def test_pending_fixture_refuses_missing_zero_nonzero_or_incorrect_receipts(self):
         for case in ('missing-pending-fixture', 'pending-missing-input', 'pending-zero-tests',
@@ -1326,8 +1335,7 @@ class BoundaryContracts(unittest.TestCase):
                 self.assertEqual(result['ordinary_activation_tests'], sorted(ACTIVATION_NAMES))
                 self.assertEqual(result['tests'], list(EXPECTED_TESTS) + [EXPECTED_PRODUCTION_TEST, EXPECTED_HLS_PRODUCTION_TEST])
                 self.assertTrue(result['streamed_media']['pass'])
-                self.assertEqual(attempt.driver.budget.deadline, attempt.driver.budget.started + 1800)
-                self.assertEqual(attempt.driver.budget.work_deadline, attempt.driver.budget.started + 1680)
+                assert_reviewed_budget_deadlines(self, attempt.driver.budget)
 
     def test_broker_and_listener_cargo_targets_cannot_be_missing_ambiguous_foreign_or_unowned(self):
         cases = {'broker-cargo-wrong-manifest': 'Fixture manifest differs',
@@ -1607,8 +1615,7 @@ class StreamedContracts(unittest.TestCase):
             self.assertLess(names.index("fixture-4"), names.index("stream-video-probe"))
             self.assertEqual(result["ordinary_activation_tests"], sorted(ACTIVATION_NAMES))
             self.assertEqual(len(result["streamed_input_evidence"]), 3)
-            self.assertEqual(attempt.driver.budget.deadline, attempt.driver.budget.started + 1800)
-            self.assertEqual(attempt.driver.budget.work_deadline, attempt.driver.budget.started + 1680)
+            assert_reviewed_budget_deadlines(self, attempt.driver.budget)
             self.assertTrue(result["streamed_media_evidence"])
             for row in result["streamed_media_evidence"]:
                 self.assertFalse(row["relative_name"].endswith(".rgb"))
@@ -2011,13 +2018,6 @@ class ProductionRetryContracts(unittest.TestCase):
                     error if error is not None else RuntimeError('Synthetic production command exited nonzero'),
                     path, self.LogBudget())
 
-    def assert_reviewed_budget_unchanged(self, attempt):
-        # Fractional monotonic clocks make deadline subtraction inexact; compare
-        # absolute deadlines instead, as StreamedContracts already documents.
-        budget = attempt.driver.budget
-        self.assertEqual(budget.deadline, budget.started + 1800)
-        self.assertEqual(budget.work_deadline, budget.started + 1680)
-
     def test_retry_constants_stay_narrow(self):
         self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_MAX_RETRIES, 2)
         self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_SIGNATURES, (
@@ -2080,7 +2080,7 @@ class ProductionRetryContracts(unittest.TestCase):
                                     ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS)
             self.assertNotIn('retry_skipped', first)
             # The reviewed work deadline is never extended for a retry.
-            self.assert_reviewed_budget_unchanged(attempt)
+            assert_reviewed_budget_deadlines(self, attempt.driver.budget)
 
     def test_retry_is_skipped_and_recorded_when_budget_cannot_fit(self):
         self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS, 300)
@@ -2103,7 +2103,7 @@ class ProductionRetryContracts(unittest.TestCase):
                             ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS)
             self.assertTrue(first['retry_eligible'])
             # A skipped retry never moves the reviewed deadline.
-            self.assert_reviewed_budget_unchanged(attempt)
+            assert_reviewed_budget_deadlines(self, attempt.driver.budget)
 
     def test_linux_keeps_one_strict_attempt(self):
         with Attempt('production-signature-once', system='Linux') as attempt:

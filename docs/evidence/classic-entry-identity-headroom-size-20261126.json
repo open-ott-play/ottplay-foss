@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "feature": "Fixed identity headroom in the classic entry budget",
+  "scope": "The nightly release stamps the candidate version and source identity into the classic entry before the size gate measures it. The 2026-11-26 scheduled run measured 1222727 bytes against the 1222725-byte cap, so the entry was sitting exactly on its measured local size. ENTRY_IDENTITY_HEADROOM adds 512 raw bytes to BUDGET.bytes and nothing else: the gzip cap, the legacy, base and complete payload caps, every provider and optional asset cap and the module inventory stay unchanged.",
+  "incident": {
+    "workflow": ".github/workflows/release-pipeline.yml",
+    "trigger": "schedule (cron 52 5 * * *)",
+    "date": "2026-11-26",
+    "entryPath": "dist/player.js",
+    "measured": 1222727,
+    "cap": 1222725,
+    "overrun": 2,
+    "error": "Classic bundle validation failed: 1 size violations; dist/player.js: asset bytes 1222727 exceeds budget 1222725"
+  },
+  "growthAttribution": {
+    "method": "Paired npm run build plus node scripts/measure-classic-composition.cjs at 80f56b37 (the parent of the slot-addressed Edem provider settings feature) and at the pre-headroom head ed7736c0. Module figures are the production optimizer attribution of the emitted entry, so they sum to the artifact delta.",
+    "baseline": {
+      "commit": "80f56b37",
+      "bytes": 1222131,
+      "gzipBytes": 373078,
+      "sha256": "e2ce72a0258c9f1e736e7ea255edbf9c493aa00df33e07ed30b0306c31a395f2"
+    },
+    "candidate": {
+      "commit": "ed7736c0",
+      "bytes": 1222576,
+      "gzipBytes": 373182,
+      "sha256": "64b58fa3e1b28558268fc2a9f8d6cb6eb3887a4a1d7228786c1ac7e982aa55a8"
+    },
+    "delta": {
+      "bytes": 445,
+      "gzipBytes": 104
+    },
+    "modules": [
+      {
+        "module": "build/commands/remote-restart.js",
+        "bytes": 320
+      },
+      {
+        "module": "build/commands/remote-settings.js",
+        "bytes": 164
+      },
+      {
+        "module": "build/core/index.js",
+        "bytes": 1
+      },
+      {
+        "module": "build/plugins/remote-inspect.js",
+        "bytes": -40
+      }
+    ],
+    "conclusion": "The slot-addressed Edem provider settings feature accounts for the entire recent entry growth. Its 47f59a53 allowance of 484 raw bytes replaced the previous cap with a measured-size cap instead of preserving the 2026-11-25 headroom, so 110 bytes separated the local build from the cap and the identity-stamped nightly artifact crossed it by 2."
+  },
+  "identityCost": {
+    "unstampedLocalBuild": 1222576,
+    "stampedLocalReplica": 1222652,
+    "nightlyArtifact": 1222727,
+    "observedRange": {
+      "bytes": 76,
+      "limits": [
+        "Same source, unstamped local build versus the stamped local release-envelope replica.",
+        "Same feature, unstamped local build versus the separately identified nightly artifact; a net pair across builds, not a controlled isolation."
+      ]
+    },
+    "note": "Identity stamping alone was worth between 76 and 151 bytes on the same source, more than the 73 bytes left under the old cap and more than the 2-byte overrun suggested."
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "allowance": {
+    "name": "ENTRY_IDENTITY_HEADROOM",
+    "entry": {
+      "bytes": 512,
+      "gzipBytes": 0
+    }
+  },
+  "reason": "512 raw bytes is about three times the largest observed identity cost (151 bytes) and stays a named, round figure instead of a fit to one failing build. The gzip cap already carried roughly 1.5 KiB of headroom, so it does not move. Only the entry is charged: legacy, base and complete payloads keep their own reserves and the headroom is counted once in BUDGET.",
+  "budgets": {
+    "before": {
+      "player.js": {
+        "bytes": 1222725,
+        "gzipBytes": 374737
+      },
+      "legacyComplete": {
+        "bytes": 1468370,
+        "gzipBytes": 459236
+      },
+      "complete": {
+        "bytes": 1966350,
+        "gzipBytes": 609461
+      }
+    },
+    "after": {
+      "player.js": {
+        "bytes": 1223237,
+        "gzipBytes": 374737
+      },
+      "legacyComplete": {
+        "bytes": 1468370,
+        "gzipBytes": 459236
+      },
+      "complete": {
+        "bytes": 1966350,
+        "gzipBytes": 609461
+      }
+    }
+  },
+  "validation": [
+    "node scripts/check-release-envelope-size.cjs rebuilt the entry with the release version suffix and revision stamp: 1222652 bytes against the 1223237-byte cap before the helper change, PASS.",
+    "tests/test_classic_size.cjs and tests/test_classic_size_diagnostics.cjs exclude ENTRY_IDENTITY_HEADROOM from the historical projections, as already done for later allowances, so docs/evidence receipts stay comparable.",
+    "tests/test_release_envelope_size.cjs still passes; the headroom is not counted in the provider, optional or per-family caps."
+  ],
+  "limitations": [
+    "The nightly measurement comes from a different build identity than the local builds, so the 151-byte identity figure is an observed net pair and bounds the stamp cost rather than isolating it.",
+    "The margin is a budget change, not a size reduction: a later feature that consumes it still needs its own measured allowance."
+  ]
+}
