@@ -2061,32 +2061,42 @@ class ProductionRetryContracts(unittest.TestCase):
             self.assertIs(retry['qualified_after_retry'], True)
             self.assertEqual((retry['test'], retry['platform'], retry['max_retries'], retry['final_attempt']),
                              (EXPECTED_PRODUCTION_TEST, 'Darwin', 2, 2))
-            self.assertEqual(retry['attempts'], [{
+            self.assertEqual(len(retry['attempts']), 1)
+            first = retry['attempts'][0]
+            self.assertEqual({key: first[key] for key in
+                              ('attempt', 'command', 'error', 'error_type', 'retry_eligible', 'reason')}, {
                 'attempt': 1, 'command': 'production-normal-server',
                 'error': 'Synthetic production command exited nonzero',
                 'error_type': 'RuntimeError', 'retry_eligible': True,
-                'reason': 'sibling source authority disappeared for 3 consecutive samples',
-                'deadline_extension_seconds': ci.PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS}])
-            self.assertEqual(attempt.driver.budget.work_deadline - attempt.driver.budget.started,
-                             1680 + ci.PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS)
+                'reason': 'sibling source authority disappeared for 3 consecutive samples'})
+            self.assertGreaterEqual(first['remaining_seconds_before_retry'],
+                                    ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS)
+            self.assertNotIn('retry_skipped', first)
+            # The reviewed work deadline is never extended for a retry.
+            self.assertEqual(attempt.driver.budget.work_deadline - attempt.driver.budget.started, 1680)
 
-    def test_retry_extension_is_one_shot_and_macos_only(self):
-        self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS, 660)
-        with mock.patch.object(ci.platform, 'system', return_value='Darwin'):
-            budget = guard.Budget()
-            before = (budget.deadline, budget.work_deadline)
-            self.assertEqual(ci.extend_budget_for_production_retry(budget),
-                             ci.PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS)
-            self.assertEqual((budget.deadline, budget.work_deadline),
-                             (before[0] + 660, before[1] + 660))
-            self.assertEqual(ci.extend_budget_for_production_retry(budget), 0)
-            self.assertEqual((budget.deadline, budget.work_deadline),
-                             (before[0] + 660, before[1] + 660))
-        with mock.patch.object(ci.platform, 'system', return_value='Linux'):
-            budget = guard.Budget()
-            before = (budget.deadline, budget.work_deadline)
-            self.assertEqual(ci.extend_budget_for_production_retry(budget), 0)
-            self.assertEqual((budget.deadline, budget.work_deadline), before)
+    def test_retry_is_skipped_and_recorded_when_budget_cannot_fit(self):
+        self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS, 300)
+        budget_view = types.SimpleNamespace(work_deadline=1000.0, clock=lambda: 958.5)
+        self.assertEqual(ci.production_retry_remaining_seconds(budget_view), 41.5)
+        with Attempt('production-signature-once', system='Darwin') as attempt:
+            with mock.patch.object(ci, 'production_retry_remaining_seconds', return_value=41.5), \
+                    self.assertRaises(RuntimeError):
+                attempt.run()
+            result = attempt.terminal()
+            self.assertEqual(result['status'], 'fail')
+            self.assertEqual(self.production_commands(attempt), ['production-normal-server'])
+            retry = result['production_flaky_retry']
+            self.assertIs(retry['qualified_after_retry'], False)
+            self.assertEqual(retry['retry_skipped'], 'insufficient_remaining_budget')
+            first = retry['attempts'][0]
+            self.assertEqual(first['retry_skipped'], 'insufficient_remaining_budget')
+            self.assertEqual(first['remaining_seconds_before_retry'], 41.5)
+            self.assertLess(first['remaining_seconds_before_retry'],
+                            ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS)
+            self.assertTrue(first['retry_eligible'])
+            # A skipped retry never moves the reviewed deadline.
+            self.assertEqual(attempt.driver.budget.work_deadline - attempt.driver.budget.started, 1680)
 
     def test_linux_keeps_one_strict_attempt(self):
         with Attempt('production-signature-once', system='Linux') as attempt:
@@ -2132,9 +2142,11 @@ class ProductionRetryContracts(unittest.TestCase):
             self.assertIs(retry['qualified_after_retry'], False)
             self.assertEqual((retry['max_retries'], retry['final_attempt']), (2, 3))
             self.assertTrue(all(row['retry_eligible'] for row in retry['attempts']))
-            # Only retried attempts carry headroom, and only the first grants it.
-            self.assertEqual([row.get('deadline_extension_seconds') for row in retry['attempts']],
-                             [660, 0, None])
+            # A retried attempt records the remaining budget; the last one does not retry.
+            self.assertTrue(all('remaining_seconds_before_retry' in row
+                                for row in retry['attempts'][:-1]))
+            self.assertNotIn('remaining_seconds_before_retry', retry['attempts'][-1])
+            self.assertNotIn('retry_skipped', retry)
 
 
 class ParsingTests(unittest.TestCase):
