@@ -761,7 +761,9 @@ def streamed_fixture_retry_eligible(error, case, budget):
                 if not isinstance(event, dict):
                     continue
                 output_state = event.get('output_state')
-                snapshot = event.get('output')
+                snapshot = event.get('snapshot')
+                if snapshot is None:
+                    snapshot = event.get('output')
                 if snapshot is None and isinstance(event.get('event'), dict):
                     snapshot = event['event'].get('snapshot')
                 if isinstance(snapshot, dict):
@@ -912,9 +914,12 @@ def run_streamed_fixture(driver, budget, command, executable, tools, result):
                                  'error_type': type(error).__name__, 'retry_eligible': eligible,
                                  'reason': reason})
                 if eligible and attempt < retry_budget:
-                    preserve_streamed_forensic(driver, budget, media, case, analysis, roots, result,
-                                               f'streamed_forensic_attempt_{attempt + 1}')
-                    continue
+                    preserved = preserve_streamed_forensic(driver, budget, media, case, analysis, roots, result,
+                                                           f'streamed_forensic_attempt_{attempt + 1}')
+                    if preserved is not None:
+                        continue
+                    attempts[-1]['retry_eligible'] = False
+                    attempts[-1]['reason'] = 'forensic-preservation-failed'
                 if attempts:
                     result['streamed_flaky_retry'] = {
                         'qualified_after_retry': False,
