@@ -59,6 +59,7 @@ Callable validation workflows:
 - `.github/workflows/windows-validation.yml`
 - `.github/workflows/codeql.yml`
 - `.github/workflows/dependency-review.yml`
+- `.github/workflows/commit-signatures.yml`
 
 Beta releases explicitly select `beta-checks.yml` through `release-quality-gate.yml`. PRs, merge queues, nightlies, RCs and final builds keep the complete default validation set. All platform packages and artifact checks remain required. A beta cannot be promoted to stable; it needs a fully validated RC.
 
