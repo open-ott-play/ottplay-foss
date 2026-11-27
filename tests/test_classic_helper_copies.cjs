@@ -1,5 +1,8 @@
 "use strict";
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const acorn = require("acorn");
@@ -63,6 +66,39 @@ function helperCopies(source) {
     return counts;
 }
 
+// CI runs this test before any build, so compile the classic modules the way
+// the release build does (tsc into build/) and link them from that tree. Only
+// the static vendor primitive stays outside the compiler's output.
+let compiledRoot = null;
+function classicRoot() {
+    if (compiledRoot) return compiledRoot;
+    const directory = fs.mkdtempSync(
+        path.join(os.tmpdir(), "ottplay-helper-copies-")
+    );
+    fs.mkdirSync(path.join(directory, "js/vendor"), { recursive: true });
+    fs.copyFileSync(
+        path.join(root, "js/vendor/sjcl-pin.js"),
+        path.join(directory, "js/vendor/sjcl-pin.js")
+    );
+    execFileSync(
+        process.execPath,
+        [
+            path.join(root, "node_modules/typescript/bin/tsc"),
+            "--outDir",
+            path.join(directory, "build"),
+            "--removeComments",
+            "false",
+        ],
+        { cwd: root, stdio: ["ignore", "ignore", "pipe"] }
+    );
+    compiledRoot = directory;
+    return directory;
+}
+
+test.after(() => {
+    if (compiledRoot) fs.rmSync(compiledRoot, { force: true, recursive: true });
+});
+
 const bundles = [
     ["entry", CLASSIC_MAIN_MODULES],
     ...Object.entries(CLASSIC_PROVIDER_BUNDLES).map(([kind, files]) => [
@@ -85,8 +121,9 @@ test("the copy counter sees a repeated compiler helper", () => {
 });
 
 test("every production bundle ships at most one copy of a compiler helper", () => {
+    const directory = classicRoot();
     for (const [name, files] of bundles) {
-        const copied = helperCopies(assembleClassic(root, files));
+        const copied = helperCopies(assembleClassic(directory, files));
         for (const [helper, count] of copied)
             assert.ok(
                 count <= 1,
