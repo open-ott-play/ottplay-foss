@@ -31,10 +31,9 @@ PRODUCTION_MACOS_FLAKY_SIGNATURES = (
     'sibling source authority disappeared for 3 consecutive samples',
     'pre-replacement HLS playlist snapshot:',
 )
-# The production fixtures run last, so a recorded retry needs its own headroom
-# inside the reviewed 28-minute work deadline. The extension is one-shot and
-# only applies to a signature-matched Darwin retry.
-PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS = 660
+# The production fixtures run last, so a recorded retry is only attempted when
+# the reviewed work deadline can still fit one; otherwise the skip is recorded.
+PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS = 300
 HLS_BATCH_SHA256 = '967ceaa7e7478c2488c3a984d4a4a15f968226ef82a7cd065b4a93b84aa161e7'
 PRODUCTION_TEST = 'normal_server_private_http_mpegts_renew_replace_and_cleanup'
 HLS_PRODUCTION_TEST = 'normal_server_private_http_hls_renew_replace_and_cleanup'
@@ -786,14 +785,9 @@ def streamed_fixture_retry_eligible(error, case, budget):
     return True, STREAMED_MACOS_FLAKY_SIGNATURE
 
 
-def extend_budget_for_production_retry(budget):
-    """Grant one bounded deadline extension so a recorded macOS retry can run."""
-    if platform.system() != 'Darwin' or getattr(budget, 'macos_retry_extension_seconds', 0):
-        return 0
-    budget.deadline += PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS
-    budget.work_deadline += PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS
-    budget.macos_retry_extension_seconds = PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS
-    return PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS
+def production_retry_remaining_seconds(budget):
+    """Remaining reviewed work budget; the harness never extends its deadline."""
+    return budget.work_deadline - budget.clock()
 
 
 def production_fixture_retry_eligible(error, log_path, budget):
@@ -1709,9 +1703,12 @@ def _run_production_mode(driver, budget, command, executable, tools, result, out
                                  'error': str(error), 'error_type': type(error).__name__,
                                  'retry_eligible': eligible, 'reason': reason})
                 if eligible and attempt < retry_budget:
-                    attempts[-1]['deadline_extension_seconds'] = extend_budget_for_production_retry(budget)
-                    continue
-                result['production_flaky_retry'] = {
+                    remaining = production_retry_remaining_seconds(budget)
+                    attempts[-1]['remaining_seconds_before_retry'] = round(remaining, 3)
+                    if remaining >= PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS:
+                        continue
+                    attempts[-1]['retry_skipped'] = 'insufficient_remaining_budget'
+                audit = {
                     'qualified_after_retry': False,
                     'test': name,
                     'platform': platform.system(),
@@ -1719,6 +1716,9 @@ def _run_production_mode(driver, budget, command, executable, tools, result, out
                     'attempts': attempts,
                     'final_attempt': attempt + 1,
                 }
+                if attempts[-1].get('retry_skipped'):
+                    audit['retry_skipped'] = attempts[-1]['retry_skipped']
+                result['production_flaky_retry'] = audit
                 raise
         raw = budget.read(receipt_path, 131072)
         require(0 < len(raw) <= 131072 and not receipt_path.is_symlink()
