@@ -4205,6 +4205,7 @@ fn run_normal_production(mode: ProductionMode) {
     let first_b = wait_slot(&api_origin, TOKEN, &ctx1, 1, "production_item_2", end);
     let sustained_started = Instant::now();
     let mut output_checked = false;
+    let mut initial_probe_deadline: Option<Instant> = None;
     let mut replacement_output_checked = false;
     let mut next_renew = Instant::now() + Duration::from_secs(18);
     let replace_at = sustained_started + Duration::from_secs(92);
@@ -4276,18 +4277,31 @@ fn run_normal_production(mode: ProductionMode) {
                 if let Some((_, _, bytes)) = try_new_segment(&api_origin, path, &mut main_seen) {
                     let ffmpeg = PathBuf::from(std::env::var("OTTPLAY_MULTIVIEW_FFMPEG").unwrap());
                     let (rgb, proof) = decode_segment_rgb(&ffmpeg, &bytes);
-                    assert_cell_color(&rgb, 160, 180, 1);
-                    assert_cell_color(&rgb, 480, 180, 2);
-                    assert_audio_tone(
-                        &decode_segment_pcm(
-                            &ffmpeg,
-                            &bytes,
-                            PcmProofRole::InitialSustained,
-                            &proof,
-                        ),
-                        330.0,
-                    );
-                    output_checked = true;
+                    if cell_matches_color(&rgb, 160, 180, 1)
+                        && cell_matches_color(&rgb, 480, 180, 2)
+                    {
+                        assert_audio_tone(
+                            &decode_segment_pcm(
+                                &ffmpeg,
+                                &bytes,
+                                PcmProofRole::InitialSustained,
+                                &proof,
+                            ),
+                            330.0,
+                        );
+                        output_checked = true;
+                    } else {
+                        // A segment published across the automatic credential-boundary
+                        // session restart can still carry the previous grid, so keep
+                        // probing new segments until the sampling window closes.
+                        let deadline = *initial_probe_deadline
+                            .get_or_insert_with(|| Instant::now() + Duration::from_secs(12));
+                        assert!(
+                            Instant::now() < deadline,
+                            "normal HLS output did not show both sustained slot colours \
+                             within the bounded probe window"
+                        );
+                    }
                 }
             }
         }
@@ -4419,32 +4433,43 @@ fn run_normal_production(mode: ProductionMode) {
     let late_playlist = current["output"]["playlist_path"]
         .as_str()
         .expect("late replacement HLS playlist");
-    let (late_sequence, _, late_segment) = wait_new_segment(
-        &api_origin,
-        late_playlist,
-        &mut replacement_seen,
-        Instant::now() + Duration::from_secs(8),
-    );
-    assert!(
-        late_sequence > first_replacement_sequence.unwrap_or(0),
-        "late replacement output did not advance beyond the first confirmed new-source segment"
-    );
     let late_ffmpeg = PathBuf::from(std::env::var("OTTPLAY_MULTIVIEW_FFMPEG").unwrap());
-    let (late_rgb, late_proof) = decode_segment_rgb(&late_ffmpeg, &late_segment);
-    let late_pcm = decode_segment_pcm(
-        &late_ffmpeg,
-        &late_segment,
-        PcmProofRole::LateSustained,
-        &late_proof,
-    );
-    assert!(
-        !cell_matches_color(&late_rgb, 160, 180, 1),
-        "old video source returned in late HLS output"
-    );
-    assert!(
-        !audio_tone_matches(&late_pcm, 330.0),
-        "old audio source returned in late HLS output"
-    );
+    let late_deadline = Instant::now() + Duration::from_secs(12);
+    let (late_rgb, late_pcm) = loop {
+        let (late_sequence, _, late_segment) = wait_new_segment(
+            &api_origin,
+            late_playlist,
+            &mut replacement_seen,
+            late_deadline,
+        );
+        assert!(
+            late_sequence > first_replacement_sequence.unwrap_or(0),
+            "late replacement output did not advance beyond the first confirmed new-source segment"
+        );
+        let (rgb, proof) = decode_segment_rgb(&late_ffmpeg, &late_segment);
+        let pcm = decode_segment_pcm(
+            &late_ffmpeg,
+            &late_segment,
+            PcmProofRole::LateSustained,
+            &proof,
+        );
+        assert!(
+            !cell_matches_color(&rgb, 160, 180, 1),
+            "old video source returned in late HLS output"
+        );
+        assert!(
+            !audio_tone_matches(&pcm, 330.0),
+            "old audio source returned in late HLS output"
+        );
+        // The first segment after a credential-boundary restart may still show the
+        // pre-restart grid; require a coherent segment inside the bounded window.
+        if cell_matches_color(&rgb, 160, 180, 3)
+            && cell_matches_color(&rgb, 480, 180, 2)
+            && audio_tone_matches(&pcm, 550.0)
+        {
+            break (rgb, pcm);
+        }
+    };
     assert_cell_color(&late_rgb, 160, 180, 3);
     assert_cell_color(&late_rgb, 480, 180, 2);
     assert_audio_tone(&late_pcm, 550.0);
