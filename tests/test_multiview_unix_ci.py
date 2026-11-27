@@ -2065,7 +2065,28 @@ class ProductionRetryContracts(unittest.TestCase):
                 'attempt': 1, 'command': 'production-normal-server',
                 'error': 'Synthetic production command exited nonzero',
                 'error_type': 'RuntimeError', 'retry_eligible': True,
-                'reason': 'sibling source authority disappeared for 3 consecutive samples'}])
+                'reason': 'sibling source authority disappeared for 3 consecutive samples',
+                'deadline_extension_seconds': ci.PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS}])
+            self.assertEqual(attempt.driver.budget.work_deadline - attempt.driver.budget.started,
+                             1680 + ci.PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS)
+
+    def test_retry_extension_is_one_shot_and_macos_only(self):
+        self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS, 660)
+        with mock.patch.object(ci.platform, 'system', return_value='Darwin'):
+            budget = guard.Budget()
+            before = (budget.deadline, budget.work_deadline)
+            self.assertEqual(ci.extend_budget_for_production_retry(budget),
+                             ci.PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS)
+            self.assertEqual((budget.deadline, budget.work_deadline),
+                             (before[0] + 660, before[1] + 660))
+            self.assertEqual(ci.extend_budget_for_production_retry(budget), 0)
+            self.assertEqual((budget.deadline, budget.work_deadline),
+                             (before[0] + 660, before[1] + 660))
+        with mock.patch.object(ci.platform, 'system', return_value='Linux'):
+            budget = guard.Budget()
+            before = (budget.deadline, budget.work_deadline)
+            self.assertEqual(ci.extend_budget_for_production_retry(budget), 0)
+            self.assertEqual((budget.deadline, budget.work_deadline), before)
 
     def test_linux_keeps_one_strict_attempt(self):
         with Attempt('production-signature-once', system='Linux') as attempt:
@@ -2111,6 +2132,9 @@ class ProductionRetryContracts(unittest.TestCase):
             self.assertIs(retry['qualified_after_retry'], False)
             self.assertEqual((retry['max_retries'], retry['final_attempt']), (2, 3))
             self.assertTrue(all(row['retry_eligible'] for row in retry['attempts']))
+            # Only retried attempts carry headroom, and only the first grants it.
+            self.assertEqual([row.get('deadline_extension_seconds') for row in retry['attempts']],
+                             [660, 0, None])
 
 
 class ParsingTests(unittest.TestCase):
