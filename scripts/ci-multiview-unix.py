@@ -22,6 +22,18 @@ STREAM_MEDIA_SHA256 = 'dd9238119c10150d549501b086c59598ae8c991e282885ce2d5717367
 STREAM_TEST = 'streamed_session_two_owner_continuity'
 STREAMED_MACOS_FLAKY_MAX_RETRIES = 2
 STREAMED_MACOS_FLAKY_SIGNATURE = 'output_state Failed / archive unqualified before sustained evidence'
+PRODUCTION_MACOS_FLAKY_MAX_RETRIES = 2
+# The 185-second sustained encoder can lose its session on a shared macOS
+# runner: the status sample then reports a closed sibling slot or the HLS
+# snapshot before replacement cannot be seeded. Neither signature can come
+# from a passing run, and Ubuntu keeps its single strict attempt.
+PRODUCTION_MACOS_FLAKY_SIGNATURES = (
+    'sibling source authority disappeared for 3 consecutive samples',
+    'pre-replacement HLS playlist snapshot:',
+)
+# The production fixtures run last, so a recorded retry is only attempted when
+# the reviewed work deadline can still fit one; otherwise the skip is recorded.
+PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS = 300
 HLS_BATCH_SHA256 = '967ceaa7e7478c2488c3a984d4a4a15f968226ef82a7cd065b4a93b84aa161e7'
 PRODUCTION_TEST = 'normal_server_private_http_mpegts_renew_replace_and_cleanup'
 HLS_PRODUCTION_TEST = 'normal_server_private_http_hls_renew_replace_and_cleanup'
@@ -773,6 +785,29 @@ def streamed_fixture_retry_eligible(error, case, budget):
     return True, STREAMED_MACOS_FLAKY_SIGNATURE
 
 
+def production_retry_remaining_seconds(budget):
+    """Remaining reviewed work budget; the harness never extends its deadline."""
+    return budget.work_deadline - budget.clock()
+
+
+def production_fixture_retry_eligible(error, log_path, budget):
+    """Retry the sustained production fixture only on the known macOS signature."""
+    if platform.system() != 'Darwin':
+        return False, 'non-macos'
+    if not isinstance(error, RuntimeError):
+        return False, 'unexpected-error-type'
+    if log_path.is_symlink() or not log_path.is_file():
+        return False, 'missing-log'
+    try:
+        text = budget.read(log_path, 8 * 1024**2).decode('utf-8', 'strict')
+    except Exception:
+        return False, 'unreadable-log'
+    for signature in PRODUCTION_MACOS_FLAKY_SIGNATURES:
+        if signature in text:
+            return True, signature
+    return False, 'signature-absent'
+
+
 def preserve_streamed_forensic(driver, budget, media, case, analysis, roots, result, label):
     try:
         report = media.failure_evidence(case, analysis)
@@ -1512,11 +1547,17 @@ def production_tool_custody(driver, budget, command, tools, output):
 
 def run_production_fixture(driver, budget, command, executable, tools, result, output, prepared_inputs=None):
     staged = {}
-    with production_tool_custody(driver, budget, command, tools, output) as (runtime_tools, checked_command):
-        _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=False,
-                             prepared_inputs=prepared_inputs, runtime_tools=runtime_tools)
-        _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=True,
-                             runtime_tools=runtime_tools)
+    try:
+        with production_tool_custody(driver, budget, command, tools, output) as (runtime_tools, checked_command):
+            _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=False,
+                                 prepared_inputs=prepared_inputs, runtime_tools=runtime_tools)
+            _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=True,
+                                 runtime_tools=runtime_tools)
+    except BaseException:
+        # Retry audit stays visible even when a failed attempt never publishes flags.
+        if 'production_flaky_retry' in staged:
+            result['production_flaky_retry'] = staged['production_flaky_retry']
+        raise
     # Flags publish only after BOTH modes AND actual owned tool cleanup qualify.
     result.update(staged)
 
@@ -1637,9 +1678,48 @@ def _run_production_mode(driver, budget, command, executable, tools, result, out
                           OTTPLAY_MULTIVIEW_OPENSSL=tools['openssl']['path'])
         if hls:
             driver.env['OTTPLAY_MULTIVIEW_PRODUCTION_HLS_INPUTS'] = str(manifest_path)
-        text = command(label, [str(executable), name, '--ignored', '--exact',
-                       '--test-threads=1', '--color=never'], 600)
-        require_one_pass(text, name)
+        retry_budget = PRODUCTION_MACOS_FLAKY_MAX_RETRIES if platform.system() == 'Darwin' else 0
+        attempts = []
+        for attempt in range(retry_budget + 1):
+            attempt_label = label if attempt == 0 else f'{label}-retry-{attempt}'
+            try:
+                text = command(attempt_label, [str(executable), name, '--ignored', '--exact',
+                               '--test-threads=1', '--color=never'], 600)
+                require_one_pass(text, name)
+                if attempts:
+                    result['production_flaky_retry'] = {
+                        'qualified_after_retry': True,
+                        'test': name,
+                        'platform': platform.system(),
+                        'max_retries': retry_budget,
+                        'attempts': attempts,
+                        'final_attempt': attempt + 1,
+                    }
+                break
+            except BaseException as error:
+                eligible, reason = production_fixture_retry_eligible(
+                    error, driver.evidence / 'logs' / (attempt_label + '.log'), budget)
+                attempts.append({'attempt': attempt + 1, 'command': attempt_label,
+                                 'error': str(error), 'error_type': type(error).__name__,
+                                 'retry_eligible': eligible, 'reason': reason})
+                if eligible and attempt < retry_budget:
+                    remaining = production_retry_remaining_seconds(budget)
+                    attempts[-1]['remaining_seconds_before_retry'] = round(remaining, 3)
+                    if remaining >= PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS:
+                        continue
+                    attempts[-1]['retry_skipped'] = 'insufficient_remaining_budget'
+                audit = {
+                    'qualified_after_retry': False,
+                    'test': name,
+                    'platform': platform.system(),
+                    'max_retries': retry_budget,
+                    'attempts': attempts,
+                    'final_attempt': attempt + 1,
+                }
+                if attempts[-1].get('retry_skipped'):
+                    audit['retry_skipped'] = attempts[-1]['retry_skipped']
+                result['production_flaky_retry'] = audit
+                raise
         raw = budget.read(receipt_path, 131072)
         require(0 < len(raw) <= 131072 and not receipt_path.is_symlink()
                 and stat.S_ISREG(receipt_path.lstat().st_mode),

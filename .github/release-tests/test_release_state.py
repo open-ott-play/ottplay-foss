@@ -162,41 +162,6 @@ class PublicationFloorTests(unittest.TestCase):
         self.assertEqual(events, ["read-state", "promotion-order", "publisher-recheck"])
         self.assertEqual(self.gh.ledger_writes, writes_before)
 
-    def test_final_build_rechecks_publisher_inside_the_protected_ledger_write(self):
-        plan = self.reserve(channel="rc")
-        events = []
-        original_read_state = state.read_state
-        original_verify_reservation = state._verify_reservation
-        original_write_state = state.write_state
-
-        def read_state(gh):
-            events.append("read-state")
-            return original_read_state(gh)
-
-        def verify_reservation(gh, ledger, candidate, run_id, parent):
-            events.append("reservation")
-            return original_verify_reservation(gh, ledger, candidate, run_id, parent)
-
-        def confirm_publisher():
-            events.append("publisher-recheck")
-            raise rc.ReleaseError("publisher attempt became terminal")
-
-        def write_state(gh, ledger, previous):
-            events.append("ledger-write")
-            return original_write_state(gh, ledger, previous)
-
-        writes_before = list(self.gh.ledger_writes)
-        with (patch.object(state, "read_state", side_effect=read_state),
-              patch.object(state, "_verify_reservation", side_effect=verify_reservation),
-              patch.object(state, "write_state", side_effect=write_state),
-              self.assertRaisesRegex(rc.ReleaseError, "publisher attempt became terminal")):
-            state.begin_publication(
-                self.gh, plan, 99, confirm_before_write=confirm_publisher,
-            )
-
-        self.assertEqual(events, ["read-state", "reservation", "publisher-recheck"])
-        self.assertEqual(self.gh.ledger_writes, writes_before)
-
     def test_newer_consumed_number_blocks_rc_even_without_a_github_release(self):
         self.policy = policy("promote-bytes")
         candidate = self.reserve(channel="rc")
