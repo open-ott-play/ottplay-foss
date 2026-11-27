@@ -427,6 +427,8 @@ def registry_auth_entries(images):
                 break
         if credential is None and helpers and helpers[0][1] != host:
             credential = docker_helper_credentials(helpers[0][0], host, host)
+            if credential is not None:
+                owner = resolved_key(helpers[0][1], server)
         if credential is None:
             missing.append(host)
             continue

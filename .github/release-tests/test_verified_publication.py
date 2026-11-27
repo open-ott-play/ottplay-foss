@@ -899,6 +899,56 @@ class RegistryCredentialTests(unittest.TestCase):
             "beta:beta-secret",
         )
 
+    def test_namespace_helper_host_fallback_preserves_namespace_owner(self):
+        """Host-fallback credentials stay scoped to the namespace that asked."""
+
+        def helper(command, **kwargs):
+            query = kwargs.get("input", "")
+            if "/" in query:
+                return subprocess.CompletedProcess(
+                    command, 1, "", "credentials not found"
+                )
+            # Host query: return different accounts based on which helper was
+            # invoked - the test uses distinct helpers per namespace.
+            helper_name = command[0].removeprefix("docker-credential-")
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                json.dumps(
+                    {
+                        "Username": helper_name + "-user",
+                        "Secret": helper_name + "-secret",
+                    }
+                ),
+                "",
+            )
+
+        with (
+            tempfile.TemporaryDirectory() as config_dir,
+            self.docker_environment(
+                config_dir,
+                {
+                    "credHelpers": {
+                        "ghcr.io/alpha": "alphahelper",
+                        "ghcr.io/beta": "betahelper",
+                    }
+                },
+            ),
+            mock.patch.object(publisher.subprocess, "run", side_effect=helper),
+        ):
+            with publisher.registry_credentials(
+                ["ghcr.io/alpha/image", "ghcr.io/beta/image"]
+            ) as overrides:
+                _, config = self.materialized(overrides)
+        self.assertEqual(
+            base64.b64decode(config["auths"]["ghcr.io/alpha"]["auth"]).decode(),
+            "alphahelper-user:alphahelper-secret",
+        )
+        self.assertEqual(
+            base64.b64decode(config["auths"]["ghcr.io/beta"]["auth"]).decode(),
+            "betahelper-user:betahelper-secret",
+        )
+
     def test_skopeo_helper_for_another_namespace_is_not_a_login(self):
         """A skopeo helper scoped to another namespace does not cover the image."""
         with (
