@@ -31,6 +31,10 @@ PRODUCTION_MACOS_FLAKY_SIGNATURES = (
     'sibling source authority disappeared for 3 consecutive samples',
     'pre-replacement HLS playlist snapshot:',
 )
+# The production fixtures run last, so a recorded retry needs its own headroom
+# inside the reviewed 28-minute work deadline. The extension is one-shot and
+# only applies to a signature-matched Darwin retry.
+PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS = 660
 HLS_BATCH_SHA256 = '967ceaa7e7478c2488c3a984d4a4a15f968226ef82a7cd065b4a93b84aa161e7'
 PRODUCTION_TEST = 'normal_server_private_http_mpegts_renew_replace_and_cleanup'
 HLS_PRODUCTION_TEST = 'normal_server_private_http_hls_renew_replace_and_cleanup'
@@ -782,6 +786,16 @@ def streamed_fixture_retry_eligible(error, case, budget):
     return True, STREAMED_MACOS_FLAKY_SIGNATURE
 
 
+def extend_budget_for_production_retry(budget):
+    """Grant one bounded deadline extension so a recorded macOS retry can run."""
+    if platform.system() != 'Darwin' or getattr(budget, 'macos_retry_extension_seconds', 0):
+        return 0
+    budget.deadline += PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS
+    budget.work_deadline += PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS
+    budget.macos_retry_extension_seconds = PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS
+    return PRODUCTION_MACOS_FLAKY_RETRY_EXTENSION_SECONDS
+
+
 def production_fixture_retry_eligible(error, log_path, budget):
     """Retry the sustained production fixture only on the known macOS signature."""
     if platform.system() != 'Darwin':
@@ -791,7 +805,7 @@ def production_fixture_retry_eligible(error, log_path, budget):
     if log_path.is_symlink() or not log_path.is_file():
         return False, 'missing-log'
     try:
-        text = budget.read(log_path, guard.LOG_CAP).decode('utf-8', 'strict')
+        text = budget.read(log_path, 8 * 1024**2).decode('utf-8', 'strict')
     except Exception:
         return False, 'unreadable-log'
     for signature in PRODUCTION_MACOS_FLAKY_SIGNATURES:
@@ -1539,11 +1553,17 @@ def production_tool_custody(driver, budget, command, tools, output):
 
 def run_production_fixture(driver, budget, command, executable, tools, result, output, prepared_inputs=None):
     staged = {}
-    with production_tool_custody(driver, budget, command, tools, output) as (runtime_tools, checked_command):
-        _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=False,
-                             prepared_inputs=prepared_inputs, runtime_tools=runtime_tools)
-        _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=True,
-                             runtime_tools=runtime_tools)
+    try:
+        with production_tool_custody(driver, budget, command, tools, output) as (runtime_tools, checked_command):
+            _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=False,
+                                 prepared_inputs=prepared_inputs, runtime_tools=runtime_tools)
+            _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=True,
+                                 runtime_tools=runtime_tools)
+    except BaseException:
+        # Retry audit stays visible even when a failed attempt never publishes flags.
+        if 'production_flaky_retry' in staged:
+            result['production_flaky_retry'] = staged['production_flaky_retry']
+        raise
     # Flags publish only after BOTH modes AND actual owned tool cleanup qualify.
     result.update(staged)
 
@@ -1689,6 +1709,7 @@ def _run_production_mode(driver, budget, command, executable, tools, result, out
                                  'error': str(error), 'error_type': type(error).__name__,
                                  'retry_eligible': eligible, 'reason': reason})
                 if eligible and attempt < retry_budget:
+                    attempts[-1]['deadline_extension_seconds'] = extend_budget_for_production_retry(budget)
                     continue
                 result['production_flaky_retry'] = {
                     'qualified_after_retry': False,
