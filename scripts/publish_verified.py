@@ -249,9 +249,14 @@ def normalised_auth_key(key):
         # A URL key names only the registry; any path there is legacy.
         stripped = stripped.split("/", 1)[0]
     host, _, path = stripped.partition("/")
-    if host in DOCKER_HUB_HOSTS:
-        host = "index.docker.io"
-    return host + ("/" + path.rstrip("/") if path else "")
+    path = path.rstrip("/")
+    if host in DOCKER_HUB_HOSTS and not path:
+        # Docker names the Hub endpoint by several host spellings, so only a
+        # host-only key aliases them. A namespaced key keeps the registry form
+        # it was written with: docker.io/team must not widen to
+        # index.docker.io/team, which names a different auth entry.
+        return "index.docker.io"
+    return host + ("/" + path if path else "")
 
 
 def normalised_registry(key):
@@ -262,9 +267,14 @@ def normalised_registry(key):
 def destination_auth_keys(image):
     """Return the auth keys containers/image checks, most specific first."""
     parts = image.split("/")
-    keys = [normalised_auth_key(parts[0])]
-    for part in parts[1:]:
-        keys.append(keys[-1] + "/" + part)
+    keys = [
+        normalised_auth_key("/".join(parts[: index + 1]))
+        for index in range(len(parts))
+    ]
+    # The host-only key still names the Hub endpoint for a namespaced image.
+    host = normalised_auth_key(parts[0])
+    if host not in keys:
+        keys.append(host)
     keys.reverse()
     return keys
 
