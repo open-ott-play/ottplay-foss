@@ -2011,6 +2011,13 @@ class ProductionRetryContracts(unittest.TestCase):
                     error if error is not None else RuntimeError('Synthetic production command exited nonzero'),
                     path, self.LogBudget())
 
+    def assert_reviewed_budget_unchanged(self, attempt):
+        # Fractional monotonic clocks make deadline subtraction inexact; compare
+        # absolute deadlines instead, as StreamedContracts already documents.
+        budget = attempt.driver.budget
+        self.assertEqual(budget.deadline, budget.started + 1800)
+        self.assertEqual(budget.work_deadline, budget.started + 1680)
+
     def test_retry_constants_stay_narrow(self):
         self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_MAX_RETRIES, 2)
         self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_SIGNATURES, (
@@ -2073,7 +2080,7 @@ class ProductionRetryContracts(unittest.TestCase):
                                     ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS)
             self.assertNotIn('retry_skipped', first)
             # The reviewed work deadline is never extended for a retry.
-            self.assertEqual(attempt.driver.budget.work_deadline - attempt.driver.budget.started, 1680)
+            self.assert_reviewed_budget_unchanged(attempt)
 
     def test_retry_is_skipped_and_recorded_when_budget_cannot_fit(self):
         self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS, 300)
@@ -2096,7 +2103,7 @@ class ProductionRetryContracts(unittest.TestCase):
                             ci.PRODUCTION_MACOS_FLAKY_RETRY_MIN_REMAINING_SECONDS)
             self.assertTrue(first['retry_eligible'])
             # A skipped retry never moves the reviewed deadline.
-            self.assertEqual(attempt.driver.budget.work_deadline - attempt.driver.budget.started, 1680)
+            self.assert_reviewed_budget_unchanged(attempt)
 
     def test_linux_keeps_one_strict_attempt(self):
         with Attempt('production-signature-once', system='Linux') as attempt:
