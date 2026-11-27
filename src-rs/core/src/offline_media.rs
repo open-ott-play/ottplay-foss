@@ -6893,15 +6893,24 @@ mod tests {
             release.clone(),
         ));
         let task = isolated_source_scan(&library, &source).await;
-        bounded(entered.acquire()).await.unwrap().forget();
+        // Two directory entries make this fixture schedule the filesystem
+        // worker more than the single-entry cases. Keep the watchdog against a
+        // real hang, but leave headroom for slow Windows CI worker scheduling.
+        bounded_with_timeout(entered.acquire(), std::time::Duration::from_secs(30))
+            .await
+            .unwrap()
+            .forget();
         let first = wait_for_source_item(&library, &source).await;
         assert_eq!(first.items.len(), 1);
         assert!(first.scanning);
         assert!(!task.is_finished());
         release.add_permits(1);
-        bounded(task).await.unwrap().unwrap();
+        bounded_with_timeout(task, std::time::Duration::from_secs(30))
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(library.catalog().await.unwrap().items.len(), 2);
-        wait_for_drain(&library.background).await;
+        wait_for_drain_with_timeout(&library.background, std::time::Duration::from_secs(30)).await;
         fs::remove_dir_all(base).await.unwrap();
     }
 
@@ -9943,7 +9952,10 @@ mod tests {
             .await
             .unwrap();
         library.start_link_paths(vec![first], true).await.unwrap();
-        wait_for_drain(&library.background).await;
+        // This fixture shares a filesystem-heavy test process; retain a hang
+        // watchdog without treating transient Windows worker scheduling as a
+        // functional failure.
+        wait_for_drain_with_timeout(&library.background, std::time::Duration::from_secs(30)).await;
         let original = library.catalog().await.unwrap();
         assert_eq!(original.items.len(), 1);
         let original_id = original.items[0].id.clone();
@@ -9956,7 +9968,7 @@ mod tests {
             .iter()
             .any(|item| item.id == original_id && item.available));
         drop(guard);
-        wait_for_drain(&library.background).await;
+        wait_for_drain_with_timeout(&library.background, std::time::Duration::from_secs(30)).await;
         let complete = library.catalog().await.unwrap();
         assert!(!complete.scanning);
         assert!(complete.scan_error.is_none());
@@ -10995,7 +11007,14 @@ mod tests {
     }
 
     async fn bounded<T>(operation: impl std::future::Future<Output = T>) -> T {
-        tokio::time::timeout(std::time::Duration::from_secs(2), operation)
+        bounded_with_timeout(operation, std::time::Duration::from_secs(2)).await
+    }
+
+    async fn bounded_with_timeout<T>(
+        operation: impl std::future::Future<Output = T>,
+        timeout: std::time::Duration,
+    ) -> T {
+        tokio::time::timeout(timeout, operation)
             .await
             .expect("filesystem worker did not reach the expected checkpoint")
     }
