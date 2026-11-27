@@ -34,6 +34,8 @@ use std::{
 
 const STARTUP_LIMIT: Duration = Duration::from_secs(12);
 const RUN_LIMIT: Duration = Duration::from_secs(600);
+const COHERENT_PROBE_ATTEMPTS: u32 = 6;
+const COHERENT_PROBE_GAP: Duration = Duration::from_millis(500);
 const NORMAL_SERVER_SHUTDOWN_LIMIT: Duration = Duration::from_secs(10);
 use production_config::{EXPIRING_TOKEN, TOKEN};
 const PROFILE: &str = "http-mpegts-v1-640x360-10fps";
@@ -4206,6 +4208,7 @@ fn run_normal_production(mode: ProductionMode) {
     let sustained_started = Instant::now();
     let mut output_checked = false;
     let mut initial_probe_deadline: Option<Instant> = None;
+    let mut initial_probe_attempts = 0u32;
     let mut replacement_output_checked = false;
     let mut next_renew = Instant::now() + Duration::from_secs(18);
     let replace_at = sustained_started + Duration::from_secs(92);
@@ -4275,6 +4278,14 @@ fn run_normal_production(mode: ProductionMode) {
         if !output_checked {
             if let Some(path) = last_status["output"]["playlist_path"].as_str() {
                 if let Some((_, _, bytes)) = try_new_segment(&api_origin, path, &mut main_seen) {
+                    let deadline = *initial_probe_deadline
+                        .get_or_insert_with(|| Instant::now() + Duration::from_secs(12));
+                    assert!(
+                        Instant::now() < deadline && initial_probe_attempts < COHERENT_PROBE_ATTEMPTS,
+                        "normal HLS output did not show both sustained slot colours \
+                         within the bounded probe window/attempt budget"
+                    );
+                    initial_probe_attempts += 1;
                     let ffmpeg = PathBuf::from(std::env::var("OTTPLAY_MULTIVIEW_FFMPEG").unwrap());
                     let (rgb, proof) = decode_segment_rgb(&ffmpeg, &bytes);
                     if cell_matches_color(&rgb, 160, 180, 1)
@@ -4292,15 +4303,10 @@ fn run_normal_production(mode: ProductionMode) {
                         output_checked = true;
                     } else {
                         // A segment published across the automatic credential-boundary
-                        // session restart can still carry the previous grid, so keep
-                        // probing new segments until the sampling window closes.
-                        let deadline = *initial_probe_deadline
-                            .get_or_insert_with(|| Instant::now() + Duration::from_secs(12));
-                        assert!(
-                            Instant::now() < deadline,
-                            "normal HLS output did not show both sustained slot colours \
-                             within the bounded probe window"
-                        );
+                        // session restart can still carry the previous grid. Keep the
+                        // bounded window, but do not decode audio for every stale
+                        // candidate while the encoder is sustaining output.
+                        thread::sleep(COHERENT_PROBE_GAP);
                     }
                 }
             }
@@ -4435,6 +4441,7 @@ fn run_normal_production(mode: ProductionMode) {
         .expect("late replacement HLS playlist");
     let late_ffmpeg = PathBuf::from(std::env::var("OTTPLAY_MULTIVIEW_FFMPEG").unwrap());
     let late_deadline = Instant::now() + Duration::from_secs(12);
+    let mut late_probe_attempts = 0u32;
     let (late_rgb, late_pcm) = loop {
         let (late_sequence, _, late_segment) = wait_new_segment(
             &api_origin,
@@ -4446,29 +4453,35 @@ fn run_normal_production(mode: ProductionMode) {
             late_sequence > first_replacement_sequence.unwrap_or(0),
             "late replacement output did not advance beyond the first confirmed new-source segment"
         );
+        assert!(
+            Instant::now() < late_deadline && late_probe_attempts < COHERENT_PROBE_ATTEMPTS,
+            "late replacement HLS output did not show a coherent grid \
+             within the bounded probe window/attempt budget"
+        );
+        late_probe_attempts += 1;
         let (rgb, proof) = decode_segment_rgb(&late_ffmpeg, &late_segment);
-        let pcm = decode_segment_pcm(
-            &late_ffmpeg,
-            &late_segment,
-            PcmProofRole::LateSustained,
-            &proof,
-        );
-        assert!(
-            !cell_matches_color(&rgb, 160, 180, 1),
-            "old video source returned in late HLS output"
-        );
-        assert!(
-            !audio_tone_matches(&pcm, 330.0),
-            "old audio source returned in late HLS output"
-        );
         // The first segment after a credential-boundary restart may still show the
-        // pre-restart grid; require a coherent segment inside the bounded window.
-        if cell_matches_color(&rgb, 160, 180, 3)
-            && cell_matches_color(&rgb, 480, 180, 2)
-            && audio_tone_matches(&pcm, 550.0)
-        {
+        // pre-restart grid; tolerate it instead of spending an audio decode on a
+        // stale candidate. Only a coherent segment proves authority.
+        if cell_matches_color(&rgb, 160, 180, 3) && cell_matches_color(&rgb, 480, 180, 2) {
+            let pcm = decode_segment_pcm(
+                &late_ffmpeg,
+                &late_segment,
+                PcmProofRole::LateSustained,
+                &proof,
+            );
+            assert!(
+                !cell_matches_color(&rgb, 160, 180, 1),
+                "old video source returned in late HLS output"
+            );
+            assert!(
+                !audio_tone_matches(&pcm, 330.0),
+                "old audio source returned in late HLS output"
+            );
+            assert_audio_tone(&pcm, 550.0);
             break (rgb, pcm);
         }
+        thread::sleep(COHERENT_PROBE_GAP);
     };
     assert_cell_color(&late_rgb, 160, 180, 3);
     assert_cell_color(&late_rgb, 480, 180, 2);
