@@ -429,12 +429,17 @@ class Attempt:
                     attempt.rotation_env = dict(self.env)
                     attempt.rotation_case_was_fresh = not Path(
                         self.env['OTTPLAY_MULTIVIEW_ROTATE_CASE_DIR']).exists()
-                text = attempt.response(name, argv)
+                text = attempt.response(re.sub(r'-retry-\d+$', '', name), argv)
                 raw = text.encode()
                 with log_path.open('xb') as stream:
                     self.budget.allocate(len(raw), log=True)
                     stream.write(raw)
                     self.budget.evidence_files[str(log_path)] = len(raw)
+                if name.startswith('production-normal-server') and attempt.case in (
+                        'production-signature-once', 'production-signature-always'):
+                    attempt.signature_failures = getattr(attempt, 'signature_failures', 0) + 1
+                    if attempt.case == 'production-signature-always' or attempt.signature_failures == 1:
+                        raise RuntimeError('Synthetic production command exited nonzero')
                 if name == rotation_command and attempt.case == 'core-rotation-nonzero-exit':
                     raise RuntimeError('Synthetic Core rotation command exited nonzero')
                 if name == 'broker-ordinary' and attempt.case == 'broker-nonzero-exit':
@@ -728,7 +733,11 @@ class Attempt:
                 raise RuntimeError('Synthetic production command exited nonzero')
             if self.case == 'production-zero-tests':
                 return 'running 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored;\n'
-            return passed(EXPECTED_HLS_PRODUCTION_TEST if hls else EXPECTED_PRODUCTION_TEST)
+            text = passed(EXPECTED_HLS_PRODUCTION_TEST if hls else EXPECTED_PRODUCTION_TEST)
+            if self.case in ('production-signature-once', 'production-signature-always') and not hls:
+                text += ('thread panicked at multiview_production.rs: '
+                         'sibling source authority disappeared for 3 consecutive samples\n')
+            return text
         if name in ('fixture-build', 'core-fixture-build'):
             core = name == 'core-fixture-build'
             path = self.output / ('target/debug/deps/' + ('ottplay_core' if core else 'multiview_fixtures') + '-synthetic')
@@ -1977,6 +1986,131 @@ class StreamedContracts(unittest.TestCase):
             self.assertTrue(all(row["cleanup_confirmed"] for row in attempt.driver.commands))
             for key, value in previous.items():
                 self.assertEqual(attempt.driver.env[key], value)
+
+
+class ProductionRetryContracts(unittest.TestCase):
+    """The macOS production retry stays Darwin-only and signature-exact."""
+
+    class LogBudget:
+        """Only the bounded log read the eligibility gate performs."""
+
+        def __init__(self):
+            self.reads = []
+
+        def read(self, path, cap):
+            self.reads.append((path, cap))
+            return path.read_bytes()
+
+    def eligibility(self, system, log, error=None):
+        with tempfile.TemporaryDirectory(prefix='production-retry-offline-') as raw:
+            path = Path(raw).resolve() / 'production-normal-server.log'
+            if log is not None:
+                path.write_text(log)
+            with mock.patch.object(ci.platform, 'system', return_value=system):
+                return ci.production_fixture_retry_eligible(
+                    error if error is not None else RuntimeError('Synthetic production command exited nonzero'),
+                    path, self.LogBudget())
+
+    def test_retry_constants_stay_narrow(self):
+        self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_MAX_RETRIES, 2)
+        self.assertEqual(ci.PRODUCTION_MACOS_FLAKY_SIGNATURES, (
+            'sibling source authority disappeared for 3 consecutive samples',
+            'pre-replacement HLS playlist snapshot:',
+        ))
+
+    def test_only_the_exact_macos_signature_is_eligible(self):
+        for signature in ci.PRODUCTION_MACOS_FLAKY_SIGNATURES:
+            with self.subTest(signature=signature):
+                self.assertEqual(self.eligibility('Darwin', 'noise\n' + signature + '\nnoise\n'),
+                                 (True, signature))
+                self.assertEqual(self.eligibility('Linux', signature), (False, 'non-macos'))
+
+    def test_unrelated_failures_are_never_retried(self):
+        self.assertEqual(self.eligibility('Darwin', 'EncoderFailureDetail { error: Stalled, limit_ns: 200000000 }'),
+                         (False, 'signature-absent'))
+        self.assertEqual(self.eligibility('Darwin', 'sibling'), (False, 'signature-absent'))
+        self.assertEqual(self.eligibility('Darwin', ci.PRODUCTION_MACOS_FLAKY_SIGNATURES[0],
+                                          error=ValueError('not ours')),
+                         (False, 'unexpected-error-type'))
+        self.assertEqual(self.eligibility('Darwin', None), (False, 'missing-log'))
+
+    def test_symlinked_log_is_refused(self):
+        with tempfile.TemporaryDirectory(prefix='production-retry-link-') as raw:
+            root = Path(raw).resolve()
+            target = root / 'real.log'
+            target.write_text(ci.PRODUCTION_MACOS_FLAKY_SIGNATURES[0])
+            link = root / 'production-normal-server.log'
+            link.symlink_to(target)
+            with mock.patch.object(ci.platform, 'system', return_value='Darwin'):
+                self.assertEqual(ci.production_fixture_retry_eligible(
+                    RuntimeError('Synthetic production command exited nonzero'), link, self.LogBudget()),
+                    (False, 'missing-log'))
+
+    def production_commands(self, attempt):
+        return [row['name'] for row in attempt.driver.commands
+                if row['name'].startswith('production-normal-server')]
+
+    def test_macos_signature_failure_qualifies_after_one_recorded_retry(self):
+        with Attempt('production-signature-once', system='Darwin') as attempt:
+            attempt.run()
+            result = attempt.terminal()
+            self.assertEqual(result['status'], 'pass')
+            self.assertEqual(self.production_commands(attempt),
+                             ['production-normal-server', 'production-normal-server-retry-1'])
+            retry = result['production_flaky_retry']
+            self.assertIs(retry['qualified_after_retry'], True)
+            self.assertEqual((retry['test'], retry['platform'], retry['max_retries'], retry['final_attempt']),
+                             (EXPECTED_PRODUCTION_TEST, 'Darwin', 2, 2))
+            self.assertEqual(retry['attempts'], [{
+                'attempt': 1, 'command': 'production-normal-server',
+                'error': 'Synthetic production command exited nonzero',
+                'error_type': 'RuntimeError', 'retry_eligible': True,
+                'reason': 'sibling source authority disappeared for 3 consecutive samples'}])
+
+    def test_linux_keeps_one_strict_attempt(self):
+        with Attempt('production-signature-once', system='Linux') as attempt:
+            with self.assertRaises(RuntimeError):
+                attempt.run()
+            result = attempt.terminal()
+            self.assertEqual(result['status'], 'fail')
+            self.assertEqual(self.production_commands(attempt), ['production-normal-server'])
+            retry = result['production_flaky_retry']
+            self.assertIs(retry['qualified_after_retry'], False)
+            self.assertEqual((retry['max_retries'], retry['final_attempt']), (0, 1))
+            self.assertEqual(retry['attempts'][0]['retry_eligible'], False)
+            self.assertEqual(retry['attempts'][0]['reason'], 'non-macos')
+
+    def test_macos_failure_outside_the_signature_keeps_one_attempt(self):
+        with Attempt(system='Darwin') as attempt:
+            original = ci.require_one_pass
+            fired = []
+
+            def strict(text, name):
+                if name == EXPECTED_PRODUCTION_TEST and not fired:
+                    fired.append(name)
+                    raise RuntimeError('Synthetic production command exited nonzero')
+                return original(text, name)
+
+            with mock.patch.object(ci, 'require_one_pass', side_effect=strict), \
+                    self.assertRaises(RuntimeError):
+                attempt.run()
+            self.assertEqual(fired, [EXPECTED_PRODUCTION_TEST])
+            self.assertEqual(self.production_commands(attempt), ['production-normal-server'])
+            retry = attempt.terminal()['production_flaky_retry']
+            self.assertIs(retry['qualified_after_retry'], False)
+            self.assertEqual(retry['attempts'][0]['reason'], 'signature-absent')
+
+    def test_two_signature_failures_still_fail_the_qualification(self):
+        with Attempt('production-signature-always', system='Darwin') as attempt:
+            with self.assertRaises(RuntimeError):
+                attempt.run()
+            self.assertEqual(self.production_commands(attempt),
+                             ['production-normal-server', 'production-normal-server-retry-1',
+                              'production-normal-server-retry-2'])
+            retry = attempt.terminal()['production_flaky_retry']
+            self.assertIs(retry['qualified_after_retry'], False)
+            self.assertEqual((retry['max_retries'], retry['final_attempt']), (2, 3))
+            self.assertTrue(all(row['retry_eligible'] for row in retry['attempts']))
 
 
 class ParsingTests(unittest.TestCase):

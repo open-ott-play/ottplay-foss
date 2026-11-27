@@ -761,7 +761,9 @@ def streamed_fixture_retry_eligible(error, case, budget):
                 if not isinstance(event, dict):
                     continue
                 output_state = event.get('output_state')
-                snapshot = event.get('output')
+                snapshot = event.get('snapshot')
+                if snapshot is None:
+                    snapshot = event.get('output')
                 if snapshot is None and isinstance(event.get('event'), dict):
                     snapshot = event['event'].get('snapshot')
                 if isinstance(snapshot, dict):
@@ -789,7 +791,7 @@ def production_fixture_retry_eligible(error, log_path, budget):
     if log_path.is_symlink() or not log_path.is_file():
         return False, 'missing-log'
     try:
-        text = budget.read(log_path, guard.LOG_CAP).decode('utf-8', 'strict')
+        text = budget.read(log_path, 8 * 1024**2).decode('utf-8', 'strict')
     except Exception:
         return False, 'unreadable-log'
     for signature in PRODUCTION_MACOS_FLAKY_SIGNATURES:
@@ -912,9 +914,12 @@ def run_streamed_fixture(driver, budget, command, executable, tools, result):
                                  'error_type': type(error).__name__, 'retry_eligible': eligible,
                                  'reason': reason})
                 if eligible and attempt < retry_budget:
-                    preserve_streamed_forensic(driver, budget, media, case, analysis, roots, result,
-                                               f'streamed_forensic_attempt_{attempt + 1}')
-                    continue
+                    preserved = preserve_streamed_forensic(driver, budget, media, case, analysis, roots, result,
+                                                           f'streamed_forensic_attempt_{attempt + 1}')
+                    if preserved is not None:
+                        continue
+                    attempts[-1]['retry_eligible'] = False
+                    attempts[-1]['reason'] = 'forensic-preservation-failed'
                 if attempts:
                     result['streamed_flaky_retry'] = {
                         'qualified_after_retry': False,
@@ -1534,11 +1539,17 @@ def production_tool_custody(driver, budget, command, tools, output):
 
 def run_production_fixture(driver, budget, command, executable, tools, result, output, prepared_inputs=None):
     staged = {}
-    with production_tool_custody(driver, budget, command, tools, output) as (runtime_tools, checked_command):
-        _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=False,
-                             prepared_inputs=prepared_inputs, runtime_tools=runtime_tools)
-        _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=True,
-                             runtime_tools=runtime_tools)
+    try:
+        with production_tool_custody(driver, budget, command, tools, output) as (runtime_tools, checked_command):
+            _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=False,
+                                 prepared_inputs=prepared_inputs, runtime_tools=runtime_tools)
+            _run_production_mode(driver, budget, checked_command, executable, tools, staged, output, hls=True,
+                                 runtime_tools=runtime_tools)
+    except BaseException:
+        # Retry audit stays visible even when a failed attempt never publishes flags.
+        if 'production_flaky_retry' in staged:
+            result['production_flaky_retry'] = staged['production_flaky_retry']
+        raise
     # Flags publish only after BOTH modes AND actual owned tool cleanup qualify.
     result.update(staged)
 
