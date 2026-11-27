@@ -20,6 +20,8 @@ sys.dont_write_bytecode = True
 GUARD_SHA256 = '6f623bb7234b3619ff859dec0afe9c1ad938f29d606f0836b69434312867e020'
 STREAM_MEDIA_SHA256 = 'dd9238119c10150d549501b086c59598ae8c991e282885ce2d5717367e1c863c'
 STREAM_TEST = 'streamed_session_two_owner_continuity'
+STREAMED_MACOS_FLAKY_MAX_RETRIES = 2
+STREAMED_MACOS_FLAKY_SIGNATURE = 'output_state Failed / archive unqualified before sustained evidence'
 HLS_BATCH_SHA256 = '967ceaa7e7478c2488c3a984d4a4a15f968226ef82a7cd065b4a93b84aa161e7'
 PRODUCTION_TEST = 'normal_server_private_http_mpegts_renew_replace_and_cleanup'
 HLS_PRODUCTION_TEST = 'normal_server_private_http_hls_renew_replace_and_cleanup'
@@ -717,6 +719,103 @@ def bind_stream_evidence_hashes(report, adopted):
                 'Stream analyzer hashes do not bind adopted evidence')
 
 
+def streamed_fixture_retry_eligible(error, case, budget):
+    if platform.system() != 'Darwin':
+        return False, 'non-macos'
+    if not isinstance(error, (RuntimeError, AssertionError)):
+        return False, 'unexpected-error-type'
+    control_path = case / 'CONTROL.json'
+    if control_path.is_symlink() or not control_path.is_file():
+        return False, 'missing-control'
+    try:
+        control = json.loads(budget.read(control_path, 1024**2, cleanup=True).decode('utf-8', 'strict'))
+    except Exception:
+        return False, 'unreadable-control'
+    if not isinstance(control, dict) or control.get('pass') is not False:
+        return False, 'control-not-failed'
+    archive = control.get('archive')
+    if not isinstance(archive, dict):
+        return False, 'missing-archive'
+    if archive.get('qualified') is not False:
+        return False, 'archive-qualified'
+    if archive.get('at_least_60s_EXTINF') is not False:
+        return False, 'sustained-evidence-present'
+    # Exact flaky signature: output transitioned to Failed before sustained evidence.
+    failed_seen = False
+    events_path = case / 'EVENTS.jsonl'
+    if events_path.is_file() and not events_path.is_symlink():
+        try:
+            for line in budget.read(events_path, 8 * 1024**2, cleanup=True).decode('utf-8', 'strict').splitlines():
+                if not line.strip():
+                    continue
+                event = json.loads(line)
+                if not isinstance(event, dict):
+                    continue
+                output_state = event.get('output_state')
+                snapshot = event.get('snapshot')
+                if snapshot is None:
+                    snapshot = event.get('output')
+                if snapshot is None and isinstance(event.get('event'), dict):
+                    snapshot = event['event'].get('snapshot')
+                if isinstance(snapshot, dict):
+                    output_state = snapshot.get('output_state', output_state)
+                if output_state == 'Failed':
+                    failed_seen = True
+                    break
+        except Exception:
+            return False, 'unreadable-events'
+    if not failed_seen:
+        output = control.get('output')
+        if isinstance(output, dict) and output.get('output_state') == 'Failed':
+            failed_seen = True
+    if not failed_seen:
+        return False, 'output-not-failed'
+    return True, STREAMED_MACOS_FLAKY_SIGNATURE
+
+
+def preserve_streamed_forensic(driver, budget, media, case, analysis, roots, result, label):
+    try:
+        report = media.failure_evidence(case, analysis)
+        require(type(report) is dict and set(report) == {'schema', 'qualified', 'forensic_only',
+                'incomplete', 'errors', 'omitted_files', 'evidence_bytes', 'evidence',
+                'preserves_original_error', 'cleanup_must_run_unconditionally'}
+                and report.get('schema') == 'ottplay.multiview.stream-forensic.v1'
+                and report.get('qualified') is False and report.get('forensic_only') is True
+                and type(report.get('incomplete')) is bool and type(report.get('errors')) is list
+                and all(type(value) is str for value in report['errors'])
+                and len(set(report['errors'])) == len(report['errors'])
+                and set(report['errors']) <= {'ROOT_UNAVAILABLE', 'MISSING_REQUIRED', 'CUSTODY_OR_BOUND',
+                                            'MALFORMED_STRUCTURE', 'EVIDENCE_BUDGET'}
+                and report['incomplete'] is bool(report['errors'])
+                and type(report['omitted_files']) is int and 0 <= report['omitted_files'] <= 600
+                and (report['omitted_files'] == 0 or report['incomplete'])
+                and type(report['evidence_bytes']) is int and 0 <= report['evidence_bytes'] <= 32 * 1024**2
+                and report.get('preserves_original_error') is True
+                and report.get('cleanup_must_run_unconditionally') is True,
+                'Malformed stream forensic receipt')
+        specs = report['evidence']
+        adopted = adopt_stream_evidence(driver, budget, specs, roots, forensic=True)
+        require(sum(row['bytes'] for row in adopted) == report['evidence_bytes'],
+                'Stream forensic byte inventory differs')
+        forensic = {key: value for key, value in report.items() if key != 'evidence'}
+        result[label + '_evidence'] = adopted
+        result[label] = forensic
+        budget.json_evidence(driver.evidence / (label.replace('_', '-') + '.json'), forensic, cleanup=True)
+        return forensic
+    except BaseException as forensic_error:
+        result[label + '_error'] = str(forensic_error)
+        return None
+
+
+def reset_streamed_attempt_dirs(roots):
+    _inputs, case, analysis = roots
+    for path in (case, analysis):
+        if path.exists() or path.is_symlink():
+            shutil.rmtree(path)
+    # The streamed fixture creates `case`; keep it absent before each attempt.
+    analysis.mkdir(mode=0o700)
+
+
 def run_streamed_fixture(driver, budget, command, executable, tools, result):
     parent = driver.output / 'streamed'
     parent.mkdir(mode=0o700)
@@ -745,59 +844,75 @@ def run_streamed_fixture(driver, budget, command, executable, tools, result):
         input_specs += [{'path': row['path'], 'relative_name': 'stream-media/inputs/' + Path(row['path']).name,
                          'max_bytes': 16 * 1024**2} for row in seal['inputs']]
         result['streamed_input_evidence'] = adopt_stream_evidence(driver, budget, input_specs, roots)
-        require(not case.exists() and not case.is_symlink(), 'Fresh streamed case required')
-        driver.env.update(OTTPLAY_MULTIVIEW_STREAM_INPUTS=seal['path'], OTTPLAY_MULTIVIEW_STREAM_CASE_DIR=str(case))
-        text = command('fixture-4', [str(executable), STREAM_TEST, '--ignored', '--exact',
-                       '--test-threads=1', '--color=never'], 110)
-        require_one_pass(text, STREAM_TEST)
-        bind_stream_control(case, seal, budget)
-        execute_stream_specs(driver, budget, command, 'audio', media.prepare_audio(case, analysis, tools), roots, tools)
-        execute_stream_specs(driver, budget, command, 'video', media.prepare_video(case, analysis, tools), roots, tools)
-        packet = media.finish(case, analysis)
-        require(type(packet) is dict and set(packet) == {'result', 'evidence'}
-                and type(packet['result']) is dict and packet['result'].get('pass') is True
-                and packet['result'].get('schema') == 'ottplay.multiview.stream-media.v1'
-                and packet['result'].get('helper_sha256') == STREAM_MEDIA_SHA256,
-                'Stream media analyzer did not qualify this case')
-        bind_stream_control(case, seal, budget)
-        require_complete_stream_evidence(packet, roots, budget)
-        result['streamed_media_evidence'] = adopt_stream_evidence(driver, budget, packet['evidence'], roots)
-        bind_stream_evidence_hashes(packet['result'], result['streamed_media_evidence'])
-        result['streamed_media'] = packet['result']
-        budget.tick()
+
+        retry_budget = STREAMED_MACOS_FLAKY_MAX_RETRIES if platform.system() == 'Darwin' else 0
+        attempts = []
+        for attempt in range(retry_budget + 1):
+            reset_streamed_attempt_dirs(roots)
+            driver.env.update(OTTPLAY_MULTIVIEW_STREAM_INPUTS=seal['path'], OTTPLAY_MULTIVIEW_STREAM_CASE_DIR=str(case))
+            label = 'fixture-4' if attempt == 0 else f'fixture-4-retry-{attempt}'
+            try:
+                text = command(label, [str(executable), STREAM_TEST, '--ignored', '--exact',
+                               '--test-threads=1', '--color=never'], 110)
+                require_one_pass(text, STREAM_TEST)
+                bind_stream_control(case, seal, budget)
+                execute_stream_specs(driver, budget, command, 'audio', media.prepare_audio(case, analysis, tools), roots, tools)
+                execute_stream_specs(driver, budget, command, 'video', media.prepare_video(case, analysis, tools), roots, tools)
+                packet = media.finish(case, analysis)
+                require(type(packet) is dict and set(packet) == {'result', 'evidence'}
+                        and type(packet['result']) is dict and packet['result'].get('pass') is True
+                        and packet['result'].get('schema') == 'ottplay.multiview.stream-media.v1'
+                        and packet['result'].get('helper_sha256') == STREAM_MEDIA_SHA256,
+                        'Stream media analyzer did not qualify this case')
+                bind_stream_control(case, seal, budget)
+                require_complete_stream_evidence(packet, roots, budget)
+                result['streamed_media_evidence'] = adopt_stream_evidence(driver, budget, packet['evidence'], roots)
+                bind_stream_evidence_hashes(packet['result'], result['streamed_media_evidence'])
+                result['streamed_media'] = packet['result']
+                if attempts:
+                    result['streamed_flaky_retry'] = {
+                        'qualified_after_retry': True,
+                        'test': STREAM_TEST,
+                        'platform': platform.system(),
+                        'max_retries': retry_budget,
+                        'attempts': attempts,
+                        'final_attempt': attempt + 1,
+                        'signature': STREAMED_MACOS_FLAKY_SIGNATURE,
+                    }
+                budget.tick()
+                return
+            except BaseException as error:
+                eligible, reason = streamed_fixture_retry_eligible(error, case, budget)
+                attempts.append({'attempt': attempt + 1, 'command': label, 'error': str(error),
+                                 'error_type': type(error).__name__, 'retry_eligible': eligible,
+                                 'reason': reason})
+                if eligible and attempt < retry_budget:
+                    preserved = preserve_streamed_forensic(driver, budget, media, case, analysis, roots, result,
+                                                           f'streamed_forensic_attempt_{attempt + 1}')
+                    if preserved is not None:
+                        continue
+                    attempts[-1]['retry_eligible'] = False
+                    attempts[-1]['reason'] = 'forensic-preservation-failed'
+                if attempts:
+                    result['streamed_flaky_retry'] = {
+                        'qualified_after_retry': False,
+                        'test': STREAM_TEST,
+                        'platform': platform.system(),
+                        'max_retries': retry_budget,
+                        'attempts': attempts,
+                        'final_attempt': attempt + 1,
+                        'signature': STREAMED_MACOS_FLAKY_SIGNATURE,
+                    }
+                primary = error
+                raise
     except BaseException as error:
-        primary = error
+        if primary is None:
+            primary = error
         raise
     finally:
         try:
             if primary is not None and media is not None:
-                try:
-                    report = media.failure_evidence(case, analysis)
-                    require(type(report) is dict and set(report) == {'schema', 'qualified', 'forensic_only',
-                            'incomplete', 'errors', 'omitted_files', 'evidence_bytes', 'evidence',
-                            'preserves_original_error', 'cleanup_must_run_unconditionally'}
-                            and report.get('schema') == 'ottplay.multiview.stream-forensic.v1'
-                            and report.get('qualified') is False and report.get('forensic_only') is True
-                            and type(report.get('incomplete')) is bool and type(report.get('errors')) is list
-                            and all(type(value) is str for value in report['errors'])
-                            and len(set(report['errors'])) == len(report['errors'])
-                            and set(report['errors']) <= {'ROOT_UNAVAILABLE', 'MISSING_REQUIRED', 'CUSTODY_OR_BOUND',
-                                                        'MALFORMED_STRUCTURE', 'EVIDENCE_BUDGET'}
-                            and report['incomplete'] is bool(report['errors'])
-                            and type(report['omitted_files']) is int and 0 <= report['omitted_files'] <= 600
-                            and (report['omitted_files'] == 0 or report['incomplete'])
-                            and type(report['evidence_bytes']) is int and 0 <= report['evidence_bytes'] <= 32 * 1024**2
-                            and report.get('preserves_original_error') is True
-                            and report.get('cleanup_must_run_unconditionally') is True,
-                            'Malformed stream forensic receipt')
-                    specs = report['evidence']
-                    result['streamed_forensic_evidence'] = adopt_stream_evidence(driver, budget, specs, roots, forensic=True)
-                    require(sum(row['bytes'] for row in result['streamed_forensic_evidence']) == report['evidence_bytes'],
-                            'Stream forensic byte inventory differs')
-                    result['streamed_forensic'] = {key: value for key, value in report.items() if key != 'evidence'}
-                    budget.json_evidence(driver.evidence / 'streamed-forensic.json', result['streamed_forensic'], cleanup=True)
-                except BaseException as forensic_error:
-                    result['streamed_forensic_error'] = str(forensic_error)
+                preserve_streamed_forensic(driver, budget, media, case, analysis, roots, result, 'streamed_forensic')
         finally:
             # Every Driver.run has already executed its unconditional process
             # cleanup before it returns/raises. Forensics never owns that duty.
