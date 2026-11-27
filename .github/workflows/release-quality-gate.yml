@@ -106,9 +106,9 @@ jobs:
           node-version: '22'
       - name: Validate documentation with the locked compiler
         run: |
-          node scripts/prepare-docs-validation.cjs "$RUNNER_TEMP/docs-validation"
-          npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/docs-validation"
-          NODE_PATH="$RUNNER_TEMP/docs-validation/node_modules" node tests/test_readme_docs.cjs
+          node scripts/prepare-docs-validation.cjs "$RUNNER_TEMP/ottplay-docs-validation"
+          npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/ottplay-docs-validation"
+          NODE_PATH="$RUNNER_TEMP/ottplay-docs-validation/node_modules" node tests/test_readme_docs.cjs
     needs:
       - scope
   release-contracts:
