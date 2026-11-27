@@ -489,26 +489,55 @@ fn parse_remote(
 /// probe of the machine or its network.
 fn public_address(ip: std::net::IpAddr) -> bool {
     match ip {
-        std::net::IpAddr::V4(v4) => {
-            !(v4.is_private()
-                || v4.is_loopback()
-                || v4.is_link_local()
-                || v4.is_broadcast()
-                || v4.is_documentation()
-                || v4.is_unspecified()
-                || v4.is_multicast())
-        }
-        std::net::IpAddr::V6(v6) => {
-            if let Some(v4) = v6.to_ipv4_mapped() {
-                return public_address(std::net::IpAddr::V4(v4));
-            }
-            !(v6.is_loopback()
-                || v6.is_unspecified()
-                || v6.is_multicast()
-                || v6.is_unique_local()
-                || v6.is_unicast_link_local())
-        }
+        std::net::IpAddr::V4(v4) => public_v4(v4),
+        std::net::IpAddr::V6(v6) => public_v6(v6),
     }
+}
+/// Globally routable IPv4 only. The standard predicates do not cover every
+/// reserved range, so shared space (`100.64.0.0/10`), protocol assignments,
+/// documentation, benchmarking and future-use space are listed explicitly.
+fn public_v4(v4: std::net::Ipv4Addr) -> bool {
+    let [a, b, c, _] = v4.octets();
+    !(a == 0                                    // 0.0.0.0/8 this network
+        || a == 10                              // 10.0.0.0/8
+        || a == 127                             // 127.0.0.0/8
+        || (a == 100 && (64..=127).contains(&b)) // 100.64.0.0/10 shared
+        || (a == 169 && b == 254)               // 169.254.0.0/16
+        || (a == 172 && (16..=31).contains(&b)) // 172.16.0.0/12
+        || (a == 192 && b == 168)               // 192.168.0.0/16
+        || (a == 192 && b == 0 && c == 0)       // 192.0.0.0/24
+        || (a == 192 && b == 0 && c == 2)       // 192.0.2.0/24
+        || (a == 192 && b == 88 && c == 99)     // 192.88.99.0/24
+        || (a == 198 && (b == 18 || b == 19))   // 198.18.0.0/15
+        || (a == 198 && b == 51 && c == 100)    // 198.51.100.0/24
+        || (a == 203 && b == 0 && c == 113)     // 203.0.113.0/24
+        || a >= 224) // multicast, reserved and broadcast
+}
+/// Globally routable IPv6 only; addresses that embed IPv4 are judged by that
+/// address.
+fn public_v6(v6: std::net::Ipv6Addr) -> bool {
+    if let Some(v4) = v6.to_ipv4_mapped() {
+        return public_v4(v4);
+    }
+    let parts = v6.segments();
+    if parts[0] == 0x2002 {
+        // 6to4 carries its IPv4 endpoint in the next two segments.
+        return public_v4(std::net::Ipv4Addr::new(
+            (parts[1] >> 8) as u8,
+            parts[1] as u8,
+            (parts[2] >> 8) as u8,
+            parts[2] as u8,
+        ));
+    }
+    !(v6.is_loopback()
+        || v6.is_unspecified()
+        || v6.is_multicast()
+        || v6.is_unique_local()
+        || v6.is_unicast_link_local()
+        || parts[..6].iter().all(|part| *part == 0) // ::/96 compatible
+        || (parts[0] == 0x0064 && parts[1] == 0xff9b) // 64:ff9b::/96 NAT64
+        || (parts[0] == 0x0100 && parts[1..4].iter().all(|part| *part == 0)) // 100::/64 discard
+        || (parts[0] == 0x2001 && parts[1] == 0x0db8)) // 2001:db8::/32 documentation
 }
 /// `Url::host_str` keeps the brackets of an IPv6 literal.
 fn literal_address(host: &str) -> Option<std::net::IpAddr> {
@@ -540,29 +569,21 @@ fn public_reference(url: &reqwest::Url) -> bool {
     }
 }
 /// Every address the name resolves to must be public, so a rebinding name is
-/// refused before the request is made.
-async fn public_target(url: &reqwest::Url) -> bool {
+/// refused before the request is made. The validated addresses come back so the
+/// request connects only to what was checked.
+async fn public_targets(url: &reqwest::Url) -> Option<Vec<std::net::SocketAddr>> {
     if !public_reference(url) {
-        return false;
+        return None;
     }
-    let Some(host) = url.host_str() else {
-        return false;
-    };
-    if literal_address(host).is_some() {
-        return true;
-    }
+    let host = url.host_str()?;
     let port = url.port_or_known_default().unwrap_or(443);
-    let Ok(mut addresses) = tokio::net::lookup_host((host, port)).await else {
-        return false;
-    };
-    let mut resolved = false;
-    for address in addresses.by_ref() {
-        resolved = true;
-        if !public_address(address.ip()) {
-            return false;
-        }
+    if let Some(ip) = literal_address(host) {
+        return Some(vec![std::net::SocketAddr::new(ip, port)]);
     }
-    resolved
+    let addresses: Vec<std::net::SocketAddr> =
+        tokio::net::lookup_host((host, port)).await.ok()?.collect();
+    (!addresses.is_empty() && addresses.iter().all(|address| public_address(address.ip())))
+        .then_some(addresses)
 }
 /// Where a redirect points, if that stays a public reference. Relative locations
 /// resolve against the document that asked for them.
@@ -582,12 +603,14 @@ fn redirect_target(
 /// stream keeps its bounded reason, never a URL or an error string.
 enum Fetched {
     /// The document that arrived, with the URL it came from, so relative
-    /// entries resolve against the document that actually answered.
-    Document(String, reqwest::Url),
+    /// entries resolve against the document that actually answered, and the
+    /// body bytes it cost.
+    Document(String, reqwest::Url, usize),
     /// The reference, or one of its redirects, left public address space.
     Blocked,
-    /// The server was unreachable, declined, or returned no document.
-    Unavailable,
+    /// The server was unreachable, declined, or returned no document, with the
+    /// body bytes it still cost.
+    Unavailable(usize),
 }
 /// One bounded, non-recursive read of a dropped channel-list URL, following at
 /// most `MAX_REDIRECTS` hops that each stay public. Anything else keeps the
@@ -599,21 +622,37 @@ async fn fetch_manifest(
     allow_private: bool,
 ) -> Result<Fetched, Failure> {
     let Ok(parsed) = reqwest::Url::parse(url) else {
-        return Ok(Fetched::Unavailable);
+        return Ok(Fetched::Unavailable(0));
     };
-    let client = reqwest::Client::builder()
-        .timeout(MANIFEST_TIMEOUT)
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|_| bad(INVALID))?;
     let mut current = parsed;
     for _ in 0..=MAX_REDIRECTS {
         owner.check()?;
-        if !allow_private && !public_target(&current).await {
-            return Ok(Fetched::Blocked);
+        let pinned = if allow_private {
+            None
+        } else {
+            match public_targets(&current).await {
+                Some(addresses) => Some(addresses),
+                None => return Ok(Fetched::Blocked),
+            }
+        };
+        let mut builder = reqwest::Client::builder()
+            .timeout(MANIFEST_TIMEOUT)
+            .redirect(reqwest::redirect::Policy::none());
+        if let Some(addresses) = &pinned {
+            // Pin the validated addresses for this hop, keeping the hostname for
+            // the Host header and TLS, so connection-time resolution cannot
+            // answer differently from the check above.
+            if let Some(host) = current.host_str() {
+                if literal_address(host).is_none() {
+                    builder = builder.resolve_to_addrs(host, addresses);
+                }
+            }
         }
+        let Ok(client) = builder.build() else {
+            return Ok(Fetched::Unavailable(0));
+        };
         let Ok(response) = client.get(current.clone()).send().await else {
-            return Ok(Fetched::Unavailable);
+            return Ok(Fetched::Unavailable(0));
         };
         let status = response.status();
         if status.is_redirection() {
@@ -622,7 +661,7 @@ async fn fetch_manifest(
                 .get(reqwest::header::LOCATION)
                 .and_then(|value| value.to_str().ok());
             let Some(location) = location else {
-                return Ok(Fetched::Unavailable);
+                return Ok(Fetched::Unavailable(0));
             };
             let Some(next) = redirect_target(&current, location, allow_private) else {
                 return Ok(Fetched::Blocked);
@@ -631,43 +670,54 @@ async fn fetch_manifest(
             continue;
         }
         if !status.is_success() {
-            return Ok(Fetched::Unavailable);
+            return Ok(Fetched::Unavailable(0));
         }
-        return Ok(read_manifest_body(owner, response, limit, current)
-            .await?
-            .map_or(Fetched::Unavailable, |(text, url)| {
-                Fetched::Document(text, url)
-            }));
+        let (document, bytes) = read_manifest_body(owner, response, limit, current).await?;
+        return Ok(match document {
+            Some((text, url)) => Fetched::Document(text, url, bytes),
+            None => Fetched::Unavailable(bytes),
+        });
     }
-    Ok(Fetched::Unavailable)
+    Ok(Fetched::Unavailable(0))
 }
-/// Reads the accepted response up to `limit`, keeping the URL it came from.
+/// Reads the accepted response up to `limit`, keeping the URL it came from and
+/// how many body bytes were consumed, so a declined body still spends the
+/// aggregate budget. A transport failure or an undecodable body only declines
+/// this reference: the stream stays playable. Cancellation and the explicit
+/// size limit stay failures.
 async fn read_manifest_body(
     owner: &ReadWork,
     response: reqwest::Response,
     limit: usize,
     url: reqwest::Url,
-) -> Result<Option<(String, reqwest::Url)>, Failure> {
+) -> Result<(Option<(String, reqwest::Url)>, usize), Failure> {
     if response
         .content_length()
         .is_some_and(|length| length > limit as u64)
     {
-        return Err(bad(TOO_LARGE));
+        return Ok((None, 0));
     }
     let mut body = Vec::new();
     let mut response = response;
     loop {
         owner.check()?;
-        let Some(chunk) = response.chunk().await.map_err(|_| bad(INVALID))? else {
-            break;
+        let chunk = match response.chunk().await {
+            Ok(Some(chunk)) => chunk,
+            Ok(None) => break,
+            // A truncated or unreadable body declines this reference instead of
+            // rejecting the whole playlist.
+            Err(_) => return Ok((None, body.len())),
         };
         if body.len() + chunk.len() > limit {
-            return Err(bad(TOO_LARGE));
+            return Ok((None, body.len()));
         }
         body.extend_from_slice(&chunk);
     }
-    let text = String::from_utf8(body).map_err(|_| bad("Dropped playlist must be UTF-8"))?;
-    Ok(Some((text, url)))
+    let consumed = body.len();
+    let Ok(text) = String::from_utf8(body) else {
+        return Ok((None, consumed));
+    };
+    Ok((Some((text, url)), consumed))
 }
 /// Keeps the first bounded reason a reference could not become its channels.
 async fn expand_remote_references(
@@ -688,22 +738,30 @@ async fn expand_remote_references(
             out.push(item);
             continue;
         }
+        // A failed attempt spends the same budget as a successful one, so a
+        // playlist of dead links cannot make the drop crawl.
+        fetched += 1;
         owner.check()?;
         let (text, base) =
             match fetch_manifest(owner, url, MAX_TOTAL_TEXT - *total_text, allow_private).await? {
-                Fetched::Document(text, base) => (text, base),
+                Fetched::Document(text, base, bytes) => {
+                    *total_text += bytes;
+                    (text, base)
+                }
                 Fetched::Blocked => {
                     issue.get_or_insert(ExpansionIssue::Blocked);
                     out.push(item);
                     continue;
                 }
-                Fetched::Unavailable => {
+                Fetched::Unavailable(bytes) => {
+                    // A body that was read but not expanded still spends the
+                    // aggregate budget, so the batch cannot keep downloading.
+                    *total_text += bytes;
                     issue.get_or_insert(ExpansionIssue::Unavailable);
                     out.push(item);
                     continue;
                 }
             };
-        fetched += 1;
         let mut expanded = Vec::new();
         if looks_like_hls(&text) || parse_remote(&text, &base, &mut expanded).is_err() {
             out.push(item);
@@ -712,7 +770,6 @@ async fn expand_remote_references(
         if out.len() + expanded.len() > MAX_DROPPED_ITEMS {
             return Err(bad(ITEMS));
         }
-        *total_text += text.len();
         out.extend(expanded);
     }
     Ok((out, issue))
@@ -819,6 +876,8 @@ mod tests {
             "https://raw.githubusercontent.com/o/r/main/ru.m3u",
             "http://93.184.216.34/list.m3u",
             "https://[2606:4700:4700::1111]/list.m3u",
+            "http://100.63.255.255/list.m3u",
+            "http://100.128.0.1/list.m3u",
         ] {
             assert!(public(allowed), "{allowed} is a public target");
         }
@@ -838,6 +897,21 @@ mod tests {
             "http://printer.local/list.m3u",
             "http://media.internal/list.m3u",
             "ftp://example.invalid/list.m3u",
+            // Reserved space the standard predicates leave open.
+            "http://100.64.0.1/list.m3u",
+            "http://100.127.255.254/list.m3u",
+            "http://192.0.0.9/list.m3u",
+            "http://192.88.99.1/list.m3u",
+            "http://198.18.0.1/list.m3u",
+            "http://198.19.255.254/list.m3u",
+            "http://198.51.100.9/list.m3u",
+            "http://203.0.113.9/list.m3u",
+            "http://240.0.0.1/list.m3u",
+            "http://255.255.255.255/list.m3u",
+            "http://[2001:db8::1]/list.m3u",
+            "http://[64:ff9b::7f00:1]/list.m3u",
+            "http://[100::1]/list.m3u",
+            "http://[2002:7f00:1::]/list.m3u",
         ] {
             assert!(!public(refused), "{refused} must stay a single stream");
         }
@@ -1278,6 +1352,157 @@ mod tests {
             Some("playlist_link_blocked")
         );
         assert!(f.library.transient.lock().unwrap().groups.is_empty());
+    }
+
+    #[tokio::test]
+    async fn validated_literal_address_is_pinned_for_the_request() {
+        let public = reqwest::Url::parse("http://93.184.216.34:8080/list.m3u").unwrap();
+        assert_eq!(
+            public_targets(&public).await,
+            Some(vec![std::net::SocketAddr::from(([93, 184, 216, 34], 8080))])
+        );
+        for refused in [
+            "http://100.64.0.1/list.m3u",
+            "http://[2002:7f00:1::]/list.m3u",
+            "http://127.0.0.1/list.m3u",
+        ] {
+            let url = reqwest::Url::parse(refused).unwrap();
+            assert_eq!(
+                public_targets(&url).await,
+                None,
+                "{refused} must be refused"
+            );
+        }
+    }
+
+    /// Serves each accepted connection with one fixed response and counts them.
+    /// The idle wait is bounded so a test that stops requesting still finishes.
+    async fn responder(
+        response: Vec<u8>,
+        limit: usize,
+    ) -> (std::net::SocketAddr, tokio::task::JoinHandle<usize>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move {
+            let idle = std::time::Duration::from_millis(750);
+            let mut served = 0;
+            while served < limit {
+                let Ok(Ok((mut stream, _))) = tokio::time::timeout(idle, listener.accept()).await
+                else {
+                    break;
+                };
+                served += 1;
+                let mut head = [0u8; 4096];
+                let _ = stream.read(&mut head).await;
+                let _ = stream.write_all(&response).await;
+                let _ = stream.shutdown().await;
+            }
+            served
+        });
+        (address, task)
+    }
+
+    #[tokio::test]
+    async fn declined_remote_fetches_spend_the_attempt_budget() {
+        let (address, server) = responder(
+            b"HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n".to_vec(),
+            MAX_REMOTE_MANIFESTS * 2,
+        )
+        .await;
+        let f = Fixture::new().await;
+        let items: Vec<Requested> = (0..MAX_REMOTE_MANIFESTS * 2)
+            .map(|index| remote(&format!("http://{address}/dead-{index}.m3u8"), None).unwrap())
+            .collect();
+        assert_eq!(items.len(), MAX_REMOTE_MANIFESTS * 2);
+        let lease = f.library.background.enter().unwrap();
+        let (rows, issue, total) = owned_read(&lease, move |owner| async move {
+            let mut total = 0;
+            let (rows, issue) = expand_remote_references(&owner, items, &mut total, true).await?;
+            Ok((rows, issue, total))
+        })
+        .await
+        .unwrap();
+        assert_eq!(
+            server.await.unwrap(),
+            MAX_REMOTE_MANIFESTS,
+            "a declined fetch must spend the same budget as a successful one"
+        );
+        assert_eq!(rows.len(), MAX_REMOTE_MANIFESTS * 2);
+        assert_eq!(
+            issue.map(ExpansionIssue::code),
+            Some("playlist_link_unavailable")
+        );
+        assert_eq!(total, 0, "a 404 carries no body");
+    }
+
+    #[tokio::test]
+    async fn read_remote_bodies_stay_within_the_aggregate_budget() {
+        use std::fmt::Write as _;
+
+        // Three bodies fit the batch budget; a fourth must not be downloaded.
+        let per_response = 6 * 1024 * 1024;
+        let mut body = String::from("#EXTM3U\n#EXT-X-VERSION:3\n#");
+        while body.len() < per_response {
+            let _ = writeln!(body, "{}", "x".repeat(4096));
+        }
+        let mut response = format!(
+            "HTTP/1.1 200 OK\r\ncontent-type: application/vnd.apple.mpegurl\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+            body.len()
+        )
+        .into_bytes();
+        response.extend_from_slice(body.as_bytes());
+        let (address, server) = responder(response, 4).await;
+        let f = Fixture::new().await;
+        let items: Vec<Requested> = (0..4)
+            .map(|index| remote(&format!("http://{address}/hls-{index}.m3u8"), None).unwrap())
+            .collect();
+        let lease = f.library.background.enter().unwrap();
+        let (rows, total) = owned_read(&lease, move |owner| async move {
+            let mut total = 0;
+            let (rows, _) = expand_remote_references(&owner, items, &mut total, true).await?;
+            Ok((rows, total))
+        })
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert_eq!(rows.len(), 4, "an HLS body still plays as its stream");
+        assert_eq!(
+            total,
+            2 * body.len(),
+            "a body that falls back to its stream still spends the budget once, \
+             and a body announced beyond the remaining budget is not read at all"
+        );
+        assert!(total <= MAX_TOTAL_TEXT);
+    }
+
+    #[tokio::test]
+    async fn truncated_remote_body_keeps_the_stream_and_its_reason() {
+        let (address, server) = responder(
+            b"HTTP/1.1 200 OK\r\ncontent-type: application/vnd.apple.mpegurl\r\ncontent-length: 4096\r\nconnection: close\r\n\r\n#EXTM3U\nhttps://example.invalid/a.ts\n".to_vec(),
+            1,
+        )
+        .await;
+        let f = Fixture::new().await;
+        let manifest = f
+            .manifest(format!("http://{address}/truncated.m3u8\n"))
+            .await;
+        let lease = f.library.background.enter().unwrap();
+        let (rows, issue) = owned_read(&lease, move |owner| async move {
+            expand_reach(&owner, vec![manifest], true).await
+        })
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0].name(),
+            "Playlist stream",
+            "a broken body must not reject the dropped playlist"
+        );
+        assert_eq!(
+            issue.map(ExpansionIssue::code),
+            Some("playlist_link_unavailable")
+        );
     }
 
     #[tokio::test]
