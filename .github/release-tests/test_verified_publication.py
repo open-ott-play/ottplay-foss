@@ -1019,6 +1019,41 @@ class RegistryCredentialTests(unittest.TestCase):
               publisher.DOCKER_HUB_SERVER)],
         )
 
+    def test_canonical_hub_helper_wins_over_a_host_alias_in_either_order(self):
+        """Alias collisions choose the canonical Hub helper, not JSON order."""
+
+        def helper(command, **kwargs):
+            name = command[0].removeprefix("docker-credential-")
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                json.dumps({"Username": name, "Secret": name + "-secret"}),
+                "",
+            )
+
+        helpers = {
+            publisher.DOCKER_HUB_SERVER: "canonicalhelper",
+            "docker.io": "aliashelper",
+        }
+        for cred_helpers in (helpers, dict(reversed(list(helpers.items())))):
+            with self.subTest(order=list(cred_helpers)):
+                with (
+                    tempfile.TemporaryDirectory() as config_dir,
+                    self.docker_environment(
+                        config_dir, {"credHelpers": cred_helpers}
+                    ),
+                    mock.patch.object(publisher.subprocess, "run", side_effect=helper),
+                ):
+                    with publisher.registry_credentials(
+                        ["docker.io/alvit/ottplay-foss"]
+                    ) as overrides:
+                        _, config = self.materialized(overrides)
+                entry = config["auths"][publisher.DOCKER_HUB_SERVER]["auth"]
+                self.assertEqual(
+                    base64.b64decode(entry).decode(),
+                    "canonicalhelper:canonicalhelper-secret",
+                )
+
     def test_host_only_docker_hub_helper_uses_the_canonical_query(self):
         """A host-only Hub helper key still finds the canonical Docker login."""
         queries = []
