@@ -752,7 +752,9 @@ def streamed_fixture_retry_eligible(error, case, budget):
                 if not isinstance(event, dict):
                     continue
                 output_state = event.get('output_state')
-                snapshot = event.get('output')
+                snapshot = event.get('snapshot')
+                if snapshot is None:
+                    snapshot = event.get('output')
                 if snapshot is None and isinstance(event.get('event'), dict):
                     snapshot = event['event'].get('snapshot')
                 if isinstance(snapshot, dict):
