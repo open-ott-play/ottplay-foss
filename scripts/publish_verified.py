@@ -303,9 +303,15 @@ def configured_helpers(document, image):
     helpers = document.get("credHelpers")
     entries = {}
     if isinstance(helpers, dict):
-        entries = {
-            normalised_auth_key(key): (value, key) for key, value in helpers.items()
-        }
+        for key, value in helpers.items():
+            normalised = normalised_auth_key(key)
+            # Hub host aliases collapse onto the same auth key. Prefer the
+            # canonical registry URL explicitly, independent of JSON order.
+            priority = 0 if key == DOCKER_HUB_SERVER else 1
+            current = entries.get(normalised)
+            if current is None or priority < current[0]:
+                entries[normalised] = (priority, (value, key))
+        entries = {key: entry[1] for key, entry in entries.items()}
     matches = [entries[key] for key in destination_auth_keys(image) if key in entries]
     if matches:
         return matches
